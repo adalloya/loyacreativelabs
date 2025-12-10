@@ -29,7 +29,7 @@ export function Contact() {
                         <Button href="mailto:hello@loyacreativelab.com" className="px-10 py-4 text-xl">
                             {t.contact.email}
                         </Button>
-                        <Button href="https://wa.me/" variant="outline" className="px-10 py-4 text-xl">
+                        <Button href="https://wa.me/526271231192" variant="outline" className="px-10 py-4 text-xl">
                             {t.contact.whatsapp}
                         </Button>
                     </div>

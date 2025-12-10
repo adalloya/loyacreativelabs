@@ -156,3 +156,5 @@ export const projects = [
         color: "from-purple-500 to-indigo-500",
     },
 ];
+
+export const whatsappNumber = "526271231192";
