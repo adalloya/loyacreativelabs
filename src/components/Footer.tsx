@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { Container } from "./ui/Container";
+import { useLanguage } from "@/context/LanguageContext";
 
 export function Footer() {
+    const { t } = useLanguage();
     return (
         <footer className="bg-black border-t border-white/10 py-12 md:py-20">
             <Container>
@@ -13,7 +15,7 @@ export function Footer() {
                             LOYA <span className="text-gray-500">CREATIVE LAB</span>
                         </Link>
                         <p className="text-gray-500 text-sm max-w-xs">
-                            Crafting digital excellence for forward-thinking brands.
+                            {t.footer.description}
                         </p>
                     </div>
 
@@ -26,10 +28,10 @@ export function Footer() {
                 </div>
 
                 <div className="mt-12 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center text-xs text-gray-600">
-                    <p>&copy; {new Date().getFullYear()} Loya Creative Lab. All rights reserved.</p>
+                    <p>&copy; {new Date().getFullYear()} Loya Creative Lab.  {t.footer.rights}</p>
                     <div className="flex gap-4 mt-4 md:mt-0">
-                        <Link href="#">Privacy Policy</Link>
-                        <Link href="#">Terms of Service</Link>
+                        <Link href="#"> {t.footer.privacy}</Link>
+                        <Link href="#"> {t.footer.terms}</Link>
                     </div>
                 </div>
             </Container>

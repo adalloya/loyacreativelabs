@@ -3,14 +3,16 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion } from "framer-motion";
 import { Container } from "./ui/Container";
 import { Button } from "./ui/Button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Globe } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 export function Navbar() {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const { t, language, toggleLanguage } = useLanguage();
 
     useEffect(() => {
         const handleScroll = () => {
@@ -44,27 +46,49 @@ export function Navbar() {
 
                 {/* Desktop Nav */}
                 <nav className="hidden md:flex items-center gap-8">
-                    {["Work", "Services", "About"].map((item) => (
+                    {[
+                        { label: t.nav.work, href: "#work" },
+                        { label: t.nav.services, href: "#services" },
+                        { label: t.nav.about, href: "#about" },
+                    ].map((item) => (
                         <Link
-                            key={item}
-                            href={`#${item.toLowerCase()}`}
+                            key={item.label}
+                            href={item.href}
                             className="text-sm font-medium text-gray-300 hover:text-white transition-colors"
                         >
-                            {item}
+                            {item.label}
                         </Link>
                     ))}
+
+                    <button
+                        onClick={toggleLanguage}
+                        className="flex items-center gap-2 text-sm font-medium text-gray-300 hover:text-white transition-colors uppercase"
+                    >
+                        <Globe size={16} />
+                        {language}
+                    </button>
+
                     <Button href="#contact" variant="primary" className="px-6 py-2 text-sm">
-                        Start a Project
+                        {t.nav.start}
                     </Button>
                 </nav>
 
                 {/* Mobile Menu Toggle */}
-                <button
-                    className="md:hidden text-white z-10 p-2"
-                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                >
-                    {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-                </button>
+                <div className="flex items-center gap-4 md:hidden">
+                    <button
+                        onClick={toggleLanguage}
+                        className="text-white z-10 uppercase font-medium text-sm flex items-center gap-1"
+                    >
+                        {language}
+                    </button>
+                    <button
+                        className="text-white z-10 p-2"
+                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    >
+                        {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                    </button>
+                </div>
+
 
                 {/* Mobile Nav */}
                 {isMobileMenuOpen && (
@@ -74,18 +98,22 @@ export function Navbar() {
                         exit={{ opacity: 0, y: -20 }}
                         className="absolute top-0 left-0 right-0 bg-black border-b border-white/10 p-4 pt-24 pb-8 md:hidden flex flex-col gap-4 shadow-2xl"
                     >
-                        {["Work", "Services", "About"].map((item) => (
+                        {[
+                            { label: t.nav.work, href: "#work" },
+                            { label: t.nav.services, href: "#services" },
+                            { label: t.nav.about, href: "#about" },
+                        ].map((item) => (
                             <Link
-                                key={item}
-                                href={`#${item.toLowerCase()}`}
+                                key={item.label}
+                                href={item.href}
                                 className="text-lg font-medium text-gray-300 hover:text-white block py-2 border-b border-white/5"
                                 onClick={() => setIsMobileMenuOpen(false)}
                             >
-                                {item}
+                                {item.label}
                             </Link>
                         ))}
                         <Link href="#contact" onClick={() => setIsMobileMenuOpen(false)}>
-                            <Button className="w-full mt-4">Start a Project</Button>
+                            <Button className="w-full mt-4">{t.nav.start}</Button>
                         </Link>
                     </motion.div>
                 )}

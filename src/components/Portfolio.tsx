@@ -5,8 +5,10 @@ import { Container } from "./ui/Container";
 import { projects } from "../data/content";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 export function Portfolio() {
+    const { t } = useLanguage();
     return (
         <section id="work" className="py-24 md:py-32 bg-zinc-900/50">
             <Container>
@@ -16,9 +18,9 @@ export function Portfolio() {
                     viewport={{ once: true }}
                     className="mb-16 md:mb-24"
                 >
-                    <h2 className="text-3xl md:text-5xl font-bold mb-6">Selected Work</h2>
+                    <h2 className="text-3xl md:text-5xl font-bold mb-6">{t.portfolio.title}</h2>
                     <p className="text-xl text-gray-400 max-w-2xl">
-                        A showcase of our finest digital experiences, crafted with precision and passion.
+                        {t.portfolio.description}
                     </p>
                 </motion.div>
 

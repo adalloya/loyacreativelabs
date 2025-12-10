@@ -2,8 +2,8 @@
 
 import { motion } from "framer-motion";
 import { Container } from "./ui/Container";
-import { services } from "../data/content";
 import { Layout, Code, Palette, MousePointerClick } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 const iconMap = {
     Layout: Layout,
@@ -13,6 +13,7 @@ const iconMap = {
 };
 
 export function Services() {
+    const { t } = useLanguage();
     return (
         <section id="services" className="py-24 md:py-32">
             <Container>
@@ -23,18 +24,18 @@ export function Services() {
                             whileInView={{ opacity: 1, x: 0 }}
                             viewport={{ once: true }}
                         >
-                            <span className="text-purple-400 font-semibold tracking-wider uppercase text-sm mb-4 block">Our Expertise</span>
+                            <span className="text-purple-400 font-semibold tracking-wider uppercase text-sm mb-4 block">{t.services.badge}</span>
                             <h2 className="text-3xl md:text-5xl font-bold mb-6 text-white">
-                                We build brands that matter in the digital age.
+                                {t.services.title}
                             </h2>
                             <p className="text-gray-400 text-lg leading-relaxed">
-                                Loya Creative Lab combines technical excellence with artistic vision to create products that are not just functional, but unforgettable.
+                                {t.services.description}
                             </p>
                         </motion.div>
                     </div>
 
                     <div className="md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-8">
-                        {services.map((service, index) => {
+                        {t.services.items.map((service, index) => {
                             const Icon = iconMap[service.icon as keyof typeof iconMap];
                             return (
                                 <motion.div

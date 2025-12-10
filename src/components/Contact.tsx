@@ -3,8 +3,10 @@
 import { motion } from "framer-motion";
 import { Container } from "./ui/Container";
 import { Button } from "./ui/Button";
+import { useLanguage } from "@/context/LanguageContext";
 
 export function Contact() {
+    const { t } = useLanguage();
     return (
         <section id="contact" className="py-24 md:py-32 relative overflow-hidden">
             {/* Background Gradients */}
@@ -18,17 +20,17 @@ export function Contact() {
                     className="max-w-3xl mx-auto"
                 >
                     <h2 className="text-4xl md:text-6xl font-bold mb-8 text-white">
-                        Ready to start your next project?
+                        {t.contact.title}
                     </h2>
                     <p className="text-xl text-gray-400 mb-10">
-                        Let's collaborate to build something extraordinary. Reach out to us and let's discuss your vision.
+                        {t.contact.description}
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
                         <Button href="mailto:hello@loyacreativelab.com" className="px-10 py-4 text-xl">
-                            Get in Touch
+                            {t.contact.email}
                         </Button>
                         <Button href="https://wa.me/" variant="outline" className="px-10 py-4 text-xl">
-                            WhatsApp
+                            {t.contact.whatsapp}
                         </Button>
                     </div>
                 </motion.div>

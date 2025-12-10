@@ -3,8 +3,10 @@
 import { motion } from "framer-motion";
 import { Container } from "./ui/Container";
 import { Button } from "./ui/Button";
+import { useLanguage } from "@/context/LanguageContext";
 
 export function Hero() {
+    const { t } = useLanguage();
     return (
         <section className="relative min-h-screen flex items-center justify-center pt-20 overflow-hidden">
             {/* Background Gradients */}
@@ -18,22 +20,21 @@ export function Hero() {
                     transition={{ duration: 0.8, delay: 0.2 }}
                 >
                     <span className="inline-block px-3 py-1 mb-6 text-xs font-semibold tracking-wider text-purple-400 uppercase bg-purple-900/30 rounded-full border border-purple-500/30">
-                        Digital Experience Agency
+                        {t.hero.badge}
                     </span>
                     <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-8 bg-gradient-to-b from-white to-gray-400 bg-clip-text text-transparent">
-                        We Craft <br />
-                        Digital Masterpieces
+                        {t.hero.title}
                     </h1>
                     <p className="max-w-2xl mx-auto text-lg md:text-xl text-gray-400 mb-10 leading-relaxed">
-                        Elevate your brand with incredible UX, cutting-edge technology, and designs that leave a lasting impression.
+                        {t.hero.description}
                     </p>
 
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
                         <Button href="#work" className="text-lg">
-                            View Our Work
+                            {t.hero.ctaWork}
                         </Button>
                         <Button href="#contact" variant="outline" className="text-lg">
-                            Contact Us
+                            {t.hero.ctaContact}
                         </Button>
                     </div>
                 </motion.div>
