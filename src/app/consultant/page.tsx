@@ -160,33 +160,30 @@ function ConsultantChat() {
             {/* Chat Area - Flexible & Scrollable */}
             <div className="flex-1 relative z-10 overflow-y-auto overflow-x-hidden p-4 md:p-8 space-y-4 scroll-smooth overscroll-contain">
                 {messages.map((msg, idx) => (
-import ReactMarkdown from "react-markdown";
 
-                // ... (in component)
+                    <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-500`}>
+                        <div className={`max-w-[85%] md:max-w-2xl p-3 md:p-5 rounded-2xl text-base md:text-lg leading-relaxed ${msg.role === 'user'
+                            ? 'bg-zinc-800 text-white rounded-tr-sm'
+                            : 'bg-transparent border border-purple-500/30 text-purple-100 rounded-tl-sm shadow-[0_0_30px_rgba(168,85,247,0.1)]'
+                            }`}>
 
-                <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-500`}>
-                    <div className={`max-w-[85%] md:max-w-2xl p-3 md:p-5 rounded-2xl text-base md:text-lg leading-relaxed ${msg.role === 'user'
-                        ? 'bg-zinc-800 text-white rounded-tr-sm'
-                        : 'bg-transparent border border-purple-500/30 text-purple-100 rounded-tl-sm shadow-[0_0_30px_rgba(168,85,247,0.1)]'
-                        }`}>
-
-                        {msg.role === 'user' ? (
-                            msg.content
-                        ) : (
-                            <ReactMarkdown
-                                className="prose prose-invert prose-p:leading-relaxed prose-pre:bg-gray-800 prose-pre:p-2 prose-pre:rounded-lg max-w-none"
-                                components={{
-                                    strong: ({ node, ...props }) => <span className="font-bold text-white" {...props} />,
-                                    ul: ({ node, ...props }) => <ul className="list-disc pl-4 space-y-1 my-2" {...props} />,
-                                    ol: ({ node, ...props }) => <ol className="list-decimal pl-4 space-y-1 my-2" {...props} />,
-                                    li: ({ node, ...props }) => <li className="marker:text-purple-400" {...props} />
-                                }}
-                            >
-                                {msg.content}
-                            </ReactMarkdown>
-                        )}
+                            {msg.role === 'user' ? (
+                                msg.content
+                            ) : (
+                                <ReactMarkdown
+                                    className="prose prose-invert prose-p:leading-relaxed prose-pre:bg-gray-800 prose-pre:p-2 prose-pre:rounded-lg max-w-none"
+                                    components={{
+                                        strong: ({ node, ...props }) => <span className="font-bold text-white" {...props} />,
+                                        ul: ({ node, ...props }) => <ul className="list-disc pl-4 space-y-1 my-2" {...props} />,
+                                        ol: ({ node, ...props }) => <ol className="list-decimal pl-4 space-y-1 my-2" {...props} />,
+                                        li: ({ node, ...props }) => <li className="marker:text-purple-400" {...props} />
+                                    }}
+                                >
+                                    {msg.content}
+                                </ReactMarkdown>
+                            )}
+                        </div>
                     </div>
-                </div>
                 ))}
                 {loading && (
                     <div className="flex justify-start animate-in fade-in">
