@@ -23,7 +23,7 @@ export default function RootLayout({
     <html lang="es" className="dark" suppressHydrationWarning>
       <body className={`${outfit.variable} antialiased bg-black text-white font-sans`}>
         {children}
-        <Script src="/widget.js" strategy="lazyOnload" />
+        <Script src="/widget.js?v=stable" strategy="lazyOnload" />
       </body>
     </html>
   );
