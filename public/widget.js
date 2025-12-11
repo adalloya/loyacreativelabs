@@ -42,6 +42,7 @@
     iframe.style.height = '100%';
     iframe.style.border = 'none';
     iframe.style.background = 'transparent';
+    iframe.allow = "microphone; camera; autoplay"; // Enable permissions
     iframeContainer.appendChild(iframe);
 
     // Create Bubble Button
@@ -79,30 +80,58 @@
 
     button.innerHTML = iconSVG;
 
+    // Create Close Button (Top-Right of Iframe)
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = closeSVG;
+    closeBtn.style.position = 'absolute';
+    closeBtn.style.top = '10px';
+    closeBtn.style.right = '10px';
+    closeBtn.style.width = '32px';
+    closeBtn.style.height = '32px';
+    closeBtn.style.background = 'rgba(0,0,0,0.6)';
+    closeBtn.style.borderRadius = '50%';
+    closeBtn.style.border = '1px solid rgba(255,255,255,0.2)';
+    closeBtn.style.color = 'white';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.style.display = 'flex';
+    closeBtn.style.alignItems = 'center';
+    closeBtn.style.justifyContent = 'center';
+    closeBtn.style.zIndex = '1000000';
+    closeBtn.style.backdropFilter = 'blur(4px)';
+
+    // Add hover effect
+    closeBtn.onmouseover = () => closeBtn.style.background = 'rgba(255, 50, 50, 0.8)';
+    closeBtn.onmouseout = () => closeBtn.style.background = 'rgba(0,0,0,0.6)';
+
     // State
     let isOpen = false;
 
-    // Toggle Logic
-    button.onclick = () => {
-        isOpen = !isOpen;
+    // Toggle Function
+    const toggleWidget = (open) => {
+        isOpen = open;
         if (isOpen) {
             // OPEN
             iframeContainer.style.opacity = '1';
             iframeContainer.style.transform = 'translateY(0) scale(1)';
             iframeContainer.style.pointerEvents = 'all';
-            button.innerHTML = closeSVG;
-            button.style.background = '#000'; // Black when open
+            button.style.opacity = '0'; // Hide bubble
+            button.style.pointerEvents = 'none';
         } else {
             // CLOSE
             iframeContainer.style.opacity = '0';
             iframeContainer.style.transform = 'translateY(20px) scale(0.95)';
             iframeContainer.style.pointerEvents = 'none';
-            button.innerHTML = iconSVG;
-            button.style.background = PRIMARY_COLOR;
+            button.style.opacity = '1'; // Show bubble
+            button.style.pointerEvents = 'all';
         }
     };
 
+    button.onclick = () => toggleWidget(true);
+    closeBtn.onclick = () => toggleWidget(false);
+
     // Assemble
+    iframeContainer.appendChild(closeBtn);
+    // iframeContainer.appendChild(iframe); // iframe is already appended above
     container.appendChild(iframeContainer);
     container.appendChild(button);
     document.body.appendChild(container);
