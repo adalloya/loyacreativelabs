@@ -35,6 +35,10 @@ function ConsultantChat() {
 
     // ... (rest of functions remain same)
 
+    const toggleListening = () => {
+        setIsListening(!isListening);
+    };
+
     const recognitionRef = useRef<any>(null);
     const synthesisRef = useRef<SpeechSynthesis | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
