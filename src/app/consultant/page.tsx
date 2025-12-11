@@ -254,11 +254,13 @@ import ReactMarkdown from "react-markdown";
             </div>
         </main>
     );
-    // Wrap in Suspense for useSearchParams
-    export default function ConsultantPage() {
-        return (
-            <Suspense fallback={<div className="h-screen w-full flex items-center justify-center bg-black text-white"><Loader2 className="animate-spin" /></div>}>
-                <ConsultantChat />
-            </Suspense>
-        );
-    }
+}
+
+// Wrap in Suspense for useSearchParams
+export default function ConsultantPage() {
+    return (
+        <Suspense fallback={<div className="h-screen w-full flex items-center justify-center bg-black text-white"><Loader2 className="animate-spin" /></div>}>
+            <ConsultantChat />
+        </Suspense>
+    );
+}
