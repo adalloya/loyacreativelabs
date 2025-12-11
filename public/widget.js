@@ -113,22 +113,36 @@
         isOpen = open;
         if (isOpen) {
             // OPEN
-            iframeContainer.style.opacity = '1';
-            iframeContainer.style.transform = 'translateY(0) scale(1)';
-            iframeContainer.style.pointerEvents = 'all';
-            button.style.opacity = '0'; // Hide bubble
-            button.style.transform = 'scale(0)'; // Shrink to 0
-            button.style.pointerEvents = 'none';
+            iframeContainer.style.display = 'block'; // Ensure it's in layout
+            // RequestAnimationFrame to allow transition to play after display change
+            requestAnimationFrame(() => {
+                iframeContainer.style.opacity = '1';
+                iframeContainer.style.transform = 'translateY(0) scale(1)';
+                iframeContainer.style.pointerEvents = 'all';
+
+                button.style.opacity = '0';
+                button.style.transform = 'scale(0)';
+                button.style.pointerEvents = 'none';
+            });
         } else {
             // CLOSE
             iframeContainer.style.opacity = '0';
             iframeContainer.style.transform = 'translateY(20px) scale(0.95)';
             iframeContainer.style.pointerEvents = 'none';
-            button.style.opacity = '1'; // Show bubble
-            button.style.transform = 'scale(1)'; // restore size
+
+            button.style.opacity = '1';
+            button.style.transform = 'scale(1)';
             button.style.pointerEvents = 'all';
+
+            // Wait for transition to finish before hiding display
+            setTimeout(() => {
+                if (!isOpen) iframeContainer.style.display = 'none';
+            }, 300);
         }
     };
+
+    // Initialize as hidden
+    iframeContainer.style.display = 'none';
 
     button.onclick = () => toggleWidget(true);
     closeBtn.onclick = () => toggleWidget(false);
