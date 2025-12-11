@@ -27,67 +27,23 @@
     iframeContainer.style.marginBottom = '16px';
     iframeContainer.style.borderRadius = '20px';
     iframeContainer.style.boxShadow = '0 10px 40px rgba(0,0,0,0.4)';
-    iframeContainer.style.overflow = 'hidden';
-    iframeContainer.style.opacity = '0';
-    iframeContainer.style.transform = 'translateY(20px) scale(0.95)';
-    iframeContainer.style.transformOrigin = 'bottom right';
-    iframeContainer.style.transition = 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
-    iframeContainer.style.pointerEvents = 'none'; // Click-through when hidden
-    iframeContainer.style.background = '#000'; // Fallback
+    // Style tweaks for Iframe Container (Allow overflow for close button)
+    iframeContainer.style.overflow = 'visible'; // Was hidden, changed to visible
+    iframeContainer.style.background = 'transparent'; // Remove black bg from container
 
-    // The Iframe
-    const iframe = document.createElement('iframe');
-    iframe.src = CHAT_URL;
-    iframe.style.width = '100%';
-    iframe.style.height = '100%';
-    iframe.style.border = 'none';
-    iframe.style.background = 'transparent';
-    iframe.allow = "microphone; camera; autoplay"; // Enable permissions
-    iframeContainer.appendChild(iframe);
+    // Apply rounded corners to Iframe directly
+    iframe.style.borderRadius = '20px';
+    iframe.style.boxShadow = '0 10px 40px rgba(0,0,0,0.4)';
+    iframe.style.background = '#000';
 
-    // Create Bubble Button
-    const button = document.createElement('button');
-    button.style.width = '60px';
-    button.style.height = '60px';
-    button.style.borderRadius = '50%';
-    button.style.background = PRIMARY_COLOR;
-    button.style.boxShadow = '0 4px 20px rgba(147, 51, 234, 0.4)';
-    button.style.border = 'none';
-    button.style.cursor = 'pointer';
-    button.style.display = 'flex';
-    button.style.alignItems = 'center';
-    button.style.justifyContent = 'center';
-    button.style.transition = 'transform 0.2s ease';
-    button.style.position = 'absolute';
-    button.style.bottom = '0';
-    button.style.right = '0';
-
-    // Hover effect
-    button.onmouseover = () => button.style.transform = 'scale(1.05)';
-    button.onmouseout = () => button.style.transform = 'scale(1)';
-
-    // Icon (Chat Bubble)
-    const iconSVG = `
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 13.8214 2.48697 15.5291 3.33793 17.0174L2.5 21.5L7.22851 20.2293C8.68117 21.3656 10.2888 22 12 22Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>`;
-
-    // Close Icon (X)
-    const closeSVG = `
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M18 6L6 18M6 6L18 18" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>`;
-
-    button.innerHTML = iconSVG;
-
-    // Create Close Button (Top-Right of Iframe)
+    // Create Close Button (Left Side Outside)
     const closeBtn = document.createElement('button');
     closeBtn.innerHTML = closeSVG;
     closeBtn.style.position = 'absolute';
-    closeBtn.style.top = '10px';
-    closeBtn.style.right = '10px';
-    closeBtn.style.width = '32px';
-    closeBtn.style.height = '32px';
+    closeBtn.style.bottom = '0'; // Align bottom with chat
+    closeBtn.style.left = '-60px'; // Move 60px to the left
+    closeBtn.style.width = '48px';
+    closeBtn.style.height = '48px';
     closeBtn.style.background = 'rgba(0,0,0,0.6)';
     closeBtn.style.borderRadius = '50%';
     closeBtn.style.border = '1px solid rgba(255,255,255,0.2)';
@@ -115,6 +71,7 @@
             iframeContainer.style.transform = 'translateY(0) scale(1)';
             iframeContainer.style.pointerEvents = 'all';
             button.style.opacity = '0'; // Hide bubble
+            button.style.transform = 'scale(0)'; // Shrink to 0
             button.style.pointerEvents = 'none';
         } else {
             // CLOSE
@@ -122,6 +79,7 @@
             iframeContainer.style.transform = 'translateY(20px) scale(0.95)';
             iframeContainer.style.pointerEvents = 'none';
             button.style.opacity = '1'; // Show bubble
+            button.style.transform = 'scale(1)'; // restore size
             button.style.pointerEvents = 'all';
         }
     };
@@ -130,8 +88,10 @@
     closeBtn.onclick = () => toggleWidget(false);
 
     // Assemble
+    // Append closeBtn to iframeContainer so it moves with it
     iframeContainer.appendChild(closeBtn);
-    // iframeContainer.appendChild(iframe); // iframe is already appended above
+    iframeContainer.appendChild(iframe);
+
     container.appendChild(iframeContainer);
     container.appendChild(button);
     document.body.appendChild(container);
