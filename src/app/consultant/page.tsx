@@ -13,7 +13,7 @@ const SUGGESTIONS = [
     "📅 Agendar una reunión"
 ];
 
-const INITIAL_MESSAGE = { role: "model" as const, content: "Hola, soy Adal. Estoy aquí para ayudarte a transformar tu negocio. ¿Qué tienes en mente hoy?" };
+const INITIAL_MESSAGE = { role: "model" as const, content: "Bienvenido a Loya Creative Lab. Soy tu asistente de IA. Elige una opción 👇 o escribe tu consulta para comenzar." };
 
 export default function ConsultantPage() {
     const [input, setInput] = useState("");
@@ -28,7 +28,6 @@ export default function ConsultantPage() {
 
     const toggleListening = () => {
         setIsListening(!isListening);
-        // Placeholder for speech logic restore if needed
     };
 
     const recognitionRef = useRef<any>(null);
@@ -36,6 +35,11 @@ export default function ConsultantPage() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const [leadId, setLeadId] = useState<string | undefined>(undefined);
+
+    // Auto-scroll when messages change
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages, loading]); // Scroll on new messages or loading state change
 
     // Persistence Effect (Messages + Lead ID)
     useEffect(() => {
