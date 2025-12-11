@@ -66,8 +66,10 @@ export const geminiService = {
         audioBuffer?: ArrayBuffer
     ): Promise<string> {
         try {
+            // Production Model (Cost-Effective & High Limits)
             const model = genAI.getGenerativeModel({
-                model: "gemini-2.5-flash", // VERIFIED WORKING via test script (Step 1497)
+                model: "gemini-1.5-flash",
+                // safetySettings: ... (keep default or add if needed)
                 systemInstruction: SYSTEM_INSTRUCTION
             });
 
