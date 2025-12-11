@@ -190,10 +190,10 @@ export default function ConsultantPage() {
             </header>
 
             {/* Chat Area - Flexible & Scrollable */}
-            <div className="flex-1 relative z-10 overflow-y-auto overflow-x-hidden p-4 md:p-8 space-y-6 scroll-smooth overscroll-contain">
+            <div className="flex-1 relative z-10 overflow-y-auto overflow-x-hidden p-4 md:p-8 space-y-4 scroll-smooth overscroll-contain">
                 {messages.map((msg, idx) => (
                     <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-500`}>
-                        <div className={`max-w-[85%] md:max-w-2xl p-4 md:p-6 rounded-2xl text-lg md:text-xl leading-relaxed ${msg.role === 'user'
+                        <div className={`max-w-[85%] md:max-w-2xl p-3 md:p-5 rounded-2xl text-base md:text-lg leading-relaxed ${msg.role === 'user'
                             ? 'bg-zinc-800 text-white rounded-tr-sm'
                             : 'bg-transparent border border-purple-500/30 text-purple-100 rounded-tl-sm shadow-[0_0_30px_rgba(168,85,247,0.1)]'
                             }`}>
@@ -211,14 +211,14 @@ export default function ConsultantPage() {
                     </div>
                 )}
 
-                {/* Suggestion Chips - Show always when AI finishes responding */}
-                {showSuggestions && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mt-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                {/* Suggestion Chips - Show ONLY at the start (when history is just the greeting) */}
+                {showSuggestions && messages.length === 1 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mt-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
                         {SUGGESTIONS.map((sug, i) => (
                             <button
                                 key={i}
                                 onClick={() => handleSend(sug)}
-                                className="text-left p-4 rounded-xl border border-white/10 hover:border-purple-500/50 hover:bg-purple-900/10 transition-all text-sm md:text-base text-gray-300 hover:text-white"
+                                className="text-left p-3 rounded-xl border border-white/10 hover:border-purple-500/50 hover:bg-purple-900/10 transition-all text-xs md:text-sm text-gray-300 hover:text-white"
                             >
                                 {sug}
                             </button>
