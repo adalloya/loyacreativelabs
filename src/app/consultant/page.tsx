@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Send, Mic, MicOff, Volume2, VolumeX, ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { runGeminiChat } from "@/lib/gemini";
+import { runGeminiChat } from "@/app/actions";
 
 // Visualizer specific imports/components could go here or be inline
 // For MVP we use CSS animations for voice activity

@@ -19,3 +19,27 @@ export async function sendWhatsAppMessage(to: string, message: string) {
         return { success: false, error: error.message };
     }
 }
+    }
+}
+
+// Gemini Server Action
+import { geminiService } from "@/lib/gemini";
+
+export async function runGeminiChat(history: { role: "user" | "model"; parts: { text: string }[] }[]) {
+    try {
+        const lastMsg = history[history.length - 1];
+        const prevHistory = history.slice(0, -1).map(h => ({
+            role: h.role,
+            parts: h.parts[0].text
+        }));
+
+        const text = await geminiService.generateResponse(
+            lastMsg.parts[0].text,
+            prevHistory as { role: "user" | "model"; parts: string }[]
+        );
+        return { text };
+    } catch (e) {
+        console.error("Chat Error", e);
+        return { text: "Lo siento, tuve un error consultando mi base de datos." };
+    }
+}
