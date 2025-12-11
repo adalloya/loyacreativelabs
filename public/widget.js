@@ -19,12 +19,6 @@
         <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 13.8214 2.48697 15.5291 3.33793 17.0174L2.5 21.5L7.22851 20.2293C8.68117 21.3656 10.2888 22 12 22Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>`;
 
-    // Close Icon (X)
-    const closeSVG = `
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M18 6L6 18M6 6L18 18" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>`;
-
     // Create container
     const container = document.createElement('div');
     container.id = 'loya-ai-widget';
@@ -153,11 +147,16 @@
     }
 
     button.onclick = () => toggleWidget(true);
-    closeBtn.onclick = () => toggleWidget(false);
+
+    // Listen for Close Message from Iframe
+    window.addEventListener('message', (event) => {
+        if (event.data === 'close-widget') {
+            toggleWidget(false);
+        }
+    });
 
     // Assemble
-    // Append closeBtn to iframeContainer so it moves with it
-    iframeContainer.appendChild(closeBtn);
+    // Append iframe directly
     iframeContainer.appendChild(iframe);
 
     container.appendChild(iframeContainer);
