@@ -7,7 +7,16 @@ import { runGeminiChat } from "@/app/actions";
 import { useSearchParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 
-// ... (Suggestions and Initial Message remain same)
+// Restoration of constants
+const SUGGESTIONS = [
+    "💰 ¿Cuánto cuesta una web?",
+    "🚀 Quiero transformar mi negocio",
+    "📱 ¿Hacen Apps móviles?",
+    "🎨 Necesito Branding",
+    "📅 Agendar una reunión"
+];
+
+const INITIAL_MESSAGE = { role: "model" as const, content: "Bienvenido a Loya Creative Lab. Soy tu asistente de IA. Elige una opción 👇 o escribe tu consulta para comenzar." };
 
 function ConsultantChat() {
     const searchParams = useSearchParams();
