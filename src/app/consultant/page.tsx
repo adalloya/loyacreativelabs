@@ -97,8 +97,18 @@ function ConsultantChat() {
     const [leadId, setLeadId] = useState<string | undefined>(undefined);
 
     // Auto-scroll logic (unchanged)
+    // Auto-scroll logic (Improved for initial load)
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+            messagesEndRef.current?.scrollIntoView({ behavior });
+        };
+
+        // If it's the initial load (or very first render), do it instantly
+        // Otherwise, do it smoothly
+        scrollToBottom();
+
+        // Double check after a small delay to handle layout shifts
+        setTimeout(() => scrollToBottom(), 100);
     }, [messages, loading]);
 
     // Persistence logic (unchanged)
