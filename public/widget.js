@@ -9,6 +9,18 @@
         : "https://loya-creative-lab.vercel.app/consultant?embed=true";
     const PRIMARY_COLOR = "#9333ea"; // Purple-600
 
+    // Icon (Chat Bubble)
+    const iconSVG = `
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 13.8214 2.48697 15.5291 3.33793 17.0174L2.5 21.5L7.22851 20.2293C8.68117 21.3656 10.2888 22 12 22Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+
+    // Close Icon (X)
+    const closeSVG = `
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M18 6L6 18M6 6L18 18" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+
     // Create container
     const container = document.createElement('div');
     container.id = 'loya-ai-widget';
@@ -67,6 +79,28 @@
     // Add hover effect
     closeBtn.onmouseover = () => closeBtn.style.background = 'rgba(255, 50, 50, 0.8)';
     closeBtn.onmouseout = () => closeBtn.style.background = 'rgba(0,0,0,0.6)';
+
+    // Create Bubble Button
+    const button = document.createElement('button');
+    button.innerHTML = iconSVG; // Ensure iconSVG is used here
+    button.style.width = '60px';
+    button.style.height = '60px';
+    button.style.borderRadius = '50%';
+    button.style.background = PRIMARY_COLOR;
+    button.style.boxShadow = '0 4px 20px rgba(147, 51, 234, 0.4)';
+    button.style.border = 'none';
+    button.style.cursor = 'pointer';
+    button.style.display = 'flex';
+    button.style.alignItems = 'center';
+    button.style.justifyContent = 'center';
+    button.style.transition = 'transform 0.2s ease';
+    button.style.position = 'absolute';
+    button.style.bottom = '0';
+    button.style.right = '0';
+
+    // Hover effect
+    button.onmouseover = () => button.style.transform = 'scale(1.05)';
+    button.onmouseout = () => button.style.transform = 'scale(1)';
 
     // State
     let isOpen = false;
