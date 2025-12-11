@@ -35,13 +35,19 @@ function ConsultantChat() {
 
     // ... (rest of functions remain same)
 
-    const toggleListening = () => {
-        setIsListening(!isListening);
-    };
-
     const recognitionRef = useRef<any>(null);
     const synthesisRef = useRef<SpeechSynthesis | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Hide global widget if present (so we don't have double chat)
+    useEffect(() => {
+        const widget = document.getElementById('loya-ai-widget');
+        if (widget) widget.style.display = 'none';
+        return () => {
+            // Optional: Restore if we want it back when leaving
+            // if (widget) widget.style.display = 'block'; 
+        };
+    }, []);
 
     const [leadId, setLeadId] = useState<string | undefined>(undefined);
 
