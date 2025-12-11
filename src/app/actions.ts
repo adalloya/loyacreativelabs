@@ -28,7 +28,25 @@ export async function sendWhatsAppMessage(to: string, message: string) {
 export async function runGeminiChat(history: { role: "user" | "model"; parts: { text: string }[] }[]) {
     try {
         const lastMsg = history[history.length - 1];
-        const prevHistory = history.slice(0, -1).map(h => ({
+
+        // 1. Get previous messages (excluding the new prompt)
+        let rawHistory = history.slice(0, -1);
+
+        // 2. Token Optimization: Cap memory at last 20 messages to prevent token limits
+        if (rawHistory.length > 20) {
+            rawHistory = rawHistory.slice(-20);
+        }
+
+        // 3. API Safety: Ensure history starts with 'user' to avoid 'GoogleGenerativeAI Error'
+        const firstUserIndex = rawHistory.findIndex(h => h.role === 'user');
+        if (firstUserIndex !== -1) {
+            rawHistory = rawHistory.slice(firstUserIndex);
+        } else if (rawHistory.length > 0) {
+            // Only model messages found? (Unlikely) -> Reset history
+            rawHistory = [];
+        }
+
+        const prevHistory = rawHistory.map(h => ({
             role: h.role,
             parts: h.parts[0].text
         }));
