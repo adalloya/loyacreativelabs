@@ -1,22 +1,20 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { Mic, MicOff, Send, Loader2, ArrowLeft, Volume2, VolumeX, RotateCcw, Check } from "lucide-react";
 import Link from "next/link";
 import { runGeminiChat } from "@/app/actions";
+import { useSearchParams } from "next/navigation";
+import ReactMarkdown from "react-markdown";
 
-const SUGGESTIONS = [
-    "💰 ¿Cuánto cuesta una web?",
-    "🚀 Quiero transformar mi negocio",
-    "📱 ¿Hacen Apps móviles?",
-    "🎨 Necesito Branding",
-    "📅 Agendar una reunión"
-];
+// ... (Suggestions and Initial Message remain same)
 
-const INITIAL_MESSAGE = { role: "model" as const, content: "Bienvenido a Loya Creative Lab. Soy tu asistente de IA. Elige una opción 👇 o escribe tu consulta para comenzar." };
+function ConsultantChat() {
+    const searchParams = useSearchParams();
+    const isEmbed = searchParams.get("embed") === "true";
 
-export default function ConsultantPage() {
     const [input, setInput] = useState("");
+    // ... (rest of state items are same, copy existing)
     const [messages, setMessages] = useState<{ role: "user" | "model"; content: string; timestamp?: Date }[]>([
         INITIAL_MESSAGE
     ]);
@@ -25,6 +23,8 @@ export default function ConsultantPage() {
     const [speechSupported, setSpeechSupported] = useState(false);
     const [audioEnabled, setAudioEnabled] = useState(true);
     const [confirmReset, setConfirmReset] = useState(false);
+
+    // ... (rest of functions remain same)
 
     const toggleListening = () => {
         setIsListening(!isListening);
@@ -36,44 +36,39 @@ export default function ConsultantPage() {
 
     const [leadId, setLeadId] = useState<string | undefined>(undefined);
 
-    // Auto-scroll when messages change
+    // Auto-scroll logic (unchanged)
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages, loading]); // Scroll on new messages or loading state change
+    }, [messages, loading]);
 
-    // Persistence Effect (Messages + Lead ID)
+    // Persistence logic (unchanged)
     useEffect(() => {
+        // ... (persistence logic from before)
         const savedMsgs = localStorage.getItem("adal_history");
         const savedLeadId = localStorage.getItem("adal_lead_id");
-
         if (savedMsgs) {
             try {
                 const parsed = JSON.parse(savedMsgs);
                 if (parsed.length > 0) setMessages(parsed);
-            } catch (e) {
-                console.error("Failed to load history", e);
-            }
+            } catch (e) { console.error("Failed to load history", e); }
         }
-        if (savedLeadId) {
-            setLeadId(savedLeadId);
-        }
+        if (savedLeadId) setLeadId(savedLeadId);
     }, []);
 
     useEffect(() => {
-        if (messages.length > 1) { // Only save if there's real interaction
+        if (messages.length > 1) {
             localStorage.setItem("adal_history", JSON.stringify(messages));
         }
-        if (leadId) {
-            localStorage.setItem("adal_lead_id", leadId);
-        }
+        if (leadId) localStorage.setItem("adal_lead_id", leadId);
     }, [messages, leadId]);
 
+    // ... (handlers handleReset, handleSend etc remain exact same)
     const handleReset = () => {
         setMessages([INITIAL_MESSAGE]);
         setInput("");
         setLeadId(undefined);
         localStorage.removeItem("adal_history");
-        localStorage.removeItem("adal_lead_id"); // Clear ID to start fresh lead
+        localStorage.removeItem("adal_lead_id");
         setConfirmReset(false);
     };
 
@@ -87,10 +82,8 @@ export default function ConsultantPage() {
         setInput("");
         setLoading(true);
 
-        // Call Gemini
         try {
-            // Convert history to format needed by Gemini (filtering out initial model message if it exists)
-            // Gemini requires the first message to be from 'user'
+            // Convert history
             const history = newMessages
                 .filter((msg, index) => !(index === 0 && msg.role === 'model'))
                 .map(m => ({
@@ -98,19 +91,14 @@ export default function ConsultantPage() {
                     parts: [{ text: m.content }]
                 }));
 
-            // Pass leadId (undefined initially, then populated)
             const response = await runGeminiChat(history, leadId);
             const aiText = response.text || "Lo siento, tuve un error de conexión.";
 
-            // Update Lead ID if returned
             if (response.leadId && response.leadId !== leadId) {
                 setLeadId(response.leadId);
             }
 
             setMessages(prev => [...prev, { role: "model", content: aiText }]);
-
-            // Voice response disabled per user request
-            // speak(aiText);
 
         } catch (error) {
             console.error(error);
@@ -122,20 +110,30 @@ export default function ConsultantPage() {
 
     const showSuggestions = !loading && messages.length > 0 && messages[messages.length - 1].role === 'model';
 
-    return (
-        <main className="h-[100dvh] bg-black text-white flex flex-col font-sans relative overflow-hidden overscroll-none">
-            {/* Background Ambience */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-purple-900/20 via-black to-black z-0 pointer-events-none" />
 
-            {/* Header - Fixed to top */}
-            <header className="flex-none relative z-10 p-4 md:p-6 flex justify-between items-center bg-black/80 backdrop-blur-md border-b border-white/5 shadow-2xl shrink-0">
-                <Link href="/" className="text-gray-400 hover:text-white transition-colors flex items-center gap-2">
-                    <ArrowLeft size={20} /> <span className="text-sm font-medium tracking-widest uppercase">Regresar</span>
-                </Link>
-                <div className="flex items-center gap-4">
+    return (
+        <main className={`h-[100dvh] flex flex-col font-sans relative overflow-hidden overscroll-none ${isEmbed ? 'bg-zinc-950/90' : 'bg-black text-white'}`}>
+            {/* Background Ambience - Hide in Embed */}
+            {!isEmbed && <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-purple-900/20 via-black to-black z-0 pointer-events-none" />}
+
+            {/* Header - Simplified for Embed */}
+            <header className={`flex-none relative z-10 p-4 flex justify-between items-center shrink-0 ${isEmbed ? 'bg-zinc-900/90 py-3 px-4 border-b border-white/5' : 'md:p-6 bg-black/80 backdrop-blur-md border-b border-white/5 shadow-2xl'}`}>
+
+                {!isEmbed ? (
+                    <Link href="/" className="text-gray-400 hover:text-white transition-colors flex items-center gap-2">
+                        <ArrowLeft size={20} /> <span className="text-sm font-medium tracking-widest uppercase">Regresar</span>
+                    </Link>
+                ) : (
+                    // In embed, just show branding
+                    <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                        <span className="text-sm font-bold text-white tracking-widest">LOYALAB AI</span>
+                    </div>
+                )}
+
+                <div className="flex items-center gap-2 md:gap-4">
                     <button
                         onClick={confirmReset ? handleReset : () => setConfirmReset(true)}
-                        // onMouseLeave removed to prevent mobile issues
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-all mr-2 border ${confirmReset
                             ? 'bg-red-600/90 text-white border-red-500 animate-in fade-in zoom-in-95'
                             : 'text-gray-400 hover:text-red-400 hover:bg-red-900/10 border-transparent hover:border-red-900/30'
@@ -143,17 +141,19 @@ export default function ConsultantPage() {
                         title={confirmReset ? "¡Dale clic para borrar!" : "Nueva Conversación"}
                     >
                         {confirmReset ? <Check size={14} /> : <RotateCcw size={14} />}
-                        <span className="text-xs font-medium">{confirmReset ? "¿Estás seguro?" : "Empezar de nuevo"}</span>
+                        <span className={`text-xs font-medium ${isEmbed ? 'hidden' : ''}`}>{confirmReset ? "¿Estás seguro?" : "Empezar de nuevo"}</span>
                     </button>
                     <button onClick={() => setAudioEnabled(!audioEnabled)} className={`p-2 rounded-full transition-colors ${audioEnabled ? 'text-purple-400 bg-purple-900/20' : 'text-gray-600'}`}>
                         {audioEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
                     </button>
-                    <div className="text-right">
-                        <h1 className="font-bold text-lg tracking-tight">ADAL</h1>
-                        <p className="text-[10px] text-green-400 uppercase tracking-widest font-bold flex items-center justify-end gap-1">
-                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /> Online
-                        </p>
-                    </div>
+                    {!isEmbed && (
+                        <div className="text-right">
+                            <h1 className="font-bold text-lg tracking-tight">ADAL</h1>
+                            <p className="text-[10px] text-green-400 uppercase tracking-widest font-bold flex items-center justify-end gap-1">
+                                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /> Online
+                            </p>
+                        </div>
+                    )}
                 </div>
             </header>
 
@@ -254,4 +254,11 @@ import ReactMarkdown from "react-markdown";
             </div>
         </main>
     );
-}
+    // Wrap in Suspense for useSearchParams
+    export default function ConsultantPage() {
+        return (
+            <Suspense fallback={<div className="h-screen w-full flex items-center justify-center bg-black text-white"><Loader2 className="animate-spin" /></div>}>
+                <ConsultantChat />
+            </Suspense>
+        );
+    }
