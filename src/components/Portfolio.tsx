@@ -10,11 +10,11 @@ export function Portfolio() {
     const { t } = useLanguage();
 
     const logos = [
-        <AyjaleLogo key="ayjale" />,
-        <HereWeGoLogo key="herewego" />,
-        <EonLogo key="eon" />,
-        <DraLisethLogo key="draliseth" />,
-        <KandyEmotionLogo key="kandy" />,
+        { component: <AyjaleLogo />, url: "https://ayjale.com" },
+        { component: <HereWeGoLogo />, url: "https://herewego.com.mx" },
+        { component: <EonLogo />, url: "https://eonconsultoria.com.mx" },
+        { component: <DraLisethLogo />, url: "https://dralisethguevara.com" },
+        { component: <KandyEmotionLogo />, url: "https://kandyemotion.com" },
     ];
 
     return (
@@ -35,13 +35,23 @@ export function Portfolio() {
 
 
             {/* Marquee Section */}
-            <div className="relative w-full">
+            <div className="relative w-full flex justify-center">
                 <div className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-black to-transparent z-10"></div>
                 <div className="pointer-events-none absolute inset-y-0 right-0 w-1/3 bg-gradient-to-l from-black to-transparent z-10"></div>
 
                 <Marquee
-                    items={logos}
-                    direction="left" // Default is usually left (moving towards left), user asked "right to left" which is normal marquee.
+                    items={logos.map((logo, index) => (
+                        <a
+                            key={index}
+                            href={logo.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block w-[200px] hover:opacity-80 transition-opacity duration-300"
+                        >
+                            {logo.component}
+                        </a>
+                    ))}
+                    direction="left"
                     speed="normal"
                     className="py-10"
                 />

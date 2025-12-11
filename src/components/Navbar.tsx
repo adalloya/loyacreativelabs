@@ -68,7 +68,7 @@ export function Navbar() {
                         {language}
                     </button>
 
-                    <Button href="#contact" variant="primary" className="px-6 py-2 text-sm">
+                    <Button href="/start" variant="primary" className="px-6 py-2 text-sm">
                         {t.nav.start}
                     </Button>
                 </nav>

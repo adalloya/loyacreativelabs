@@ -8,16 +8,29 @@ import { useLanguage } from "@/context/LanguageContext";
 export function Hero() {
     const { t } = useLanguage();
     return (
-        <section className="relative min-h-screen flex items-center justify-center pt-20 overflow-hidden">
-            {/* Background Gradients */}
-            <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-900/20 rounded-full blur-[128px] pointer-events-none" />
-            <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-900/20 rounded-full blur-[128px] pointer-events-none" />
+        <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
 
-            <Container className="relative z-10 text-center">
+            {/* Background Video */}
+            <div className="absolute inset-0 w-full h-full z-0">
+                <video
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="w-full h-full object-cover"
+                >
+                    <source src="/hero-bg.mp4" type="video/mp4" />
+                </video>
+                {/* Dark Overlay */}
+                <div className="absolute inset-0 bg-black/60 z-10" />
+            </div>
+
+            <Container className="relative z-20">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: 0.2 }}
+                    transition={{ duration: 0.8 }}
+                    className="text-center max-w-4xl mx-auto"
                 >
                     <span className="inline-block px-3 py-1 mb-6 text-xs font-semibold tracking-wider text-purple-400 uppercase bg-purple-900/30 rounded-full border border-purple-500/30">
                         {t.hero.badge}
