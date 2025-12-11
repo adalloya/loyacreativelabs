@@ -2,6 +2,7 @@
 "use server";
 
 import { whatsappService } from "@/lib/whatsapp";
+import { geminiService } from "@/lib/gemini";
 import { db } from "@/lib/firebase"; // This is client SDK, careful. 
 // Actually, for Server Actions, we might want admin SDK if we were doing DB writes with huge permissions, 
 // but since we are just using whatsapp service, it's fine.
@@ -21,8 +22,8 @@ export async function sendWhatsAppMessage(to: string, message: string) {
 }
 
 
+
 // Gemini Server Action
-import { geminiService } from "@/lib/gemini";
 
 export async function runGeminiChat(history: { role: "user" | "model"; parts: { text: string }[] }[]) {
     try {
