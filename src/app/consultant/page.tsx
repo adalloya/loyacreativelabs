@@ -167,7 +167,7 @@ export default function ConsultantPage() {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={confirmReset ? handleReset : () => setConfirmReset(true)}
-                        onMouseLeave={() => setTimeout(() => setConfirmReset(false), 2000)}
+                        // onMouseLeave removed to prevent mobile issues
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-all mr-2 border ${confirmReset
                             ? 'bg-red-600/90 text-white border-red-500 animate-in fade-in zoom-in-95'
                             : 'text-gray-400 hover:text-red-400 hover:bg-red-900/10 border-transparent hover:border-red-900/30'
