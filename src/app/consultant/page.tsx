@@ -107,6 +107,7 @@ export default function ConsultantPage() {
     const handleReset = () => {
         if (confirm("¿Quieres borrar la conversación y empezar de cero?")) {
             setMessages([INITIAL_MESSAGE]);
+            setInput(""); // Clear any draft
             localStorage.removeItem("adal_history");
         }
     };
@@ -163,10 +164,11 @@ export default function ConsultantPage() {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={handleReset}
-                        className="text-gray-400 hover:text-red-400 hover:bg-red-900/10 p-2 rounded-full transition-colors mr-2"
+                        className="flex items-center gap-2 text-gray-400 hover:text-red-400 hover:bg-red-900/10 px-3 py-1.5 rounded-full transition-colors mr-2 border border-transparent hover:border-red-900/30"
                         title="Nueva Conversación"
                     >
-                        <RotateCcw size={18} />
+                        <RotateCcw size={14} />
+                        <span className="text-xs font-medium">Empezar de nuevo</span>
                     </button>
                     <button onClick={() => setAudioEnabled(!audioEnabled)} className={`p-2 rounded-full transition-colors ${audioEnabled ? 'text-purple-400 bg-purple-900/20' : 'text-gray-600'}`}>
                         {audioEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
