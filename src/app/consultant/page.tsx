@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, Suspense } from "react";
-import { Mic, MicOff, Send, Loader2, ArrowLeft, Volume2, VolumeX, RotateCcw, Check } from "lucide-react";
+import { Mic, MicOff, Send, Loader2, ArrowLeft, Volume2, VolumeX, RotateCcw, Check, Maximize2 } from "lucide-react";
 import Link from "next/link";
 import { runGeminiChat } from "@/app/actions";
 import { useSearchParams } from "next/navigation";
@@ -33,7 +33,45 @@ function ConsultantChat() {
     const [audioEnabled, setAudioEnabled] = useState(true);
     const [confirmReset, setConfirmReset] = useState(false);
 
-    // ... (rest of functions remain same)
+    // Initialize Speech Recognition
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+            if (SpeechRecognition) {
+                setSpeechSupported(true);
+                const recognition = new SpeechRecognition();
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.lang = 'es-ES';
+
+                recognition.onresult = (event: any) => {
+                    const transcript = event.results[0][0].transcript;
+                    setInput(prev => (prev ? prev + " " + transcript : transcript));
+                    setIsListening(false);
+                };
+
+                recognition.onerror = (event: any) => {
+                    console.error("Speech error", event.error);
+                    setIsListening(false);
+                };
+
+                recognition.onend = () => {
+                    setIsListening(false);
+                };
+
+                recognitionRef.current = recognition;
+            }
+        }
+    }, []);
+
+    // Effect to toggle listening
+    useEffect(() => {
+        if (isListening && recognitionRef.current) {
+            recognitionRef.current.start();
+        } else if (!isListening && recognitionRef.current) {
+            recognitionRef.current.stop();
+        }
+    }, [isListening]);
 
     const toggleListening = () => {
         setIsListening(!isListening);
@@ -143,10 +181,21 @@ function ConsultantChat() {
                         <ArrowLeft size={20} /> <span className="text-sm font-medium tracking-widest uppercase">Regresar</span>
                     </Link>
                 ) : (
-                    // In embed, just show branding
-                    <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                        <span className="text-sm font-bold text-white tracking-widest">LOYALAB AI</span>
+                    // In embed, show branding + Maximize Button
+                    <div className="flex items-center gap-4 w-full justify-between">
+                        <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                            <span className="text-sm font-bold text-white tracking-widest">LOYALAB AI</span>
+                        </div>
+                        <a
+                            href="/consultant"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full"
+                            title="Pantalla Completa"
+                        >
+                            <Maximize2 size={18} />
+                        </a>
                     </div>
                 )}
 
