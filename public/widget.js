@@ -1,8 +1,12 @@
 
 (function () {
     // Configuration
-    // const CHAT_URL = "http://localhost:3000/consultant?embed=true"; // DEV
-    const CHAT_URL = "https://loya-creative-lab.vercel.app/consultant?embed=true"; // PROD
+    const currentScript = document.currentScript;
+    const isLocal = currentScript && (currentScript.src.includes('localhost') || currentScript.src.includes('127.0.0.1'));
+
+    const CHAT_URL = isLocal
+        ? "http://localhost:3000/consultant?embed=true"
+        : "https://loya-creative-lab.vercel.app/consultant?embed=true";
     const PRIMARY_COLOR = "#9333ea"; // Purple-600
 
     // Create container
