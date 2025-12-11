@@ -55,7 +55,7 @@ export const geminiService = {
     ): Promise<string> {
         try {
             const model = genAI.getGenerativeModel({
-                model: "gemini-pro-latest", // Final fallback: explicitly listed, likely standard tier
+                model: "gemini-2.5-flash", // VERIFIED WORKING via test script (Step 1497)
                 systemInstruction: SYSTEM_INSTRUCTION
             });
 
