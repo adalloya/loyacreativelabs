@@ -145,6 +145,13 @@
     // Initialize as hidden
     iframeContainer.style.display = 'none';
 
+    // Auto-Open if requested via URL (e.g., returning from full screen)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('chat_open') === 'true') {
+        // Small delay to ensure everything is ready
+        setTimeout(() => toggleWidget(true), 500);
+    }
+
     button.onclick = () => toggleWidget(true);
     closeBtn.onclick = () => toggleWidget(false);
 
