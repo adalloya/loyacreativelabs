@@ -5,11 +5,12 @@
 
     // Configuration
     const currentScript = document.currentScript;
-    const isLocal = currentScript && (currentScript.src.includes('localhost') || currentScript.src.includes('127.0.0.1'));
+    // Dynamically derive the base URL from the script source
+    // This works for Localhost, Vercel Previews, and Production automatically
+    const scriptUrl = new URL(currentScript.src);
+    const BASE_URL = scriptUrl.origin;
+    const CHAT_URL = `${BASE_URL}/consultant?embed=true`;
 
-    const CHAT_URL = isLocal
-        ? "http://localhost:3000/consultant?embed=true"
-        : "https://loya-creative-lab.vercel.app/consultant?embed=true";
     const PRIMARY_COLOR = "#9333ea"; // Purple-600
 
     // Icon (Chat Bubble)
