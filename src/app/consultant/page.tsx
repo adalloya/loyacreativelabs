@@ -179,17 +179,18 @@ function ConsultantChat() {
                             {msg.role === 'user' ? (
                                 msg.content
                             ) : (
-                                <ReactMarkdown
-                                    className="prose prose-invert prose-p:leading-relaxed prose-pre:bg-gray-800 prose-pre:p-2 prose-pre:rounded-lg max-w-none"
-                                    components={{
-                                        strong: ({ node, ...props }) => <span className="font-bold text-white" {...props} />,
-                                        ul: ({ node, ...props }) => <ul className="list-disc pl-4 space-y-1 my-2" {...props} />,
-                                        ol: ({ node, ...props }) => <ol className="list-decimal pl-4 space-y-1 my-2" {...props} />,
-                                        li: ({ node, ...props }) => <li className="marker:text-purple-400" {...props} />
-                                    }}
-                                >
-                                    {msg.content}
-                                </ReactMarkdown>
+                                <div className="prose prose-invert prose-p:leading-relaxed prose-pre:bg-gray-800 prose-pre:p-2 prose-pre:rounded-lg max-w-none">
+                                    <ReactMarkdown
+                                        components={{
+                                            strong: ({ node, ...props }) => <span className="font-bold text-white" {...props} />,
+                                            ul: ({ node, ...props }) => <ul className="list-disc pl-4 space-y-1 my-2" {...props} />,
+                                            ol: ({ node, ...props }) => <ol className="list-decimal pl-4 space-y-1 my-2" {...props} />,
+                                            li: ({ node, ...props }) => <li className="marker:text-purple-400" {...props} />
+                                        }}
+                                    >
+                                        {msg.content}
+                                    </ReactMarkdown>
+                                </div>
                             )}
                         </div>
                     </div>
