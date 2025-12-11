@@ -24,6 +24,12 @@ export default function ConsultantPage() {
     const [isListening, setIsListening] = useState(false);
     const [speechSupported, setSpeechSupported] = useState(false);
     const [audioEnabled, setAudioEnabled] = useState(true);
+    const [confirmReset, setConfirmReset] = useState(false);
+
+    const toggleListening = () => {
+        setIsListening(!isListening);
+        // Placeholder for speech logic restore if needed
+    };
 
     const recognitionRef = useRef<any>(null);
     const synthesisRef = useRef<SpeechSynthesis | null>(null);
