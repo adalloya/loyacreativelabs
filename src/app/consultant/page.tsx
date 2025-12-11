@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, Suspense } from "react";
-import { Mic, MicOff, Send, Loader2, ArrowLeft, Volume2, VolumeX, RotateCcw, Check, Maximize2 } from "lucide-react";
+import { Mic, MicOff, Send, Loader2, ArrowLeft, Volume2, VolumeX, RotateCcw, Check, Maximize2, Minimize2 } from "lucide-react";
 import Link from "next/link";
 import { runGeminiChat } from "@/app/actions";
 import { useSearchParams } from "next/navigation";
@@ -46,7 +46,10 @@ function ConsultantChat() {
 
                 recognition.onresult = (event: any) => {
                     const transcript = event.results[0][0].transcript;
-                    setInput(prev => (prev ? prev + " " + transcript : transcript));
+                    if (transcript.trim()) {
+                        setInput(transcript); // Visual feedback
+                        setTimeout(() => handleSend(transcript), 200); // Auto-send
+                    }
                     setIsListening(false);
                 };
 
@@ -177,9 +180,10 @@ function ConsultantChat() {
             <header className={`flex-none relative z-10 p-4 flex justify-between items-center shrink-0 ${isEmbed ? 'bg-zinc-900/90 py-3 px-4 border-b border-white/5' : 'md:p-6 bg-black/80 backdrop-blur-md border-b border-white/5 shadow-2xl'}`}>
 
                 {!isEmbed ? (
-                    <Link href="/" className="text-gray-400 hover:text-white transition-colors flex items-center gap-2">
-                        <ArrowLeft size={20} /> <span className="text-sm font-medium tracking-widest uppercase">Regresar</span>
-                    </Link>
+                    <a href="/?chat_open=true" className="text-gray-400 hover:text-white transition-colors flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 group">
+                        <Minimize2 size={20} className="group-hover:scale-90 transition-transform" />
+                        <span className="text-sm font-medium tracking-widest uppercase hidden md:inline">Minimizar</span>
+                    </a>
                 ) : (
                     // In embed, show branding + Maximize Button
                     <div className="flex items-center gap-4 w-full justify-between">
