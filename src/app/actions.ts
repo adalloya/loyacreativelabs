@@ -19,8 +19,7 @@ export async function sendWhatsAppMessage(to: string, message: string) {
         return { success: false, error: error.message };
     }
 }
-    }
-}
+
 
 // Gemini Server Action
 import { geminiService } from "@/lib/gemini";
