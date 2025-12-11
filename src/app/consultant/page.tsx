@@ -1,17 +1,24 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Send, Mic, MicOff, Volume2, VolumeX, ArrowLeft, Loader2 } from "lucide-react";
+import { Send, Mic, MicOff, Volume2, VolumeX, ArrowLeft, Loader2, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { runGeminiChat } from "@/app/actions";
 
-// Visualizer specific imports/components could go here or be inline
-// For MVP we use CSS animations for voice activity
+const SUGGESTIONS = [
+    "💰 ¿Cuánto cuesta una web?",
+    "🚀 Quiero transformar mi negocio",
+    "📱 ¿Hacen Apps móviles?",
+    "🎨 Necesito Branding",
+    "📅 Agendar una reunión"
+];
+
+const INITIAL_MESSAGE = { role: "model" as const, content: "Hola, soy Adal. Estoy aquí para ayudarte a transformar tu negocio. ¿Qué tienes en mente hoy?" };
 
 export default function ConsultantPage() {
     const [input, setInput] = useState("");
     const [messages, setMessages] = useState<{ role: "user" | "model"; content: string; timestamp?: Date }[]>([
-        { role: "model", content: "Hola, soy Adal. Estoy aquí para ayudarte a transformar tu negocio. ¿Qué tienes en mente hoy?" }
+        INITIAL_MESSAGE
     ]);
     const [loading, setLoading] = useState(false);
     const [isListening, setIsListening] = useState(false);
@@ -20,6 +27,35 @@ export default function ConsultantPage() {
 
     const recognitionRef = useRef<any>(null);
     const synthesisRef = useRef<SpeechSynthesis | null>(null);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Persistence Effect
+    useEffect(() => {
+        const saved = localStorage.getItem("adal_history");
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                if (parsed.length > 0) setMessages(parsed);
+            } catch (e) {
+                console.error("Failed to load history", e);
+            }
+        }
+    }, []);
+
+    useEffect(() => {
+        if (messages.length > 1) { // Only save if there's real interaction
+            localStorage.setItem("adal_history", JSON.stringify(messages));
+        }
+    }, [messages]);
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages]);
+
 
     // Initialize Speech API
     useEffect(() => {
@@ -58,26 +94,6 @@ export default function ConsultantPage() {
         }
     }, []);
 
-    const speak = (text: string) => {
-        if (!audioEnabled || !synthesisRef.current) return;
-
-        // Cancel existing
-        synthesisRef.current.cancel();
-
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = "es-MX";
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
-
-        // Try to get a better voice
-        // This is async in some browsers so might need a listener, but often default is fine
-        const voices = synthesisRef.current.getVoices();
-        const latamVoice = voices.find(v => v.lang.includes("es-MX") || v.lang.includes("es-LA"));
-        if (latamVoice) utterance.voice = latamVoice;
-
-        synthesisRef.current.speak(utterance);
-    };
-
     const toggleListening = () => {
         if (!recognitionRef.current) return;
         if (isListening) {
@@ -85,6 +101,13 @@ export default function ConsultantPage() {
         } else {
             recognitionRef.current.start();
             setIsListening(true);
+        }
+    };
+
+    const handleReset = () => {
+        if (confirm("¿Quieres borrar la conversación y empezar de cero?")) {
+            setMessages([INITIAL_MESSAGE]);
+            localStorage.removeItem("adal_history");
         }
     };
 
@@ -136,6 +159,13 @@ export default function ConsultantPage() {
                     <ArrowLeft size={20} /> <span className="text-sm font-medium tracking-widest uppercase">Regresar</span>
                 </Link>
                 <div className="flex items-center gap-4">
+                    <button
+                        onClick={handleReset}
+                        className="text-gray-400 hover:text-red-400 hover:bg-red-900/10 p-2 rounded-full transition-colors mr-2"
+                        title="Nueva Conversación"
+                    >
+                        <RotateCcw size={18} />
+                    </button>
                     <button onClick={() => setAudioEnabled(!audioEnabled)} className={`p-2 rounded-full transition-colors ${audioEnabled ? 'text-purple-400 bg-purple-900/20' : 'text-gray-600'}`}>
                         {audioEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
                     </button>
@@ -169,6 +199,23 @@ export default function ConsultantPage() {
                         </div>
                     </div>
                 )}
+
+                {/* Suggestion Chips (Only show if few messages) */}
+                {messages.length <= 1 && !loading && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mt-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                        {SUGGESTIONS.map((sug, i) => (
+                            <button
+                                key={i}
+                                onClick={() => handleSend(sug)}
+                                className="text-left p-4 rounded-xl border border-white/10 hover:border-purple-500/50 hover:bg-purple-900/10 transition-all text-sm md:text-base text-gray-300 hover:text-white"
+                            >
+                                {sug}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                <div ref={messagesEndRef} className="h-4" />
                 {/* Spacer for bottom input */}
                 <div className="h-32" />
             </div>
