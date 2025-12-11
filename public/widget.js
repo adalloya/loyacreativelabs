@@ -1,7 +1,7 @@
 
 (function () {
-    // PREVENT RECURSION: Don't run inside an iframe or if already loaded
-    if (window.self !== window.top || document.getElementById('loya-ai-widget')) return;
+    // PREVENT RECURSION: Don't run inside an iframe, if already loaded, OR if we are on the consultant page itself
+    if (window.self !== window.top || document.getElementById('loya-ai-widget') || window.location.href.includes('/consultant')) return;
 
     // Configuration
     const currentScript = document.currentScript;
