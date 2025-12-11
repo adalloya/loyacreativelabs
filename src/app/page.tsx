@@ -6,6 +6,7 @@ import { ProblemSolution } from "@/components/ProblemSolution";
 import { TechStack } from "@/components/TechStack";
 import { Contact } from "@/components/Contact";
 import { Footer } from "@/components/Footer";
+import ChatbotPromo from "@/components/ChatbotPromo";
 import Providers from "./providers";
 
 export default function Home() {
@@ -18,6 +19,7 @@ export default function Home() {
           <TechStack />
           <ProblemSolution />
         </div>
+        <ChatbotPromo />
         <Portfolio />
         <Services />
         <Contact />

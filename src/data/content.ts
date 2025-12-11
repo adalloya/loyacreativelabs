@@ -119,6 +119,19 @@ export const content = {
                     }
                 ]
             }
+        },
+        chatPromo: {
+            badge: "Nueva Tecnología",
+            title: "Tu Propio Agente de IA: Ventas 24/7",
+            description: "No es un chatbot básico. Es un asistente inteligente entrenado con tu información para calificar prospectos, agendar citas y cerrar ventas mientras duermes.",
+            features: [
+                "Respuestas Humanas (No Robot)",
+                "Captura de Leads Automática",
+                "Integración con WhatsApp y CRM",
+                "Personalidad de Marca Única"
+            ],
+            cta: "Pruébalo Ahora",
+            ctaDemo: "Ver Demo"
         }
     },
     en: {
@@ -241,6 +254,19 @@ export const content = {
                     }
                 ]
             }
+        },
+        chatPromo: {
+            badge: "New Technology",
+            title: "Your Own AI Agent: 24/7 Sales",
+            description: "Not a basic chatbot. An intelligent assistant trained on your data to qualify leads, schedule appointments, and close sales while you sleep.",
+            features: [
+                "Human-like Responses (No Robot)",
+                "Automatic Lead Capture",
+                "WhatsApp & CRM Integration",
+                "Unique Brand Personality"
+            ],
+            cta: "Try It Now",
+            ctaDemo: "View Demo"
         }
     },
 };
