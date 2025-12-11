@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Send, Mic, MicOff, Volume2, VolumeX, ArrowLeft, Loader2, RotateCcw } from "lucide-react";
+import { Mic, MicOff, Send, Loader2, ArrowLeft, Volume2, VolumeX, RotateCcw, Check } from "lucide-react";
 import Link from "next/link";
 import { runGeminiChat } from "@/app/actions";
 
@@ -104,12 +104,15 @@ export default function ConsultantPage() {
         }
     };
 
+    const [confirmReset, setConfirmReset] = useState(false);
+
+    // ... other imports if needed, ensure Check icon is imported? I'll need to check imports.
+
     const handleReset = () => {
-        if (confirm("¿Quieres borrar la conversación y empezar de cero?")) {
-            setMessages([INITIAL_MESSAGE]);
-            setInput(""); // Clear any draft
-            localStorage.removeItem("adal_history");
-        }
+        setMessages([INITIAL_MESSAGE]);
+        setInput("");
+        localStorage.removeItem("adal_history");
+        setConfirmReset(false);
     };
 
     const handleSend = async (textOverride?: string) => {
@@ -163,12 +166,16 @@ export default function ConsultantPage() {
                 </Link>
                 <div className="flex items-center gap-4">
                     <button
-                        onClick={handleReset}
-                        className="flex items-center gap-2 text-gray-400 hover:text-red-400 hover:bg-red-900/10 px-3 py-1.5 rounded-full transition-colors mr-2 border border-transparent hover:border-red-900/30"
-                        title="Nueva Conversación"
+                        onClick={confirmReset ? handleReset : () => setConfirmReset(true)}
+                        onMouseLeave={() => setTimeout(() => setConfirmReset(false), 2000)}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-all mr-2 border ${confirmReset
+                            ? 'bg-red-600/90 text-white border-red-500 animate-in fade-in zoom-in-95'
+                            : 'text-gray-400 hover:text-red-400 hover:bg-red-900/10 border-transparent hover:border-red-900/30'
+                            }`}
+                        title={confirmReset ? "¡Dale clic para borrar!" : "Nueva Conversación"}
                     >
-                        <RotateCcw size={14} />
-                        <span className="text-xs font-medium">Empezar de nuevo</span>
+                        {confirmReset ? <Check size={14} /> : <RotateCcw size={14} />}
+                        <span className="text-xs font-medium">{confirmReset ? "¿Estás seguro?" : "Empezar de nuevo"}</span>
                     </button>
                     <button onClick={() => setAudioEnabled(!audioEnabled)} className={`p-2 rounded-full transition-colors ${audioEnabled ? 'text-purple-400 bg-purple-900/20' : 'text-gray-600'}`}>
                         {audioEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}

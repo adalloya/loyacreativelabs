@@ -55,7 +55,7 @@ export const geminiService = {
     ): Promise<string> {
         try {
             const model = genAI.getGenerativeModel({
-                model: "gemini-1.5-flash-latest", // Trying -latest alias to fix 404
+                model: "gemini-pro", // Fallback to stable 1.0 Pro since 1.5 is 404ing
                 systemInstruction: SYSTEM_INSTRUCTION
             });
 
