@@ -231,7 +231,7 @@ export default function ConsultantPage() {
                         {loading ? <Loader2 size={24} className="animate-spin" /> : <Send size={24} />}
                     </button>
                 </div>
-                <p className="text-center text-xs text-gray-600 mt-4">Powered by Gemini 2.0 Flash</p>
+
             </div>
         </main>
     );
