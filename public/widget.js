@@ -31,6 +31,15 @@
     iframeContainer.style.overflow = 'visible'; // Was hidden, changed to visible
     iframeContainer.style.background = 'transparent'; // Remove black bg from container
 
+    // The Iframe (Restored)
+    const iframe = document.createElement('iframe');
+    iframe.src = CHAT_URL;
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+    iframe.style.border = 'none';
+    iframe.style.background = 'transparent';
+    iframe.allow = "microphone; camera; autoplay";
+
     // Apply rounded corners to Iframe directly
     iframe.style.borderRadius = '20px';
     iframe.style.boxShadow = '0 10px 40px rgba(0,0,0,0.4)';
