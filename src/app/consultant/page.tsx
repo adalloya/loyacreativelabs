@@ -48,8 +48,8 @@ function ConsultantChat() {
         const widget = document.getElementById('loya-ai-widget');
         if (widget) widget.style.display = 'none';
         return () => {
-            // Optional: Restore if we want it back when leaving
-            // if (widget) widget.style.display = 'block'; 
+            // Restore visibility when leaving the page (FIX for navigation issue)
+            if (widget) widget.style.display = 'block';
         };
     }, []);
 
