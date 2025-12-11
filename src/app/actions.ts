@@ -3,12 +3,9 @@
 
 import { whatsappService } from "@/lib/whatsapp";
 import { geminiService } from "@/lib/gemini";
-import { db } from "@/lib/firebase"; // This is client SDK, careful. 
-// Actually, for Server Actions, we might want admin SDK if we were doing DB writes with huge permissions, 
-// but since we are just using whatsapp service, it's fine.
-// Wait, `db` in `lib/firebase` is initialized with Client SDK. It works in Node environment too usually, 
-// but auth might be weird. However, for "sending message", we rely on `whatsappService` which uses axios and env vars. 
-// That is perfectly safe in a Server Action.
+// Imports fixed
+
+// Notes on DB imported later...
 
 export async function sendWhatsAppMessage(to: string, message: string) {
     try {
@@ -23,39 +20,95 @@ export async function sendWhatsAppMessage(to: string, message: string) {
 
 
 
-// Gemini Server Action
+// Firestore Imports
+import { db } from "@/lib/firebase";
+import { collection, addDoc, doc, updateDoc, serverTimestamp } from "firebase/firestore";
 
-export async function runGeminiChat(history: { role: "user" | "model"; parts: { text: string }[] }[]) {
+// Gemini Server Action
+export async function runGeminiChat(
+    history: { role: "user" | "model"; parts: { text: string }[] }[],
+    leadId?: string,
+    leadInfo?: { name?: string, phone?: string } // Optional info if we have it
+) {
     try {
         const lastMsg = history[history.length - 1];
+        const userText = lastMsg.parts[0].text;
 
-        // 1. Get previous messages (excluding the new prompt)
-        let rawHistory = history.slice(0, -1);
+        // 0. LEAD MANAGEMENT (Create or Update)
+        let currentLeadId = leadId;
 
-        // 2. Token Optimization: Cap memory at last 20 messages to prevent token limits
-        if (rawHistory.length > 20) {
-            rawHistory = rawHistory.slice(-20);
+        // If no lead ID provided, create a new Lead
+        if (!currentLeadId) {
+            try {
+                const leadRef = await addDoc(collection(db, "leads"), {
+                    status: "new",
+                    source: "web_chat",
+                    created_at: serverTimestamp(), // Use server timestamp
+                    last_interaction: serverTimestamp(),
+                    ...leadInfo // Spread optional info if available
+                });
+                currentLeadId = leadRef.id;
+            } catch (fsError) {
+                console.error("Firestore Create Lead Error:", fsError);
+                // Continue without DB if DB fails, to at least reply
+            }
+        } else {
+            // Update last interaction
+            try {
+                const leadRef = doc(db, "leads", currentLeadId);
+                await updateDoc(leadRef, {
+                    last_interaction: serverTimestamp(),
+                    ...leadInfo // Update info if new info provided
+                });
+            } catch (e) { console.error("Update Lead Error", e); }
         }
 
-        // 3. API Safety: Ensure history starts with 'user' to avoid 'GoogleGenerativeAI Error'
+        // 1. Save USER Message to DB
+        if (currentLeadId) {
+            try {
+                await addDoc(collection(db, "leads", currentLeadId, "messages"), {
+                    role: "user",
+                    content: userText,
+                    timestamp: serverTimestamp()
+                });
+            } catch (e) { console.error("Save User Msg Error", e); }
+        }
+
+        // 2. Prepare History for Gemini (Same logic as before)
+        let rawHistory = history.slice(0, -1);
+        if (rawHistory.length > 20) rawHistory = rawHistory.slice(-20);
+
         const firstUserIndex = rawHistory.findIndex(h => h.role === 'user');
         if (firstUserIndex !== -1) {
             rawHistory = rawHistory.slice(firstUserIndex);
         } else if (rawHistory.length > 0) {
-            // Only model messages found? (Unlikely) -> Reset history
             rawHistory = [];
         }
 
         const prevHistory = rawHistory.map(h => ({
-            role: h.role,
+            role: h.role as "user" | "model",
             parts: h.parts[0].text
         }));
 
+        // 3. Generate AI Response
         const text = await geminiService.generateResponse(
-            lastMsg.parts[0].text,
-            prevHistory as { role: "user" | "model"; parts: string }[]
+            userText,
+            prevHistory
         );
-        return { text };
+
+        // 4. Save MODEL Response to DB
+        if (currentLeadId) {
+            try {
+                await addDoc(collection(db, "leads", currentLeadId, "messages"), {
+                    role: "model",
+                    content: text,
+                    timestamp: serverTimestamp()
+                });
+            } catch (e) { console.error("Save Model Msg Error", e); }
+        }
+
+        return { text, leadId: currentLeadId };
+
     } catch (e) {
         console.error("Chat Error", e);
         return { text: "Lo siento, tuve un error consultando mi base de datos." };

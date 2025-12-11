@@ -29,16 +29,23 @@ export default function ConsultantPage() {
     const synthesisRef = useRef<SpeechSynthesis | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // Persistence Effect
+    const [leadId, setLeadId] = useState<string | undefined>(undefined);
+
+    // Persistence Effect (Messages + Lead ID)
     useEffect(() => {
-        const saved = localStorage.getItem("adal_history");
-        if (saved) {
+        const savedMsgs = localStorage.getItem("adal_history");
+        const savedLeadId = localStorage.getItem("adal_lead_id");
+
+        if (savedMsgs) {
             try {
-                const parsed = JSON.parse(saved);
+                const parsed = JSON.parse(savedMsgs);
                 if (parsed.length > 0) setMessages(parsed);
             } catch (e) {
                 console.error("Failed to load history", e);
             }
+        }
+        if (savedLeadId) {
+            setLeadId(savedLeadId);
         }
     }, []);
 
@@ -46,72 +53,17 @@ export default function ConsultantPage() {
         if (messages.length > 1) { // Only save if there's real interaction
             localStorage.setItem("adal_history", JSON.stringify(messages));
         }
-    }, [messages]);
-
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    };
-
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
-
-
-    // Initialize Speech API
-    useEffect(() => {
-        if (typeof window !== "undefined") {
-            // Speech Recognition
-            const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-            if (SpeechRecognition) {
-                const recognition = new SpeechRecognition();
-                recognition.continuous = false; // Stop after one sentence for turn-taking
-                recognition.lang = "es-MX";
-                recognition.interimResults = false;
-
-                recognition.onresult = (event: any) => {
-                    const text = event.results[0][0].transcript;
-                    setInput(text);
-                    handleSend(text); // Auto-send on voice end
-                };
-
-                recognition.onerror = (event: any) => {
-                    console.error("Speech error", event.error);
-                    setIsListening(false);
-                };
-
-                recognition.onend = () => {
-                    setIsListening(false);
-                };
-
-                recognitionRef.current = recognition;
-                setSpeechSupported(true);
-            }
-
-            // Speech Synthesis
-            if ("speechSynthesis" in window) {
-                synthesisRef.current = window.speechSynthesis;
-            }
+        if (leadId) {
+            localStorage.setItem("adal_lead_id", leadId);
         }
-    }, []);
-
-    const toggleListening = () => {
-        if (!recognitionRef.current) return;
-        if (isListening) {
-            recognitionRef.current.stop();
-        } else {
-            recognitionRef.current.start();
-            setIsListening(true);
-        }
-    };
-
-    const [confirmReset, setConfirmReset] = useState(false);
-
-    // ... other imports if needed, ensure Check icon is imported? I'll need to check imports.
+    }, [messages, leadId]);
 
     const handleReset = () => {
         setMessages([INITIAL_MESSAGE]);
         setInput("");
+        setLeadId(undefined);
         localStorage.removeItem("adal_history");
+        localStorage.removeItem("adal_lead_id"); // Clear ID to start fresh lead
         setConfirmReset(false);
     };
 
@@ -136,8 +88,14 @@ export default function ConsultantPage() {
                     parts: [{ text: m.content }]
                 }));
 
-            const response = await runGeminiChat(history);
+            // Pass leadId (undefined initially, then populated)
+            const response = await runGeminiChat(history, leadId);
             const aiText = response.text || "Lo siento, tuve un error de conexión.";
+
+            // Update Lead ID if returned
+            if (response.leadId && response.leadId !== leadId) {
+                setLeadId(response.leadId);
+            }
 
             setMessages(prev => [...prev, { role: "model", content: aiText }]);
 

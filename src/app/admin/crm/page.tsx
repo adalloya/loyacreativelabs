@@ -193,51 +193,69 @@ export default function AdminCRMPage() {
         return matchesSearch && matchesStatus;
     });
 
-    // Fetch Leads
+    // Real-time Leads Listener
     useEffect(() => {
         if (!isAuthenticated) return;
+        setLoading(true);
 
-        async function fetchLeads() {
-            try {
-                if (!db) return;
-                const q = query(collection(db, "leads")); // orderBy might require index, removing for safety
-                const snapshot = await getDocs(q);
-                const fetchedLeads = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Lead));
-                // Client side sort
-                fetchedLeads.sort((a, b) => {
-                    const tA = a.created_at?.seconds || 0;
-                    const tB = b.created_at?.seconds || 0;
-                    return tB - tA;
-                });
-                setLeads(fetchedLeads);
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
+        if (!db) {
+            console.error("Firebase DB not initialized");
+            setLoading(false);
+            return;
         }
-        fetchLeads();
+
+        let unsubscribe: any;
+
+        try {
+            // Using onSnapshot for real-time updates
+            const q = query(collection(db, "leads"), orderBy("last_interaction", "desc"));
+            unsubscribe = onSnapshot(q, (snapshot) => {
+                const fetchedLeads = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Lead));
+                setLeads(fetchedLeads);
+                setLoading(false);
+            }, (error) => {
+                console.error("Leads Listener Error:", error);
+                // Fallback for missing index
+                if (error.code === 'failed-precondition') {
+                    getDocs(query(collection(db, "leads"))).then(snap => {
+                        const leads = snap.docs.map(d => ({ id: d.id, ...d.data() } as Lead));
+                        // Client-side sort fallback
+                        leads.sort((a, b) => (b.created_at?.seconds || 0) - (a.created_at?.seconds || 0));
+                        setLeads(leads);
+                        setLoading(false);
+                    });
+                } else {
+                    setLoading(false);
+                }
+            });
+        } catch (err) {
+            console.error("Setup Error", err);
+            setLoading(false);
+        }
+
+        return () => unsubscribe && unsubscribe();
     }, [isAuthenticated]);
 
-    // Fetch Messages when Lead Selected
+    // Real-time Messages Listener
     useEffect(() => {
-        if (!selectedLead) return;
-        async function fetchMessages() {
-            setLoadingMessages(true);
-            try {
-                // Check if subcollection "messages" exists
-                const q = query(collection(db, "leads", selectedLead!.id, "messages"), orderBy("timestamp", "asc"));
-                const snapshot = await getDocs(q);
-                const msgs = snapshot.docs.map(d => d.data() as Message);
-                setMessages(msgs);
-            } catch (e) {
-                console.log("No messages or error", e);
-                setMessages([]);
-            } finally {
-                setLoadingMessages(false);
-            }
-        }
-        fetchMessages();
+        if (!selectedLead || !db) return;
+        setLoadingMessages(true);
+
+        const q = query(
+            collection(db, "leads", selectedLead.id, "messages"),
+            orderBy("timestamp", "asc")
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const msgs = snapshot.docs.map(d => d.data() as Message);
+            setMessages(msgs);
+            setLoadingMessages(false);
+        }, (error) => {
+            console.error("Messages Listener Error:", error);
+            setLoadingMessages(false);
+        });
+
+        return () => unsubscribe();
     }, [selectedLead]);
 
     const handleSendReply = async () => {

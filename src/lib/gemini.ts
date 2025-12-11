@@ -68,7 +68,7 @@ export const geminiService = {
         try {
             // Production Model (Cost-Effective & High Limits)
             const model = genAI.getGenerativeModel({
-                model: "gemini-1.5-flash",
+                model: "gemini-flash-latest",
                 // safetySettings: ... (keep default or add if needed)
                 systemInstruction: SYSTEM_INSTRUCTION
             });
