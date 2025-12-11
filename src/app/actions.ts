@@ -34,47 +34,63 @@ export async function runGeminiChat(
         const lastMsg = history[history.length - 1];
         const userText = lastMsg.parts[0].text;
 
-        // 0. LEAD MANAGEMENT (Create or Update)
+        // 0. LEAD MANAGEMENT (Non-blocking / Best Effort)
         let currentLeadId = leadId;
 
-        // If no lead ID provided, create a new Lead
+        // Helper to run DB ops without blocking the response
+        const safeDbOp = async (op: Promise<any>) => {
+            try {
+                await Promise.race([
+                    op,
+                    new Promise((_, reject) => setTimeout(() => reject(new Error("DB Timeout")), 1500))
+                ]);
+            } catch (e) {
+                console.warn("DB Op skipped/failed:", e);
+                // Fail silently to keep chat alive
+            }
+        };
+
+        // If no lead ID provided, TRY to create one, but don't die if it fails
         if (!currentLeadId) {
             try {
-                const leadRef = await addDoc(collection(db, "leads"), {
+                // We MUST await this briefly to get an ID for continuity, but if it fails, we proceed without ID
+                const leadRefPromise = addDoc(collection(db, "leads"), {
                     status: "new",
                     source: "web_chat",
-                    created_at: serverTimestamp(), // Use server timestamp
+                    created_at: serverTimestamp(),
                     last_interaction: serverTimestamp(),
-                    ...leadInfo // Spread optional info if available
+                    ...leadInfo
                 });
+
+                // Allow 2 seconds max for lead creation
+                const leadRef = await Promise.race([
+                    leadRefPromise,
+                    new Promise<any>((_, reject) => setTimeout(() => reject(new Error("Lead Creation Timeout")), 2000))
+                ]);
+
                 currentLeadId = leadRef.id;
             } catch (fsError) {
-                console.error("Firestore Create Lead Error:", fsError);
-                // Continue without DB if DB fails, to at least reply
+                console.error("Firestore Lead Creation Failed (API likely disabled):", fsError);
+                // Proceed without saving to DB
             }
         } else {
-            // Update last interaction
-            try {
-                const leadRef = doc(db, "leads", currentLeadId);
-                await updateDoc(leadRef, {
-                    last_interaction: serverTimestamp(),
-                    ...leadInfo // Update info if new info provided
-                });
-            } catch (e) { console.error("Update Lead Error", e); }
+            // Fire and forget update
+            safeDbOp(updateDoc(doc(db, "leads", currentLeadId), {
+                last_interaction: serverTimestamp(),
+                ...leadInfo
+            }));
         }
 
-        // 1. Save USER Message to DB
+        // 1. Save USER Message (Fire and Forget)
         if (currentLeadId) {
-            try {
-                await addDoc(collection(db, "leads", currentLeadId, "messages"), {
-                    role: "user",
-                    content: userText,
-                    timestamp: serverTimestamp()
-                });
-            } catch (e) { console.error("Save User Msg Error", e); }
+            safeDbOp(addDoc(collection(db, "leads", currentLeadId, "messages"), {
+                role: "user",
+                content: userText,
+                timestamp: serverTimestamp()
+            }));
         }
 
-        // 2. Prepare History for Gemini (Same logic as before)
+        // 2. Prepare History (unchanged)
         let rawHistory = history.slice(0, -1);
         if (rawHistory.length > 20) rawHistory = rawHistory.slice(-20);
 
@@ -96,21 +112,19 @@ export async function runGeminiChat(
             prevHistory
         );
 
-        // 4. Save MODEL Response to DB
+        // 4. Save MODEL Response (Fire and Forget)
         if (currentLeadId) {
-            try {
-                await addDoc(collection(db, "leads", currentLeadId, "messages"), {
-                    role: "model",
-                    content: text,
-                    timestamp: serverTimestamp()
-                });
-            } catch (e) { console.error("Save Model Msg Error", e); }
+            safeDbOp(addDoc(collection(db, "leads", currentLeadId, "messages"), {
+                role: "model",
+                content: text,
+                timestamp: serverTimestamp()
+            }));
         }
 
         return { text, leadId: currentLeadId };
 
     } catch (e) {
         console.error("Chat Error", e);
-        return { text: "Lo siento, tuve un error consultando mi base de datos." };
+        return { text: "Lo siento, tuve un error técnico temporal, pero aquí sigo." };
     }
 }
