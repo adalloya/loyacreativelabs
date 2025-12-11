@@ -100,14 +100,22 @@ export default function ConsultantPage() {
 
         // Call Gemini
         try {
-            // Convert history to format needed by Gemini (excluding first welcome if needed, or keeping it)
-            const history = newMessages.map(m => ({ role: m.role, parts: [{ text: m.content }] }));
+            // Convert history to format needed by Gemini (filtering out initial model message if it exists)
+            // Gemini requires the first message to be from 'user'
+            const history = newMessages
+                .filter((msg, index) => !(index === 0 && msg.role === 'model'))
+                .map(m => ({
+                    role: m.role as "user" | "model",
+                    parts: [{ text: m.content }]
+                }));
 
             const response = await runGeminiChat(history);
             const aiText = response.text || "Lo siento, tuve un error de conexión.";
 
             setMessages(prev => [...prev, { role: "model", content: aiText }]);
-            speak(aiText);
+
+            // Voice response disabled per user request
+            // speak(aiText);
 
         } catch (error) {
             console.error(error);
@@ -145,8 +153,8 @@ export default function ConsultantPage() {
                 {messages.map((msg, idx) => (
                     <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-500`}>
                         <div className={`max-w-[85%] md:max-w-2xl p-4 md:p-6 rounded-2xl text-lg md:text-xl leading-relaxed ${msg.role === 'user'
-                                ? 'bg-zinc-800 text-white rounded-tr-sm'
-                                : 'bg-transparent border border-purple-500/30 text-purple-100 rounded-tl-sm shadow-[0_0_30px_rgba(168,85,247,0.1)]'
+                            ? 'bg-zinc-800 text-white rounded-tr-sm'
+                            : 'bg-transparent border border-purple-500/30 text-purple-100 rounded-tl-sm shadow-[0_0_30px_rgba(168,85,247,0.1)]'
                             }`}>
                             {msg.content}
                         </div>
@@ -173,8 +181,8 @@ export default function ConsultantPage() {
                         <button
                             onClick={toggleListening}
                             className={`p-4 rounded-full transition-all duration-300 ${isListening
-                                    ? 'bg-red-500 text-white animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.5)]'
-                                    : 'bg-zinc-800 text-gray-400 hover:text-white hover:bg-zinc-700'
+                                ? 'bg-red-500 text-white animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.5)]'
+                                : 'bg-zinc-800 text-gray-400 hover:text-white hover:bg-zinc-700'
                                 }`}
                         >
                             {isListening ? <MicOff size={24} /> : <Mic size={24} />}
