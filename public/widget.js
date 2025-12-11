@@ -5,8 +5,6 @@
 
     // Configuration
     const currentScript = document.currentScript;
-    // Dynamically derive the base URL from the script source
-    // This works for Localhost, Vercel Previews, and Production automatically
     const scriptUrl = new URL(currentScript.src);
     const BASE_URL = scriptUrl.origin;
     const CHAT_URL = `${BASE_URL}/consultant?embed=true`;
@@ -20,12 +18,24 @@
     </svg>`;
 
     // Create container
+    // STRATEGY: Zero-size container fixed at bottom-right.
+    // Use flexbox to align children (button and chat) to bottom-right.
+    // Overflow visible allows children to be seen.
+    // Pointer-events none on container allows clicks to pass through to page.
     const container = document.createElement('div');
     container.id = 'loya-ai-widget';
     container.style.position = 'fixed';
-    container.style.bottom = '20px';
+    container.style.bottom = 'calc(20px + env(safe-area-inset-bottom))'; // iOS Safe Area
     container.style.right = '20px';
-    container.style.zIndex = '999999';
+    container.style.width = '0';
+    container.style.height = '0';
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+    container.style.alignItems = 'flex-end'; // Align children to right
+    container.style.justifyContent = 'flex-end'; // Align children to bottom
+    container.style.overflow = 'visible';
+    container.style.zIndex = '2147483647'; // Max Z-Index
+    container.style.pointerEvents = 'none'; // CLICK-THROUGH
     container.style.fontFamily = 'system-ui, -apple-system, sans-serif';
 
     // Create Iframe Container (Hidden by default)
@@ -37,50 +47,23 @@
     iframeContainer.style.marginBottom = '16px';
     iframeContainer.style.borderRadius = '20px';
     iframeContainer.style.boxShadow = '0 10px 40px rgba(0,0,0,0.4)';
-    // Style tweaks for Iframe Container (Allow overflow for close button)
-    iframeContainer.style.overflow = 'visible'; // Was hidden, changed to visible
-    iframeContainer.style.background = 'transparent'; // Remove black bg from container
+    iframeContainer.style.background = 'transparent';
+    iframeContainer.style.transformOrigin = 'bottom right'; // Animate from button
+    iframeContainer.style.pointerEvents = 'auto'; // Re-enable clicks
+    iframeContainer.style.overflow = 'hidden'; // Rounded corners for iframe
 
-    // The Iframe (Restored)
+    // Iframe
     const iframe = document.createElement('iframe');
     iframe.src = CHAT_URL;
     iframe.style.width = '100%';
     iframe.style.height = '100%';
     iframe.style.border = 'none';
-    iframe.style.background = 'transparent';
+    iframe.style.background = '#000'; // Fallback
     iframe.allow = "microphone; camera; autoplay";
-
-    // Apply rounded corners to Iframe directly
-    iframe.style.borderRadius = '20px';
-    iframe.style.boxShadow = '0 10px 40px rgba(0,0,0,0.4)';
-    iframe.style.background = '#000';
-
-    // Create Close Button (Left Side Outside)
-    const closeBtn = document.createElement('button');
-    closeBtn.innerHTML = closeSVG;
-    closeBtn.style.position = 'absolute';
-    closeBtn.style.bottom = '0'; // Align bottom with chat
-    closeBtn.style.left = '-60px'; // Move 60px to the left
-    closeBtn.style.width = '48px';
-    closeBtn.style.height = '48px';
-    closeBtn.style.background = 'rgba(0,0,0,0.6)';
-    closeBtn.style.borderRadius = '50%';
-    closeBtn.style.border = '1px solid rgba(255,255,255,0.2)';
-    closeBtn.style.color = 'white';
-    closeBtn.style.cursor = 'pointer';
-    closeBtn.style.display = 'flex';
-    closeBtn.style.alignItems = 'center';
-    closeBtn.style.justifyContent = 'center';
-    closeBtn.style.zIndex = '1000000';
-    closeBtn.style.backdropFilter = 'blur(4px)';
-
-    // Add hover effect
-    closeBtn.onmouseover = () => closeBtn.style.background = 'rgba(255, 50, 50, 0.8)';
-    closeBtn.onmouseout = () => closeBtn.style.background = 'rgba(0,0,0,0.6)';
 
     // Create Bubble Button
     const button = document.createElement('button');
-    button.innerHTML = iconSVG; // Ensure iconSVG is used here
+    button.innerHTML = iconSVG;
     button.style.width = '60px';
     button.style.height = '60px';
     button.style.borderRadius = '50%';
@@ -92,9 +75,7 @@
     button.style.alignItems = 'center';
     button.style.justifyContent = 'center';
     button.style.transition = 'transform 0.2s ease';
-    button.style.position = 'absolute';
-    button.style.bottom = '0';
-    button.style.right = '0';
+    button.style.pointerEvents = 'auto'; // Re-enable clicks
 
     // Hover effect
     button.onmouseover = () => button.style.transform = 'scale(1.05)';
@@ -108,12 +89,11 @@
         isOpen = open;
         if (isOpen) {
             // OPEN
-            iframeContainer.style.display = 'block'; // Ensure it's in layout
-            // RequestAnimationFrame to allow transition to play after display change
+            iframeContainer.style.display = 'block';
+
             requestAnimationFrame(() => {
                 iframeContainer.style.opacity = '1';
                 iframeContainer.style.transform = 'translateY(0) scale(1)';
-                iframeContainer.style.pointerEvents = 'all';
 
                 button.style.opacity = '0';
                 button.style.transform = 'scale(0)';
@@ -123,11 +103,10 @@
             // CLOSE
             iframeContainer.style.opacity = '0';
             iframeContainer.style.transform = 'translateY(20px) scale(0.95)';
-            iframeContainer.style.pointerEvents = 'none';
 
             button.style.opacity = '1';
             button.style.transform = 'scale(1)';
-            button.style.pointerEvents = 'all';
+            button.style.pointerEvents = 'auto'; // Clickable again
 
             // Wait for transition to finish before hiding display
             setTimeout(() => {
@@ -138,11 +117,12 @@
 
     // Initialize as hidden
     iframeContainer.style.display = 'none';
+    iframeContainer.style.opacity = '0';
+    iframeContainer.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease';
 
-    // Auto-Open if requested via URL (e.g., returning from full screen)
+    // Auto-Open if requested via URL
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('chat_open') === 'true') {
-        // Small delay to ensure everything is ready
         setTimeout(() => toggleWidget(true), 500);
     }
 
@@ -156,9 +136,7 @@
     });
 
     // Assemble
-    // Append iframe directly
     iframeContainer.appendChild(iframe);
-
     container.appendChild(iframeContainer);
     container.appendChild(button);
     document.body.appendChild(container);
