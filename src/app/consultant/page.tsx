@@ -298,17 +298,17 @@ function ConsultantChat() {
 
             {/* Input Area - Fixed at bottom */}
             <div className="flex-none relative z-20 bg-black/90 backdrop-blur-xl border-t border-white/10 p-4 md:p-6 pb-6 md:pb-8 shrink-0">
-                <div className="max-w-3xl mx-auto flex items-center gap-4 bg-zinc-900/50 p-2 rounded-full border border-white/5 shadow-2xl focus-within:border-purple-500/50 transition-colors">
+                <div className="max-w-3xl mx-auto flex items-center gap-2 md:gap-4 bg-zinc-900/50 p-2 rounded-full border border-white/5 shadow-2xl focus-within:border-purple-500/50 transition-colors">
 
                     {speechSupported && (
                         <button
                             onClick={toggleListening}
-                            className={`p-4 rounded-full transition-all duration-300 ${isListening
+                            className={`p-3 md:p-4 rounded-full transition-all duration-300 ${isListening
                                 ? 'bg-red-500 text-white animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.5)]'
                                 : 'bg-zinc-800 text-gray-400 hover:text-white hover:bg-zinc-700'
                                 }`}
                         >
-                            {isListening ? <MicOff size={24} /> : <Mic size={24} />}
+                            {isListening ? <MicOff size={20} className="md:w-6 md:h-6" /> : <Mic size={20} className="md:w-6 md:h-6" />}
                         </button>
                     )}
 
@@ -317,7 +317,7 @@ function ConsultantChat() {
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder={isListening ? "Escuchando..." : "Escribe tu mensaje..."}
-                        className="flex-1 bg-transparent border-none outline-none text-white text-lg placeholder-gray-500 font-light px-2 min-w-0"
+                        className="flex-1 bg-transparent border-none outline-none text-white text-base md:text-lg placeholder-gray-500 font-light px-2 min-w-0"
                         disabled={isListening}
                         onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                     />
