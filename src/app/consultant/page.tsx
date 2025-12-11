@@ -148,13 +148,15 @@ export default function ConsultantPage() {
         }
     };
 
+    const showSuggestions = !loading && messages.length > 0 && messages[messages.length - 1].role === 'model';
+
     return (
-        <main className="min-h-screen bg-black text-white flex flex-col font-sans relative overflow-hidden">
+        <main className="h-[100dvh] bg-black text-white flex flex-col font-sans relative overflow-hidden overscroll-none">
             {/* Background Ambience */}
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-purple-900/20 via-black to-black z-0 pointer-events-none" />
 
-            {/* Header */}
-            <header className="relative z-10 p-6 flex justify-between items-center bg-black/50 backdrop-blur-md sticky top-0 border-b border-white/5">
+            {/* Header - Fixed to top */}
+            <header className="flex-none relative z-10 p-4 md:p-6 flex justify-between items-center bg-black/80 backdrop-blur-md border-b border-white/5 shadow-2xl shrink-0">
                 <Link href="/" className="text-gray-400 hover:text-white transition-colors flex items-center gap-2">
                     <ArrowLeft size={20} /> <span className="text-sm font-medium tracking-widest uppercase">Regresar</span>
                 </Link>
@@ -178,8 +180,8 @@ export default function ConsultantPage() {
                 </div>
             </header>
 
-            {/* Chat Area */}
-            <div className="flex-1 relative z-10 overflow-y-auto p-4 md:p-8 space-y-6 scroll-smooth">
+            {/* Chat Area - Flexible & Scrollable */}
+            <div className="flex-1 relative z-10 overflow-y-auto overflow-x-hidden p-4 md:p-8 space-y-6 scroll-smooth overscroll-contain">
                 {messages.map((msg, idx) => (
                     <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-500`}>
                         <div className={`max-w-[85%] md:max-w-2xl p-4 md:p-6 rounded-2xl text-lg md:text-xl leading-relaxed ${msg.role === 'user'
@@ -200,8 +202,8 @@ export default function ConsultantPage() {
                     </div>
                 )}
 
-                {/* Suggestion Chips (Only show if few messages) */}
-                {messages.length <= 1 && !loading && (
+                {/* Suggestion Chips - Show always when AI finishes responding */}
+                {showSuggestions && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mt-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
                         {SUGGESTIONS.map((sug, i) => (
                             <button
@@ -216,12 +218,10 @@ export default function ConsultantPage() {
                 )}
 
                 <div ref={messagesEndRef} className="h-4" />
-                {/* Spacer for bottom input */}
-                <div className="h-32" />
             </div>
 
-            {/* Input Area */}
-            <div className="relative z-20 bg-black/80 backdrop-blur-xl border-t border-white/10 p-4 md:p-6 pb-8">
+            {/* Input Area - Fixed at bottom */}
+            <div className="flex-none relative z-20 bg-black/90 backdrop-blur-xl border-t border-white/10 p-4 md:p-6 pb-6 md:pb-8 shrink-0">
                 <div className="max-w-3xl mx-auto flex items-center gap-4 bg-zinc-900/50 p-2 rounded-full border border-white/5 shadow-2xl focus-within:border-purple-500/50 transition-colors">
 
                     {speechSupported && (
@@ -241,7 +241,7 @@ export default function ConsultantPage() {
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder={isListening ? "Escuchando..." : "Escribe tu mensaje..."}
-                        className="flex-1 bg-transparent border-none outline-none text-white text-lg placeholder-gray-500 font-light px-2"
+                        className="flex-1 bg-transparent border-none outline-none text-white text-lg placeholder-gray-500 font-light px-2 min-w-0"
                         disabled={isListening}
                         onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                     />
@@ -249,12 +249,12 @@ export default function ConsultantPage() {
                     <button
                         onClick={() => handleSend()}
                         disabled={!input.trim() || loading}
-                        className="p-4 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full text-white shadow-lg hover:shadow-purple-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95"
+                        className="p-4 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full text-white shadow-lg hover:shadow-purple-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95 shrink-0"
                     >
                         {loading ? <Loader2 size={24} className="animate-spin" /> : <Send size={24} />}
                     </button>
                 </div>
-                <p className="text-center text-xs text-gray-600 mt-4">Powered by Gemini 2.0 Flash • Voice Enabled</p>
+                <p className="text-center text-xs text-gray-600 mt-4">Powered by Gemini 2.0 Flash</p>
             </div>
         </main>
     );
