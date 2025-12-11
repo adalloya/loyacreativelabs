@@ -283,4 +283,97 @@ export const projects = [
     },
 ];
 
+export const detailedProjects = [
+    {
+        id: "ayjale",
+        title: "Ayjalé",
+        subtitle: "Artesanal Soul Meets Digital Commerce",
+        description: "A comprehensive digital transformation for an artisanal jewelry brand. We transitioned them from Instagram DM sales to a fully automated global e-commerce experience without losing their handmade essence.",
+        url: "https://ayjale.com",
+        category: "E-commerce",
+        tech: ["Shopify Plus", "Liquid", "GSAP Animations", "Klaviyo"],
+        features: [
+            "Custom 3D Product Configurator",
+            "Multi-currency Global Checkout",
+            "Automated Inventory Sync",
+            "Storytelling-driven Product Pages"
+        ],
+        image: "/portfolio/ayjale-mockup.jpg", // Placeholder
+        color: "from-orange-500 to-red-600",
+        stats: { value: "300%", label: "Increase in Sales" }
+    },
+    {
+        id: "herewego",
+        title: "Here We Go",
+        subtitle: "Adventure Booking Platform",
+        description: "A high-performance booking engine for a travel agency specializing in local adventures. We solved the problem of fragmentation by unifying calendar, payments, and itinerary management.",
+        url: "https://herewego.com.mx",
+        category: "Travel Tech",
+        tech: ["Next.js", "Supabase", "Stripe Connect", "Mapbox"],
+        features: [
+            "Real-time Availability Calendar",
+            "Interactive Map-based Search",
+            "Automated PDF Itinerary Generation",
+            "Partner Vendor Portal"
+        ],
+        image: "/portfolio/herewego-mockup.jpg", // Placeholder
+        color: "from-teal-400 to-blue-500",
+        stats: { value: "15min", label: "Avg Booking Time" }
+    },
+    {
+        id: "eon",
+        title: "Eon Consultoria",
+        subtitle: "Corporate Trust & Authority",
+        description: "Rebranding and web presence for a top-tier financial consultancy. The goal was to communicate trust, expertise, and modernity to institutional clients.",
+        url: "https://eonconsultoria.com.mx",
+        category: "Corporate",
+        tech: ["React", "Tailwind CSS", "Framer Motion", "Sanity CMS"],
+        features: [
+            "Data Visualization Dashboards",
+            "Secure Client Portal",
+            "Insight Blog with PDF Exports",
+            "Corporate Identity System"
+        ],
+        image: "/portfolio/eon-mockup.jpg",
+        color: "from-slate-700 to-gray-900",
+        stats: { value: "50+", label: "Enterprise Clients" }
+    },
+    {
+        id: "draliseth",
+        title: "Dra. Liseth Guevara",
+        subtitle: "Premium Medical Portfolio",
+        description: "A clean, reassuring digital space for a medical professional. Focused on patient conversion, trust-building, and easy appointment scheduling.",
+        url: "https://dralisethguevara.com",
+        category: "Healthcare",
+        tech: ["Next.js", "Calendly API", "Twilio", "Vercel"],
+        features: [
+            "Direct WhatsApp Integration",
+            "Before/After Gallery",
+            "Online Appointment Scheduling",
+            "SEO Optimization for Local Search"
+        ],
+        image: "/portfolio/dra-mockup.jpg",
+        color: "from-pink-300 to-rose-400",
+        stats: { value: "40%", label: "More Appointments" }
+    },
+    {
+        id: "kandy",
+        title: "Kandy Emotion",
+        subtitle: "Lifestyle Brand Experience",
+        description: "An immersive brand site for a lifestyle company. We focused on emotional connection through micro-interactions and smooth scrolling journeys.",
+        url: "https://kandyemotion.com",
+        category: "Lifestyle",
+        tech: ["WebGL", "Three.js", "React Spring", "Shopify Headless"],
+        features: [
+            "Immersive 3D Hero Section",
+            "Interactive Lookbook",
+            "Social Media Aggregator",
+            "Gamified User Rewards"
+        ],
+        image: "/portfolio/kandy-mockup.jpg",
+        color: "from-purple-500 to-indigo-600",
+        stats: { value: "5k+", label: "Active Community" }
+    }
+];
+
 export const whatsappNumber = "526271231192";

@@ -38,6 +38,7 @@ export function Navbar() {
                             src="/logo.png"
                             alt="Loya Creative Lab"
                             fill
+                            sizes="(max-width: 768px) 128px, 160px"
                             className="object-contain object-left"
                             priority
                         />

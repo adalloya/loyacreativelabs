@@ -6,7 +6,7 @@ import { ArrowRight, ArrowLeft, Check, Smartphone, Globe, PenTool, Layout, Dolla
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/Button";
 
-type Step = "intro" | "services" | "assets" | "budget" | "contact";
+type Step = "intro" | "services" | "assets" | "budget" | "contact" | "success";
 
 export function QuoteWizard() {
     const [step, setStep] = useState<Step>("intro");
@@ -286,13 +286,51 @@ Mi email es: ${data.email}.
 
                         <div className="pt-8 flex justify-between items-center">
                             <Button variant="ghost" onClick={() => prevStep("budget")}>Atrás</Button>
-                            <Button href={generateWhatsAppLink()} target="_blank" disabled={!data.email} className="px-8 py-4 text-lg bg-green-500 hover:bg-green-400 text-black border-none">
-                                Enviar por WhatsApp <Smartphone className="ml-2 w-5 h-5" />
+                            <Button
+                                onClick={async () => {
+                                    // 1. Save to Firebase
+                                    try {
+                                        const { addDoc, collection } = await import("firebase/firestore");
+                                        const { db } = await import("@/lib/firebase");
+
+                                        await addDoc(collection(db, "leads"), {
+                                            ...data,
+                                            created_at: new Date(),
+                                            status: "new",
+                                            source: "web_form"
+                                        });
+
+                                        // 2. Show Success
+                                        nextStep("success");
+                                    } catch (e) {
+                                        console.error("Error saving lead:", e);
+                                        alert("Hubo un error guardando tu solicitud. Por favor intenta de nuevo.");
+                                    }
+                                }}
+                                disabled={!data.email}
+                                className="px-8 py-4 text-lg bg-white text-black hover:bg-gray-200 border-none"
+                            >
+                                Enviar Solicitud <Check className="ml-2 w-5 h-5" />
                             </Button>
                         </div>
-                        <p className="text-center text-sm text-zinc-600 mt-4">
-                            Al enviar, se abrirá un chat de WhatsApp con la información pre-llenada.
+                    </motion.div>
+                )}
+
+                {/* STEP 6: SUCCESS */}
+                {step === "success" && (
+                    <motion.div key="success" {...{ initial: { opacity: 0, scale: 0.9 }, animate: { opacity: 1, scale: 1 } }} className="text-center py-12 space-y-6">
+                        <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <Check className="w-12 h-12 text-black" />
+                        </div>
+                        <h2 className="text-4xl font-bold">¡Solicitud Recibida!</h2>
+                        <p className="text-xl text-gray-400 max-w-lg mx-auto">
+                            Gracias, {data.name.split(" ")[0]}. Hemos guardado tu información.
+                            <br /><br />
+                            Un especialista de Loya Creative Lab revisará tu proyecto y te contactará en breve vía Email o WhatsApp.
                         </p>
+                        <div className="pt-8">
+                            <Button href="/" className="bg-zinc-800">Volver al Inicio</Button>
+                        </div>
                     </motion.div>
                 )}
 
