@@ -286,45 +286,67 @@ export default function AdminCRMPage() {
 
     return (
         <Providers>
-            <main className="bg-black h-screen text-white flex flex-col font-sans overflow-hidden">
-                <div className="border-b border-zinc-800 p-4 flex items-center justify-between bg-zinc-900/50 backdrop-blur">
-                    <div className="flex items-center gap-4">
-                        <Link href="/" className="font-bold text-xl tracking-tighter">LOYA<span className="text-gray-500">CRM</span></Link>
-                        <div className="h-6 w-px bg-zinc-700 mx-2 hidden md:block"></div>
-                        <div className="flex items-center gap-2 bg-black/50 border border-zinc-800 rounded-lg px-3 py-1.5 w-64">
-                            <Search className="w-4 h-4 text-gray-500" />
+            <main className="bg-black h-[100dvh] text-white flex flex-col font-sans overflow-hidden overscroll-none">
+                {/* CRM Header - customized for Admin context */}
+                <div className="flex-none border-b border-zinc-800 p-4 flex items-center justify-between bg-zinc-900/80 backdrop-blur z-20">
+                    <div className="flex items-center gap-3 md:gap-4 overflow-hidden">
+                        <Link href="/" className="font-bold text-lg md:text-xl tracking-tighter shrink-0 hover:text-purple-400 transition-colors">
+                            LOYA<span className="text-gray-500">CRM</span>
+                        </Link>
+
+                        {/* Mobile: Simple search icon, Desktop: Full bar */}
+                        <div className="flex items-center gap-2 bg-black/50 border border-zinc-800 rounded-lg px-3 py-1.5 w-full md:w-64 max-w-[140px] md:max-w-none">
+                            <Search className="w-4 h-4 text-gray-500 shrink-0" />
                             <input
                                 type="text"
-                                placeholder="Search leads..."
-                                className="bg-transparent border-none outline-none text-sm w-full text-white placeholder-gray-600"
+                                placeholder="Buscar..."
+                                className="bg-transparent border-none outline-none text-sm w-full text-white placeholder-gray-600 min-w-0"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
+
+                        {/* Status Filter - Hidden on small mobile */}
                         <select
-                            className="bg-black/50 border border-zinc-800 rounded-lg px-3 py-1.5 text-sm text-gray-300 outline-none"
+                            className="hidden md:block bg-black/50 border border-zinc-800 rounded-lg px-3 py-1.5 text-sm text-gray-300 outline-none"
                             value={statusFilter}
                             onChange={(e: any) => setStatusFilter(e.target.value)}
                         >
-                            <option value="all">All Status</option>
-                            <option value="new">New</option>
-                            <option value="contacted">Contacted</option>
-                            <option value="qualified">Qualified</option>
-                            <option value="closed">Closed / Lost</option>
+                            <option value="all">Todos</option>
+                            <option value="new">Nuevos</option>
+                            <option value="contacted">Contactados</option>
+                            <option value="qualified">Calificados</option>
+                            <option value="closed">Cerrados</option>
                         </select>
                     </div>
+
                     <button
                         onClick={handleSeedData}
                         disabled={seeding}
-                        className="text-xs bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 px-3 py-1.5 rounded-full border border-zinc-700 flex items-center gap-2 transition-all"
+                        className="text-xs bg-zinc-800 hover:bg-purple-900/20 hover:text-purple-300 disabled:opacity-50 px-3 py-2 rounded-full border border-zinc-700 flex items-center gap-2 transition-all whitespace-nowrap"
                     >
                         {seeding ? <Loader2 className="w-3 h-3 animate-spin" /> : "🌱 Seed Data"}
                     </button>
                 </div>
 
-                <div className="flex-1 flex overflow-hidden">
+                {/* Status Filter Bar for Mobile (below header) */}
+                <div className="md:hidden flex-none border-b border-zinc-800 bg-zinc-900/30 px-4 py-2 overflow-x-auto">
+                    <select
+                        className="bg-transparent text-xs text-gray-400 outline-none w-full"
+                        value={statusFilter}
+                        onChange={(e: any) => setStatusFilter(e.target.value)}
+                    >
+                        <option value="all">Filtrar: Todos</option>
+                        <option value="new">Nuevos</option>
+                        <option value="contacted">Contactados</option>
+                        <option value="qualified">Calificados</option>
+                        <option value="closed">Cerrados</option>
+                    </select>
+                </div>
+
+                <div className="flex-1 flex overflow-hidden relative">
                     {/* LEFT PANEL: LEAD LIST */}
-                    <div className={`${selectedLead ? 'hidden md:flex' : 'flex'} w - full md: w - 1 / 3 border - r border - zinc - 800 flex - col bg - zinc - 900 / 20`}>
+                    <div className={`${selectedLead ? 'hidden md:flex' : 'flex'} w-full md:w-1/3 border-r border-zinc-800 flex-col bg-zinc-900/20 relative z-10`}>
                         <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
                             <h2 className="font-bold text-sm text-gray-400 uppercase tracking-wider">inbox ({filteredLeads.length})</h2>
                         </div>
@@ -357,7 +379,7 @@ export default function AdminCRMPage() {
                     </div>
 
                     {/* RIGHT PANEL: DETAILS & CHAT */}
-                    <div className={`${!selectedLead ? 'hidden md:flex' : 'flex'} w - full md: w - 2 / 3 flex - col bg - black relative`}>
+                    <div className={`${!selectedLead ? 'hidden md:flex' : 'flex'} w-full md:w-2/3 flex-col bg-black relative z-10`}>
                         {selectedLead ? (
                             <>
                                 {/* HEADER */}
