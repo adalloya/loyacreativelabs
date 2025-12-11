@@ -1,5 +1,8 @@
 
 (function () {
+    // PREVENT RECURSION: Don't run inside an iframe or if already loaded
+    if (window.self !== window.top || document.getElementById('loya-ai-widget')) return;
+
     // Configuration
     const currentScript = document.currentScript;
     const isLocal = currentScript && (currentScript.src.includes('localhost') || currentScript.src.includes('127.0.0.1'));
