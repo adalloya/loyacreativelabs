@@ -1,4 +1,3 @@
-```
 "use client";
 
 import { useState, useEffect, useRef, Suspense } from "react";
@@ -183,12 +182,12 @@ function ConsultantChat() {
 
 
     return (
-        <main className={`h - [100dvh] flex flex - col font - sans relative overflow - hidden overscroll - none ${ isEmbed ? 'bg-zinc-950/90' : 'bg-black text-white' } `}>
+        <main className={`h - [100dvh] flex flex - col font - sans relative overflow - hidden overscroll - none ${isEmbed ? 'bg-zinc-950/90' : 'bg-black text-white'} `}>
             {/* Background Ambience - Hide in Embed */}
             {!isEmbed && <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-purple-900/20 via-black to-black z-0 pointer-events-none" />}
 
             {/* Header - Simplified for Embed */}
-            <header className={`flex - none relative z - 10 p - 4 flex justify - between items - center shrink - 0 ${ isEmbed ? 'bg-zinc-900/90 py-3 px-4 border-b border-white/5' : 'md:p-6 bg-black/80 backdrop-blur-md border-b border-white/5 shadow-2xl' } `}>
+            <header className={`flex - none relative z - 10 p - 4 flex justify - between items - center shrink - 0 ${isEmbed ? 'bg-zinc-900/90 py-3 px-4 border-b border-white/5' : 'md:p-6 bg-black/80 backdrop-blur-md border-b border-white/5 shadow-2xl'} `}>
 
                 {!isEmbed ? (
                     <a href="/?chat_open=true" className="text-gray-400 hover:text-white transition-colors flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 group">
@@ -235,17 +234,16 @@ function ConsultantChat() {
                 <div className="flex items-center gap-2 md:gap-4">
                     <button
                         onClick={confirmReset ? handleReset : () => setConfirmReset(true)}
-                        className={`flex items - center gap - 2 px - 3 py - 1.5 rounded - full transition - all mr - 2 border ${
-    confirmReset
-        ? 'bg-red-600/90 text-white border-red-500 animate-in fade-in zoom-in-95'
-        : 'text-gray-400 hover:text-red-400 hover:bg-red-900/10 border-transparent hover:border-red-900/30'
-} `}
+                        className={`flex items - center gap - 2 px - 3 py - 1.5 rounded - full transition - all mr - 2 border ${confirmReset
+                                ? 'bg-red-600/90 text-white border-red-500 animate-in fade-in zoom-in-95'
+                                : 'text-gray-400 hover:text-red-400 hover:bg-red-900/10 border-transparent hover:border-red-900/30'
+                            } `}
                         title={confirmReset ? "¡Dale clic para borrar!" : "Nueva Conversación"}
                     >
                         {confirmReset ? <Check size={14} /> : <RotateCcw size={14} />}
-                        <span className={`text - xs font - medium ${ isEmbed ? 'hidden' : '' } `}>{confirmReset ? "¿Estás seguro?" : "Empezar de nuevo"}</span>
+                        <span className={`text - xs font - medium ${isEmbed ? 'hidden' : ''} `}>{confirmReset ? "¿Estás seguro?" : "Empezar de nuevo"}</span>
                     </button>
-                    <button onClick={() => setAudioEnabled(!audioEnabled)} className={`p - 2 rounded - full transition - colors ${ audioEnabled ? 'text-purple-400 bg-purple-900/20' : 'text-gray-600' } `}>
+                    <button onClick={() => setAudioEnabled(!audioEnabled)} className={`p - 2 rounded - full transition - colors ${audioEnabled ? 'text-purple-400 bg-purple-900/20' : 'text-gray-600'} `}>
                         {audioEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
                     </button>
                     {!isEmbed && (
@@ -263,12 +261,11 @@ function ConsultantChat() {
             <div className="flex-1 relative z-10 overflow-y-auto overflow-x-hidden p-4 md:p-8 space-y-4 scroll-smooth overscroll-contain">
                 {messages.map((msg, idx) => (
 
-                    <div key={idx} className={`flex ${ msg.role === 'user' ? 'justify-end' : 'justify-start' } animate -in fade -in slide -in -from - bottom - 2 duration - 500`}>
-                        <div className={`max - w - [85 %] md: max - w - 2xl p - 3 md: p - 5 rounded - 2xl text - base md: text - lg leading - relaxed ${
-    msg.role === 'user'
-        ? 'bg-zinc-800 text-white rounded-tr-sm'
-        : 'bg-transparent border border-purple-500/30 text-purple-100 rounded-tl-sm shadow-[0_0_30px_rgba(168,85,247,0.1)]'
-} `}>
+                    <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate -in fade -in slide -in -from - bottom - 2 duration - 500`}>
+                        <div className={`max - w - [85 %] md: max - w - 2xl p - 3 md: p - 5 rounded - 2xl text - base md: text - lg leading - relaxed ${msg.role === 'user'
+                                ? 'bg-zinc-800 text-white rounded-tr-sm'
+                                : 'bg-transparent border border-purple-500/30 text-purple-100 rounded-tl-sm shadow-[0_0_30px_rgba(168,85,247,0.1)]'
+                            } `}>
 
                             {msg.role === 'user' ? (
                                 msg.content
@@ -324,11 +321,10 @@ function ConsultantChat() {
                     {speechSupported && (
                         <button
                             onClick={toggleListening}
-                            className={`p - 3 md: p - 4 rounded - full transition - all duration - 300 ${
-    isListening
-        ? 'bg-red-500 text-white animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.5)]'
-        : 'bg-zinc-800 text-gray-400 hover:text-white hover:bg-zinc-700'
-} `}
+                            className={`p - 3 md: p - 4 rounded - full transition - all duration - 300 ${isListening
+                                    ? 'bg-red-500 text-white animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.5)]'
+                                    : 'bg-zinc-800 text-gray-400 hover:text-white hover:bg-zinc-700'
+                                } `}
                         >
                             {isListening ? <MicOff size={20} className="md:w-6 md:h-6" /> : <Mic size={20} className="md:w-6 md:h-6" />}
                         </button>
