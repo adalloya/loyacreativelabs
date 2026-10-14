@@ -3,8 +3,7 @@ import { GoogleGenerativeAI, Part } from "@google/generative-ai";
 
 const API_KEYS = [
     process.env.GOOGLE_API_KEY,
-    "AIzaSyC_8KViHQnCdnvR2hAqaOu2MYiv7W67Qss",
-    "AIzaSyAIXf3XTgqlPsTphpzXfAfCMrr5ftoRxf0"
+    process.env.GOOGLE_API_KEY_BACKUP
 ].filter(Boolean) as string[];
 
 // System instruction for the Sales Agent

@@ -3,6 +3,7 @@
 
 import { whatsappService } from "@/lib/whatsapp";
 import { geminiService } from "@/lib/gemini";
+import { geminiImiService } from "@/lib/gemini-imi";
 // Imports fixed
 
 // Notes on DB imported later...
@@ -126,5 +127,88 @@ export async function runGeminiChat(
     } catch (e) {
         console.error("Chat Error", e);
         return { text: "Lo siento, tuve un error técnico temporal, pero aquí sigo." };
+    }
+}
+
+// IMI Dedicated Server Action
+export async function runImiChat(
+    history: { role: "user" | "model"; parts: { text: string }[] }[],
+    leadId?: string,
+    leadInfo?: { name?: string, phone?: string }
+) {
+    try {
+        const lastMsg = history[history.length - 1];
+        const userText = lastMsg.parts[0].text;
+
+        let currentLeadId = leadId;
+
+        const safeDbOp = async (op: Promise<any>) => {
+            try {
+                await Promise.race([
+                    op,
+                    new Promise((_, reject) => setTimeout(() => reject(new Error("DB Timeout")), 1500))
+                ]);
+            } catch (e) {
+                console.warn("IMI DB Op skipped/failed:", e);
+            }
+        };
+
+        if (!currentLeadId) {
+            try {
+                const leadRefPromise = addDoc(collection(db, "imi_leads"), {
+                    status: "new",
+                    source: "imi_web_chat",
+                    created_at: serverTimestamp(),
+                    last_interaction: serverTimestamp(),
+                    contact_info: leadInfo || {}
+                });
+                const leadRef = await Promise.race([
+                    leadRefPromise,
+                    new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500))
+                ]);
+                if (leadRef) {
+                    currentLeadId = leadRef.id;
+                }
+            } catch (e) {
+                console.warn("Could not create IMI lead in DB, proceeding anyway");
+            }
+        }
+
+        if (currentLeadId) {
+            safeDbOp(addDoc(collection(db, "imi_leads", currentLeadId, "messages"), {
+                role: "user",
+                content: userText,
+                timestamp: serverTimestamp()
+            }));
+        }
+
+        let rawHistory = history.slice(0, -1);
+        if (rawHistory.length > 20) {
+            rawHistory = rawHistory.slice(-20);
+        }
+
+        const prevHistory = rawHistory.map(h => ({
+            role: h.role as "user" | "model",
+            parts: h.parts[0].text
+        }));
+
+        const text = await geminiImiService.generateResponse(
+            userText,
+            prevHistory
+        );
+
+        if (currentLeadId) {
+            safeDbOp(addDoc(collection(db, "imi_leads", currentLeadId, "messages"), {
+                role: "model",
+                content: text,
+                timestamp: serverTimestamp()
+            }));
+        }
+
+        return { text, leadId: currentLeadId };
+
+    } catch (e) {
+        console.error("IMI Chat Error", e);
+        return { text: "Estimado usuario, tuvimos un detalle técnico momentáneo. Puede contactar directamente a nuestro Ingeniero de Guardia al WhatsApp +52 833 155 0189." };
     }
 }
