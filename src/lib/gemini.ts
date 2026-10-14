@@ -1,13 +1,11 @@
 import { GoogleGenerativeAI, Part } from "@google/generative-ai";
 // Fixed syntax and hydration errors
 
-const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
-
-if (!GOOGLE_API_KEY) {
-    console.warn("Google API Key is missing. AI integration will not work.");
-}
-
-const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY || "");
+const API_KEYS = [
+    process.env.GOOGLE_API_KEY,
+    "AIzaSyC_8KViHQnCdnvR2hAqaOu2MYiv7W67Qss",
+    "AIzaSyAIXf3XTgqlPsTphpzXfAfCMrr5ftoRxf0"
+].filter(Boolean) as string[];
 
 // System instruction for the Sales Agent
 const SYSTEM_INSTRUCTION = `
@@ -95,30 +93,35 @@ export const geminiService = {
             }
 
             let lastError: any = null;
-            for (const modelName of candidateModels) {
-                try {
-                    const model = genAI.getGenerativeModel({
-                        model: modelName,
-                        systemInstruction: SYSTEM_INSTRUCTION
-                    });
 
-                    const chat = model.startChat({
-                        history: history.map(h => ({
-                            role: h.role,
-                            parts: [{ text: h.parts }]
-                        })),
-                    });
+            for (const apiKey of API_KEYS) {
+                const genAI = new GoogleGenerativeAI(apiKey);
 
-                    const result = await chat.sendMessage(parts);
-                    const response = result.response;
-                    return response.text();
-                } catch (modelError: any) {
-                    console.warn(`Model ${modelName} failed:`, modelError.message || modelError);
-                    lastError = modelError;
+                for (const modelName of candidateModels) {
+                    try {
+                        const model = genAI.getGenerativeModel({
+                            model: modelName,
+                            systemInstruction: SYSTEM_INSTRUCTION
+                        });
+
+                        const chat = model.startChat({
+                            history: history.map(h => ({
+                                role: h.role,
+                                parts: [{ text: h.parts }]
+                            })),
+                        });
+
+                        const result = await chat.sendMessage(parts);
+                        const response = result.response;
+                        return response.text();
+                    } catch (modelError: any) {
+                        console.warn(`API key ...${apiKey.slice(-5)} / model ${modelName} failed:`, modelError.message || modelError);
+                        lastError = modelError;
+                    }
                 }
             }
 
-            throw lastError || new Error("No Gemini models succeeded");
+            throw lastError || new Error("No Gemini models or API keys succeeded");
 
         } catch (error: any) {
             console.error("Error generating Gemini response:", error);
