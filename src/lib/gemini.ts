@@ -70,19 +70,12 @@ export const geminiService = {
         audioBuffer?: ArrayBuffer
     ): Promise<string> {
         try {
-            // Production Model (Cost-Effective & High Limits)
-            const model = genAI.getGenerativeModel({
-                model: "gemini-2.0-flash",
-                // safetySettings: ... (keep default or add if needed)
-                systemInstruction: SYSTEM_INSTRUCTION
-            });
-
-            const chat = model.startChat({
-                history: history.map(h => ({
-                    role: h.role,
-                    parts: [{ text: h.parts }]
-                })),
-            });
+            const candidateModels = [
+                process.env.GEMINI_MODEL,
+                "gemini-2.5-flash",
+                "gemini-3.5-flash-lite",
+                "gemini-3.8-flash"
+            ].filter(Boolean) as string[];
 
             let parts: Part[] = [];
 
@@ -101,9 +94,31 @@ export const geminiService = {
                 });
             }
 
-            const result = await chat.sendMessage(parts);
-            const response = result.response;
-            return response.text();
+            let lastError: any = null;
+            for (const modelName of candidateModels) {
+                try {
+                    const model = genAI.getGenerativeModel({
+                        model: modelName,
+                        systemInstruction: SYSTEM_INSTRUCTION
+                    });
+
+                    const chat = model.startChat({
+                        history: history.map(h => ({
+                            role: h.role,
+                            parts: [{ text: h.parts }]
+                        })),
+                    });
+
+                    const result = await chat.sendMessage(parts);
+                    const response = result.response;
+                    return response.text();
+                } catch (modelError: any) {
+                    console.warn(`Model ${modelName} failed:`, modelError.message || modelError);
+                    lastError = modelError;
+                }
+            }
+
+            throw lastError || new Error("No Gemini models succeeded");
 
         } catch (error: any) {
             console.error("Error generating Gemini response:", error);
