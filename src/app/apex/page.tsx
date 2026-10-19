@@ -48,7 +48,9 @@ import {
     findBiomechanicalSwaps,
     formatPlatesSummary,
     CARDIO_PROTOCOLS,
-    CardioType
+    CardioType,
+    DailyCardioEntry,
+    calculateCardioTelemetry
 } from "@/lib/hypertrophy-engine";
 
 import {
@@ -211,33 +213,77 @@ export default function ApexDashboard() {
     const [currentDayIndex, setCurrentDayIndex] = useState(0);
     const currentRoutine: RoutineDay = weeklyProgram[currentDayIndex] || weeklyProgram[0];
 
-    // Daily Cardio Finisher Selection (configurable per session at the end of each day)
-    const [dailyCardio, setDailyCardio] = useLocalStorage<Record<number, { type: CardioType; minutes: number; completed: boolean }>>("apex_daily_cardio", {});
+    // Daily Cardio Finisher Selection & Telemetry (configurable per session at the end of each day)
+    const [dailyCardio, setDailyCardio] = useLocalStorage<Record<number, DailyCardioEntry>>("apex_daily_cardio", {});
 
-    const todayCardio = dailyCardio[currentDayIndex] || {
-        type: (currentRoutine.cardio.durationMinutes > 0 ? "incline_treadmill" : "none") as CardioType,
-        minutes: currentRoutine.cardio.durationMinutes || 20,
-        completed: false
-    };
+    const routineDefaultType = (currentRoutine.cardio.durationMinutes > 0 ? "incline_treadmill" : "none") as CardioType;
 
-    const handleUpdateCardio = (type: CardioType, minutes?: number, completed?: boolean) => {
+    const todayCardio: DailyCardioEntry = useMemo(() => {
+        const raw = dailyCardio[currentDayIndex];
+        const type = raw?.type || routineDefaultType;
+        const proto = CARDIO_PROTOCOLS[type] || CARDIO_PROTOCOLS.incline_treadmill;
+        const minutes = raw?.minutes ?? (currentRoutine.cardio.durationMinutes || proto.defaultMinutes || 20);
+        const incline = raw?.incline ?? proto.defaultIncline ?? 12;
+        const speed = raw?.speed ?? proto.defaultSpeed ?? 4.8;
+        const completed = raw?.completed ?? false;
+        const telemetry = calculateCardioTelemetry(type, minutes, incline, speed, bio?.weightKg || 75);
+
+        return {
+            type,
+            minutes,
+            incline,
+            speed,
+            completed,
+            distanceKm: raw?.distanceKm ?? telemetry.distanceKm,
+            caloriesBurned: raw?.caloriesBurned ?? telemetry.caloriesBurned,
+            date: raw?.date || getLocalDateString(),
+            savedAt: raw?.savedAt
+        };
+    }, [dailyCardio, currentDayIndex, routineDefaultType, currentRoutine.cardio.durationMinutes, bio?.weightKg]);
+
+    const handleUpdateCardio = (
+        typeOrUpdates: CardioType | (Partial<DailyCardioEntry> & { type?: CardioType }),
+        minutes?: number,
+        completed?: boolean
+    ) => {
+        const updates: Partial<DailyCardioEntry> & { type?: CardioType } =
+            typeof typeOrUpdates === "string"
+                ? { type: typeOrUpdates, minutes, completed }
+                : typeOrUpdates;
+
         setDailyCardio(prev => {
-            const current = prev[currentDayIndex] || {
-                type: "incline_treadmill",
-                minutes: 20,
-                completed: false
-            };
-            const nextType = type;
-            const nextMinutes = minutes !== undefined 
-                ? minutes 
-                : (nextType === "none" ? 0 : (current.minutes || CARDIO_PROTOCOLS[nextType]?.defaultMinutes || 20));
-            const nextCompleted = completed !== undefined ? completed : current.completed;
+            const current = prev[currentDayIndex] || todayCardio;
+            const nextType = updates.type ?? current.type;
+            const proto = CARDIO_PROTOCOLS[nextType] || CARDIO_PROTOCOLS.incline_treadmill;
+
+            const nextMinutes = updates.minutes !== undefined
+                ? updates.minutes
+                : (updates.type && updates.type !== current.type ? proto.defaultMinutes : (current.minutes || proto.defaultMinutes));
+
+            const nextIncline = updates.incline !== undefined
+                ? updates.incline
+                : (updates.type && updates.type !== current.type ? proto.defaultIncline : (current.incline ?? proto.defaultIncline));
+
+            const nextSpeed = updates.speed !== undefined
+                ? updates.speed
+                : (updates.type && updates.type !== current.type ? proto.defaultSpeed : (current.speed ?? proto.defaultSpeed));
+
+            const nextCompleted = updates.completed !== undefined ? updates.completed : current.completed;
+
+            const telemetry = calculateCardioTelemetry(nextType, nextMinutes, nextIncline, nextSpeed, bio?.weightKg || 75);
+
             return {
                 ...prev,
                 [currentDayIndex]: {
                     type: nextType,
                     minutes: nextMinutes,
-                    completed: nextCompleted
+                    incline: nextIncline,
+                    speed: nextSpeed,
+                    completed: nextCompleted,
+                    distanceKm: telemetry.distanceKm,
+                    caloriesBurned: telemetry.caloriesBurned,
+                    date: getLocalDateString(),
+                    savedAt: new Date().toISOString()
                 }
             };
         });
@@ -355,6 +401,10 @@ export default function ApexDashboard() {
         dayFocus: currentRoutine?.focus || "Hipertrofia Avanzada",
         cardioType: todayCardio.type,
         cardioMinutes: todayCardio.minutes,
+        cardioIncline: todayCardio.incline,
+        cardioSpeed: todayCardio.speed,
+        cardioCalories: todayCardio.caloriesBurned,
+        cardioDistance: todayCardio.distanceKm,
         cardioProtocol: CARDIO_PROTOCOLS[todayCardio.type]?.protocol || ""
     }), [profile, bio, macros, environmentMode, readiness, currentRoutine, todayCardio]);
 
@@ -1105,7 +1155,7 @@ export default function ApexDashboard() {
                             })}
                         </div>
 
-                        {/* Cardio Finisher Block (Selector Diario al Final de la Sesión) */}
+                        {/* Cardio Finisher Block (Selector Diario al Final de la Sesión con Inclinación, Velocidad y Tiempo) */}
                         <div className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/[0.06]">
                                 <div className="flex items-center gap-3">
@@ -1118,7 +1168,8 @@ export default function ApexDashboard() {
                                                 CARDIO ZONA 2 (FINAL DE SESIÓN)
                                             </span>
                                             {todayCardio.completed && (
-                                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/20">
+                                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/30 flex items-center gap-1">
+                                                    <CheckCircle2 size={11} />
                                                     COMPLETADO
                                                 </span>
                                             )}
@@ -1131,10 +1182,10 @@ export default function ApexDashboard() {
 
                                 {todayCardio.type !== "none" && (
                                     <button
-                                        onClick={() => handleUpdateCardio(todayCardio.type, todayCardio.minutes, !todayCardio.completed)}
+                                        onClick={() => handleUpdateCardio({ completed: !todayCardio.completed })}
                                         className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
                                             todayCardio.completed
-                                                ? "bg-[#10B981] text-black shadow-md shadow-[#10B981]/20"
+                                                ? "bg-[#10B981] text-black shadow-md shadow-[#10B981]/20 font-bold"
                                                 : "bg-white hover:bg-zinc-200 text-black shadow-md shadow-white/10 active:scale-95"
                                         }`}
                                     >
@@ -1155,7 +1206,7 @@ export default function ApexDashboard() {
                                         return (
                                             <button
                                                 key={key}
-                                                onClick={() => handleUpdateCardio(key)}
+                                                onClick={() => handleUpdateCardio({ type: key })}
                                                 className={`p-3 rounded-2xl text-left border transition-all ${
                                                     isSelected
                                                         ? "bg-white text-black border-white font-semibold shadow-md"
@@ -1172,35 +1223,244 @@ export default function ApexDashboard() {
                                 </div>
                             </div>
 
-                            {/* Si eligió cardio, selector de duración y protocolo */}
+                            {/* Si eligió cardio, inputs detallados: Inclinación, Velocidad, Tiempo y Telemetría */}
                             {todayCardio.type !== "none" ? (
-                                <div className="pt-2 space-y-3">
-                                    <div className="flex items-center justify-between text-xs flex-wrap gap-2">
-                                        <span className="text-zinc-400 text-[11px]">Duración objetivo:</span>
-                                        <div className="flex gap-1.5">
-                                            {[15, 20, 25, 30].map((mins) => (
+                                <div className="pt-2 space-y-4">
+                                    {/* Metric Input Panels: Inclinación, Velocidad, Tiempo */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        {/* 1. Inclinación / Pendiente */}
+                                        <div className="p-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl space-y-2.5">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                                                    {CARDIO_PROTOCOLS[todayCardio.type]?.inclineLabel || "Inclinación"}
+                                                </span>
+                                                <span className="text-xs font-mono font-bold text-white bg-white/[0.06] px-2 py-0.5 rounded-md border border-white/[0.08]">
+                                                    {CARDIO_PROTOCOLS[todayCardio.type]?.inclineUnit || "%"}
+                                                </span>
+                                            </div>
+
+                                            <div className="flex items-center gap-2">
                                                 <button
-                                                    key={mins}
-                                                    onClick={() => handleUpdateCardio(todayCardio.type, mins)}
-                                                    className={`px-3 py-1 rounded-full text-xs font-mono transition-all border ${
-                                                        todayCardio.minutes === mins
-                                                            ? "bg-white text-black border-white font-bold"
-                                                            : "bg-white/[0.04] text-zinc-400 border-white/[0.06] hover:text-white"
-                                                    }`}
+                                                    type="button"
+                                                    onClick={() => handleUpdateCardio({ incline: Math.max(0, Math.round((todayCardio.incline - (CARDIO_PROTOCOLS[todayCardio.type]?.inclineStep || 0.5)) * 10) / 10) })}
+                                                    className="w-9 h-9 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white flex items-center justify-center font-bold text-base transition-all active:scale-95 shrink-0"
                                                 >
-                                                    {mins} min
+                                                    -
                                                 </button>
-                                            ))}
+                                                <div className="relative flex-1">
+                                                    <input
+                                                        type="number"
+                                                        step={CARDIO_PROTOCOLS[todayCardio.type]?.inclineStep || 0.5}
+                                                        min="0"
+                                                        max="30"
+                                                        value={todayCardio.incline}
+                                                        onChange={(e) => handleUpdateCardio({ incline: parseFloat(e.target.value) || 0 })}
+                                                        className="w-full text-center bg-black/40 border border-white/[0.1] rounded-xl py-2 px-2 text-white font-mono text-base font-bold focus:outline-none focus:border-white/40"
+                                                    />
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleUpdateCardio({ incline: Math.round((todayCardio.incline + (CARDIO_PROTOCOLS[todayCardio.type]?.inclineStep || 0.5)) * 10) / 10 })}
+                                                    className="w-9 h-9 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white flex items-center justify-center font-bold text-base transition-all active:scale-95 shrink-0"
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
+
+                                            {/* Quick Presets for Incline */}
+                                            {(CARDIO_PROTOCOLS[todayCardio.type]?.inclinePresets?.length ?? 0) > 0 && (
+                                                <div className="flex items-center gap-1.5 pt-1 flex-wrap">
+                                                    <span className="text-[10px] text-zinc-500 mr-0.5">Presets:</span>
+                                                    {CARDIO_PROTOCOLS[todayCardio.type]?.inclinePresets?.map((val) => (
+                                                        <button
+                                                            key={val}
+                                                            type="button"
+                                                            onClick={() => handleUpdateCardio({ incline: val })}
+                                                            className={`px-2 py-0.5 rounded-lg text-[10px] font-mono transition-all border ${
+                                                                todayCardio.incline === val
+                                                                    ? "bg-white text-black border-white font-bold"
+                                                                    : "bg-white/[0.03] text-zinc-400 border-white/[0.06] hover:text-white"
+                                                            }`}
+                                                        >
+                                                            {val}{CARDIO_PROTOCOLS[todayCardio.type]?.inclineUnit}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* 2. Velocidad / Cadencia */}
+                                        <div className="p-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl space-y-2.5">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                                                    {CARDIO_PROTOCOLS[todayCardio.type]?.speedLabel || "Velocidad"}
+                                                </span>
+                                                <span className="text-xs font-mono font-bold text-white bg-white/[0.06] px-2 py-0.5 rounded-md border border-white/[0.08]">
+                                                    {CARDIO_PROTOCOLS[todayCardio.type]?.speedUnit || "km/h"}
+                                                </span>
+                                            </div>
+
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleUpdateCardio({ speed: Math.max(0.5, Math.round((todayCardio.speed - (CARDIO_PROTOCOLS[todayCardio.type]?.speedStep || 0.1)) * 10) / 10) })}
+                                                    className="w-9 h-9 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white flex items-center justify-center font-bold text-base transition-all active:scale-95 shrink-0"
+                                                >
+                                                    -
+                                                </button>
+                                                <div className="relative flex-1">
+                                                    <input
+                                                        type="number"
+                                                        step={CARDIO_PROTOCOLS[todayCardio.type]?.speedStep || 0.1}
+                                                        min="0.5"
+                                                        max="30"
+                                                        value={todayCardio.speed}
+                                                        onChange={(e) => handleUpdateCardio({ speed: parseFloat(e.target.value) || 0 })}
+                                                        className="w-full text-center bg-black/40 border border-white/[0.1] rounded-xl py-2 px-2 text-white font-mono text-base font-bold focus:outline-none focus:border-white/40"
+                                                    />
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleUpdateCardio({ speed: Math.round((todayCardio.speed + (CARDIO_PROTOCOLS[todayCardio.type]?.speedStep || 0.1)) * 10) / 10 })}
+                                                    className="w-9 h-9 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white flex items-center justify-center font-bold text-base transition-all active:scale-95 shrink-0"
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
+
+                                            {/* Quick Presets for Speed */}
+                                            {(CARDIO_PROTOCOLS[todayCardio.type]?.speedPresets?.length ?? 0) > 0 && (
+                                                <div className="flex items-center gap-1.5 pt-1 flex-wrap">
+                                                    <span className="text-[10px] text-zinc-500 mr-0.5">Presets:</span>
+                                                    {CARDIO_PROTOCOLS[todayCardio.type]?.speedPresets?.map((val) => (
+                                                        <button
+                                                            key={val}
+                                                            type="button"
+                                                            onClick={() => handleUpdateCardio({ speed: val })}
+                                                            className={`px-2 py-0.5 rounded-lg text-[10px] font-mono transition-all border ${
+                                                                todayCardio.speed === val
+                                                                    ? "bg-white text-black border-white font-bold"
+                                                                    : "bg-white/[0.03] text-zinc-400 border-white/[0.06] hover:text-white"
+                                                            }`}
+                                                        >
+                                                            {val}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* 3. Tiempo / Duración */}
+                                        <div className="p-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl space-y-2.5">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                                                    TIEMPO
+                                                </span>
+                                                <span className="text-xs font-mono font-bold text-white bg-white/[0.06] px-2 py-0.5 rounded-md border border-white/[0.08]">
+                                                    min
+                                                </span>
+                                            </div>
+
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleUpdateCardio({ minutes: Math.max(5, todayCardio.minutes - 5) })}
+                                                    className="w-9 h-9 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white flex items-center justify-center font-bold text-base transition-all active:scale-95 shrink-0"
+                                                >
+                                                    -
+                                                </button>
+                                                <div className="relative flex-1">
+                                                    <input
+                                                        type="number"
+                                                        step="1"
+                                                        min="1"
+                                                        max="180"
+                                                        value={todayCardio.minutes}
+                                                        onChange={(e) => handleUpdateCardio({ minutes: parseInt(e.target.value) || 0 })}
+                                                        className="w-full text-center bg-black/40 border border-white/[0.1] rounded-xl py-2 px-2 text-white font-mono text-base font-bold focus:outline-none focus:border-white/40"
+                                                    />
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleUpdateCardio({ minutes: todayCardio.minutes + 5 })}
+                                                    className="w-9 h-9 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white flex items-center justify-center font-bold text-base transition-all active:scale-95 shrink-0"
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
+
+                                            {/* Quick Presets for Time */}
+                                            <div className="flex items-center gap-1.5 pt-1 flex-wrap">
+                                                <span className="text-[10px] text-zinc-500 mr-0.5">Presets:</span>
+                                                {[15, 20, 25, 30, 45].map((mins) => (
+                                                    <button
+                                                        key={mins}
+                                                        type="button"
+                                                        onClick={() => handleUpdateCardio({ minutes: mins })}
+                                                        className={`px-2 py-0.5 rounded-lg text-[10px] font-mono transition-all border ${
+                                                            todayCardio.minutes === mins
+                                                                ? "bg-white text-black border-white font-bold"
+                                                                : "bg-white/[0.03] text-zinc-400 border-white/[0.06] hover:text-white"
+                                                        }`}
+                                                    >
+                                                        {mins}m
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div className="p-3 bg-white/[0.03] border border-white/[0.06] rounded-2xl space-y-1">
+                                    {/* Telemetría Dinámica en Vivo: Gasto Calórico Estimado, Distancia y Zona Cardíaca */}
+                                    <div className="p-4 bg-white/[0.02] border border-white/[0.06] rounded-2xl grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                                        <div className="p-2.5 bg-black/30 rounded-xl border border-white/[0.04]">
+                                            <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block">CALORÍAS EST.</span>
+                                            <span className="text-base sm:text-lg font-mono font-bold text-white">~{todayCardio.caloriesBurned} <span className="text-xs font-normal text-zinc-400">kcal</span></span>
+                                        </div>
+                                        <div className="p-2.5 bg-black/30 rounded-xl border border-white/[0.04]">
+                                            <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block">DISTANCIA EST.</span>
+                                            <span className="text-base sm:text-lg font-mono font-bold text-white">{todayCardio.distanceKm} <span className="text-xs font-normal text-zinc-400">km</span></span>
+                                        </div>
+                                        <div className="p-2.5 bg-black/30 rounded-xl border border-white/[0.04]">
+                                            <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block">FRECUENCIA CARDÍACA</span>
+                                            <span className="text-base sm:text-lg font-mono font-bold text-[#10B981]">120-140 <span className="text-xs font-normal text-zinc-400">BPM</span></span>
+                                        </div>
+                                        <div className="p-2.5 bg-black/30 rounded-xl border border-white/[0.04]">
+                                            <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block">ZONA METABÓLICA</span>
+                                            <span className="text-base sm:text-lg font-mono font-bold text-white">Zona 2 <span className="text-xs font-normal text-zinc-400">(mTOR Safe)</span></span>
+                                        </div>
+                                    </div>
+
+                                    {/* Protocol Details & Scientific Cue */}
+                                    <div className="p-3.5 bg-white/[0.03] border border-white/[0.06] rounded-2xl space-y-1">
                                         <p className="text-xs text-zinc-300 leading-relaxed font-normal">
                                             {CARDIO_PROTOCOLS[todayCardio.type]?.protocol}
                                         </p>
                                         <p className="text-[10px] text-zinc-500 font-mono">
-                                            Zona 2 (120-140 BPM): Estimulación mitocondrial suave sin interferir en la vía mTOR de hipertrofia muscular.
+                                            Zona 2: Estimulación mitocondrial suave sin interferir en la vía mTOR de hipertrofia muscular.
                                         </p>
+                                    </div>
+
+                                    {/* Action Save Button */}
+                                    <div className="flex items-center justify-between gap-3 pt-1 flex-wrap">
+                                        <div className="text-xs text-zinc-400">
+                                            {todayCardio.savedAt ? (
+                                                <span className="text-[#10B981] flex items-center gap-1 font-medium">
+                                                    <Check size={13} />
+                                                    Guardado en tu historial ({new Date(todayCardio.savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+                                                </span>
+                                            ) : (
+                                                <span>Ajusta inclinación, velocidad y tiempo, luego pulsa guardar.</span>
+                                            )}
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => handleUpdateCardio({ completed: true })}
+                                            className="w-full sm:w-auto px-6 py-2.5 bg-white hover:bg-zinc-200 text-black text-xs font-semibold rounded-full shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2"
+                                        >
+                                            <CheckCircle2 size={15} />
+                                            <span>GUARDAR DATOS DE CARDIO</span>
+                                        </button>
                                     </div>
                                 </div>
                             ) : (

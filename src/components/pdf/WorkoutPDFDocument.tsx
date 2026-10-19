@@ -375,9 +375,14 @@ export function WorkoutPDFDocument({
           <View style={styles.card}>
             <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 2 }}>
               {profile?.cardioType && profile.cardioType !== 'none'
-                ? `${profile.cardioType.replace('_', ' ').toUpperCase()} • ${profile.cardioMinutes || 20} MINUTOS`
+                ? `${profile.cardioType.replace('_', ' ').toUpperCase()} • ${profile.cardioMinutes || 20} MIN • INCLINACIÓN: ${profile.cardioIncline ?? 12}% • VELOCIDAD: ${profile.cardioSpeed ?? 4.8} km/h`
                 : 'SIN CARDIO HOY (RECUPERACIÓN METABÓLICA)'}
             </Text>
+            {profile?.cardioCalories ? (
+              <Text style={{ fontSize: 8.5, color: '#10B981', marginBottom: 3 }}>
+                Gasto calórico: ~{profile.cardioCalories} kcal • Distancia: ~{profile.cardioDistance || 0} km • Zona 2
+              </Text>
+            ) : null}
             <Text style={styles.bannerText}>
               {profile?.cardioProtocol || 'Oxidación lipídica suave sin interferencia con la vía de señalización mTOR de hipertrofia muscular.'}
             </Text>

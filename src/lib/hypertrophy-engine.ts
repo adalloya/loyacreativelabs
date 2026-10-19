@@ -1113,6 +1113,28 @@ export interface CardioProtocolInfo {
     type: string;
     protocol: string;
     defaultMinutes: number;
+    defaultIncline: number;
+    defaultSpeed: number;
+    inclineLabel: string;
+    inclineUnit: string;
+    speedLabel: string;
+    speedUnit: string;
+    inclineStep: number;
+    speedStep: number;
+    inclinePresets: number[];
+    speedPresets: number[];
+}
+
+export interface DailyCardioEntry {
+    type: CardioType;
+    minutes: number;
+    incline: number;
+    speed: number;
+    completed: boolean;
+    distanceKm?: number;
+    caloriesBurned?: number;
+    date?: string;
+    savedAt?: string;
 }
 
 export const CARDIO_PROTOCOLS: Record<CardioType, CardioProtocolInfo> = {
@@ -1121,30 +1143,114 @@ export const CARDIO_PROTOCOLS: Record<CardioType, CardioProtocolInfo> = {
         label: "Caminadora",
         type: "Caminadora con Inclinación",
         protocol: "Zona 2: 12% Inclinación, 4.8 km/h. Sin sujetarse de los pasamanos para reclutar cadena posterior.",
-        defaultMinutes: 20
+        defaultMinutes: 20,
+        defaultIncline: 12,
+        defaultSpeed: 4.8,
+        inclineLabel: "Inclinación",
+        inclineUnit: "%",
+        speedLabel: "Velocidad",
+        speedUnit: "km/h",
+        inclineStep: 0.5,
+        speedStep: 0.1,
+        inclinePresets: [8, 10, 12, 15],
+        speedPresets: [4.0, 4.5, 4.8, 5.2]
     },
     stairmaster: {
         id: "stairmaster",
         label: "Escaladora",
         type: "Escaladora / StairMaster",
         protocol: "Zona 2: Nivel 5-7 con cadencia constante. Mantén el torso vertical y apoya toda la planta del pie.",
-        defaultMinutes: 15
+        defaultMinutes: 15,
+        defaultIncline: 6,
+        defaultSpeed: 50,
+        inclineLabel: "Nivel / Resistencia",
+        inclineUnit: "Nvl",
+        speedLabel: "Cadencia",
+        speedUnit: "SPM",
+        inclineStep: 1,
+        speedStep: 5,
+        inclinePresets: [4, 6, 8, 10],
+        speedPresets: [40, 50, 60, 70]
     },
     stationary_bike: {
         id: "stationary_bike",
         label: "Bicicleta",
         type: "Bicicleta Estática",
         protocol: "Zona 2: Resistencia media, 80-90 RPM continuas. Cero impacto articular en rodillas y columna.",
-        defaultMinutes: 20
+        defaultMinutes: 20,
+        defaultIncline: 6,
+        defaultSpeed: 85,
+        inclineLabel: "Resistencia",
+        inclineUnit: "Nvl",
+        speedLabel: "Cadencia",
+        speedUnit: "RPM",
+        inclineStep: 1,
+        speedStep: 5,
+        inclinePresets: [4, 6, 8, 10],
+        speedPresets: [70, 80, 85, 95]
     },
     none: {
         id: "none",
         label: "Sin cardio hoy",
         type: "Sin cardio",
         protocol: "Sesión 100% hipertrofia y tensión mecánica. Descanso metabólico para optimizar recuperación.",
-        defaultMinutes: 0
+        defaultMinutes: 0,
+        defaultIncline: 0,
+        defaultSpeed: 0,
+        inclineLabel: "Inclinación",
+        inclineUnit: "%",
+        speedLabel: "Velocidad",
+        speedUnit: "km/h",
+        inclineStep: 1,
+        speedStep: 1,
+        inclinePresets: [],
+        speedPresets: []
     }
 };
+
+/**
+ * Calcula distancia estimada (km) y calorías quemadas en Zona 2
+ * basado en fórmulas metabólicas ACSM ajustadas al peso del usuario.
+ */
+export function calculateCardioTelemetry(
+    type: CardioType,
+    minutes: number,
+    incline: number,
+    speed: number,
+    weightKg: number = 75
+): { distanceKm: number; caloriesBurned: number } {
+    if (type === "none" || minutes <= 0) {
+        return { distanceKm: 0, caloriesBurned: 0 };
+    }
+
+    let distanceKm = 0;
+    let caloriesBurned = 0;
+
+    if (type === "incline_treadmill") {
+        distanceKm = Math.round((speed * (minutes / 60)) * 100) / 100;
+        const speedMperMin = (speed * 1000) / 60;
+        const grade = (incline || 0) / 100;
+        const vo2 = (0.1 * speedMperMin) + (1.8 * speedMperMin * grade) + 3.5;
+        const mets = vo2 / 3.5;
+        const kcalPerMin = (mets * 3.5 * weightKg) / 200;
+        caloriesBurned = Math.round(kcalPerMin * minutes);
+    } else if (type === "stairmaster") {
+        const level = incline || 6;
+        const mets = 6.0 + (level * 0.4);
+        const kcalPerMin = (mets * 3.5 * weightKg) / 200;
+        caloriesBurned = Math.round(kcalPerMin * minutes);
+        distanceKm = Math.round((((speed || 50) * minutes * 0.2) / 1000) * 100) / 100;
+    } else if (type === "stationary_bike") {
+        const res = incline || 6;
+        const mets = 5.0 + (res * 0.35);
+        const kcalPerMin = (mets * 3.5 * weightKg) / 200;
+        caloriesBurned = Math.round(kcalPerMin * minutes);
+        const approxSpeed = ((speed || 85) / 85) * 20;
+        distanceKm = Math.round((approxSpeed * (minutes / 60)) * 100) / 100;
+    }
+
+    return { distanceKm, caloriesBurned };
+}
 
 export function generateWeeklyProgram(
     daysPerWeek: number = 4,

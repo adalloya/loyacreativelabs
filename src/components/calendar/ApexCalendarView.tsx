@@ -15,7 +15,8 @@ import {
     Activity,
     Layers,
     Plus,
-    Check
+    Check,
+    HeartPulse
 } from "lucide-react";
 import {
     DailyNutritionLog,
@@ -25,13 +26,13 @@ import {
     findPendingNutritionDates,
     MEAL_CATEGORIES
 } from "@/lib/nutrition-tracker";
-import { EXERCISE_DATABASE, CARDIO_PROTOCOLS, CardioType } from "@/lib/hypertrophy-engine";
+import { EXERCISE_DATABASE, CARDIO_PROTOCOLS, CardioType, DailyCardioEntry } from "@/lib/hypertrophy-engine";
 import { localDb, ExerciseLog } from "@/lib/local-db";
 
 interface ApexCalendarViewProps {
     targetCalories: number;
     allNutritionLogs: Record<string, DailyNutritionLog>;
-    dailyCardio: Record<number, { type: CardioType; minutes: number; completed: boolean }>;
+    dailyCardio: Record<number, DailyCardioEntry>;
     onSelectDateForNutrition: (date: string) => void;
     onGoToGym: () => void;
 }
@@ -130,6 +131,18 @@ export const ApexCalendarView: React.FC<ApexCalendarViewProps> = ({
             exercisesGrouped
         };
     }, [dayExerciseLogs]);
+
+    // Cardio data for selected date
+    const selectedDateCardio: DailyCardioEntry | undefined = useMemo(() => {
+        const byDate = Object.values(dailyCardio || {}).find(c => c?.date === selectedDate);
+        if (byDate) return byDate;
+
+        const [y, m, d] = selectedDate.split("-").map(Number);
+        const dateObj = new Date(y, m - 1, d);
+        const jsDay = dateObj.getDay();
+        const routineDayIndex = (jsDay + 6) % 7;
+        return dailyCardio?.[routineDayIndex];
+    }, [dailyCardio, selectedDate]);
 
     // Calendar Grid Days generation
     const calendarDays = useMemo(() => {
@@ -563,6 +576,49 @@ export const ApexCalendarView: React.FC<ApexCalendarViewProps> = ({
                                 </div>
                             )}
                         </div>
+
+                        {/* Cardio Finisher Summary for Selected Day */}
+                        {selectedDateCardio && selectedDateCardio.type !== "none" && (
+                            <div className="p-3.5 bg-white/[0.02] border border-white/[0.06] rounded-xl space-y-2 text-xs">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <HeartPulse size={14} className={selectedDateCardio.completed ? "text-[#10B981]" : "text-[#FF2A2A]"} />
+                                        <span className="font-semibold text-white tracking-tight">
+                                            {CARDIO_PROTOCOLS[selectedDateCardio.type]?.label || "Cardio Zona 2"}
+                                        </span>
+                                    </div>
+                                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border font-semibold ${
+                                        selectedDateCardio.completed
+                                            ? "bg-[#10B981]/15 text-[#10B981] border-[#10B981]/30"
+                                            : "bg-white/[0.04] text-zinc-400 border-white/[0.08]"
+                                    }`}>
+                                        {selectedDateCardio.completed ? "COMPLETADO" : "PROGRAMADO"}
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-2 text-center pt-1">
+                                    <div className="p-2 bg-black/30 rounded-lg border border-white/[0.04]">
+                                        <span className="text-[9px] text-zinc-500 uppercase block">INCLINACIÓN</span>
+                                        <span className="font-mono text-white font-bold">{selectedDateCardio.incline ?? 12}{CARDIO_PROTOCOLS[selectedDateCardio.type]?.inclineUnit || "%"}</span>
+                                    </div>
+                                    <div className="p-2 bg-black/30 rounded-lg border border-white/[0.04]">
+                                        <span className="text-[9px] text-zinc-500 uppercase block">VELOCIDAD</span>
+                                        <span className="font-mono text-white font-bold">{selectedDateCardio.speed ?? 4.8} <span className="text-[9px] font-normal text-zinc-400">{CARDIO_PROTOCOLS[selectedDateCardio.type]?.speedUnit || "km/h"}</span></span>
+                                    </div>
+                                    <div className="p-2 bg-black/30 rounded-lg border border-white/[0.04]">
+                                        <span className="text-[9px] text-zinc-500 uppercase block">DURACIÓN</span>
+                                        <span className="font-mono text-white font-bold">{selectedDateCardio.minutes} min</span>
+                                    </div>
+                                </div>
+
+                                {selectedDateCardio.caloriesBurned ? (
+                                    <div className="flex justify-between items-center text-[10px] text-zinc-400 pt-0.5 px-0.5">
+                                        <span>Gasto metabólico estimado:</span>
+                                        <span className="font-mono text-[#10B981] font-semibold">~{selectedDateCardio.caloriesBurned} kcal {selectedDateCardio.distanceKm ? `(${selectedDateCardio.distanceKm} km)` : ''}</span>
+                                    </div>
+                                ) : null}
+                            </div>
+                        )}
 
                         {/* Action link */}
                         <button
