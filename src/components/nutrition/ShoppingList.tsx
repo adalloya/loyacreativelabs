@@ -12,18 +12,45 @@ export function ShoppingList() {
 
   // Consolidar y sumar ingredientes del plan de Gemini de forma inteligente
   const consolidatedList = useMemo(() => {
-    if (!dietPlan || !dietPlan.thirtyDayPlan) return {};
+    if (!dietPlan) return {};
 
     const totals: Record<string, number> = {};
 
-    dietPlan.thirtyDayPlan.forEach((day) => {
-      day.meals.forEach((meal) => {
-        meal.ingredients.forEach((ing) => {
-          const key = ing.item.toLowerCase().trim();
-          totals[key] = (totals[key] || 0) + (ing.grams || 0);
+    const plan = dietPlan as any;
+    if (plan.thirtyDayPlan && Array.isArray(plan.thirtyDayPlan)) {
+      plan.thirtyDayPlan.forEach((day: any) => {
+        day.meals?.forEach((meal: any) => {
+          meal.ingredients?.forEach((ing: any) => {
+            const key = ing.item.toLowerCase().trim();
+            totals[key] = (totals[key] || 0) + (ing.grams || 0);
+          });
         });
       });
-    });
+    } else if (plan.weeklyTemplates && Array.isArray(plan.weeklyTemplates)) {
+      plan.weeklyTemplates.forEach((week: any) => {
+        week.meals?.forEach((meal: any) => {
+          if (meal.ingredients && Array.isArray(meal.ingredients)) {
+            meal.ingredients.forEach((ing: any) => {
+              const key = ing.item.toLowerCase().trim();
+              totals[key] = (totals[key] || 0) + ((ing.grams || 0) * 4); // 4 semanas
+            });
+          } else if (meal.items) {
+            const parts = meal.items.split('+');
+            parts.forEach((p: string) => {
+              const trimmed = p.trim();
+              const match = trimmed.match(/^(\d+)\s*g?\s+(.*)$/i);
+              if (match) {
+                const grams = parseInt(match[1], 10) * 28; // 28 días
+                const name = match[2].toLowerCase().trim();
+                totals[name] = (totals[name] || 0) + grams;
+              } else {
+                totals[trimmed.toLowerCase()] = (totals[trimmed.toLowerCase()] || 0) + 1000;
+              }
+            });
+          }
+        });
+      });
+    }
 
     return totals;
   }, [dietPlan]);
@@ -32,16 +59,9 @@ export function ShoppingList() {
     setCheckedItems((prev) => ({ ...prev, [item]: !prev[item] }));
   };
 
+  // Si no hay plan generado por Gemini, no se muestra nada (borrada hasta ser generada)
   if (!dietPlan) {
-    return (
-      <div className="bg-[#121214]/90 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-8 text-center text-white">
-        <ShoppingCart className="w-8 h-8 text-zinc-600 mx-auto mb-3" />
-        <h3 className="text-sm font-semibold mb-1">Sin plan de nutrición activo</h3>
-        <p className="text-xs text-zinc-500">
-          Genera tu plan mensual primero para calcular automáticamente los insumos en la lista de compras.
-        </p>
-      </div>
-    );
+    return null;
   }
 
   const items = Object.entries(consolidatedList);

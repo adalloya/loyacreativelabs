@@ -396,28 +396,33 @@ export default function ApexDashboard() {
         }
     };
 
-    // Gemini 30-Day Diet State
-    const [dietPlan, setDietPlan] = useState<any>(null);
+    // Gemini 30-Day Diet State (Persistido en localStorage para no tener que regenerarlo cada vez)
+    const [dietPlan, setDietPlan] = useLocalStorage<any>("apex_diet_plan", null);
     const [dietLoading, setDietLoading] = useState(false);
 
     const handleGenerateAiDiet = async () => {
         setDietLoading(true);
         try {
-            const res = await fetch("/api/apex", {
+            const res = await fetch("/api/gemini/diet", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    action: "generate-diet",
-                    bio,
-                    macros
+                    profile: {
+                        weightKg: bio.weightKg,
+                        targetCalories: macros.targetCalories,
+                        targetProteinG: macros.proteinG,
+                        caloricDeficitPct: bio.caloricDeficitPct,
+                        fitnessGoal: bio.fitnessGoal,
+                        caloricAdjustmentPct: bio.caloricAdjustmentPct
+                    }
                 })
             });
             const data = await res.json();
-            if (data.plan) {
-                setDietPlan(data.plan);
+            if (data && (data.thirtyDayPlan || data.weeklyTemplates || data.caloriesTarget)) {
+                setDietPlan(data);
             }
         } catch (e) {
-            console.error(e);
+            console.error("Error generating diet with Gemini:", e);
         } finally {
             setDietLoading(false);
         }
@@ -1135,36 +1140,65 @@ export default function ApexDashboard() {
                                     </h4>
                                 </div>
 
-                                <button
-                                    onClick={handleGenerateAiDiet}
-                                    disabled={dietLoading}
-                                    className="px-5 py-2 bg-white hover:bg-zinc-200 text-black text-xs font-semibold rounded-full shadow-md transition-all disabled:opacity-50 flex items-center gap-1.5 self-start sm:self-auto"
-                                >
-                                    <Sparkles size={14} />
-                                    <span>{dietLoading ? "GENERANDO CON GEMINI..." : "GENERAR CON GEMINI AI"}</span>
-                                </button>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    {dietPlan && (
+                                        <button
+                                            onClick={() => setDietPlan(null)}
+                                            className="px-3 py-1.5 bg-white/[0.04] hover:bg-[#FF2A2A]/20 text-zinc-400 hover:text-[#FF2A2A] border border-white/[0.08] hover:border-[#FF2A2A]/30 text-xs rounded-full transition-all"
+                                            title="Borrar plan guardado"
+                                        >
+                                            Borrar Plan
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={handleGenerateAiDiet}
+                                        disabled={dietLoading}
+                                        className="px-5 py-2 bg-white hover:bg-zinc-200 text-black text-xs font-semibold rounded-full shadow-md transition-all disabled:opacity-50 flex items-center gap-1.5 self-start sm:self-auto"
+                                    >
+                                        <Sparkles size={14} />
+                                        <span>
+                                            {dietLoading
+                                                ? "GENERANDO CON GEMINI..."
+                                                : dietPlan
+                                                ? "REGENERAR CON GEMINI AI"
+                                                : "GENERAR CON GEMINI AI"}
+                                        </span>
+                                    </button>
+                                </div>
                             </div>
 
                             {dietPlan ? (
                                 <div className="space-y-4 text-xs">
-                                    <p className="text-zinc-300 bg-white/[0.03] p-4 rounded-2xl border border-white/[0.06] leading-relaxed">
-                                        {dietPlan.monthlySummary}
-                                    </p>
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/[0.03] p-4 rounded-2xl border border-white/[0.06]">
+                                        <p className="text-zinc-300 leading-relaxed max-w-2xl">
+                                            {dietPlan.monthlySummary || `Plan nutricional clínico de 30 días para ${bio.fitnessGoal === "surplus" ? "Superávit Anabólico" : bio.fitnessGoal === "maintenance" ? "Mantenimiento / Recomposición" : "Déficit Calórico"} (${dietPlan.caloriesTarget || macros.targetCalories} kcal/día • ${dietPlan.macros?.protein || macros.proteinG}g de proteína).`}
+                                        </p>
+                                        <span className="px-2.5 py-1 rounded-full bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/20 font-mono text-[10px] font-semibold shrink-0 self-start sm:self-center">
+                                            ● GUARDADO EN DISPOSITIVO
+                                        </span>
+                                    </div>
+
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        {dietPlan.weeklyTemplates?.[0]?.meals?.map((m: any, idx: number) => (
-                                            <div key={idx} className="p-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl">
-                                                <div className="flex justify-between font-semibold text-white mb-1.5">
-                                                    <span>{m.name}</span>
-                                                    <span className="text-zinc-400 font-mono text-xs">{m.calories} kcal ({m.proteinG}g P)</span>
+                                        {((dietPlan.thirtyDayPlan?.[0]?.meals) || (dietPlan.weeklyTemplates?.[0]?.meals) || []).map((m: any, idx: number) => {
+                                            const mealName = m.mealName || m.name || `Comida ${idx + 1}`;
+                                            const calories = m.calories || Math.round(((m.macros?.proteinG || 0) * 4) + ((m.macros?.carbsG || 0) * 4) + ((m.macros?.fatsG || 0) * 9)) || 0;
+                                            const protein = m.proteinG || m.macros?.proteinG || 0;
+                                            const items = m.items || (m.ingredients?.map((i: any) => `${i.grams}g ${i.item}`).join(" + ")) || "";
+                                            return (
+                                                <div key={idx} className="p-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl">
+                                                    <div className="flex justify-between font-semibold text-white mb-1.5">
+                                                        <span>{mealName}</span>
+                                                        <span className="text-zinc-400 font-mono text-xs">{calories} kcal ({protein}g P)</span>
+                                                    </div>
+                                                    <p className="text-zinc-400 text-xs leading-relaxed">{items}</p>
                                                 </div>
-                                                <p className="text-zinc-400 text-xs leading-relaxed">{m.items}</p>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             ) : (
                                 <div className="text-center py-8 border border-dashed border-white/[0.08] rounded-2xl text-xs text-zinc-500 font-normal">
-                                    Presiona "Generar con Gemini AI" para estructurar tus 30 días de alimentación exacta calculada a tu déficit.
+                                    Presiona "Generar con Gemini AI" para estructurar tus 30 días de alimentación exacta calculada a tus macros. Una vez generado, quedará guardado automáticamente en tu dispositivo.
                                 </div>
                             )}
                         </div>
@@ -1194,32 +1228,10 @@ export default function ApexDashboard() {
                             </div>
                         </div>
 
-                        {/* Consolidated Grocery List */}
-                        <div className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-6 shadow-2xl">
-                            <div className="flex items-center gap-2 mb-4">
-                                <ShoppingCart size={18} className="text-white" />
-                                <h4 className="text-base font-bold text-white tracking-tight">
-                                    LISTA CONSOLIDADA DE SUPERMERCADO SEMANAL (1 VIAJE)
-                                </h4>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                                {groceryList.map((g, idx) => (
-                                    <div key={idx} className="p-3 bg-white/[0.03] border border-white/[0.06] rounded-2xl flex items-center justify-between">
-                                        <div className="flex items-center gap-2.5">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
-                                            <span className="text-zinc-200 font-medium">{g.item}</span>
-                                        </div>
-                                        <span className="font-mono text-white text-xs font-semibold bg-white/[0.06] px-2.5 py-1 rounded-full border border-white/[0.08]">
-                                            {g.totalAmount}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Consolidated 30-Day Checklist */}
-                        <ShoppingList />
+                        {/* Lista de Compras Consolidada (solo se muestra cuando el plan ha sido generado con Gemini) */}
+                        {dietPlan && (
+                            <ShoppingList />
+                        )}
                     </div>
                 )}
 
