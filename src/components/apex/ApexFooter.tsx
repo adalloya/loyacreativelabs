@@ -45,7 +45,7 @@ export function ApexFooter() {
               <span className="text-zinc-300">OFFLINE-FIRST (DEXIE)</span>
             </div>
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.08]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#38BDF8]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-white" />
               <span className="text-zinc-300">GITHUB MOTION DB</span>
             </div>
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.08]">
@@ -69,7 +69,7 @@ export function ApexFooter() {
 
           <div className="space-y-1.5">
             <h5 className="font-mono text-white text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 text-[#38BDF8]" />
+              <Zap className="w-3.5 h-3.5 text-white" />
               PERSISTENCIA & ACCESO
             </h5>
             <p className="text-zinc-500 leading-relaxed font-mono text-[11px]">
