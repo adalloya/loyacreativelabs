@@ -159,6 +159,7 @@ export function AppHeaderMenu({
                   { id: 'full_gym', label: 'Gimnasio Completo' },
                   { id: 'hotel_gym', label: 'Hotel (Mancuernas)' },
                   { id: 'bodyweight', label: 'Peso Corporal' },
+                  { id: 'home_gym', label: 'Ejercicios en Casa' },
                 ].map((env) => (
                   <button
                     key={env.id}

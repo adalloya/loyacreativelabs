@@ -449,9 +449,11 @@ const FIVE_DAY_SPLIT_RULES: DaySplitRule[] = [
     }
 ];
 
+export type EnvironmentMode = "full_gym" | "hotel_gym" | "bodyweight" | "home_gym";
+
 export function exerciseMatchesEnvironment(
     item: ExerciseItem,
-    env: "full_gym" | "hotel_gym" | "bodyweight" = "full_gym"
+    env: EnvironmentMode = "full_gym"
 ): boolean {
     if (env === "full_gym") return true;
     const eq = (item.equipment || "").toLowerCase();
@@ -470,8 +472,26 @@ export function exerciseMatchesEnvironment(
         );
     }
 
+    if (env === "home_gym") {
+        // Ejercicios en Casa: Peso corporal / calistenia, mancuernas, bandas de resistencia, pesas rusas, pelota, foam roll, objetos caseros
+        return (
+            eq === "bodyweight" ||
+            eq === "dumbbell" ||
+            raw === "bodyweight" ||
+            raw === "body only" ||
+            raw === "dumbbell" ||
+            raw === "bands" ||
+            raw === "kettlebells" ||
+            raw === "exercise ball" ||
+            raw === "foam roll" ||
+            raw === "other" ||
+            raw === "none" ||
+            !item.equipment
+        );
+    }
+
     if (env === "bodyweight") {
-        return eq === "bodyweight" || raw === "bodyweight" || raw === "none" || !item.equipment;
+        return eq === "bodyweight" || raw === "bodyweight" || raw === "body only" || raw === "none" || !item.equipment;
     }
 
     return true;
@@ -481,7 +501,7 @@ export function generateWeeklyProgram(
     daysPerWeek: number = 5,
     sessionDurationMins: number = 60,
     preferredCardio: string = "incline_treadmill",
-    environment: "full_gym" | "hotel_gym" | "bodyweight" = "full_gym",
+    environment: EnvironmentMode = "full_gym",
     catalog: ExerciseItem[] = EXERCISE_DATABASE
 ): RoutineDay[] {
     const activeCatalog = catalog && catalog.length >= 800 ? catalog : EXERCISE_DATABASE;

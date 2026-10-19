@@ -14,7 +14,8 @@ import {
     AlertCircle,
     Flame,
     Check,
-    Pill
+    Pill,
+    Camera
 } from "lucide-react";
 import {
     MEAL_CATEGORIES,
@@ -28,6 +29,7 @@ import {
     findPendingNutritionDates
 } from "@/lib/nutrition-tracker";
 import { SupplementDose } from "@/lib/nutrition-logistics";
+import { FoodCameraScannerModal } from "./FoodCameraScannerModal";
 
 interface DailyMealTrackerProps {
     targetCalories: number;
@@ -76,6 +78,35 @@ export const DailyMealTracker: React.FC<DailyMealTrackerProps> = ({
     const [foodName, setFoodName] = useState("");
     const [foodCalories, setFoodCalories] = useState("");
     const [foodProtein, setFoodProtein] = useState("");
+
+    // Food Camera Scanner Modal state
+    const [isFoodScannerOpen, setIsFoodScannerOpen] = useState(false);
+    const [foodScannerCategory, setFoodScannerCategory] = useState<MealCategory | null>(null);
+
+    const handleAddScannedFood = (
+        category: MealCategory,
+        scanned: { name: string; calories: number; proteinG?: number; carbsG?: number; fatsG?: number; portionsText?: string }
+    ) => {
+        const newItem: FoodItem = {
+            id: `food_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+            name: scanned.portionsText ? `${scanned.name} (${scanned.portionsText})` : scanned.name,
+            calories: scanned.calories,
+            proteinG: scanned.proteinG,
+            time: new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })
+        };
+
+        const updatedMeals = {
+            ...currentLog.meals,
+            [category]: [...(currentLog.meals[category] || []), newItem]
+        };
+
+        const updatedLog: DailyNutritionLog = {
+            ...currentLog,
+            meals: updatedMeals
+        };
+
+        onSaveLog(selectedDate, updatedLog);
+    };
 
     // Date navigation
     const handleShiftDate = (days: number) => {
@@ -342,15 +373,28 @@ export const DailyMealTracker: React.FC<DailyMealTrackerProps> = ({
 
             {/* 5 Meal Sections */}
             <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                         <h3 className="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-2">
                             <Utensils size={16} /> REGISTRO DE COMIDAS DEL DÍA (5 TIEMPOS)
                         </h3>
                         <p className="text-xs text-zinc-400 font-normal">
-                            Ingresa lo que comiste en cada sección para consolidar tu balance diario.
+                            Ingresa lo que comiste o toma foto a tu plato para que Argon calcule porciones y calorías al instante.
                         </p>
                     </div>
+
+                    {/* Botón Principal Escanear Comida con Cámara */}
+                    <button
+                        onClick={() => {
+                            setFoodScannerCategory(null);
+                            setIsFoodScannerOpen(true);
+                        }}
+                        className="px-4 py-2.5 rounded-2xl bg-[#10B981]/15 hover:bg-[#10B981] text-[#10B981] hover:text-black border border-[#10B981]/30 font-bold text-xs flex items-center gap-2 transition-all active:scale-95 shadow-md shadow-[#10B981]/10 self-start sm:self-auto shrink-0 group"
+                        title="Tomar foto a tu plato de comida con la cámara para que Argon identifique porciones y calorías"
+                    >
+                        <Camera size={15} className="group-hover:scale-110 transition-transform" />
+                        <span>Escanear Comida con IA</span>
+                    </button>
                 </div>
 
                 <div className="grid grid-cols-1 gap-3">
@@ -383,7 +427,7 @@ export const DailyMealTracker: React.FC<DailyMealTrackerProps> = ({
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-3 self-end sm:self-auto">
+                                    <div className="flex items-center gap-2.5 self-end sm:self-auto flex-wrap">
                                         <div className="text-right">
                                             <span className="text-sm font-bold font-mono text-white block">
                                                 {catCalories} <span className="text-xs font-normal text-zinc-400">kcal</span>
@@ -392,6 +436,19 @@ export const DailyMealTracker: React.FC<DailyMealTrackerProps> = ({
                                                 {items.length} {items.length === 1 ? "alimento" : "alimentos"}
                                             </span>
                                         </div>
+
+                                        {/* Botón Escáner Cámara para esta categoría */}
+                                        <button
+                                            onClick={() => {
+                                                setFoodScannerCategory(category.key);
+                                                setIsFoodScannerOpen(true);
+                                            }}
+                                            className="px-2.5 py-1.5 bg-[#10B981]/10 hover:bg-[#10B981]/25 text-[#10B981] border border-[#10B981]/30 rounded-xl text-[11px] font-semibold transition-all flex items-center gap-1.5 active:scale-95 shadow-xs"
+                                            title={`Tomar foto con la cámara para ${category.title}`}
+                                        >
+                                            <Camera size={13} />
+                                            <span className="hidden sm:inline">Foto IA</span>
+                                        </button>
 
                                         {dietPlan && (
                                             <button
@@ -594,6 +651,14 @@ export const DailyMealTracker: React.FC<DailyMealTrackerProps> = ({
                     })}
                 </div>
             </div>
+
+            {/* Modal de Escáner de Comida con Cámara & Argon AI */}
+            <FoodCameraScannerModal
+                isOpen={isFoodScannerOpen}
+                onClose={() => setIsFoodScannerOpen(false)}
+                initialCategory={foodScannerCategory}
+                onAddFoodItem={handleAddScannedFood}
+            />
         </div>
     );
 };

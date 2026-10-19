@@ -149,7 +149,7 @@ export default function ApexDashboard() {
 
     // Readiness & Environment Telemetry
     const [readiness, setReadiness] = useState<ReadinessState>("optimal");
-    const [environmentMode, setEnvironmentMode] = useState<"full_gym" | "hotel_gym" | "bodyweight">("full_gym");
+    const [environmentMode, setEnvironmentMode] = useState<"full_gym" | "hotel_gym" | "bodyweight" | "home_gym">("full_gym");
 
     // Catálogo en Vivo de 873+ Ejercicios (GitHub + Caché Local)
     const [catalogCount, setCatalogCount] = useState<number>(EXERCISE_DATABASE.length);
