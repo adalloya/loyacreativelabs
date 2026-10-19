@@ -163,7 +163,7 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
                                     BIBLIOTECA COMPLETA DE EJERCICIOS
                                 </h2>
                                 <span className="text-[11px] font-mono text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/20 px-2.5 py-0.5 rounded-full font-semibold shrink-0">
-                                    {filteredExercises.length} DISPONIBLES
+                                    CATÁLOGO ACTIVO: {EXERCISE_DATABASE.length} EJERCICIOS
                                 </span>
                             </div>
                             <p className="text-xs sm:text-sm text-zinc-400 font-normal mt-0.5 leading-relaxed">

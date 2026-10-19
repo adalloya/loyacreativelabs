@@ -12,7 +12,8 @@ import {
     Shield,
     Flame,
     Zap,
-    RotateCcw
+    RotateCcw,
+    ImageIcon
 } from "lucide-react";
 import {
     MuscleGroup,
@@ -24,6 +25,7 @@ import {
     MUSCLE_PALETTE,
     ORDERED_MUSCLE_GROUPS
 } from "./AnatomyVisualizer";
+import { getExerciseImageUrl } from "@/data/exerciseDatabase";
 
 interface ExerciseSwapModalProps {
     isOpen: boolean;
@@ -58,6 +60,66 @@ const RESISTANCE_LABELS: Record<string, { label: string; badgeClass: string }> =
     }
 };
 
+/**
+ * Vista previa interactiva de las imágenes 0.jpg y 1.jpg desde GitHub
+ */
+const ExerciseImagePreview: React.FC<{ exerciseId: string; name: string }> = ({ exerciseId, name }) => {
+    const [frame, setFrame] = useState<0 | 1>(0);
+    const [imgError, setImgError] = useState(false);
+
+    if (imgError) {
+        return (
+            <div className="w-full h-36 bg-black/40 border border-white/[0.06] rounded-2xl flex flex-col items-center justify-center text-zinc-500 gap-1.5">
+                <Dumbbell size={22} className="opacity-40" />
+                <span className="text-[10px] uppercase font-mono tracking-wider">Librería APEX (873)</span>
+            </div>
+        );
+    }
+
+    const imgUrl = getExerciseImageUrl(exerciseId, frame);
+
+    return (
+        <div className="w-full h-40 bg-zinc-950 rounded-2xl relative overflow-hidden border border-white/[0.08] group/img">
+            <img
+                src={imgUrl}
+                alt={name}
+                loading="lazy"
+                onError={() => setImgError(true)}
+                className="w-full h-full object-cover object-center transition-all duration-300 group-hover/img:scale-105"
+            />
+            {/* Toggle de Fase 0.jpg / 1.jpg */}
+            <div className="absolute bottom-2 right-2 flex items-center gap-1 bg-black/80 backdrop-blur-md px-1.5 py-0.5 rounded-lg border border-white/15 z-10 shadow-lg">
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setFrame(0);
+                    }}
+                    className={`text-[9px] font-mono px-2 py-0.5 rounded transition-all ${
+                        frame === 0 ? "bg-white text-black font-bold shadow-sm" : "text-zinc-400 hover:text-white"
+                    }`}
+                    title="Ver posición inicial (0.jpg)"
+                >
+                    0.jpg
+                </button>
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setFrame(1);
+                    }}
+                    className={`text-[9px] font-mono px-2 py-0.5 rounded transition-all ${
+                        frame === 1 ? "bg-white text-black font-bold shadow-sm" : "text-zinc-400 hover:text-white"
+                    }`}
+                    title="Ver posición pico (1.jpg)"
+                >
+                    1.jpg
+                </button>
+            </div>
+        </div>
+    );
+};
+
 export const ExerciseSwapModal: React.FC<ExerciseSwapModalProps> = ({
     isOpen,
     onClose,
@@ -68,6 +130,12 @@ export const ExerciseSwapModal: React.FC<ExerciseSwapModalProps> = ({
     // Mode filter: "DIRECT_SWAPS" | "ALL" | MuscleGroup
     const [filterMode, setFilterMode] = useState<string>("DIRECT_SWAPS");
     const [searchQuery, setSearchQuery] = useState("");
+    const [displayLimit, setDisplayLimit] = useState(48);
+
+    // Reset pagination when filters change
+    useEffect(() => {
+        setDisplayLimit(48);
+    }, [filterMode, searchQuery]);
 
     // Keyboard ESC & body overflow lock
     useEffect(() => {
@@ -84,13 +152,13 @@ export const ExerciseSwapModal: React.FC<ExerciseSwapModalProps> = ({
         };
     }, [isOpen, onClose]);
 
-    // Biomechanical direct swaps for the current exercise
+    // Biomechanical direct swaps for the current exercise from full catalog
     const directSwaps = useMemo(() => {
         if (!currentExercise) return [];
-        return findBiomechanicalSwaps(currentExercise.id);
+        return findBiomechanicalSwaps(currentExercise.id, EXERCISE_DATABASE);
     }, [currentExercise]);
 
-    // Filter exercises list
+    // Filter exercises list from the complete 873+ dataset
     const candidates = useMemo(() => {
         let list: ExerciseItem[] = [];
 
@@ -101,7 +169,10 @@ export const ExerciseSwapModal: React.FC<ExerciseSwapModalProps> = ({
         } else if (filterMode === "ALL") {
             list = EXERCISE_DATABASE;
         } else {
-            list = EXERCISE_DATABASE.filter(e => e.primary_muscle === filterMode);
+            list = EXERCISE_DATABASE.filter(e => {
+                const pMuscles = (e.primaryMuscles || [e.primary_muscle]).map(m => m.toLowerCase());
+                return e.primary_muscle === filterMode || pMuscles.includes(filterMode.toLowerCase());
+            });
         }
 
         // Apply text search
@@ -113,7 +184,8 @@ export const ExerciseSwapModal: React.FC<ExerciseSwapModalProps> = ({
                 const matchSub = (ex.anatomical_subdivision || "").toLowerCase().includes(query);
                 const matchCue = (ex.biomechanical_cue || "").toLowerCase().includes(query);
                 const matchEquip = (EQUIPMENT_TRANSLATIONS[ex.equipment] || ex.equipment).toLowerCase().includes(query);
-                return matchName || matchMuscle || matchSub || matchCue || matchEquip;
+                const matchCat = (ex.category || "").toLowerCase().includes(query);
+                return matchName || matchMuscle || matchSub || matchCue || matchEquip || matchCat;
             });
         }
 
@@ -150,38 +222,56 @@ export const ExerciseSwapModal: React.FC<ExerciseSwapModalProps> = ({
                                     SELECTOR DE REEMPLAZO (SWAP)
                                 </h2>
                                 <span className="text-[11px] font-mono text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/20 px-2.5 py-0.5 rounded-full font-semibold shrink-0">
-                                    {candidates.length} OPCIONES
+                                    CATÁLOGO ACTIVO: {EXERCISE_DATABASE.length} EJERCICIOS
+                                </span>
+                                <span className="text-[11px] font-mono text-zinc-400 bg-white/[0.05] border border-white/10 px-2.5 py-0.5 rounded-full shrink-0">
+                                    {candidates.length} FILTRADOS
                                 </span>
                             </div>
                             <p className="text-xs sm:text-sm text-zinc-400 font-normal mt-0.5 leading-relaxed">
-                                Reemplaza este movimiento por una alternativa biomecánica equivalente o busca cualquier ejercicio de la librería.
+                                Reemplaza este movimiento por una alternativa biomecánica equivalente o busca entre los {EXERCISE_DATABASE.length} ejercicios con fotos 0.jpg y 1.jpg de GitHub.
                             </p>
                         </div>
                     </div>
                 </header>
 
                 {/* Banner: Current Exercise Being Replaced */}
-                <div className="px-5 py-4 bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-2xl flex items-center justify-between gap-3 text-xs flex-wrap shadow-md">
-                    <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
-                        <span className="text-[10px] text-zinc-400 uppercase tracking-wider font-semibold shrink-0">
-                            REEMPLAZANDO ACTUALMENTE:
-                        </span>
-                        <span className="font-bold text-white truncate text-sm">
-                            {currentExercise.name}
-                        </span>
-                        <span
-                            className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold border shrink-0"
-                            style={{
-                                color: currentMuscleMeta.hex,
-                                borderColor: `${currentMuscleMeta.hex}40`,
-                                backgroundColor: `${currentMuscleMeta.hex}15`
-                            }}
-                        >
-                            {currentMuscleMeta.name}
-                        </span>
-                        <span className="text-zinc-400 font-mono text-[10px]">
-                            Tier {currentExercise.hypertrophy_tier} • {EQUIPMENT_TRANSLATIONS[currentExercise.equipment] || currentExercise.equipment}
-                        </span>
+                <div className="px-5 py-4 bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-2xl flex items-center justify-between gap-4 text-xs flex-wrap shadow-md">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="w-14 h-14 rounded-xl overflow-hidden bg-zinc-900 border border-white/10 shrink-0 relative flex items-center justify-center">
+                            <img
+                                src={getExerciseImageUrl(currentExercise.id, 0)}
+                                alt={currentExercise.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                    (e.target as HTMLElement).style.display = "none";
+                                }}
+                            />
+                            <Dumbbell size={18} className="text-zinc-600 absolute -z-0" />
+                        </div>
+                        <div className="min-w-0">
+                            <span className="text-[10px] text-zinc-400 uppercase tracking-wider font-semibold block">
+                                REEMPLAZANDO ACTUALMENTE:
+                            </span>
+                            <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                                <span className="font-bold text-white text-sm">
+                                    {currentExercise.name}
+                                </span>
+                                <span
+                                    className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold border shrink-0"
+                                    style={{
+                                        color: currentMuscleMeta.hex,
+                                        borderColor: `${currentMuscleMeta.hex}40`,
+                                        backgroundColor: `${currentMuscleMeta.hex}15`
+                                    }}
+                                >
+                                    {currentMuscleMeta.name}
+                                </span>
+                                <span className="text-zinc-400 font-mono text-[10px]">
+                                    Tier {currentExercise.hypertrophy_tier} • {EQUIPMENT_TRANSLATIONS[currentExercise.equipment] || currentExercise.equipment}
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -280,131 +370,148 @@ export const ExerciseSwapModal: React.FC<ExerciseSwapModalProps> = ({
                 {/* Candidate Exercises List (en el mismo flujo vertical con el resto de la página) */}
                 <div className="space-y-4 flex-1">
                     {candidates.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {candidates.map(ex => {
-                                const isCurrent = ex.id === currentExercise.id;
-                                const isInSession = activeExerciseIds.includes(ex.id) && !isCurrent;
-                                const muscleMeta = MUSCLE_PALETTE[ex.primary_muscle];
-                                const resistance = RESISTANCE_LABELS[ex.resistance_profile] || {
-                                    label: ex.resistance_profile,
-                                    badgeClass: "bg-white/[0.04] text-zinc-300 border-white/10"
-                                };
+                        <>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {candidates.slice(0, displayLimit).map(ex => {
+                                    const isCurrent = ex.id === currentExercise.id;
+                                    const isInSession = activeExerciseIds.includes(ex.id) && !isCurrent;
+                                    const muscleMeta = MUSCLE_PALETTE[ex.primary_muscle];
+                                    const resistance = RESISTANCE_LABELS[ex.resistance_profile] || {
+                                        label: ex.resistance_profile,
+                                        badgeClass: "bg-white/[0.04] text-zinc-300 border-white/10"
+                                    };
 
-                                return (
-                                    <div
-                                        key={ex.id}
-                                        className={`p-4 sm:p-5 rounded-3xl border transition-all flex flex-col justify-between group shadow-lg ${
-                                            isCurrent
-                                                ? "bg-white/[0.08] border-white/30 ring-1 ring-white/20"
-                                                : "bg-white/[0.02] border-white/[0.06] hover:border-white/[0.14] hover:bg-white/[0.04]"
-                                        }`}
-                                    >
-                                        <div className="space-y-3">
-                                            {/* Badges Bar */}
-                                            <div className="flex items-center justify-between gap-2 flex-wrap">
-                                                <div className="flex items-center gap-1.5 flex-wrap">
-                                                    {/* Muscle Group Badge */}
-                                                    <span
-                                                        className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold border flex items-center gap-1"
-                                                        style={{
-                                                            color: muscleMeta.hex,
-                                                            borderColor: `${muscleMeta.hex}40`,
-                                                            backgroundColor: `${muscleMeta.hex}15`
-                                                        }}
-                                                    >
+                                    return (
+                                        <div
+                                            key={ex.id}
+                                            className={`p-4 sm:p-5 rounded-3xl border transition-all flex flex-col justify-between group shadow-lg ${
+                                                isCurrent
+                                                    ? "bg-white/[0.08] border-white/30 ring-1 ring-white/20"
+                                                    : "bg-white/[0.02] border-white/[0.06] hover:border-white/[0.14] hover:bg-white/[0.04]"
+                                            }`}
+                                        >
+                                            <div className="space-y-3">
+                                                {/* Miniatura de GitHub 0.jpg / 1.jpg */}
+                                                <ExerciseImagePreview exerciseId={ex.id} name={ex.name} />
+
+                                                {/* Badges Bar */}
+                                                <div className="flex items-center justify-between gap-2 flex-wrap">
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        {/* Muscle Group Badge */}
                                                         <span
-                                                            className="w-1.5 h-1.5 rounded-full"
-                                                            style={{ backgroundColor: muscleMeta.hex }}
-                                                        />
-                                                        {muscleMeta.name}
-                                                    </span>
+                                                            className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold border flex items-center gap-1"
+                                                            style={{
+                                                                color: muscleMeta.hex,
+                                                                borderColor: `${muscleMeta.hex}40`,
+                                                                backgroundColor: `${muscleMeta.hex}15`
+                                                            }}
+                                                        >
+                                                            <span
+                                                                className="w-1.5 h-1.5 rounded-full"
+                                                                style={{ backgroundColor: muscleMeta.hex }}
+                                                            />
+                                                            {muscleMeta.name}
+                                                        </span>
 
-                                                    {/* Tier Badge */}
-                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
-                                                        ex.hypertrophy_tier === "S"
-                                                            ? "bg-[#FF2A2A]/20 text-[#FF2A2A] border-[#FF2A2A]/40"
-                                                            : "bg-white/[0.06] text-white border-white/20"
-                                                    }`}>
-                                                        Tier {ex.hypertrophy_tier}
-                                                    </span>
+                                                        {/* Tier Badge */}
+                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
+                                                            ex.hypertrophy_tier === "S"
+                                                                ? "bg-[#FF2A2A]/20 text-[#FF2A2A] border-[#FF2A2A]/40"
+                                                                : "bg-white/[0.06] text-white border-white/20"
+                                                        }`}>
+                                                            Tier {ex.hypertrophy_tier}
+                                                        </span>
 
-                                                    {/* Equipment */}
-                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono text-zinc-400 bg-white/[0.04] border border-white/[0.06]">
-                                                        {EQUIPMENT_TRANSLATIONS[ex.equipment] || ex.equipment}
-                                                    </span>
+                                                        {/* Equipment */}
+                                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono text-zinc-400 bg-white/[0.04] border border-white/[0.06]">
+                                                            {EQUIPMENT_TRANSLATIONS[ex.equipment] || ex.equipment}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Activation % */}
+                                                    {ex.activation_pct ? (
+                                                        <span className="text-[10px] font-mono font-semibold text-[#10B981] flex items-center gap-1 shrink-0">
+                                                            <Zap size={10} />
+                                                            {ex.activation_pct}% EMG
+                                                        </span>
+                                                    ) : null}
                                                 </div>
 
-                                                {/* Activation % */}
-                                                {ex.activation_pct ? (
-                                                    <span className="text-[10px] font-mono font-semibold text-[#10B981] flex items-center gap-1 shrink-0">
-                                                        <Zap size={10} />
-                                                        {ex.activation_pct}% EMG
-                                                    </span>
-                                                ) : null}
-                                            </div>
-
-                                            {/* Exercise Title */}
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <h3 className="text-sm font-bold text-white tracking-tight leading-snug">
-                                                        {ex.name}
-                                                    </h3>
-                                                    {isCurrent && (
-                                                        <span className="text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded bg-white/20 text-white shrink-0">
-                                                            ACTUAL
-                                                        </span>
+                                                {/* Exercise Title */}
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <h3 className="text-sm font-bold text-white tracking-tight leading-snug">
+                                                            {ex.name}
+                                                        </h3>
+                                                        {isCurrent && (
+                                                            <span className="text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded bg-white/20 text-white shrink-0">
+                                                                ACTUAL
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {ex.anatomical_subdivision && (
+                                                        <p className="text-[11px] font-medium text-zinc-400 mt-0.5">
+                                                            Enfoque: {ex.anatomical_subdivision}
+                                                        </p>
                                                     )}
                                                 </div>
-                                                {ex.anatomical_subdivision && (
-                                                    <p className="text-[11px] font-medium text-zinc-400 mt-0.5">
-                                                        Enfoque: {ex.anatomical_subdivision}
+
+                                                {/* Biomechanical Cue */}
+                                                {ex.biomechanical_cue && (
+                                                    <p className="text-xs text-zinc-400 leading-relaxed font-normal bg-white/[0.02] p-2.5 rounded-xl border border-white/[0.04]">
+                                                        &ldquo;{ex.biomechanical_cue}&rdquo;
                                                     </p>
                                                 )}
+
+                                                {/* Target parameters summary */}
+                                                <div className="flex items-center gap-3 text-[11px] text-zinc-400 font-mono flex-wrap">
+                                                    <span>{ex.default_sets} series</span>
+                                                    <span>•</span>
+                                                    <span>{ex.rep_range_min}-{ex.rep_range_max} reps</span>
+                                                    <span>•</span>
+                                                    <span>RIR {ex.target_rir}</span>
+                                                    <span>•</span>
+                                                    <span>{ex.rest_seconds}s</span>
+                                                </div>
                                             </div>
 
-                                            {/* Biomechanical Cue */}
-                                            {ex.biomechanical_cue && (
-                                                <p className="text-xs text-zinc-400 leading-relaxed font-normal bg-white/[0.02] p-2.5 rounded-xl border border-white/[0.04]">
-                                                    &ldquo;{ex.biomechanical_cue}&rdquo;
-                                                </p>
-                                            )}
-
-                                            {/* Target parameters summary */}
-                                            <div className="flex items-center gap-3 text-[11px] text-zinc-400 font-mono flex-wrap">
-                                                <span>{ex.default_sets} series</span>
-                                                <span>•</span>
-                                                <span>{ex.rep_range_min}-{ex.rep_range_max} reps</span>
-                                                <span>•</span>
-                                                <span>RIR {ex.target_rir}</span>
-                                                <span>•</span>
-                                                <span>{ex.rest_seconds}s</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Action Button */}
-                                        <div className="pt-4 mt-4 border-t border-white/[0.06] flex items-center justify-between gap-3">
-                                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-medium border ${resistance.badgeClass}`}>
-                                                {resistance.label}
-                                            </span>
-
-                                            {isCurrent ? (
-                                                <span className="text-xs text-zinc-500 font-medium italic">
-                                                    Ejercicio actual
+                                            {/* Action Button */}
+                                            <div className="pt-4 mt-4 border-t border-white/[0.06] flex items-center justify-between gap-3">
+                                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-medium border ${resistance.badgeClass}`}>
+                                                    {resistance.label}
                                                 </span>
-                                            ) : (
-                                                <button
-                                                    onClick={() => onSelectSwap(ex)}
-                                                    className="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 shadow-md bg-white hover:bg-zinc-200 text-black font-bold"
-                                                >
-                                                    <RotateCcw size={13} />
-                                                    <span>Seleccionar para Swap</span>
-                                                </button>
-                                            )}
+
+                                                {isCurrent ? (
+                                                    <span className="text-xs text-zinc-500 font-medium italic">
+                                                        Ejercicio actual
+                                                    </span>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => onSelectSwap(ex)}
+                                                        className="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 shadow-md bg-white hover:bg-zinc-200 text-black font-bold"
+                                                    >
+                                                        <RotateCcw size={13} />
+                                                        <span>Seleccionar para Swap</span>
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Botón Cargar Más para fluidez */}
+                            {candidates.length > displayLimit && (
+                                <div className="py-6 flex justify-center">
+                                    <button
+                                        onClick={() => setDisplayLimit(prev => prev + 48)}
+                                        className="px-6 py-2.5 rounded-full bg-white/[0.08] hover:bg-white text-white hover:text-black border border-white/20 hover:border-white font-semibold text-xs transition-all shadow-md active:scale-95"
+                                    >
+                                        Cargar 48 más (Mostrando {Math.min(displayLimit, candidates.length)} de {candidates.length})
+                                    </button>
+                                </div>
+                            )}
+                        </>
                     ) : (
                         <div className="p-12 text-center border border-dashed border-white/[0.08] rounded-3xl space-y-3 bg-[#121214]/40">
                             <p className="text-sm font-semibold text-zinc-300">

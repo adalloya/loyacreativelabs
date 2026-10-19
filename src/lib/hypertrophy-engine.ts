@@ -2,6 +2,9 @@
 // APEX HYPERTROPHY OS - CORE BIOMECHANICS & HYPERTROPHY ENGINE
 // ========================================================================
 
+import { ALL_FREE_EXERCISES } from "@/data/exerciseDatabase";
+import { convertRawToExerciseItem } from "./exercise-catalog";
+
 export type MuscleGroup =
     | "chest"
     | "lats"
@@ -38,6 +41,11 @@ export interface ExerciseItem {
     target_rir: number;
     github_id?: string;
     activation_pct?: number;
+    images?: string[];
+    instructions?: string[];
+    category?: string;
+    primaryMuscles?: string[];
+    rawEquipment?: string;
 }
 
 export interface PlateBreakdown {
@@ -55,903 +63,15 @@ export interface WarmupSet {
 }
 
 // ------------------------------------------------------------------------
-// 1. TIER S & A BIOMECHANICAL EXERCISE DATABASE
+// 1. DATASET COMPLETO (873+ EJERCICIOS EN VIVO DE GITHUB CON RESPALDO LOCAL)
 // ------------------------------------------------------------------------
-export const EXERCISE_DATABASE: ExerciseItem[] = [
-    // --- PECTORAL (CHEST) ---
-    {
-        id: "incline-dumbbell-press",
-        name: "Press Inclinado con Mancuernas (30°)",
-        primary_muscle: "chest",
-        anatomical_subdivision: "Haz Clavicular (Pecho Superior)",
-        secondary_muscles: ["delts", "triceps"],
-        equipment: "dumbbell",
-        movement_pattern: "incline_push",
-        resistance_profile: "lengthened_bias",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Banca a 30°. Codos a 45° del torso. Pausa de 1 segundo en máximo estiramiento profundo.",
-        default_sets: 3,
-        rep_range_min: 8,
-        rep_range_max: 10,
-        rest_seconds: 120,
-        target_rir: 1,
-        github_id: "Incline_Dumbbell_Press",
-        activation_pct: 94
-    },
-    {
-        id: "barbell-bench-press",
-        name: "Press de Banca Plano con Barra",
-        primary_muscle: "chest",
-        anatomical_subdivision: "Haz Esternocostal (Pecho Medio)",
-        secondary_muscles: ["triceps", "delts"],
-        equipment: "barbell",
-        movement_pattern: "horizontal_push",
-        resistance_profile: "mid_range_overload",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Retracción y depresión escapular. Barra toca esternón bajo. Concéntrica explosiva sin perder arco.",
-        default_sets: 3,
-        rep_range_min: 6,
-        rep_range_max: 8,
-        rest_seconds: 180,
-        target_rir: 2,
-        github_id: "Barbell_Bench_Press_-_Medium_Grip",
-        activation_pct: 91
-    },
-    {
-        id: "pec-deck-flye",
-        name: "Aperturas en Pec Deck / Máquina",
-        primary_muscle: "chest",
-        anatomical_subdivision: "Haz Esternal Completo",
-        secondary_muscles: [],
-        equipment: "machine",
-        movement_pattern: "isolation",
-        resistance_profile: "shortened_peak",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Pecho erguido. Aprieta codos hacia el centro sin empujar con los hombros.",
-        default_sets: 3,
-        rep_range_min: 10,
-        rep_range_max: 12,
-        rest_seconds: 90,
-        target_rir: 1,
-        github_id: "Butterfly",
-        activation_pct: 96
-    },
-    {
-        id: "convergent-chest-press",
-        name: "Cruces en Polea / Press Convergente",
-        primary_muscle: "chest",
-        anatomical_subdivision: "Pecho Medio / Inferior",
-        secondary_muscles: ["triceps"],
-        equipment: "cable",
-        movement_pattern: "horizontal_push",
-        resistance_profile: "lengthened_bias",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Alinea las empuñaduras a la línea media del pezón. Estabilidad biomecánica máxima.",
-        default_sets: 3,
-        rep_range_min: 8,
-        rep_range_max: 12,
-        rest_seconds: 90,
-        target_rir: 1,
-        github_id: "Cable_Chest_Press",
-        activation_pct: 89
-    },
-    {
-        id: "chest-dips",
-        name: "Fondos en Paralelas para Pecho",
-        primary_muscle: "chest",
-        anatomical_subdivision: "Pectoral Inferior y Tríceps",
-        secondary_muscles: ["triceps", "delts"],
-        equipment: "bodyweight",
-        movement_pattern: "vertical_push",
-        resistance_profile: "lengthened_bias",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Inclina el torso 30° hacia adelante. Desciende hasta 90° en los codos sintiendo el estiramiento pectoral.",
-        default_sets: 3,
-        rep_range_min: 8,
-        rep_range_max: 12,
-        rest_seconds: 120,
-        target_rir: 1,
-        github_id: "Dips_-_Chest_Version",
-        activation_pct: 92
-    },
-    {
-        id: "decline-barbell-bench-press",
-        name: "Press Declinado con Barra",
-        primary_muscle: "chest",
-        anatomical_subdivision: "Pectoral Inferior",
-        secondary_muscles: ["triceps"],
-        equipment: "barbell",
-        movement_pattern: "horizontal_push",
-        resistance_profile: "mid_range_overload",
-        hypertrophy_tier: "A",
-        biomechanical_cue: "Banca a 15-20° de declive. Menor estrés en el manguito rotador y mayor sobrecarga en el haz costal.",
-        default_sets: 3,
-        rep_range_min: 8,
-        rep_range_max: 10,
-        rest_seconds: 120,
-        target_rir: 1,
-        github_id: "Decline_Barbell_Bench_Press",
-        activation_pct: 88
-    },
+export let EXERCISE_DATABASE: ExerciseItem[] = ALL_FREE_EXERCISES.map(convertRawToExerciseItem);
 
-    // --- DORSAL (LATS) & ESPALDA ---
-    {
-        id: "lat-pulldown-neutral",
-        name: "Jalón al Pecho con Agarre Cerrado",
-        primary_muscle: "lats",
-        anatomical_subdivision: "Dorsal Ilíaco e Inferior",
-        secondary_muscles: ["biceps"],
-        equipment: "cable",
-        movement_pattern: "vertical_pull",
-        resistance_profile: "lengthened_bias",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Conduce el codo directo hacia la cadera. No arquees en exceso la columna baja.",
-        default_sets: 3,
-        rep_range_min: 8,
-        rep_range_max: 10,
-        rest_seconds: 90,
-        target_rir: 1,
-        github_id: "Close-Grip_Front_Lat_Pulldown",
-        activation_pct: 95
-    },
-    {
-        id: "bent-over-barbell-row",
-        name: "Remo Inclinado con Barra Prona",
-        primary_muscle: "lats",
-        anatomical_subdivision: "Dorsal Ancho & Espesor Espinal",
-        secondary_muscles: ["upper_back", "biceps"],
-        equipment: "barbell",
-        movement_pattern: "horizontal_pull",
-        resistance_profile: "mid_range_overload",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Torso a 45°. Tracciona llevando la barra hacia el ombligo manteniendo columna neutra.",
-        default_sets: 3,
-        rep_range_min: 6,
-        rep_range_max: 8,
-        rest_seconds: 120,
-        target_rir: 1,
-        github_id: "Bent_Over_Barbell_Row",
-        activation_pct: 94
-    },
-    {
-        id: "chest-supported-t-bar-row",
-        name: "Remo en T con Soporte al Pecho",
-        primary_muscle: "lats",
-        anatomical_subdivision: "Dorsal Ancho & Espesor",
-        secondary_muscles: ["biceps", "upper_back"],
-        equipment: "machine",
-        movement_pattern: "horizontal_pull",
-        resistance_profile: "mid_range_overload",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Cero balanceo lumbar gracias al cojín. Tracciona pegando los codos a las costillas.",
-        default_sets: 3,
-        rep_range_min: 8,
-        rep_range_max: 10,
-        rest_seconds: 120,
-        target_rir: 1,
-        github_id: "Lying_T-Bar_Row",
-        activation_pct: 93
-    },
-    {
-        id: "cable-pullover",
-        name: "Pullover en Polea Alta con Barra",
-        primary_muscle: "lats",
-        anatomical_subdivision: "Dorsal Ancho en Estiramiento",
-        secondary_muscles: ["triceps"],
-        equipment: "cable",
-        movement_pattern: "isolation",
-        resistance_profile: "lengthened_bias",
-        hypertrophy_tier: "A",
-        biomechanical_cue: "Brazos semi-rígidos. Imagina barrer el piso con las manos hasta tocar los muslos.",
-        default_sets: 3,
-        rep_range_min: 12,
-        rep_range_max: 15,
-        rest_seconds: 60,
-        target_rir: 0,
-        github_id: "Bent-Arm_Barbell_Pullover",
-        activation_pct: 90
-    },
-    {
-        id: "weighted-pull-ups",
-        name: "Dominadas con Lastre / Peso Corporal",
-        primary_muscle: "lats",
-        anatomical_subdivision: "Dorsal Ancho & Redondo Mayor",
-        secondary_muscles: ["biceps", "upper_back"],
-        equipment: "bodyweight",
-        movement_pattern: "vertical_pull",
-        resistance_profile: "lengthened_bias",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Tracción vertical completa con parada de 1s en la parte baja sin balanceo.",
-        default_sets: 3,
-        rep_range_min: 6,
-        rep_range_max: 8,
-        rest_seconds: 120,
-        target_rir: 1,
-        github_id: "Weighted_Pull_Ups",
-        activation_pct: 96
-    },
-    {
-        id: "one-arm-dumbbell-row",
-        name: "Remo Unilateral con Mancuerna",
-        primary_muscle: "lats",
-        anatomical_subdivision: "Dorsal Ancho Unilateral",
-        secondary_muscles: ["biceps", "upper_back"],
-        equipment: "dumbbell",
-        movement_pattern: "horizontal_pull",
-        resistance_profile: "lengthened_bias",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Lleva la mancuerna hacia la cadera en arco parabólico. Estiramiento completo abajo.",
-        default_sets: 3,
-        rep_range_min: 8,
-        rep_range_max: 12,
-        rest_seconds: 90,
-        target_rir: 1,
-        github_id: "One-Arm_Dumbbell_Row",
-        activation_pct: 93
-    },
-
-    // --- ESPALDA ALTA (UPPER BACK) ---
-    {
-        id: "wide-grip-cable-row",
-        name: "Remo Sentado en Polea Baja",
-        primary_muscle: "upper_back",
-        anatomical_subdivision: "Romboides y Trapecio Medio",
-        secondary_muscles: ["delts", "biceps"],
-        equipment: "cable",
-        movement_pattern: "horizontal_pull",
-        resistance_profile: "shortened_peak",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Codos abiertos a 70°. Retracción escapular pronunciada con pausa de 1s.",
-        default_sets: 3,
-        rep_range_min: 10,
-        rep_range_max: 12,
-        rest_seconds: 90,
-        target_rir: 1,
-        github_id: "Seated_Cable_Rows",
-        activation_pct: 92
-    },
-    {
-        id: "face-pull-cable",
-        name: "Face Pull en Polea con Cuerda",
-        primary_muscle: "upper_back",
-        anatomical_subdivision: "Manguito Rotador y Deltoides Posterior",
-        secondary_muscles: ["delts"],
-        equipment: "cable",
-        movement_pattern: "isolation",
-        resistance_profile: "shortened_peak",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Tira de la cuerda hacia los ojos mientras rotas externamente los hombros hacia atrás.",
-        default_sets: 3,
-        rep_range_min: 12,
-        rep_range_max: 15,
-        rest_seconds: 60,
-        target_rir: 1,
-        github_id: "Cable_Rope_Rear-Delt_Rows",
-        activation_pct: 88
-    },
-
-    // --- HOMBRO / DELTOIDES (DELTS) ---
-    {
-        id: "cable-lateral-raise",
-        name: "Elevaciones Laterales con Mancuerna",
-        primary_muscle: "delts",
-        anatomical_subdivision: "Deltoides Lateral (Ancho de Hombros)",
-        secondary_muscles: [],
-        equipment: "dumbbell",
-        movement_pattern: "isolation",
-        resistance_profile: "lengthened_bias",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Lanza las mancuernas hacia las esquinas del cuarto en el plano escapular.",
-        default_sets: 4,
-        rep_range_min: 12,
-        rep_range_max: 15,
-        rest_seconds: 60,
-        target_rir: 0,
-        github_id: "Side_Lateral_Raise",
-        activation_pct: 97
-    },
-    {
-        id: "seated-dumbbell-shoulder-press",
-        name: "Press Militar con Barra de Pie",
-        primary_muscle: "delts",
-        anatomical_subdivision: "Deltoides Anterior y Tríceps",
-        secondary_muscles: ["triceps"],
-        equipment: "barbell",
-        movement_pattern: "incline_push",
-        resistance_profile: "mid_range_overload",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Glúteos y abdomen apretados. Empuja vertical sin arquear la zona lumbar.",
-        default_sets: 3,
-        rep_range_min: 6,
-        rep_range_max: 8,
-        rest_seconds: 120,
-        target_rir: 1,
-        github_id: "Barbell_Shoulder_Press",
-        activation_pct: 91
-    },
-    {
-        id: "seated-dumbbell-press",
-        name: "Press Militar Sentado con Mancuernas",
-        primary_muscle: "delts",
-        anatomical_subdivision: "Deltoides Anterior",
-        secondary_muscles: ["triceps"],
-        equipment: "dumbbell",
-        movement_pattern: "incline_push",
-        resistance_profile: "mid_range_overload",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Banca a 75°. Rango completo de movimiento tocando suavemente la altura de la barbilla.",
-        default_sets: 3,
-        rep_range_min: 8,
-        rep_range_max: 10,
-        rest_seconds: 90,
-        target_rir: 1,
-        github_id: "Dumbbell_Shoulder_Press",
-        activation_pct: 90
-    },
-    {
-        id: "rear-delt-flye-cable",
-        name: "Cruces en Polea para Deltoides Posterior",
-        primary_muscle: "delts",
-        anatomical_subdivision: "Deltoides Posterior",
-        secondary_muscles: ["upper_back"],
-        equipment: "cable",
-        movement_pattern: "isolation",
-        resistance_profile: "shortened_peak",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Abre en abanico sin doblar los codos manteniendo la tensión en el hombro posterior.",
-        default_sets: 3,
-        rep_range_min: 12,
-        rep_range_max: 15,
-        rest_seconds: 60,
-        target_rir: 0,
-        github_id: "Cable_Rear_Delt_Fly",
-        activation_pct: 94
-    },
-    {
-        id: "rear-delt-dumbbell-flye",
-        name: "Pájaros Posteriores con Mancuerna",
-        primary_muscle: "delts",
-        anatomical_subdivision: "Deltoides Posterior & Trapecio",
-        secondary_muscles: ["upper_back"],
-        equipment: "dumbbell",
-        movement_pattern: "isolation",
-        resistance_profile: "mid_range_overload",
-        hypertrophy_tier: "A",
-        biomechanical_cue: "Torso paralelo al suelo. Eleva los codos hacia afuera con control excéntrico.",
-        default_sets: 3,
-        rep_range_min: 12,
-        rep_range_max: 15,
-        rest_seconds: 60,
-        target_rir: 0,
-        github_id: "Dumbbell_Lying_Rear_Lateral_Raise",
-        activation_pct: 90
-    },
-
-    // --- CUÁDRICEPS (QUADS) ---
-    {
-        id: "barbell-back-squat",
-        name: "Sentadilla Libre Trasera con Barra",
-        primary_muscle: "quads",
-        anatomical_subdivision: "Complejo Cuadricipital & Cadera",
-        secondary_muscles: ["glutes", "hamstrings"],
-        equipment: "barbell",
-        movement_pattern: "knee_dominant",
-        resistance_profile: "lengthened_bias",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Profundidad rompiendo el paralelo. Empuja el piso con todo el pie sin levantar talones.",
-        default_sets: 3,
-        rep_range_min: 6,
-        rep_range_max: 8,
-        rest_seconds: 180,
-        target_rir: 2,
-        github_id: "Barbell_Full_Squat",
-        activation_pct: 95
-    },
-    {
-        id: "leg-press-45",
-        name: "Prensa de Piernas a 45°",
-        primary_muscle: "quads",
-        anatomical_subdivision: "Vasto Lateral y Medial",
-        secondary_muscles: ["glutes"],
-        equipment: "machine",
-        movement_pattern: "knee_dominant",
-        resistance_profile: "mid_range_overload",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "No bloquees las rodillas al subir. Mantén la pelvis pegada al respaldo.",
-        default_sets: 3,
-        rep_range_min: 10,
-        rep_range_max: 12,
-        rest_seconds: 120,
-        target_rir: 1,
-        github_id: "Leg_Press",
-        activation_pct: 92
-    },
-    {
-        id: "hack-squat-machine",
-        name: "Sentadilla Hack con Barra / Máquina",
-        primary_muscle: "quads",
-        anatomical_subdivision: "Vasto Lateral y Recto Femoral",
-        secondary_muscles: ["glutes"],
-        equipment: "machine",
-        movement_pattern: "knee_dominant",
-        resistance_profile: "lengthened_bias",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Flexiona rodillas al máximo permitiendo avance de rodilla controlado para estiramiento cuadricipital.",
-        default_sets: 3,
-        rep_range_min: 8,
-        rep_range_max: 10,
-        rest_seconds: 150,
-        target_rir: 1,
-        github_id: "Barbell_Hack_Squat",
-        activation_pct: 96
-    },
-    {
-        id: "leg-extension-machine",
-        name: "Extensión de Cuádriceps en Máquina",
-        primary_muscle: "quads",
-        anatomical_subdivision: "Recto Femoral en Acortamiento",
-        secondary_muscles: [],
-        equipment: "machine",
-        movement_pattern: "isolation",
-        resistance_profile: "shortened_peak",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Agarra con fuerza las asas laterales para fijar la cadera al asiento. Pausa de 1s arriba.",
-        default_sets: 3,
-        rep_range_min: 12,
-        rep_range_max: 15,
-        rest_seconds: 75,
-        target_rir: 0,
-        github_id: "Leg_Extensions",
-        activation_pct: 98
-    },
-    {
-        id: "dumbbell-walking-lunges",
-        name: "Zancadas / Desplantes con Mancuernas",
-        primary_muscle: "quads",
-        anatomical_subdivision: "Cuádriceps, Glúteo & Aductores",
-        secondary_muscles: ["glutes"],
-        equipment: "dumbbell",
-        movement_pattern: "knee_dominant",
-        resistance_profile: "lengthened_bias",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Paso largo manteniendo torso ligeramente inclinado al frente para sobrecarga de cadera y rodilla.",
-        default_sets: 3,
-        rep_range_min: 10,
-        rep_range_max: 12,
-        rest_seconds: 90,
-        target_rir: 1,
-        github_id: "Dumbbell_Lunges",
-        activation_pct: 91
-    },
-
-    // --- ISQUIOTIBIALES & GLÚTEOS (HAMSTRINGS / GLUTES) ---
-    {
-        id: "romanian-deadlift-barbell",
-        name: "Peso Muerto Rumano con Barra (RDL)",
-        primary_muscle: "hamstrings",
-        anatomical_subdivision: "Cadena Posterior & Bíceps Femoral",
-        secondary_muscles: ["glutes", "upper_back"],
-        equipment: "barbell",
-        movement_pattern: "hip_hinge",
-        resistance_profile: "lengthened_bias",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Empuja la cadera hacia atrás con rodillas semi-rígidas. Siente la tensión profunda en los isquios.",
-        default_sets: 3,
-        rep_range_min: 8,
-        rep_range_max: 10,
-        rest_seconds: 120,
-        target_rir: 2,
-        github_id: "Romanian_Deadlift",
-        activation_pct: 96
-    },
-    {
-        id: "lying-leg-curl-machine",
-        name: "Curl Femoral Tumbado en Máquina",
-        primary_muscle: "hamstrings",
-        anatomical_subdivision: "Bíceps Femoral y Semitendinoso",
-        secondary_muscles: [],
-        equipment: "machine",
-        movement_pattern: "isolation",
-        resistance_profile: "mid_range_overload",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Mantén la cadera firmemente apoyada en el cojín sin arquear la zona lumbar al flexionar rodillas.",
-        default_sets: 3,
-        rep_range_min: 10,
-        rep_range_max: 12,
-        rest_seconds: 90,
-        target_rir: 0,
-        github_id: "Lying_Leg_Curls",
-        activation_pct: 93
-    },
-    {
-        id: "seated-leg-curl",
-        name: "Curl Femoral Sentado en Máquina",
-        primary_muscle: "hamstrings",
-        anatomical_subdivision: "Isquiotibiales en Estiramiento de Cadera",
-        secondary_muscles: [],
-        equipment: "machine",
-        movement_pattern: "isolation",
-        resistance_profile: "lengthened_bias",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Inclina el torso ligeramente al frente para estirar el origen isquiático.",
-        default_sets: 3,
-        rep_range_min: 10,
-        rep_range_max: 12,
-        rest_seconds: 90,
-        target_rir: 0,
-        github_id: "Seated_Leg_Curl",
-        activation_pct: 97
-    },
-    {
-        id: "barbell-deadlift",
-        name: "Peso Muerto Convencional con Barra",
-        primary_muscle: "hamstrings",
-        anatomical_subdivision: "Cadena Posterior Total & Erectores",
-        secondary_muscles: ["glutes", "upper_back", "quads"],
-        equipment: "barbell",
-        movement_pattern: "hip_hinge",
-        resistance_profile: "mid_range_overload",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Empuja el suelo con las piernas antes de extender la cadera. Bloqueo neutro sin hiperextensión.",
-        default_sets: 3,
-        rep_range_min: 5,
-        rep_range_max: 6,
-        rest_seconds: 180,
-        target_rir: 2,
-        github_id: "Barbell_Deadlift",
-        activation_pct: 95
-    },
-    {
-        id: "barbell-hip-thrust",
-        name: "Hip Thrust con Barra / Puente de Glúteos",
-        primary_muscle: "glutes",
-        anatomical_subdivision: "Glúteo Mayor (Máxima Contracción)",
-        secondary_muscles: ["hamstrings"],
-        equipment: "barbell",
-        movement_pattern: "hip_hinge",
-        resistance_profile: "shortened_peak",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Mentón pegado al pecho. Retroversión pélvica arriba con bloqueo de 1 segundo.",
-        default_sets: 3,
-        rep_range_min: 8,
-        rep_range_max: 12,
-        rest_seconds: 120,
-        target_rir: 1,
-        github_id: "Barbell_Glute_Bridge",
-        activation_pct: 96
-    },
-
-    // --- BÍCEPS (BICEPS) ---
-    {
-        id: "dumbbell-bicep-curl",
-        name: "Curl de Bíceps con Mancuernas Supino",
-        primary_muscle: "biceps",
-        anatomical_subdivision: "Cabeza Corta y Larga",
-        secondary_muscles: [],
-        equipment: "dumbbell",
-        movement_pattern: "isolation",
-        resistance_profile: "mid_range_overload",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Supina la muñeca activamente en el punto medio del ascenso. Codos pegados a los costados.",
-        default_sets: 3,
-        rep_range_min: 10,
-        rep_range_max: 12,
-        rest_seconds: 75,
-        target_rir: 1,
-        github_id: "Dumbbell_Bicep_Curl",
-        activation_pct: 92
-    },
-    {
-        id: "barbell-curl",
-        name: "Curl de Bíceps con Barra Recta",
-        primary_muscle: "biceps",
-        anatomical_subdivision: "Masa Completa del Bíceps",
-        secondary_muscles: [],
-        equipment: "barbell",
-        movement_pattern: "isolation",
-        resistance_profile: "mid_range_overload",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Agarre al ancho de hombros. Evita balanceo del torso; controla la bajada en 3 segundos.",
-        default_sets: 3,
-        rep_range_min: 8,
-        rep_range_max: 10,
-        rest_seconds: 90,
-        target_rir: 1,
-        github_id: "Barbell_Curl",
-        activation_pct: 94
-    },
-    {
-        id: "alternate-hammer-curl",
-        name: "Curl Martillo Alterno con Mancuerna",
-        primary_muscle: "biceps",
-        anatomical_subdivision: "Braquial Anterior & Braquiorradial",
-        secondary_muscles: [],
-        equipment: "dumbbell",
-        movement_pattern: "isolation",
-        resistance_profile: "mid_range_overload",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Agarre neutro (palmas enfrentadas). Aumenta el grosor transversal del brazo.",
-        default_sets: 3,
-        rep_range_min: 10,
-        rep_range_max: 12,
-        rest_seconds: 60,
-        target_rir: 1,
-        github_id: "Alternate_Hammer_Curl",
-        activation_pct: 91
-    },
-    {
-        id: "preacher-curl-machine",
-        name: "Curl en Banco Predicador / Scott",
-        primary_muscle: "biceps",
-        anatomical_subdivision: "Cabeza Corta (Pico y Densidad)",
-        secondary_muscles: [],
-        equipment: "machine",
-        movement_pattern: "isolation",
-        resistance_profile: "shortened_peak",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Brazos fijos en el soporte inclinado. Contracción concéntrica controlada sin despegue de codos.",
-        default_sets: 3,
-        rep_range_min: 10,
-        rep_range_max: 12,
-        rest_seconds: 75,
-        target_rir: 0,
-        github_id: "Preacher_Curl",
-        activation_pct: 95
-    },
-    {
-        id: "incline-dumbbell-curl",
-        name: "Curl Inclinado con Mancuernas (45°)",
-        primary_muscle: "biceps",
-        anatomical_subdivision: "Cabeza Larga en Máximo Estiramiento",
-        secondary_muscles: [],
-        equipment: "dumbbell",
-        movement_pattern: "isolation",
-        resistance_profile: "lengthened_bias",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "El codo queda detrás del cuerpo todo el tiempo. Tensión máxima en estiramiento fascial.",
-        default_sets: 3,
-        rep_range_min: 10,
-        rep_range_max: 12,
-        rest_seconds: 75,
-        target_rir: 0,
-        github_id: "Alternate_Incline_Dumbbell_Curl",
-        activation_pct: 93
-    },
-
-    // --- TRÍCEPS (TRICEPS) ---
-    {
-        id: "triceps-pushdown",
-        name: "Extensión de Tríceps en Polea",
-        primary_muscle: "triceps",
-        anatomical_subdivision: "Cabeza Lateral y Medial",
-        secondary_muscles: [],
-        equipment: "cable",
-        movement_pattern: "isolation",
-        resistance_profile: "shortened_peak",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Codos inmóviles pegados al torso. Bloqueo articular completo abajo con separación activa.",
-        default_sets: 3,
-        rep_range_min: 10,
-        rep_range_max: 12,
-        rest_seconds: 60,
-        target_rir: 0,
-        github_id: "Triceps_Pushdown",
-        activation_pct: 94
-    },
-    {
-        id: "lying-triceps-press-skull-crusher",
-        name: "Press Francés con Barra EZ (Skull Crusher)",
-        primary_muscle: "triceps",
-        anatomical_subdivision: "Cabeza Larga y Medial",
-        secondary_muscles: [],
-        equipment: "barbell",
-        movement_pattern: "isolation",
-        resistance_profile: "lengthened_bias",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Baja la barra hacia la coronilla o detrás de la cabeza para maximizar el estiramiento de la cabeza larga.",
-        default_sets: 3,
-        rep_range_min: 8,
-        rep_range_max: 10,
-        rest_seconds: 90,
-        target_rir: 1,
-        github_id: "Lying_Triceps_Press",
-        activation_pct: 95
-    },
-    {
-        id: "bench-dips",
-        name: "Fondos en Banco para Tríceps",
-        primary_muscle: "triceps",
-        anatomical_subdivision: "Tríceps Completo",
-        secondary_muscles: ["chest", "delts"],
-        equipment: "bodyweight",
-        movement_pattern: "vertical_push",
-        resistance_profile: "mid_range_overload",
-        hypertrophy_tier: "A",
-        biomechanical_cue: "Espalda pegada al borde del banco. Descenso hasta 90 grados y extensión rápida de codos.",
-        default_sets: 3,
-        rep_range_min: 10,
-        rep_range_max: 15,
-        rest_seconds: 60,
-        target_rir: 1,
-        github_id: "Bench_Dips",
-        activation_pct: 89
-    },
-    {
-        id: "overhead-cable-triceps-extension",
-        name: "Extensión de Tríceps Sobre la Cabeza en Polea",
-        primary_muscle: "triceps",
-        anatomical_subdivision: "Cabeza Larga del Tríceps",
-        secondary_muscles: [],
-        equipment: "cable",
-        movement_pattern: "isolation",
-        resistance_profile: "lengthened_bias",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Hombro en flexión total. Extiende los codos permitiendo estiramiento completo detrás de la nuca.",
-        default_sets: 3,
-        rep_range_min: 10,
-        rep_range_max: 12,
-        rest_seconds: 75,
-        target_rir: 0,
-        github_id: "Cable_Incline_Triceps_Extension",
-        activation_pct: 96
-    },
-    {
-        id: "dumbbell-tricep-kickback-overhead",
-        name: "Extensión Copa de Tríceps con Mancuerna",
-        primary_muscle: "triceps",
-        anatomical_subdivision: "Cabeza Larga del Tríceps",
-        secondary_muscles: [],
-        equipment: "dumbbell",
-        movement_pattern: "isolation",
-        resistance_profile: "lengthened_bias",
-        hypertrophy_tier: "A",
-        biomechanical_cue: "Sujeta la mancuerna con ambas manos tras la cabeza. Rango profundo vertical.",
-        default_sets: 3,
-        rep_range_min: 10,
-        rep_range_max: 12,
-        rest_seconds: 75,
-        target_rir: 1,
-        github_id: "Lying_Dumbbell_Tricep_Extension",
-        activation_pct: 88
-    },
-
-    // --- PANTORRILLAS (CALVES) ---
-    {
-        id: "standing-calf-raise-machine",
-        name: "Elevación de Talones de Pie",
-        primary_muscle: "calves",
-        anatomical_subdivision: "Gastrocnemio (Gemelos)",
-        secondary_muscles: [],
-        equipment: "machine",
-        movement_pattern: "isolation",
-        resistance_profile: "lengthened_bias",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Rodillas completamente estiradas. PAUSA DE 2 SEGUNDOS en el fondo para eliminar rebote del tendón.",
-        default_sets: 4,
-        rep_range_min: 10,
-        rep_range_max: 12,
-        rest_seconds: 90,
-        target_rir: 0,
-        github_id: "Standing_Calf_Raises",
-        activation_pct: 94
-    },
-    {
-        id: "seated-calf-raise-machine",
-        name: "Elevación de Talones Sentado (Sóleo)",
-        primary_muscle: "calves",
-        anatomical_subdivision: "Sóleo",
-        secondary_muscles: [],
-        equipment: "machine",
-        movement_pattern: "isolation",
-        resistance_profile: "mid_range_overload",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Rodillas a 90°. El sóleo asume el 85% de la carga con la rodilla flexionada.",
-        default_sets: 4,
-        rep_range_min: 12,
-        rep_range_max: 15,
-        rest_seconds: 75,
-        target_rir: 0,
-        github_id: "Barbell_Seated_Calf_Raise",
-        activation_pct: 92
-    },
-
-    // --- CORE / ABDOMEN ---
-    {
-        id: "ab-crunch-machine",
-        name: "Crunch Abdominal con Carga en Máquina",
-        primary_muscle: "core",
-        anatomical_subdivision: "Recto Abdominal Superior",
-        secondary_muscles: [],
-        equipment: "machine",
-        movement_pattern: "isolation",
-        resistance_profile: "shortened_peak",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Flexiona el torso enrollando las costillas hacia la pelvis. Exhalación completa al cerrar.",
-        default_sets: 3,
-        rep_range_min: 12,
-        rep_range_max: 15,
-        rest_seconds: 60,
-        target_rir: 1,
-        github_id: "Ab_Crunch_Machine",
-        activation_pct: 95
-    },
-    {
-        id: "hanging-leg-raise",
-        name: "Elevación de Piernas Colgado",
-        primary_muscle: "core",
-        anatomical_subdivision: "Recto Abdominal Inferior",
-        secondary_muscles: [],
-        equipment: "bodyweight",
-        movement_pattern: "isolation",
-        resistance_profile: "lengthened_bias",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "No te balances. Lleva las rodillas o pies hacia el pecho contrayendo el abdomen.",
-        default_sets: 3,
-        rep_range_min: 10,
-        rep_range_max: 15,
-        rest_seconds: 60,
-        target_rir: 1,
-        github_id: "Hanging_Leg_Raise",
-        activation_pct: 94
-    },
-    {
-        id: "cable-woodchopper-or-crunch",
-        name: "Crunch en Polea Alta Arrodillado",
-        primary_muscle: "core",
-        anatomical_subdivision: "Recto Abdominal con Sobrecarga",
-        secondary_muscles: [],
-        equipment: "cable",
-        movement_pattern: "isolation",
-        resistance_profile: "shortened_peak",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "No flexiones la cadera; flexiona la columna enrollando el pecho hacia la pelvis.",
-        default_sets: 3,
-        rep_range_min: 12,
-        rep_range_max: 15,
-        rest_seconds: 60,
-        target_rir: 1,
-        github_id: "Cable_Crunch",
-        activation_pct: 92
-    },
-    {
-        id: "ab-roller",
-        name: "Rueda Abdominal / Ab Roller",
-        primary_muscle: "core",
-        anatomical_subdivision: "Pared Abdominal & Anti-Extensión",
-        secondary_muscles: [],
-        equipment: "other" as any,
-        movement_pattern: "isolation",
-        resistance_profile: "lengthened_bias",
-        hypertrophy_tier: "S",
-        biomechanical_cue: "Mantén la pelvis en retroversión. Rueda hacia adelante hasta el estiramiento máximo controlado.",
-        default_sets: 3,
-        rep_range_min: 8,
-        rep_range_max: 12,
-        rest_seconds: 75,
-        target_rir: 1,
-        github_id: "Ab_Roller",
-        activation_pct: 97
-    },
-    {
-        id: "plank",
-        name: "Plancha Abdominal Isométrica",
-        primary_muscle: "core",
-        anatomical_subdivision: "Transverso Abdominal & Estabilidad",
-        secondary_muscles: [],
-        equipment: "bodyweight",
-        movement_pattern: "isolation",
-        resistance_profile: "mid_range_overload",
-        hypertrophy_tier: "A",
-        biomechanical_cue: "Aprieta glúteos y cuádriceps. Línea recta perfecta desde los talones hasta la cabeza.",
-        default_sets: 3,
-        rep_range_min: 45,
-        rep_range_max: 60,
-        rest_seconds: 60,
-        target_rir: 1,
-        github_id: "Plank",
-        activation_pct: 88
+export function updateExerciseDatabase(newCatalog: ExerciseItem[]): void {
+    if (newCatalog && newCatalog.length >= 800) {
+        EXERCISE_DATABASE = newCatalog;
     }
-];
+}
 
 // ------------------------------------------------------------------------
 // 2. CALCULADORA DE DISCOS POR LADO (ESTÁNDAR OLÍMPICO 20 KG)
@@ -1079,14 +199,26 @@ export function calculateTodayTarget(
 // ------------------------------------------------------------------------
 // 5. SWAP SELECTOR (BUSCADOR DE EQUIVALENCIAS BIOMECÁNICAS)
 // ------------------------------------------------------------------------
-export function findBiomechanicalSwaps(currentExerciseId: string): ExerciseItem[] {
-    const current = EXERCISE_DATABASE.find(e => e.id === currentExerciseId);
+export function findBiomechanicalSwaps(
+    currentExerciseId: string,
+    catalog: ExerciseItem[] = EXERCISE_DATABASE
+): ExerciseItem[] {
+    const activeCatalog = catalog && catalog.length > 0 ? catalog : EXERCISE_DATABASE;
+    const current = activeCatalog.find(e => e.id === currentExerciseId);
     if (!current) return [];
 
-    return EXERCISE_DATABASE.filter(
-        e => e.id !== current.id &&
-            (e.primary_muscle === current.primary_muscle || e.movement_pattern === current.movement_pattern)
+    const currentPrimary = (current.primaryMuscles && current.primaryMuscles[0]) || current.primary_muscle;
+
+    const matches = activeCatalog.filter(
+        e => e.id !== current.id && (
+            (e.primaryMuscles && e.primaryMuscles.includes(currentPrimary)) ||
+            e.primary_muscle === current.primary_muscle ||
+            (e.movement_pattern && e.movement_pattern === current.movement_pattern)
+        )
     );
+
+    if (matches.length > 0) return matches;
+    return activeCatalog.filter(e => e.id !== current.id);
 }
 
 // ------------------------------------------------------------------------
@@ -1252,144 +384,186 @@ export function calculateCardioTelemetry(
     return { distanceKm, caloriesBurned };
 }
 
+interface DaySplitRule {
+    dayNumber: number;
+    title: string;
+    focus: string;
+    targetMuscles: string[];
+    excludeDays?: number[];
+    muscleSequence: string[];
+}
+
+const FIVE_DAY_SPLIT_RULES: DaySplitRule[] = [
+    {
+        dayNumber: 1,
+        title: "Día 1: Empuje (Push)",
+        focus: "Pectoral, Deltoides Anterior/Lateral & Tríceps",
+        targetMuscles: ["chest", "shoulders", "triceps"],
+        muscleSequence: ["chest", "chest", "shoulders", "triceps", "shoulders", "triceps", "chest"]
+    },
+    {
+        dayNumber: 2,
+        title: "Día 2: Tracción (Pull)",
+        focus: "Dorsales, Espalda Media/Baja, Trapecios & Bíceps",
+        targetMuscles: ["lats", "middle back", "lower back", "biceps", "traps"],
+        muscleSequence: ["lats", "middle back", "biceps", "traps", "lower back", "biceps", "lats"]
+    },
+    {
+        dayNumber: 3,
+        title: "Día 3: Pierna (Quad Focus)",
+        focus: "Cuádriceps, Pantorrillas & Abdominales",
+        targetMuscles: ["quadriceps", "calves", "abdominals"],
+        muscleSequence: ["quadriceps", "quadriceps", "calves", "abdominals", "quadriceps", "abdominals", "calves"]
+    },
+    {
+        dayNumber: 4,
+        title: "Día 4: Torso Superior (Upper / Hypertrophy)",
+        focus: "Hombros, Pectoral, Dorsales & Brazos (Sin repetición D1/D2)",
+        targetMuscles: ["shoulders", "chest", "lats", "biceps", "triceps"],
+        excludeDays: [1, 2],
+        muscleSequence: ["shoulders", "chest", "lats", "triceps", "biceps", "shoulders", "chest"]
+    },
+    {
+        dayNumber: 5,
+        title: "Día 5: Cadena Posterior (Posterior Chain)",
+        focus: "Isquiosurales, Glúteos, Espalda Baja & Pantorrillas (Sin repetición D3)",
+        targetMuscles: ["hamstrings", "glutes", "lower back", "calves"],
+        excludeDays: [3],
+        muscleSequence: ["hamstrings", "glutes", "lower back", "calves", "hamstrings", "glutes", "calves"]
+    },
+    {
+        dayNumber: 6,
+        title: "Día 6: Brazos & Hombros (Hypertrophy Booster)",
+        focus: "Aislamiento de Bíceps, Tríceps & Deltoides Lateral",
+        targetMuscles: ["biceps", "triceps", "shoulders", "forearms"],
+        excludeDays: [1, 2, 4],
+        muscleSequence: ["biceps", "triceps", "shoulders", "biceps", "triceps", "shoulders", "forearms"]
+    },
+    {
+        dayNumber: 7,
+        title: "Día 7: Acondicionamiento & Core (Full Body Reset)",
+        focus: "Core, Movilidad Articular & Resistencia Muscular",
+        targetMuscles: ["abdominals", "quadriceps", "hamstrings", "chest", "lats"],
+        excludeDays: [],
+        muscleSequence: ["abdominals", "quadriceps", "hamstrings", "lats", "abdominals", "chest", "calves"]
+    }
+];
+
+export function exerciseMatchesEnvironment(
+    item: ExerciseItem,
+    env: "full_gym" | "hotel_gym" | "bodyweight" = "full_gym"
+): boolean {
+    if (env === "full_gym") return true;
+    const eq = (item.equipment || "").toLowerCase();
+    const raw = (item.rawEquipment || "").toLowerCase();
+
+    if (env === "hotel_gym") {
+        return (
+            eq === "dumbbell" ||
+            eq === "cable" ||
+            eq === "bodyweight" ||
+            raw === "dumbbell" ||
+            raw === "cable" ||
+            raw === "bodyweight" ||
+            raw === "bands" ||
+            raw === "other"
+        );
+    }
+
+    if (env === "bodyweight") {
+        return eq === "bodyweight" || raw === "bodyweight" || raw === "none" || !item.equipment;
+    }
+
+    return true;
+}
+
 export function generateWeeklyProgram(
-    daysPerWeek: number = 4,
+    daysPerWeek: number = 5,
     sessionDurationMins: number = 60,
-    preferredCardio: string = "incline_treadmill"
+    preferredCardio: string = "incline_treadmill",
+    environment: "full_gym" | "hotel_gym" | "bodyweight" = "full_gym",
+    catalog: ExerciseItem[] = EXERCISE_DATABASE
 ): RoutineDay[] {
+    const activeCatalog = catalog && catalog.length >= 800 ? catalog : EXERCISE_DATABASE;
     const cardioConfig = CARDIO_PROTOCOLS[preferredCardio as CardioType] || CARDIO_PROTOCOLS.incline_treadmill;
     const cardioDuration = cardioConfig.defaultMinutes;
 
-    // Helper para buscar ejercicios garantizados por ID
-    const getEx = (id: string): ExerciseItem => {
-        const found = EXERCISE_DATABASE.find(e => e.id === id);
-        if (!found) {
-            // Fallback al primer ejercicio si no se encuentra
-            return EXERCISE_DATABASE[0];
-        }
-        return found;
-    };
-
-    // Plan Maestro de 7 Días con CERO ejercicios repetidos
-    const masterDailyTemplates = [
-        {
-            title: "Día 1: Empuje A (Pectoral Superior, Tríceps & Deltoides Lateral)",
-            focus: "Sobrecarga Progresiva en Banco & Estabilidad Glenohumeral",
-            primaryExerciseIds: [
-                "incline-dumbbell-press",
-                "barbell-bench-press",
-                "cable-lateral-raise",
-                "triceps-pushdown",
-                "chest-dips",
-                "ab-crunch-machine"
-            ],
-            bonus90MinExerciseId: "decline-barbell-bench-press"
-        },
-        {
-            title: "Día 2: Tracción A (Dorsales, Espalda Alta & Flexores de Codo)",
-            focus: "Amplitud Dorsal en Plano Sagital & Densidad Escapular",
-            primaryExerciseIds: [
-                "lat-pulldown-neutral",
-                "bent-over-barbell-row",
-                "wide-grip-cable-row",
-                "dumbbell-bicep-curl",
-                "face-pull-cable",
-                "alternate-hammer-curl"
-            ],
-            bonus90MinExerciseId: "cable-pullover"
-        },
-        {
-            title: "Día 3: Pierna A (Cuádriceps Dominante & Pantorrillas)",
-            focus: "Profundidad de Sentadilla & Tensión Mecánica en Extensión",
-            primaryExerciseIds: [
-                "barbell-back-squat",
-                "leg-press-45",
-                "leg-extension-machine",
-                "dumbbell-walking-lunges",
-                "standing-calf-raise-machine",
-                "hanging-leg-raise"
-            ],
-            bonus90MinExerciseId: "plank"
-        },
-        {
-            title: "Día 4: Empuje B (Hombro Fuerza, Pectoral Aislado & Cabeza Larga)",
-            focus: "Pico de Tensión en Longitud Muscular & Press Militar",
-            primaryExerciseIds: [
-                "seated-dumbbell-shoulder-press",
-                "pec-deck-flye",
-                "convergent-chest-press",
-                "lying-triceps-press-skull-crusher",
-                "overhead-cable-triceps-extension",
-                "cable-woodchopper-or-crunch"
-            ],
-            bonus90MinExerciseId: "dumbbell-tricep-kickback-overhead"
-        },
-        {
-            title: "Día 5: Tracción B (Cadena Posterior, Remo con Apoyo & Bíceps Braquial)",
-            focus: "Bisagra de Cadera Pesada & Tracciones Horizontales Estables",
-            primaryExerciseIds: [
-                "barbell-deadlift",
-                "chest-supported-t-bar-row",
-                "weighted-pull-ups",
-                "romanian-deadlift-barbell",
-                "preacher-curl-machine",
-                "rear-delt-flye-cable"
-            ],
-            bonus90MinExerciseId: "rear-delt-dumbbell-flye"
-        },
-        {
-            title: "Día 6: Piernas B & Brazos Hipertrofia (Isquiosurales, Glúteos & Brazos)",
-            focus: "Flexión de Rodilla Aislada, Hip Thrust & Superconjuntos de Brazos",
-            primaryExerciseIds: [
-                "hack-squat-machine",
-                "lying-leg-curl-machine",
-                "barbell-hip-thrust",
-                "barbell-curl",
-                "bench-dips",
-                "seated-calf-raise-machine"
-            ],
-            bonus90MinExerciseId: "incline-dumbbell-curl"
-        },
-        {
-            title: "Día 7: Rebalance Metabólico & Deltoides Posterior (Atleta Élite)",
-            focus: "Aislamiento en Estiramiento Máximo, Vasto Lateral & Anti-Extensión Core",
-            primaryExerciseIds: [
-                "seated-leg-curl",
-                "one-arm-dumbbell-row",
-                "seated-dumbbell-press",
-                "cable-pullover",
-                "incline-dumbbell-curl",
-                "ab-roller"
-            ],
-            bonus90MinExerciseId: "plank"
-        }
-    ];
+    let targetExerciseCount = 6;
+    if (sessionDurationMins <= 45) {
+        targetExerciseCount = 4;
+    } else if (sessionDurationMins >= 90) {
+        targetExerciseCount = 7;
+    }
 
     const totalDays = Math.min(7, Math.max(2, daysPerWeek));
     const days: RoutineDay[] = [];
+    const usedIdsOverall = new Set<string>();
+    const dayExerciseMap: Record<number, string[]> = {};
 
-    for (let i = 0; i < totalDays; i++) {
-        const template = masterDailyTemplates[i];
-        let pickedExercises: ExerciseItem[] = template.primaryExerciseIds.map(getEx);
+    for (let dayIdx = 0; dayIdx < totalDays; dayIdx++) {
+        const rule = FIVE_DAY_SPLIT_RULES[dayIdx] || FIVE_DAY_SPLIT_RULES[0];
+        dayExerciseMap[rule.dayNumber] = [];
 
-        // Ajuste inteligente según tiempo de sesión
-        if (sessionDurationMins <= 45) {
-            // Primeros 4 ejercicios compuestos clave
-            pickedExercises = pickedExercises.slice(0, 4);
-        } else if (sessionDurationMins >= 90 && template.bonus90MinExerciseId) {
-            // Añadir ejercicio de volumen adicional de alta hipertrofia
-            const bonusEx = getEx(template.bonus90MinExerciseId);
-            if (bonusEx && !pickedExercises.some(e => e.id === bonusEx.id)) {
-                pickedExercises.push(bonusEx);
+        // Excluir IDs usados en días clave (ej. D4 excluye D1 y D2; D5 excluye D3)
+        const specificExcludedIds = new Set<string>();
+        if (rule.excludeDays && rule.excludeDays.length > 0) {
+            rule.excludeDays.forEach(d => {
+                (dayExerciseMap[d] || []).forEach(id => specificExcludedIds.add(id));
+            });
+        }
+
+        // Filtramos candidatos según targetMuscles
+        const candidates = activeCatalog.filter(ex => {
+            const pMuscles = (ex.primaryMuscles || [ex.primary_muscle]).map(m => m.toLowerCase());
+            const hasTargetMuscle = pMuscles.some(m => rule.targetMuscles.includes(m));
+            return hasTargetMuscle && !specificExcludedIds.has(ex.id) && !usedIdsOverall.has(ex.id);
+        });
+
+        // Aplicamos filtro de entorno
+        const envCandidates = candidates.filter(ex => exerciseMatchesEnvironment(ex, environment));
+        const pool = envCandidates.length >= targetExerciseCount ? envCandidates : (candidates.length >= targetExerciseCount ? candidates : activeCatalog.filter(ex => !usedIdsOverall.has(ex.id)));
+
+        const picked: ExerciseItem[] = [];
+        for (const muscle of rule.muscleSequence) {
+            if (picked.length >= targetExerciseCount) break;
+            const match = pool.find(ex => {
+                const pMuscles = (ex.primaryMuscles || [ex.primary_muscle]).map(m => m.toLowerCase());
+                return pMuscles.includes(muscle) && !picked.some(p => p.id === ex.id);
+            });
+            if (match) {
+                picked.push(match);
             }
         }
 
+        // Si faltan ejercicios para completar la cuota del día, rellenar del pool
+        for (const ex of pool) {
+            if (picked.length >= targetExerciseCount) break;
+            if (!picked.some(p => p.id === ex.id)) {
+                picked.push(ex);
+            }
+        }
+
+        // Si aún falta, rellenar de activeCatalog evitando duplicados
+        if (picked.length < targetExerciseCount) {
+            for (const ex of activeCatalog) {
+                if (picked.length >= targetExerciseCount) break;
+                if (!picked.some(p => p.id === ex.id) && !usedIdsOverall.has(ex.id)) {
+                    picked.push(ex);
+                }
+            }
+        }
+
+        picked.forEach(p => {
+            usedIdsOverall.add(p.id);
+            dayExerciseMap[rule.dayNumber].push(p.id);
+        });
+
         days.push({
-            dayNumber: i + 1,
-            title: template.title,
-            focus: template.focus,
+            dayNumber: rule.dayNumber,
+            title: rule.title,
+            focus: rule.focus,
             estimatedMinutes: sessionDurationMins,
-            exercises: pickedExercises,
+            exercises: picked,
             cardio: {
                 type: cardioConfig.type,
                 durationMinutes: cardioDuration,
@@ -1400,3 +574,4 @@ export function generateWeeklyProgram(
 
     return days;
 }
+

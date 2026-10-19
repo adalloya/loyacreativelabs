@@ -253,3 +253,47 @@ export function searchExercises(query: string, maxResults = 20): FreeExerciseIte
       (ex.equipment && ex.equipment.toLowerCase().includes(q))
   ).slice(0, maxResults);
 }
+
+/**
+ * Obtiene la URL oficial de la imagen en GitHub para un frame dado (0 o 1)
+ */
+export function getExerciseImageUrl(idOrPath: string, frame: 0 | 1 = 0): string {
+  if (!idOrPath) return "";
+  if (idOrPath.startsWith("http")) return idOrPath;
+  if (idOrPath.includes(".jpg")) {
+    return `https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/${idOrPath}`;
+  }
+  return `https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/${idOrPath}/${frame}.jpg`;
+}
+
+/**
+ * Mapea los músculos de Free-Exercise-DB a los grupos musculares oficiales de APEX
+ */
+export function mapRawMuscleToMuscleGroup(rawMuscle: string): "chest" | "lats" | "upper_back" | "delts" | "quads" | "hamstrings" | "glutes" | "biceps" | "triceps" | "calves" | "core" {
+  const low = (rawMuscle || "").toLowerCase().trim();
+  if (["chest"].includes(low)) return "chest";
+  if (["lats"].includes(low)) return "lats";
+  if (["middle back", "lower back", "traps", "neck"].includes(low)) return "upper_back";
+  if (["shoulders"].includes(low)) return "delts";
+  if (["quadriceps", "adductors"].includes(low)) return "quads";
+  if (["hamstrings"].includes(low)) return "hamstrings";
+  if (["glutes", "abductors"].includes(low)) return "glutes";
+  if (["biceps", "forearms"].includes(low)) return "biceps";
+  if (["triceps"].includes(low)) return "triceps";
+  if (["calves"].includes(low)) return "calves";
+  if (["abdominals"].includes(low)) return "core";
+  return "chest";
+}
+
+/**
+ * Mapea equipamientos de Free-Exercise-DB a tipos APEX
+ */
+export function mapRawEquipmentToEquipmentType(rawEquip?: string | null): "barbell" | "dumbbell" | "machine" | "cable" | "bodyweight" {
+  const low = (rawEquip || "").toLowerCase().trim();
+  if (low.includes("barbell") || low.includes("e-z")) return "barbell";
+  if (low.includes("dumbbell") || low.includes("kettlebell")) return "dumbbell";
+  if (low.includes("cable") || low.includes("bands")) return "cable";
+  if (low.includes("machine")) return "machine";
+  return "bodyweight";
+}
+

@@ -33,7 +33,8 @@ import {
     ChevronDown,
     ChevronUp,
     Trash2,
-    Shuffle
+    Shuffle,
+    RefreshCw
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 
@@ -41,6 +42,7 @@ import {
     MuscleGroup,
     ExerciseItem,
     EXERCISE_DATABASE,
+    updateExerciseDatabase,
     generateWeeklyProgram,
     calculateTodayTarget,
     RoutineDay,
@@ -52,6 +54,11 @@ import {
     DailyCardioEntry,
     calculateCardioTelemetry
 } from "@/lib/hypertrophy-engine";
+import {
+    fetchLiveExercisesFromGitHub,
+    getActiveExerciseCatalog,
+    purgeOutdatedExerciseCache
+} from "@/lib/exercise-catalog";
 
 import {
     BiometricProfile,
@@ -126,6 +133,27 @@ export default function ApexDashboard() {
     // Readiness & Environment Telemetry
     const [readiness, setReadiness] = useState<ReadinessState>("optimal");
     const [environmentMode, setEnvironmentMode] = useState<"full_gym" | "hotel_gym" | "bodyweight">("full_gym");
+
+    // Catálogo en Vivo de 873+ Ejercicios (GitHub + Caché Local)
+    const [catalogCount, setCatalogCount] = useState<number>(EXERCISE_DATABASE.length);
+
+    useEffect(() => {
+        purgeOutdatedExerciseCache();
+        fetchLiveExercisesFromGitHub().then(catalog => {
+            if (catalog && catalog.length >= 800) {
+                updateExerciseDatabase(catalog);
+                setCatalogCount(catalog.length);
+            }
+        });
+
+        const handleCatalogUpdated = (e: any) => {
+            if (e.detail?.count) {
+                setCatalogCount(e.detail.count);
+            }
+        };
+        window.addEventListener("apex:catalog-updated", handleCatalogUpdated);
+        return () => window.removeEventListener("apex:catalog-updated", handleCatalogUpdated);
+    }, []);
 
     // Modals
     const [selectedMuscle, setSelectedMuscle] = useState<MuscleGroup | null>(null);
@@ -205,10 +233,13 @@ export default function ApexDashboard() {
     // Weekly Routine & Current Day
     const weeklyProgram = useMemo(() => {
         return generateWeeklyProgram(
-            profile?.trainingDaysPerWeek || 6,
-            profile?.sessionDurationMins || 60
+            profile?.trainingDaysPerWeek || 5,
+            profile?.sessionDurationMins || 60,
+            "incline_treadmill",
+            environmentMode,
+            EXERCISE_DATABASE
         );
-    }, [profile?.trainingDaysPerWeek, profile?.sessionDurationMins]);
+    }, [profile?.trainingDaysPerWeek, profile?.sessionDurationMins, environmentMode, catalogCount]);
 
     const [currentDayIndex, setCurrentDayIndex] = useState(0);
     const currentRoutine: RoutineDay = weeklyProgram[currentDayIndex] || weeklyProgram[0];
@@ -835,8 +866,8 @@ export default function ApexDashboard() {
                                         <h3 className="text-xs sm:text-sm font-bold text-white tracking-tight uppercase">
                                             LIBRERÍA COMPLETA DE EJERCICIOS
                                         </h3>
-                                        <span className="text-[10px] font-mono text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/20 px-2 py-0.5 rounded-full font-semibold">
-                                            {EXERCISE_DATABASE.length} DISPONIBLES
+                                        <span className="text-[10px] font-mono text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/20 px-2.5 py-0.5 rounded-full font-semibold">
+                                            CATÁLOGO ACTIVO: {catalogCount} EJERCICIOS
                                         </span>
                                     </div>
                                     <p className="text-[11px] sm:text-xs text-zinc-400 font-normal mt-0.5">
@@ -979,14 +1010,14 @@ export default function ApexDashboard() {
                                                             <span>Random</span>
                                                         </button>
 
-                                                        {/* Swap Manual Selector con Buscador */}
+                                                        {/* Swap Manual Selector con Buscador en los 873 */}
                                                         <button
                                                             onClick={() => setSwapTargetIndex(exIdx)}
-                                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 hover:text-white border border-white/[0.08] transition-all"
-                                                            title="Abrir Selector y Buscador de Ejercicios para Swap"
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white/[0.08] hover:bg-white text-white hover:text-black border border-white/20 hover:border-white transition-all shadow-sm active:scale-95"
+                                                            title="Cambiar ejercicio por cualquier otro de los 873 con foto de GitHub"
                                                         >
-                                                            <RotateCcw size={13} className="text-zinc-300" />
-                                                            <span>Swap</span>
+                                                            <RefreshCw size={12} className="text-zinc-300 group-hover:text-black shrink-0" />
+                                                            <span>Cambiar Ejercicio</span>
                                                         </button>
                                                     </div>
                                                 </div>
