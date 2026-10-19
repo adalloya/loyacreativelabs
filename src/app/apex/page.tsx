@@ -61,6 +61,7 @@ import { useGymHardware } from "@/hooks/useGymHardware";
 import { AnatomyVisualizer, MUSCLE_PALETTE, ORDERED_MUSCLE_GROUPS } from "@/components/apex/AnatomyVisualizer";
 import { ExerciseMotionViewer } from "@/components/apex/ExerciseMotionViewer";
 import { MuscleTargetDrawer } from "@/components/apex/MuscleTargetDrawer";
+import { ExerciseLibraryModal } from "@/components/apex/ExerciseLibraryModal";
 import { PlateCalculatorModal } from "@/components/apex/PlateCalculatorModal";
 import { PwaInstallModal } from "@/components/apex/PwaInstallModal";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
@@ -129,6 +130,7 @@ export default function ApexDashboard() {
     const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
     const [isProtocolModalOpen, setIsProtocolModalOpen] = useState(false);
     const [isOffPlanModalOpen, setIsOffPlanModalOpen] = useState(false);
+    const [isExerciseLibraryOpen, setIsExerciseLibraryOpen] = useState(false);
 
     // Hot-Swap: VBT Velocity Modal State
     const [isVbtModalOpen, setIsVbtModalOpen] = useState(false);
@@ -242,6 +244,10 @@ export default function ApexDashboard() {
             setActiveExercises(currentRoutine.exercises);
         }
     }, [currentRoutine]);
+
+    const handleAddExerciseToSession = (exercise: ExerciseItem) => {
+        setActiveExercises(prev => [...prev, exercise]);
+    };
 
     // Completed sets tracker: { [exerciseId_setIndex]: boolean }
     const [completedSets, setCompletedSets] = useState<Record<string, boolean>>({});
@@ -728,6 +734,36 @@ export default function ApexDashboard() {
                                     </div>
                                 </div>
                             )}
+                        </div>
+
+                        {/* Botón para Explorar toda la Librería de Ejercicios Disponibles */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] hover:border-white/[0.16] rounded-3xl p-4 sm:p-5 shadow-xl transition-all">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-white shrink-0 shadow-sm">
+                                    <Layers size={18} className="text-[#FF2A2A]" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-xs sm:text-sm font-bold text-white tracking-tight uppercase">
+                                            LIBRERÍA COMPLETA DE EJERCICIOS
+                                        </h3>
+                                        <span className="text-[10px] font-mono text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/20 px-2 py-0.5 rounded-full font-semibold">
+                                            {EXERCISE_DATABASE.length} DISPONIBLES
+                                        </span>
+                                    </div>
+                                    <p className="text-[11px] sm:text-xs text-zinc-400 font-normal mt-0.5">
+                                        Filtra por grupo muscular, analiza la biomecánica y agrégalos a tu sesión activa
+                                    </p>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => setIsExerciseLibraryOpen(true)}
+                                className="px-5 py-2.5 bg-white hover:bg-zinc-200 text-black text-xs font-semibold rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 shrink-0"
+                            >
+                                <Dumbbell size={14} />
+                                <span>Ver Librería Completa</span>
+                            </button>
                         </div>
 
                         {/* Exercises List (Apple Fitness+ 2-Column Layout) */}
@@ -1600,6 +1636,14 @@ export default function ApexDashboard() {
                     onClose={() => setIsPlateModalOpen(false)}
                 />
             )}
+
+            {/* Modal de Librería Completa de Ejercicios */}
+            <ExerciseLibraryModal
+                isOpen={isExerciseLibraryOpen}
+                onClose={() => setIsExerciseLibraryOpen(false)}
+                onAddExercise={handleAddExerciseToSession}
+                activeExerciseIds={activeExercises.map(e => e.id)}
+            />
 
             {isInstallModalOpen && (
                 <PwaInstallModal onClose={() => setIsInstallModalOpen(false)} />
