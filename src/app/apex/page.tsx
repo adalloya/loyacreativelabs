@@ -93,6 +93,18 @@ import { useVoiceLogger } from "@/hooks/useVoiceLogger";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { OnboardingFlow, UserApexProfile } from "@/app/onboarding/OnboardingFlow";
 
+/**
+ * Determina si un ejercicio requiere cálculo de discos para barra olímpica / EZ.
+ * Evita mostrar desglose de discos en mancuernas, poleas, máquinas o peso corporal donde no es necesario.
+ */
+function isPlateLoadedExercise(equipment?: string, name?: string): boolean {
+    if (!equipment && !name) return false;
+    const eq = (equipment || "").toLowerCase().trim();
+    if (eq === "barbell" || eq === "e-z curl bar") return true;
+    const n = (name || "").toLowerCase();
+    return n.includes("barbell") || n.includes("barra olímpica") || n.includes("barra olimpica") || n.includes("barra ez");
+}
+
 export default function ApexDashboard() {
     // Hardware Hooks (Screen WakeLock & Haptic/Audio)
     const { isScreenLocked, triggerRestTimerAlert } = useGymHardware();
@@ -697,15 +709,6 @@ export default function ApexDashboard() {
 
             {/* Dynamic Content */}
             <main className="max-w-6xl mx-auto px-4 mt-6">
-                {/* Motivational Psychology Banner personalized by First Name */}
-                <div className="bg-[#121214]/90 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-5 sm:p-6 mb-6 shadow-2xl">
-                    <span className="text-[10px] font-mono text-[#FF2A2A] uppercase tracking-wider block">
-                        ESTADO MENTAL & PSICOLOGÍA DEPORTIVA
-                    </span>
-                    <p className="text-sm text-zinc-300 mt-2 leading-relaxed font-normal">
-                        &ldquo;{profile.firstName}, tu sistema está calibrado para {profile.trainingDaysPerWeek} días semanales con un déficit enfocado en recomposición. La consistencia en las cargas de hoy dictará el músculo de mañana. Mantén el foco en el RIR 1.&rdquo;
-                    </p>
-                </div>
                 {/* =========================================================================
                     TAB 1: WORKOUT EN VIVO
                    ========================================================================= */}
@@ -1000,19 +1003,21 @@ export default function ApexDashboard() {
                                                             <span>VBT</span>
                                                         </button>
 
-                                                        {/* Discos Inline Toggle */}
-                                                        <button
-                                                            onClick={() => setInlinePlatesExId(prev => prev === ex.id ? null : ex.id)}
-                                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                                                                inlinePlatesExId === ex.id
-                                                                    ? "bg-white text-black border-white font-semibold"
-                                                                    : "bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 border-white/[0.08]"
-                                                            }`}
-                                                            title="Desglose de Discos"
-                                                        >
-                                                            <Disc size={13} className={inlinePlatesExId === ex.id ? "text-black" : "text-zinc-300"} />
-                                                            <span>Discos</span>
-                                                        </button>
+                                                        {/* Discos Inline Toggle (Solo en ejercicios de barra olímpica/EZ donde aplica cargar discos) */}
+                                                        {isPlateLoadedExercise(ex.equipment, ex.name) && (
+                                                            <button
+                                                                onClick={() => setInlinePlatesExId(prev => prev === ex.id ? null : ex.id)}
+                                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                                                    inlinePlatesExId === ex.id
+                                                                        ? "bg-white text-black border-white font-semibold"
+                                                                        : "bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 border-white/[0.08]"
+                                                                }`}
+                                                                title="Desglose de Discos para Barra Olímpica"
+                                                            >
+                                                                <Disc size={13} className={inlinePlatesExId === ex.id ? "text-black" : "text-zinc-300"} />
+                                                                <span>Discos</span>
+                                                            </button>
+                                                        )}
 
                                                         {/* Random Instant Biomechanical Swap */}
                                                         <button
@@ -1037,7 +1042,7 @@ export default function ApexDashboard() {
                                                 </div>
 
                                                 {/* Inline Plate Calculation Pill */}
-                                                {inlinePlatesExId === ex.id && (
+                                                {inlinePlatesExId === ex.id && isPlateLoadedExercise(ex.equipment, ex.name) && (
                                                     <div className="p-3 bg-white/[0.04] border border-white/[0.08] rounded-2xl flex items-center justify-between text-xs text-zinc-300 animate-in fade-in">
                                                         <div>
                                                             <span className="text-[10px] uppercase text-zinc-500 font-medium tracking-wide block">Desglose exacto de carga por lado (Barra olímpica 20 kg)</span>
