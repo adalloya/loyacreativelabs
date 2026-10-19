@@ -1,8 +1,9 @@
+// src/components/apex/MuscleTargetDrawer.tsx
 "use client";
 
 import { useState } from "react";
-import { MuscleGroup, ExerciseItem, EXERCISE_DATABASE, EquipmentType } from "@/lib/hypertrophy-engine";
-import { X, Plus, Sparkles, Check, Dumbbell, ShieldAlert } from "lucide-react";
+import { MuscleGroup, ExerciseItem, EXERCISE_DATABASE } from "@/lib/hypertrophy-engine";
+import { X, Plus, Sparkles, Check } from "lucide-react";
 
 interface MuscleTargetDrawerProps {
     selectedMuscle: MuscleGroup | null;
@@ -27,9 +28,9 @@ const MUSCLE_NAMES: Record<MuscleGroup, string> = {
 };
 
 const RESISTANCE_LABELS: Record<string, { label: string; color: string }> = {
-    lengthened_bias: { label: "MÁXIMO ESTIRAMIENTO (HIPERTROFIA S)", color: "text-[#38BDF8] border-[#0284C7]/40 bg-[#082F49]/30" },
-    mid_range_overload: { label: "SOBRECARGA PESADA (FUERZA MÁXIMA)", color: "text-[#F59E0B] border-[#D97706]/40 bg-[#451A03]/30" },
-    shortened_peak: { label: "CONTRACCIÓN PICO / AISLAMIENTO", color: "text-[#EC4899] border-[#DB2777]/40 bg-[#500724]/30" }
+    lengthened_bias: { label: "ESTIRAMIENTO MÁXIMO (TIER S)", color: "text-white border-white/20 bg-white/[0.06]" },
+    mid_range_overload: { label: "SOBRECARGA PESADA (FUERZA)", color: "text-[#FF2A2A] border-[#FF2A2A]/30 bg-[#FF2A2A]/10" },
+    shortened_peak: { label: "CONTRACCIÓN PICO / AISLAMIENTO", color: "text-zinc-300 border-white/10 bg-white/[0.04]" }
 };
 
 export function MuscleTargetDrawer({
@@ -62,19 +63,19 @@ export function MuscleTargetDrawer({
             {/* Backdrop click to close */}
             <div className="absolute inset-0" onClick={onClose} />
 
-            <div className="relative w-full max-w-2xl max-h-[85vh] bg-[#0A0D12] border-t sm:border border-[#1E2633] sm:rounded-2xl rounded-t-2xl p-4 sm:p-6 flex flex-col z-10 shadow-2xl overflow-hidden font-sans">
+            <div className="relative w-full max-w-2xl max-h-[85vh] bg-[#121214]/95 backdrop-blur-2xl border-t sm:border border-white/[0.08] sm:rounded-3xl rounded-t-3xl p-5 sm:p-6 flex flex-col z-10 shadow-2xl overflow-hidden font-sans text-white">
                 {/* Drag bar for mobile */}
-                <div className="w-12 h-1.5 bg-[#2B3547] rounded-full mx-auto mb-3 sm:hidden" />
+                <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-3 sm:hidden" />
 
                 {/* Header */}
-                <div className="flex justify-between items-start border-b border-[#1E2633] pb-3 mb-4">
+                <div className="flex justify-between items-start border-b border-white/[0.06] pb-3 mb-4">
                     <div>
                         <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[10px] font-mono tracking-widest text-[#8892B0] uppercase">
-                                MATRIZ BIOMECÁNICA TIER S / A
+                            <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">
+                                CATÁLOGO BIOMECÁNICO // APEX
                             </span>
-                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#FF2A2A]/10 text-[#FF2A2A] border border-[#FF2A2A]/30">
-                                HIPERTROFIA CIENTÍFICA
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#FF2A2A]/10 text-[#FF2A2A] border border-[#FF2A2A]/20">
+                                HIPERTROFIA TIER S / A
                             </span>
                         </div>
                         <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white uppercase">
@@ -84,27 +85,27 @@ export function MuscleTargetDrawer({
 
                     <button
                         onClick={onClose}
-                        className="p-1.5 text-[#8892B0] hover:text-white rounded-lg hover:bg-[#161C26] transition-colors"
+                        className="p-1.5 text-zinc-400 hover:text-white rounded-xl bg-white/[0.04] hover:bg-white/[0.08] transition-all"
                     >
-                        <X size={20} />
+                        <X size={18} />
                     </button>
                 </div>
 
                 {/* Specialization Cycle Switch */}
                 {onToggleSpecialization && (
-                    <div className="mb-4 p-3 bg-[#131924] border border-[#232D3F] rounded-xl flex items-center justify-between">
+                    <div className="mb-4 p-3.5 bg-white/[0.03] border border-white/[0.06] rounded-2xl flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
-                            <Sparkles size={16} className={isSpecialized ? "text-[#F59E0B]" : "text-[#717C96]"} />
+                            <Sparkles size={16} className={isSpecialized ? "text-[#FF2A2A]" : "text-zinc-500"} />
                             <div>
                                 <p className="text-xs font-semibold text-white">Ciclo de Especialización (4 Semanas)</p>
-                                <p className="text-[10px] text-[#8892B0] font-mono">Prioriza este músculo al inicio de la sesión (+4 series semanales)</p>
+                                <p className="text-[10px] text-zinc-400 font-mono">Prioriza este músculo al inicio de la sesión (+4 series semanales)</p>
                             </div>
                         </div>
                         <button
                             onClick={() => onToggleSpecialization(selectedMuscle)}
-                            className={`px-3 py-1 text-xs font-mono rounded-lg transition-all border ${isSpecialized
-                                ? "bg-[#F59E0B] text-black border-[#F59E0B] font-bold"
-                                : "bg-[#1E2633] text-[#CBD5E1] border-[#334155] hover:text-white"
+                            className={`px-3 py-1.5 text-xs font-mono rounded-xl transition-all border ${isSpecialized
+                                ? "bg-white text-black border-white font-bold shadow-sm"
+                                : "bg-white/[0.04] text-zinc-300 border-white/[0.08] hover:text-white"
                                 }`}
                         >
                             {isSpecialized ? "ACTIVO" : "ACTIVAR"}
@@ -118,9 +119,9 @@ export function MuscleTargetDrawer({
                         <button
                             key={eq}
                             onClick={() => setEquipmentFilter(eq)}
-                            className={`px-3 py-1 rounded-lg uppercase transition-all whitespace-nowrap border ${equipmentFilter === eq
-                                ? "bg-white text-black border-white font-semibold"
-                                : "bg-[#131924] text-[#8892B0] border-[#202938] hover:text-white hover:bg-[#1A2333]"
+                            className={`px-3 py-1.5 rounded-xl uppercase transition-all whitespace-nowrap border ${equipmentFilter === eq
+                                ? "bg-white text-black border-white font-semibold shadow-sm"
+                                : "bg-white/[0.03] text-zinc-400 border-white/[0.06] hover:text-white hover:bg-white/[0.08]"
                                 }`}
                         >
                             {eq === "ALL" ? "TODOS" : eq}
@@ -137,42 +138,42 @@ export function MuscleTargetDrawer({
                         return (
                             <div
                                 key={ex.id}
-                                className="bg-[#10141D] border border-[#1E2633] hover:border-[#334155] rounded-xl p-3.5 transition-all flex flex-col justify-between"
+                                className="bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/20 rounded-2xl p-4 transition-all flex flex-col justify-between"
                             >
                                 <div className="flex justify-between items-start gap-3">
                                     <div>
-                                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                            <span className="text-[10px] font-mono text-[#CBD5E1] px-1.5 py-0.5 rounded bg-[#1C2433]">
+                                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                            <span className="text-[10px] font-mono text-zinc-300 px-2 py-0.5 rounded-full bg-white/[0.06] border border-white/[0.08]">
                                                 {ex.anatomical_subdivision}
                                             </span>
-                                            <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${profile.color}`}>
+                                            <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${profile.color}`}>
                                                 {profile.label}
                                             </span>
                                         </div>
                                         <h3 className="text-sm sm:text-base font-semibold text-white">
                                             {ex.name}
                                         </h3>
-                                        <p className="text-xs text-[#94A3B8] mt-1 leading-relaxed">
+                                        <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
                                             {ex.biomechanical_cue}
                                         </p>
                                     </div>
 
-                                    <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-[#161C26] text-[#64FFDA] border border-[#202938] shrink-0 uppercase">
+                                    <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-white/[0.06] text-zinc-300 border border-white/[0.08] shrink-0 uppercase">
                                         {ex.equipment}
                                     </span>
                                 </div>
 
-                                <div className="mt-3 pt-2.5 border-t border-[#1C2433] flex justify-between items-center text-xs font-mono">
-                                    <span className="text-[#8892B0] text-[11px]">
+                                <div className="mt-3 pt-3 border-t border-white/[0.06] flex justify-between items-center text-xs font-mono">
+                                    <span className="text-zinc-500 text-[11px]">
                                         3-4 series × {ex.rep_range_min}-{ex.rep_range_max} reps (RIR {ex.target_rir})
                                     </span>
 
                                     <button
                                         onClick={() => handleAdd(ex)}
                                         disabled={isAdded}
-                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${isAdded
-                                            ? "bg-[#10B981] text-white"
-                                            : "bg-[#EAEAEA] hover:bg-white text-black active:scale-95"
+                                        className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${isAdded
+                                            ? "bg-[#10B981] text-black font-bold"
+                                            : "bg-white hover:bg-zinc-200 text-black active:scale-95 shadow-sm"
                                             }`}
                                     >
                                         {isAdded ? (
@@ -191,7 +192,7 @@ export function MuscleTargetDrawer({
                     })}
 
                     {filtered.length === 0 && (
-                        <div className="text-center py-10 font-mono text-xs text-[#717C96]">
+                        <div className="text-center py-10 font-mono text-xs text-zinc-500">
                             No hay ejercicios con este filtro de equipamiento.
                         </div>
                     )}

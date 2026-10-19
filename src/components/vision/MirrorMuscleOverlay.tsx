@@ -94,29 +94,30 @@ export function MirrorMuscleOverlay({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-200 font-sans">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200 font-sans">
             <div className="absolute inset-0" onClick={onClose} />
 
-            <div className={`relative w-full max-w-xl bg-[#0A0D12] border rounded-2xl p-4 sm:p-6 shadow-2xl z-10 text-white transition-all ${isFatigueThresholdReached ? "border-[#FFB800] shadow-[0_0_30px_rgba(245,158,11,0.25)]" : "border-[#1E2633]"
-                }`}>
+            <div className={`relative w-full max-w-xl bg-[#121214]/95 backdrop-blur-2xl border rounded-3xl p-5 sm:p-6 shadow-2xl z-10 text-white transition-all ${
+                isFatigueThresholdReached ? "border-[#FF2A2A] shadow-[0_0_30px_rgba(255,42,42,0.25)]" : "border-white/[0.08]"
+            }`}>
                 {/* Header & Mode Switcher */}
-                <div className="flex justify-between items-center border-b border-[#1E2633] pb-3 mb-4 flex-wrap gap-2">
-                    <div className="flex items-center gap-1.5 p-1 bg-[#10141D] rounded-xl border border-[#1E2633] text-xs font-mono">
+                <div className="flex justify-between items-center border-b border-white/[0.06] pb-3 mb-4 flex-wrap gap-2">
+                    <div className="flex items-center gap-1.5 p-1 bg-white/[0.04] rounded-xl border border-white/[0.08] text-xs font-mono">
                         <button
                             onClick={() => setMode("velocity_vbt")}
                             className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${mode === "velocity_vbt"
                                 ? "bg-white text-black shadow-sm"
-                                : "text-[#8892B0] hover:text-white"
+                                : "text-zinc-400 hover:text-white"
                                 }`}
                         >
-                            <Gauge size={13} className={mode === "velocity_vbt" ? "text-red-600" : ""} />
+                            <Gauge size={13} className={mode === "velocity_vbt" ? "text-[#FF2A2A]" : ""} />
                             <span>VELOCIDAD VBT</span>
                         </button>
                         <button
                             onClick={() => setMode("mirror_ai")}
                             className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${mode === "mirror_ai"
                                 ? "bg-white text-black shadow-sm"
-                                : "text-[#8892B0] hover:text-white"
+                                : "text-zinc-400 hover:text-white"
                                 }`}
                         >
                             <Camera size={13} />
@@ -124,13 +125,16 @@ export function MirrorMuscleOverlay({
                         </button>
                     </div>
 
-                    <button onClick={onClose} className="p-1 text-[#8892B0] hover:text-white rounded-lg hover:bg-[#161C26]">
-                        <X size={20} />
+                    <button 
+                        onClick={onClose} 
+                        className="p-1.5 text-zinc-400 hover:text-white rounded-xl bg-white/[0.04] hover:bg-white/[0.08] transition-all"
+                    >
+                        <X size={16} />
                     </button>
                 </div>
 
                 {/* Viewport Area */}
-                <div className="relative w-full h-64 sm:h-72 bg-[#050505] rounded-xl overflow-hidden border border-[#1E2633] flex items-center justify-center">
+                <div className="relative w-full h-64 sm:h-72 bg-black rounded-2xl overflow-hidden border border-white/[0.08] flex items-center justify-center">
                     <video
                         ref={videoRef}
                         playsInline
@@ -140,10 +144,10 @@ export function MirrorMuscleOverlay({
 
                     {!isStreaming && (
                         <div className="text-center p-6 space-y-2">
-                            <div className="w-12 h-12 rounded-full bg-[#161C26] border border-[#2B3547] flex items-center justify-center mx-auto text-[#64FFDA]">
+                            <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mx-auto text-white">
                                 <Camera size={22} />
                             </div>
-                            <p className="text-xs font-mono text-slate-300">
+                            <p className="text-xs font-mono text-zinc-400">
                                 {streamError || "Iniciando visor cinemático..."}
                             </p>
                         </div>
@@ -153,33 +157,33 @@ export function MirrorMuscleOverlay({
                     {mode === "velocity_vbt" && (
                         <div className="absolute inset-0 p-4 flex flex-col justify-between pointer-events-none font-mono">
                             <div className="flex justify-between items-start">
-                                <span className="text-[10px] bg-black/75 px-2.5 py-1 rounded-md border border-white/10 text-[#64FFDA]">
-                                    ● VBT TRACKER // {activeExerciseName.toUpperCase()}
+                                <span className="text-[10px] bg-black/80 px-2.5 py-1 rounded-full border border-white/10 text-white font-semibold">
+                                    ● VBT // {activeExerciseName.toUpperCase()}
                                 </span>
-                                <span className="text-[10px] bg-black/75 px-2.5 py-1 rounded-md border border-white/10 text-white">
+                                <span className="text-[10px] bg-black/80 px-2.5 py-1 rounded-full border border-white/10 text-zinc-400">
                                     V_BASE: {initialVelocity} m/s
                                 </span>
                             </div>
 
                             {/* Center Velocity Dial */}
-                            <div className="text-center bg-black/70 backdrop-blur-sm p-3 rounded-2xl border border-white/10 max-w-xs mx-auto">
+                            <div className="text-center bg-black/80 backdrop-blur-md p-3.5 rounded-2xl border border-white/10 max-w-xs mx-auto">
                                 <div className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-                                    {currentVelocity.toFixed(2)} <span className="text-sm font-normal text-[#8892B0]">m/s</span>
+                                    {currentVelocity.toFixed(2)} <span className="text-sm font-normal text-zinc-500">m/s</span>
                                 </div>
                                 <div className="flex justify-center gap-3 text-xs mt-1">
-                                    <span className="text-[#F59E0B] font-bold">Pérdida: -{velocityDropPct}%</span>
-                                    <span className="text-[#38BDF8] font-bold">RIR: {estimatedRir}</span>
+                                    <span className="text-[#FF2A2A] font-bold">Pérdida: -{velocityDropPct}%</span>
+                                    <span className="text-white font-bold">RIR: {estimatedRir}</span>
                                 </div>
                             </div>
 
                             {/* Bottom Alert Banner */}
                             <div className="text-center">
                                 {isFatigueThresholdReached ? (
-                                    <span className="inline-block text-[11px] bg-[#FFB800] text-black font-bold px-3 py-1 rounded-full shadow-lg">
-                                        ⚡ UMBRAL DE FATIGA ALCANZADO (TERMINA LA SERIE)
+                                    <span className="inline-block text-[11px] bg-[#FF2A2A] text-white font-bold px-3 py-1 rounded-full shadow-lg">
+                                        UMBRAL DE FATIGA ALCANZADO (TERMINA LA SERIE)
                                     </span>
                                 ) : (
-                                    <span className="inline-block text-[10px] bg-black/70 text-slate-300 px-3 py-1 rounded-full border border-white/10">
+                                    <span className="inline-block text-[10px] bg-black/80 text-zinc-300 px-3 py-1 rounded-full border border-white/10">
                                         Velocidad concéntrica óptima (Fase de estímulo alto)
                                     </span>
                                 )}
@@ -190,12 +194,12 @@ export function MirrorMuscleOverlay({
                     {/* Mirror AI Overlay */}
                     {mode === "mirror_ai" && (
                         <div className="absolute inset-0 p-4 flex flex-col justify-between pointer-events-none font-mono">
-                            <span className="text-[10px] bg-black/75 px-2.5 py-1 rounded-md border border-white/10 text-[#FF2A2A] w-fit">
+                            <span className="text-[10px] bg-black/80 px-2.5 py-1 rounded-full border border-white/10 text-[#FF2A2A] w-fit font-bold">
                                 OVERLAY TÉRMICO DE CONGESTIÓN
                             </span>
-                            <div className="text-center bg-black/70 p-2.5 rounded-xl border border-white/10">
+                            <div className="text-center bg-black/80 p-2.5 rounded-2xl border border-white/10">
                                 <p className="text-xs text-white">Postura detectada (33 nodos MediaPipe)</p>
-                                <p className="text-[10px] text-[#8892B0]">Músculos activos en rojo térmico</p>
+                                <p className="text-[10px] text-zinc-400">Músculos activos en rojo térmico</p>
                             </div>
                         </div>
                     )}
@@ -205,7 +209,7 @@ export function MirrorMuscleOverlay({
                 <div className="mt-4 flex gap-2">
                     <button
                         onClick={simulateRepetition}
-                        className="flex-1 py-2.5 bg-white hover:bg-slate-200 text-black font-mono font-bold text-xs rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2"
+                        className="flex-1 py-3 bg-white hover:bg-zinc-200 text-black font-mono font-bold text-xs rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm"
                     >
                         <Zap size={14} className="fill-black" />
                         <span>REGISTRAR REPETICIÓN (VBT)</span>
@@ -213,7 +217,7 @@ export function MirrorMuscleOverlay({
 
                     <button
                         onClick={onClose}
-                        className="px-4 py-2.5 bg-[#161C26] hover:bg-[#202938] border border-[#2B3547] text-white font-mono text-xs font-semibold rounded-xl transition-all"
+                        className="px-5 py-3 bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] text-white font-mono text-xs font-semibold rounded-2xl transition-all"
                     >
                         Listo
                     </button>

@@ -405,14 +405,8 @@ export default function ApexDashboard() {
                             />
                         </div>
                         <div>
-                            <div className="flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#FF2A2A] animate-pulse shrink-0" />
-                                <span className="text-[10px] font-mono text-[#FF2A2A] tracking-widest uppercase block font-bold">
-                                    APEX
-                                </span>
-                            </div>
-                            <h1 className="text-base sm:text-lg font-bold tracking-tight text-white uppercase leading-none mt-0.5">
-                                Hola, {profile.firstName} ⚡
+                            <h1 className="text-base sm:text-lg font-bold tracking-tight text-white uppercase leading-none">
+                                Hola {profile.firstName}
                             </h1>
                         </div>
                     </div>
@@ -425,27 +419,19 @@ export default function ApexDashboard() {
                             <span className="text-zinc-300 font-medium">{isScreenLocked ? "PANTALLA ACTIVA" : "WAKE LOCK"}</span>
                         </div>
 
-                        {/* Nike Style Blueprint PDF Export */}
-                        <DownloadPDFButton profile={pdfProfile} routine={activeExercises} diet={pdfDiet} />
-
-                        {/* Reconfigurar Perfil */}
-                        <button
-                            onClick={() => {
-                                localStorage.removeItem('apex_user_profile');
-                                window.location.reload();
-                            }}
-                            className="hidden lg:inline-flex text-[11px] font-mono text-zinc-400 hover:text-white border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-full transition-colors"
-                            title="Reconfigurar Perfil Biométrico"
-                        >
-                            Reconfigurar
-                        </button>
-
-                        {/* Menú de Tres Rayitas tipo Apple / Tesla */}
+                        {/* Menú de Tres Rayitas tipo Apple / Tesla (incluye PDF, Entorno y Configuración) */}
                         <AppHeaderMenu
                             environmentMode={environmentMode}
                             onEnvironmentChange={(mode) => setEnvironmentMode(mode as any)}
                             onInstallClick={() => setIsInstallModalOpen(true)}
                             showInstallButton={true}
+                            pdfProfile={pdfProfile}
+                            pdfRoutine={activeExercises}
+                            pdfDiet={pdfDiet}
+                            onResetProfile={() => {
+                                localStorage.removeItem('apex_user_profile');
+                                window.location.reload();
+                            }}
                         />
                     </div>
                 </div>
