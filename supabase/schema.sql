@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS public.exercise_logs (
     reps_completed INT NOT NULL,
     rir_perceived INT CHECK (rir_perceived BETWEEN 0 AND 5),
     estimated_1rm NUMERIC(6,2) GENERATED ALWAYS AS (weight_kg * (1 + (reps_completed::NUMERIC / 30.0))) STORED,
+    mean_velocity_ms NUMERIC(4,2), -- Velocidad concéntrica media en m/s (VBT opcional)
     is_extra_set BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );

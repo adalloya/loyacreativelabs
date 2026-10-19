@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local test scripts & env
+vercel.env
+debug_*.js
+list_models*.js
+test_*.js
+verify_*.js
+replication-prompt.txt

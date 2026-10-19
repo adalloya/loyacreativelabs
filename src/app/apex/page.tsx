@@ -24,7 +24,9 @@ import {
     AlertCircle,
     Info,
     Calendar,
-    ShoppingCart
+    ShoppingCart,
+    Mic,
+    Gauge
 } from "lucide-react";
 
 import {
@@ -51,6 +53,10 @@ import { AnatomyVisualizer } from "@/components/apex/AnatomyVisualizer";
 import { MuscleTargetDrawer } from "@/components/apex/MuscleTargetDrawer";
 import { PlateCalculatorModal } from "@/components/apex/PlateCalculatorModal";
 import { PwaInstallModal } from "@/components/apex/PwaInstallModal";
+import { MirrorMuscleOverlay } from "@/components/vision/MirrorMuscleOverlay";
+import { logSetOfflineFirst } from "@/lib/local-db";
+import { playTempoPulse } from "@/lib/tempo-sonar";
+import { useVoiceLogger } from "@/hooks/useVoiceLogger";
 
 export default function ApexDashboard() {
     // Hardware Hooks (Screen WakeLock & Haptic/Audio)
@@ -71,6 +77,16 @@ export default function ApexDashboard() {
     const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
     const [isProtocolModalOpen, setIsProtocolModalOpen] = useState(false);
     const [isOffPlanModalOpen, setIsOffPlanModalOpen] = useState(false);
+
+    // Hot-Swap: VBT Velocity Modal State
+    const [isVbtModalOpen, setIsVbtModalOpen] = useState(false);
+    const [vbtExerciseName, setVbtExerciseName] = useState("Press de Banca");
+
+    // Hot-Swap: Tempo Sonar state per exercise (default OFF)
+    const [tempoActive, setTempoActive] = useState<Record<string, boolean>>({});
+
+    // Hot-Swap: Voice Logger active target
+    const [voiceActiveSet, setVoiceActiveSet] = useState<{ exerciseId: string; setIdx: number } | null>(null);
 
     // Biometrics State (Stored in localStorage or initial defaults)
     const [bio, setBio] = useState<BiometricProfile>({
@@ -141,17 +157,44 @@ export default function ApexDashboard() {
         return () => clearInterval(interval);
     }, [restRemaining, triggerRestTimerAlert]);
 
-    const handleCompleteSet = (exerciseId: string, setIdx: number, restSeconds: number) => {
+    // Set Completion with Dexie.js Offline-First logging
+    const handleCompleteSet = (exerciseId: string, setIdx: number, restSeconds: number, customWeight?: number, customReps?: number) => {
         const key = `${exerciseId}_${setIdx}`;
         const newState = !completedSets[key];
 
         setCompletedSets(prev => ({ ...prev, [key]: newState }));
 
+        const exMemory = exerciseMemory[exerciseId] || { weight: 60, reps: 10 };
+        const weightToLog = customWeight || exMemory.weight;
+        const repsToLog = customReps || exMemory.reps;
+
         if (newState) {
             setRestTotal(restSeconds);
             setRestRemaining(restSeconds);
+
+            // A. Motor Offline-First Dexie (< 2ms)
+            logSetOfflineFirst({
+                exercise_id: exerciseId,
+                workout_date: new Date().toISOString().split("T")[0],
+                set_number: setIdx + 1,
+                weight_kg: weightToLog,
+                reps_completed: repsToLog,
+                rir_perceived: readiness === "optimal" ? 1 : readiness === "normal" ? 1 : 2
+            }).catch(() => {});
         }
     };
+
+    // Voice Logger Hook
+    const { isListening: isVoiceListening, startListening: startVoiceLogging } = useVoiceLogger((result) => {
+        if (voiceActiveSet) {
+            handleCompleteSet(voiceActiveSet.exerciseId, voiceActiveSet.setIdx, 90, result.weightKg, result.reps);
+            setExerciseMemory(prev => ({
+                ...prev,
+                [voiceActiveSet.exerciseId]: { weight: result.weightKg, reps: result.reps }
+            }));
+            setVoiceActiveSet(null);
+        }
+    });
 
     // Inject exercise into today's session
     const handleInjectExercise = (ex: ExerciseItem) => {
@@ -429,8 +472,40 @@ export default function ApexDashboard() {
                                                 </p>
                                             </div>
 
-                                            {/* Top Actions: Calculator & Swap */}
-                                            <div className="flex items-center gap-1.5 shrink-0">
+                                            {/* Top Actions: Tempo, VBT, Calculator & Swap */}
+                                            <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                                                {/* Tempo Sonar Pill-Toggle */}
+                                                <button
+                                                    onClick={() => {
+                                                        const nextState = !tempoActive[ex.id];
+                                                        setTempoActive(prev => ({ ...prev, [ex.id]: nextState }));
+                                                        if (nextState) {
+                                                            playTempoPulse("eccentric_tick");
+                                                        }
+                                                    }}
+                                                    className={`px-2 py-1 rounded-lg text-[10px] font-mono border transition-all ${
+                                                        tempoActive[ex.id]
+                                                            ? "bg-[#FF2A2A]/20 border-[#FF2A2A] text-[#FF2A2A] font-bold"
+                                                            : "bg-[#131924] border-[#232D3F] text-[#8892B0] hover:text-white"
+                                                    }`}
+                                                    title="Sonar Acústico de Tempo (3-1-1)"
+                                                >
+                                                    TEMPO 3-1-1: {tempoActive[ex.id] ? "ON" : "OFF"}
+                                                </button>
+
+                                                {/* VBT Camera Tracker */}
+                                                <button
+                                                    onClick={() => {
+                                                        setVbtExerciseName(ex.name);
+                                                        setIsVbtModalOpen(true);
+                                                    }}
+                                                    className="p-2 bg-[#131924] hover:bg-[#1E2633] border border-[#232D3F] rounded-lg text-slate-200 text-xs font-mono transition-all flex items-center gap-1"
+                                                    title="Modo Velocidad VBT y Espejo IA"
+                                                >
+                                                    <Gauge size={14} className="text-[#10B981]" />
+                                                    <span className="hidden sm:inline">VBT</span>
+                                                </button>
+
                                                 <button
                                                     onClick={() => {
                                                         setPlateModalWeight(target.suggestedWeight);
@@ -479,13 +554,16 @@ export default function ApexDashboard() {
                                             {Array.from({ length: ex.default_sets }).map((_, setIdx) => {
                                                 const key = `${ex.id}_${setIdx}`;
                                                 const isCompleted = Boolean(completedSets[key]);
+                                                const isVoiceActive = voiceActiveSet?.exerciseId === ex.id && voiceActiveSet?.setIdx === setIdx;
 
                                                 return (
                                                     <div
                                                         key={setIdx}
                                                         className={`flex items-center justify-between p-2.5 rounded-xl border font-mono text-xs transition-all ${isCompleted
                                                             ? "bg-[#10B981]/10 border-[#10B981]/40 text-white"
-                                                            : "bg-[#10141D] border-[#1C2433] text-[#CBD5E1]"
+                                                            : isVoiceActive && isVoiceListening
+                                                                ? "bg-[#FF2A2A]/10 border-[#FF2A2A]/50 text-white ring-1 ring-[#FF2A2A]"
+                                                                : "bg-[#10141D] border-[#1C2433] text-[#CBD5E1]"
                                                             }`}
                                                     >
                                                         <div className="flex items-center gap-3">
@@ -501,6 +579,23 @@ export default function ApexDashboard() {
                                                             <span className="text-[10px] text-[#8892B0] hidden sm:inline">
                                                                 Descanso {ex.rest_seconds}s
                                                             </span>
+
+                                                            {/* Voice Dictation Mic Button */}
+                                                            <button
+                                                                onClick={() => {
+                                                                    setVoiceActiveSet({ exerciseId: ex.id, setIdx });
+                                                                    startVoiceLogging();
+                                                                }}
+                                                                className={`p-1.5 rounded-lg border transition-all ${
+                                                                    isVoiceActive && isVoiceListening
+                                                                        ? "bg-[#FF2A2A] text-white animate-pulse border-[#FF2A2A]"
+                                                                        : "bg-[#131924] border-[#232D3F] text-[#8892B0] hover:text-white"
+                                                                }`}
+                                                                title="Dictar serie por voz (ej. '80 por 10')"
+                                                            >
+                                                                <Mic size={13} className={isVoiceActive && isVoiceListening ? "animate-bounce" : ""} />
+                                                            </button>
+
                                                             <button
                                                                 onClick={() => handleCompleteSet(ex.id, setIdx, ex.rest_seconds)}
                                                                 className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 ${isCompleted
@@ -967,6 +1062,13 @@ export default function ApexDashboard() {
             {isInstallModalOpen && (
                 <PwaInstallModal onClose={() => setIsInstallModalOpen(false)} />
             )}
+
+            {/* VBT & Mirror Overlay Modal */}
+            <MirrorMuscleOverlay
+                isOpen={isVbtModalOpen}
+                onClose={() => setIsVbtModalOpen(false)}
+                activeExerciseName={vbtExerciseName}
+            />
 
             {/* Protocol Modal */}
             {isProtocolModalOpen && (
