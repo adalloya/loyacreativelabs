@@ -1,55 +1,80 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val: T) => T)) => void] {
-  // Estado inicial perezoso para leer de inmediato de localStorage en el cliente
+  const initialValueRef = useRef(initialValue);
+  initialValueRef.current = initialValue;
+
+  // Estado inicial perezoso
   const [storedValue, setStoredValue] = useState<T>(() => {
     if (typeof window === 'undefined') return initialValue;
     try {
       const item = window.localStorage.getItem(key);
-      return item ? JSON.parse(item) : initialValue;
+      return item !== null ? JSON.parse(item) : initialValue;
     } catch {
       return initialValue;
     }
   });
 
-  // Sincronización reactiva entre instancias y pestañas
+  // Sincronización reactiva controlada
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const readFromStorage = () => {
       try {
         const item = window.localStorage.getItem(key);
-        if (item) {
-          setStoredValue(JSON.parse(item));
-        } else {
-          setStoredValue(initialValue);
+        if (item !== null) {
+          const parsed = JSON.parse(item);
+          setStoredValue((prev) => {
+            // Evita re-render si el valor JSON es idéntico
+            if (JSON.stringify(prev) === item) {
+              return prev;
+            }
+            return parsed;
+          });
         }
       } catch (error) {
         console.warn(`[useLocalStorage] Error reading key "${key}":`, error);
       }
     };
 
-    // Lectura inicial por si el montaje en cliente cambió
+    // Lectura única al montar en cliente
     readFromStorage();
 
-    window.addEventListener('storage', readFromStorage);
-    window.addEventListener('local-storage-update', readFromStorage);
+    const handleCustomUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ key?: string }>;
+      if (!customEvent.detail || customEvent.detail.key === key) {
+        readFromStorage();
+      }
+    };
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === null || e.key === key) {
+        readFromStorage();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('local-storage-update', handleCustomUpdate);
 
     return () => {
-      window.removeEventListener('storage', readFromStorage);
-      window.removeEventListener('local-storage-update', readFromStorage);
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('local-storage-update', handleCustomUpdate);
     };
-  }, [key, initialValue]);
+  }, [key]);
 
   const setValue = useCallback((value: T | ((val: T) => T)) => {
     try {
       setStoredValue((prev) => {
         const valueToStore = value instanceof Function ? value(prev) : value;
         if (typeof window !== 'undefined') {
-          window.localStorage.setItem(key, JSON.stringify(valueToStore));
-          window.dispatchEvent(new Event('local-storage-update'));
+          const serialized = JSON.stringify(valueToStore);
+          const current = window.localStorage.getItem(key);
+          if (current !== serialized) {
+            window.localStorage.setItem(key, serialized);
+            window.dispatchEvent(new CustomEvent('local-storage-update', { detail: { key } }));
+          }
         }
         return valueToStore;
       });
