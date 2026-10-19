@@ -61,6 +61,8 @@ import { MirrorMuscleOverlay } from "@/components/vision/MirrorMuscleOverlay";
 import { logSetOfflineFirst } from "@/lib/local-db";
 import { playTempoPulse, startTempoLoop, stopTempoLoop } from "@/lib/tempo-sonar";
 import { useVoiceLogger } from "@/hooks/useVoiceLogger";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { OnboardingFlow, UserApexProfile } from "@/app/onboarding/OnboardingFlow";
 
 export default function ApexDashboard() {
     // Hardware Hooks (Screen WakeLock & Haptic/Audio)
@@ -98,17 +100,35 @@ export default function ApexDashboard() {
     // Hot-Swap: Voice Logger active target
     const [voiceActiveSet, setVoiceActiveSet] = useState<{ exerciseId: string; setIdx: number } | null>(null);
 
-    // Biometrics State (Stored in localStorage or initial defaults)
-    const [bio, setBio] = useState<BiometricProfile>({
-        gender: "male",
-        age: 28,
-        weightKg: 82.5,
-        heightCm: 178,
-        bodyFatPct: 14.5,
+    // Profile state from localStorage
+    const [profile, setProfile] = useLocalStorage<UserApexProfile | null>("apex_user_profile", null);
+    const [refreshKey, setRefreshKey] = useState(0);
+
+    // Biometrics State adapted from calibrated profile
+    const bio: BiometricProfile = useMemo(() => ({
+        gender: profile?.gender || "male",
+        age: profile?.age || 38,
+        weightKg: profile?.weightKg || 80,
+        heightCm: profile?.heightCm || 178,
+        bodyFatPct: profile?.bodyFatPct || 14.5,
         skeletalMusclePct: 42.0,
-        trainingDaysPerWeek: 5,
-        caloricDeficitPct: 15
-    });
+        trainingDaysPerWeek: profile?.trainingDaysPerWeek || 6,
+        caloricDeficitPct: profile?.caloricDeficitPct || 15
+    }), [profile]);
+
+    const setBio = (updated: BiometricProfile) => {
+        if (!profile) return;
+        setProfile({
+            ...profile,
+            gender: updated.gender,
+            age: updated.age,
+            weightKg: updated.weightKg,
+            heightCm: updated.heightCm,
+            bodyFatPct: updated.bodyFatPct,
+            trainingDaysPerWeek: updated.trainingDaysPerWeek,
+            caloricDeficitPct: updated.caloricDeficitPct
+        });
+    };
 
     // Calculated Metabolism
     const macros = useMemo(() => calculateMetabolism(bio), [bio]);
@@ -117,8 +137,14 @@ export default function ApexDashboard() {
 
     // Weekly Routine & Current Day
     const weeklyProgram = useMemo(() => {
-        return generateWeeklyProgram(bio.trainingDaysPerWeek, 60, "incline_treadmill");
-    }, [bio.trainingDaysPerWeek]);
+        return generateWeeklyProgram(
+            profile?.trainingDaysPerWeek || 6,
+            profile?.sessionDurationMins || 60,
+            (profile?.preferredCardio && profile.preferredCardio !== "none")
+                ? profile.preferredCardio
+                : "incline_treadmill"
+        );
+    }, [profile?.trainingDaysPerWeek, profile?.sessionDurationMins, profile?.preferredCardio]);
 
     const [currentDayIndex, setCurrentDayIndex] = useState(0);
     const currentRoutine: RoutineDay = weeklyProgram[currentDayIndex] || weeklyProgram[0];
@@ -331,12 +357,17 @@ export default function ApexDashboard() {
         return Array.from(new Set(activeExercises.map(e => e.primary_muscle)));
     }, [activeExercises]);
 
+    // Si no hay perfil configurado, mostramos obligatoriamente el formulario y ocultamos todo lo demás
+    if (!profile || !profile.isConfigured) {
+        return <OnboardingFlow onComplete={() => setRefreshKey(prev => prev + 1)} />;
+    }
+
     return (
         <div className="min-h-screen bg-[#000000] text-[#EAEAEA] font-sans antialiased selection:bg-[#FF2A2A]/30 selection:text-white pb-24">
             {/* Top Navigation & Telemetry Header */}
             <header className="sticky top-0 z-40 bg-[#000000]/80 backdrop-blur-2xl border-b border-white/[0.08] px-4 py-3">
                 <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
-                    {/* Brand */}
+                    {/* Brand & Greeting */}
                     <div className="flex items-center gap-3">
                         <Link href="/" className="text-xs text-zinc-400 hover:text-white flex items-center gap-1.5 border border-white/[0.08] bg-white/[0.04] px-3 py-1 rounded-full font-medium transition-colors">
                             ← LOYA LABS
@@ -344,13 +375,25 @@ export default function ApexDashboard() {
                         <div className="flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-[#FF2A2A] animate-pulse" />
                             <h1 className="text-sm font-semibold tracking-wider text-white">
-                                APEX // HYPERTROPHY OS
+                                APEX // HOLA, {profile.firstName.toUpperCase()}
                             </h1>
                         </div>
                     </div>
 
                     {/* Right Telemetry Badges */}
                     <div className="flex items-center gap-2">
+                        {/* Reconfigurar Perfil */}
+                        <button
+                            onClick={() => {
+                                localStorage.removeItem('apex_user_profile');
+                                window.location.reload();
+                            }}
+                            className="hidden sm:inline-flex text-[11px] font-mono text-zinc-400 hover:text-white border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-full transition-colors"
+                            title="Reconfigurar Perfil Biométrico"
+                        >
+                            Reconfigurar Perfil
+                        </button>
+
                         {/* Screen Lock Badge */}
                         <div className="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08]">
                             <span className={`w-1.5 h-1.5 rounded-full ${isScreenLocked ? "bg-[#10B981]" : "bg-[#F59E0B]"}`} />
@@ -444,6 +487,15 @@ export default function ApexDashboard() {
 
             {/* Dynamic Content */}
             <main className="max-w-6xl mx-auto px-4 mt-6">
+                {/* Motivational Psychology Banner personalized by First Name */}
+                <div className="bg-[#121214]/90 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-5 sm:p-6 mb-6 shadow-2xl">
+                    <span className="text-[10px] font-mono text-[#FF2A2A] uppercase tracking-wider block">
+                        ESTADO MENTAL & PSICOLOGÍA DEPORTIVA
+                    </span>
+                    <p className="text-sm text-zinc-300 mt-2 leading-relaxed font-normal">
+                        &ldquo;{profile.firstName}, tu sistema está calibrado para {profile.trainingDaysPerWeek} días semanales con un déficit enfocado en recomposición. La consistencia en las cargas de hoy dictará el músculo de mañana. Mantén el foco en el RIR 1.&rdquo;
+                    </p>
+                </div>
                 {/* =========================================================================
                     TAB 1: WORKOUT EN VIVO
                    ========================================================================= */}
