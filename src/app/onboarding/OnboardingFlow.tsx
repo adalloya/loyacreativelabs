@@ -42,7 +42,7 @@ export const initialProfile: UserApexProfile = {
   isConfigured: false,
 };
 
-export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
+export function OnboardingFlow({ onComplete }: { onComplete?: (savedProfile?: UserApexProfile) => void }) {
   const [profile, setProfile] = useLocalStorage<UserApexProfile>('apex_user_profile', initialProfile);
   const [step, setStep] = useState(1);
 
@@ -52,12 +52,32 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profile.firstName.trim() || !profile.lastName.trim()) {
+    if (!profile.firstName?.trim() || !profile.lastName?.trim()) {
       alert('Por favor ingresa tu Nombre y Apellido para continuar.');
+      setStep(1);
       return;
     }
-    setProfile((prev) => ({ ...prev, isConfigured: true }));
-    onComplete();
+
+    const finalProfile: UserApexProfile = {
+      ...profile,
+      isConfigured: true,
+      fitnessGoal: profile.fitnessGoal || 'deficit',
+      caloricAdjustmentPct: typeof profile.caloricAdjustmentPct === 'number' ? profile.caloricAdjustmentPct : -15,
+      caloricDeficitPct: profile.caloricAdjustmentPct ? Math.abs(profile.caloricAdjustmentPct) : (profile.caloricDeficitPct || 15)
+    };
+
+    // Guardar sincrónicamente en localStorage y notificar a todas las instancias
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('apex_user_profile', JSON.stringify(finalProfile));
+      window.dispatchEvent(new Event('local-storage-update'));
+      window.dispatchEvent(new Event('storage'));
+    }
+
+    setProfile(finalProfile);
+
+    if (onComplete) {
+      onComplete(finalProfile);
+    }
   };
 
   return (

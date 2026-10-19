@@ -375,7 +375,16 @@ export default function ApexDashboard() {
 
     // Si no hay perfil configurado, mostramos obligatoriamente el formulario y ocultamos todo lo demás
     if (!profile || !profile.isConfigured) {
-        return <OnboardingFlow onComplete={() => setRefreshKey(prev => prev + 1)} />;
+        return (
+            <OnboardingFlow
+                onComplete={(savedProfile) => {
+                    if (savedProfile) {
+                        setProfile(savedProfile);
+                    }
+                    setRefreshKey(prev => prev + 1);
+                }}
+            />
+        );
     }
 
     return (
