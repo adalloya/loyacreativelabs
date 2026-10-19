@@ -1,6 +1,6 @@
 (function () {
-    // PREVENT RECURSION
-    if (window.self !== window.top || document.getElementById('loya-ai-widget') || window.location.href.includes('/consultant')) return;
+    // PREVENT RECURSION & EXCLUDE SPECIFIC ROUTES
+    if (window.self !== window.top || document.getElementById('loya-ai-widget') || window.location.href.includes('/consultant') || window.location.href.includes('/apex')) return;
 
     // CONFIGURATION
     const currentScript = document.currentScript;

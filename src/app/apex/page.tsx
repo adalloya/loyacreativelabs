@@ -56,6 +56,7 @@ import { MuscleTargetDrawer } from "@/components/apex/MuscleTargetDrawer";
 import { PlateCalculatorModal } from "@/components/apex/PlateCalculatorModal";
 import { PwaInstallModal } from "@/components/apex/PwaInstallModal";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
+import { DownloadPDFButton } from "@/components/pdf/DownloadPDFButton";
 import { MirrorMuscleOverlay } from "@/components/vision/MirrorMuscleOverlay";
 import { logSetOfflineFirst } from "@/lib/local-db";
 import { playTempoPulse, startTempoLoop, stopTempoLoop } from "@/lib/tempo-sonar";
@@ -172,6 +173,34 @@ export default function ApexDashboard() {
             stopTempoLoop();
         };
     }, []);
+
+    // Desactivar / ocultar el botón flotante del asistente en toda la sección de APEX
+    useEffect(() => {
+        const hideWidget = () => {
+            const el = document.getElementById("loya-ai-widget");
+            if (el) el.style.setProperty("display", "none", "important");
+        };
+        hideWidget();
+        const timer = setInterval(hideWidget, 500);
+        return () => {
+            clearInterval(timer);
+            const el = document.getElementById("loya-ai-widget");
+            if (el) el.style.display = "flex";
+        };
+    }, []);
+
+    // Nike Editorial PDF Blueprint Data
+    const pdfProfile = useMemo(() => ({
+        weightKg: bio.weightKg,
+        caloricDeficitPct: bio.caloricDeficitPct,
+        calculatedTdee: macros.tdee,
+        targetCalories: macros.targetCalories,
+        targetProteinG: macros.proteinG
+    }), [bio, macros]);
+
+    const pdfDiet = useMemo(() => ({
+        dailySupplements: supplements
+    }), [supplements]);
 
     // Set Completion with Dexie.js Offline-First logging
     const handleCompleteSet = (exerciseId: string, setIdx: number, restSeconds: number, customWeight?: number, customReps?: number) => {
@@ -328,6 +357,9 @@ export default function ApexDashboard() {
                             <span className="text-zinc-300 font-medium">{isScreenLocked ? "PANTALLA ACTIVA" : "WAKE LOCK"}</span>
                         </div>
 
+                        {/* Nike Style Blueprint PDF Export */}
+                        <DownloadPDFButton profile={pdfProfile} routine={activeExercises} diet={pdfDiet} />
+
                         {/* PWA Install Trigger */}
                         <button
                             onClick={() => setIsInstallModalOpen(true)}
@@ -335,7 +367,7 @@ export default function ApexDashboard() {
                             title="Instalar en tu teléfono"
                         >
                             <Smartphone size={13} />
-                            <span>INSTALAR WEBAPP</span>
+                            <span className="hidden sm:inline">INSTALAR WEBAPP</span>
                         </button>
                     </div>
                 </div>
