@@ -8,6 +8,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { DownloadPDFButton } from '@/components/pdf/DownloadPDFButton';
 import { ShoppingList } from '@/components/nutrition/ShoppingList';
 import { ApexFooter } from '@/components/apex/ApexFooter';
+import { DietPreferenceModal, DietType } from '@/components/nutrition/DietPreferenceModal';
 
 export interface DietPlanData {
   monthYear: string;
@@ -36,19 +37,32 @@ export default function NutritionPage() {
   const [dietPlan, setDietPlan] = useLocalStorage<DietPlanData | null>('apex_diet_plan', null);
   const [profile] = useLocalStorage('apex_user_profile', { weightKg: 80, targetCalories: 2200, targetProteinG: 180, caloricDeficitPct: 15, fitnessGoal: 'deficit', caloricAdjustmentPct: -15 });
   const [loading, setLoading] = useState(false);
+  const [isDietPrefModalOpen, setIsDietPrefModalOpen] = useState(false);
+  const [dietPreference, setDietPreference] = useLocalStorage<DietType>('apex_diet_preference', 'standard');
+  const [dietNotes, setDietNotes] = useLocalStorage<string>('apex_diet_notes', '');
 
   // 2. Función para invocar a Gemini y guardar el resultado localmente
-  const handleGenerateDiet = async () => {
+  const handleGenerateDiet = async (selectedDiet?: DietType, customNotes?: string) => {
+    const pref = selectedDiet || dietPreference || 'standard';
+    const notes = customNotes !== undefined ? customNotes : dietNotes;
+    if (selectedDiet) setDietPreference(selectedDiet);
+    if (customNotes !== undefined) setDietNotes(customNotes);
+
     setLoading(true);
     try {
       const response = await fetch('/api/gemini/diet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profile }),
+        body: JSON.stringify({ 
+          profile,
+          dietaryPreference: pref,
+          dietaryNotes: notes
+        }),
       });
       const data = await response.json();
       if (data) {
         setDietPlan(data); // Se guarda automáticamente en localStorage
+        setIsDietPrefModalOpen(false);
       }
     } catch (error) {
       console.error('Error generando dieta:', error);
@@ -96,7 +110,7 @@ export default function NutritionPage() {
           )}
           
           <button
-            onClick={handleGenerateDiet}
+            onClick={() => setIsDietPrefModalOpen(true)}
             disabled={loading}
             className="bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] font-semibold text-xs px-4 py-2.5 rounded-xl transition-all disabled:opacity-50"
           >
@@ -110,10 +124,10 @@ export default function NutritionPage() {
         <div className="bg-[#121214]/90 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-12 text-center my-12 shadow-2xl">
           <h3 className="text-lg font-semibold mb-2">No hay un plan activo en este navegador</h3>
           <p className="text-xs text-zinc-400 max-w-md mx-auto mb-6 leading-relaxed">
-            Genera tu protocolo mensual basado en tu déficit calórico y métricas biométricas locales. Se guardará de forma independiente en tu dispositivo.
+            Genera tu protocolo mensual basado en tu régimen nutricional (Keto, Vegetariano, Vegano, Estándar, etc.) y métricas biométricas locales. Se guardará de forma independiente en tu dispositivo.
           </p>
           <button
-            onClick={handleGenerateDiet}
+            onClick={() => setIsDietPrefModalOpen(true)}
             disabled={loading}
             className="bg-white hover:bg-zinc-200 text-black font-semibold text-xs px-6 py-3 rounded-xl transition-all shadow-lg active:scale-95"
           >
@@ -124,7 +138,13 @@ export default function NutritionPage() {
         <div className="space-y-8 animate-in fade-in duration-500">
           
           {/* Tarjetas Resumen de Macros */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-[#121214]/90 backdrop-blur-2xl border border-white/[0.08] rounded-2xl p-5 shadow-xl">
+              <span className="text-[10px] font-mono text-zinc-500 uppercase">RÉGIMEN DIETÉTICO</span>
+              <p className="text-base font-mono font-bold mt-1 text-[#10B981] truncate">
+                {(dietPlan as any).dietaryTitle || 'ESTÁNDAR'}
+              </p>
+            </div>
             <div className="bg-[#121214]/90 backdrop-blur-2xl border border-white/[0.08] rounded-2xl p-5 shadow-xl">
               <span className="text-[10px] font-mono text-zinc-500 uppercase">CALORÍAS OBJETIVO</span>
               <p className="text-2xl font-mono font-bold mt-1">{dietPlan.caloriesTarget} KCAL</p>
@@ -161,6 +181,16 @@ export default function NutritionPage() {
 
         </div>
       )}
+
+      {/* Modal de Pregunta Previa: Preferencias Dietéticas (Keto, Vegetariana, etc.) para Gemini */}
+      <DietPreferenceModal
+        isOpen={isDietPrefModalOpen}
+        onClose={() => setIsDietPrefModalOpen(false)}
+        onConfirm={(selectedDiet, notes) => handleGenerateDiet(selectedDiet, notes)}
+        initialDiet={dietPreference}
+        initialNotes={dietNotes}
+        isLoading={loading}
+      />
 
       {/* Executive Apple / Tesla Style Footer */}
       <ApexFooter />

@@ -83,6 +83,7 @@ import { DownloadPDFButton } from "@/components/pdf/DownloadPDFButton";
 import { AppHeaderMenu } from "@/components/ui/AppHeaderMenu";
 import { ShoppingList } from "@/components/nutrition/ShoppingList";
 import { DailyMealTracker } from "@/components/nutrition/DailyMealTracker";
+import { DietPreferenceModal, DietType } from "@/components/nutrition/DietPreferenceModal";
 import { ApexCalendarView } from "@/components/calendar/ApexCalendarView";
 import { DailyNutritionLog, getLocalDateString } from "@/lib/nutrition-tracker";
 import { ApexFooter } from "@/components/apex/ApexFooter";
@@ -185,6 +186,9 @@ export default function ApexDashboard() {
     const [isScannerOpen, setIsScannerOpen] = useState(false);
     const [isSpotifyModalOpen, setIsSpotifyModalOpen] = useState(false);
     const [isSpotifyLinked, setIsSpotifyLinked] = useState(false);
+    const [isDietPrefModalOpen, setIsDietPrefModalOpen] = useState(false);
+    const [dietPreference, setDietPreference] = useLocalStorage<DietType>("apex_diet_preference", "standard");
+    const [dietNotes, setDietNotes] = useLocalStorage<string>("apex_diet_notes", "");
 
     // Spotify PKCE OAuth Callback Handler & Status Initialization
     useEffect(() => {
@@ -593,7 +597,12 @@ export default function ApexDashboard() {
     const [dietPlan, setDietPlan] = useLocalStorage<any>("apex_diet_plan", null);
     const [dietLoading, setDietLoading] = useState(false);
 
-    const handleGenerateAiDiet = async () => {
+    const handleGenerateAiDiet = async (selectedDiet?: DietType, customNotes?: string) => {
+        const pref = selectedDiet || dietPreference || "standard";
+        const notes = customNotes !== undefined ? customNotes : dietNotes;
+        if (selectedDiet) setDietPreference(selectedDiet);
+        if (customNotes !== undefined) setDietNotes(customNotes);
+
         setDietLoading(true);
         try {
             const res = await fetch("/api/gemini/diet", {
@@ -607,12 +616,15 @@ export default function ApexDashboard() {
                         caloricDeficitPct: bio.caloricDeficitPct,
                         fitnessGoal: bio.fitnessGoal,
                         caloricAdjustmentPct: bio.caloricAdjustmentPct
-                    }
+                    },
+                    dietaryPreference: pref,
+                    dietaryNotes: notes
                 })
             });
             const data = await res.json();
             if (data && (data.thirtyDayPlan || data.weeklyTemplates || data.caloriesTarget)) {
                 setDietPlan(data);
+                setIsDietPrefModalOpen(false);
             }
         } catch (e) {
             console.error("Error generating diet with Gemini:", e);
@@ -1683,7 +1695,7 @@ export default function ApexDashboard() {
                                         </button>
                                     )}
                                     <button
-                                        onClick={handleGenerateAiDiet}
+                                        onClick={() => setIsDietPrefModalOpen(true)}
                                         disabled={dietLoading}
                                         className="px-5 py-2 bg-white hover:bg-zinc-200 text-black text-xs font-semibold rounded-full shadow-md transition-all disabled:opacity-50 flex items-center gap-1.5 self-start sm:self-auto"
                                     >
@@ -1702,9 +1714,23 @@ export default function ApexDashboard() {
                             {dietPlan ? (
                                 <div className="space-y-4 text-xs">
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/[0.03] p-4 rounded-2xl border border-white/[0.06]">
-                                        <p className="text-zinc-300 leading-relaxed max-w-2xl">
-                                            {dietPlan.monthlySummary || `Plan nutricional clínico de 30 días para ${bio.fitnessGoal === "surplus" ? "Superávit Anabólico" : bio.fitnessGoal === "maintenance" ? "Mantenimiento / Recomposición" : "Déficit Calórico"} (${dietPlan.caloriesTarget || macros.targetCalories} kcal/día • ${dietPlan.macros?.protein || macros.proteinG}g de proteína).`}
-                                        </p>
+                                        <div className="space-y-1.5 max-w-2xl">
+                                            {dietPlan.dietaryTitle && (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="px-2.5 py-0.5 rounded-full bg-white/[0.08] text-white border border-white/20 font-mono text-[10px] font-semibold uppercase">
+                                                        RÉGIMEN: {dietPlan.dietaryTitle}
+                                                    </span>
+                                                    {dietPlan.dietaryNotes && (
+                                                        <span className="text-[10px] text-zinc-400 font-mono">
+                                                            ({dietPlan.dietaryNotes})
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                            <p className="text-zinc-300 leading-relaxed">
+                                                {dietPlan.monthlySummary || `Plan nutricional clínico de 30 días para ${bio.fitnessGoal === "surplus" ? "Superávit Anabólico" : bio.fitnessGoal === "maintenance" ? "Mantenimiento / Recomposición" : "Déficit Calórico"} (${dietPlan.caloriesTarget || macros.targetCalories} kcal/día • ${dietPlan.macros?.protein || macros.proteinG}g de proteína).`}
+                                            </p>
+                                        </div>
                                         <span className="px-2.5 py-1 rounded-full bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/20 font-mono text-[10px] font-semibold shrink-0 self-start sm:self-center">
                                             ● GUARDADO EN DISPOSITIVO
                                         </span>
@@ -2073,6 +2099,16 @@ export default function ApexDashboard() {
                 currentExercise={swapTargetIndex !== null ? activeExercises[swapTargetIndex] : null}
                 onSelectSwap={handleSelectSwapReplacement}
                 activeExerciseIds={activeExercises.map(e => e.id)}
+            />
+
+            {/* Modal de Pregunta Previa: Preferencias Dietéticas (Keto, Vegetariana, etc.) para Gemini */}
+            <DietPreferenceModal
+                isOpen={isDietPrefModalOpen}
+                onClose={() => setIsDietPrefModalOpen(false)}
+                onConfirm={(selectedDiet, notes) => handleGenerateAiDiet(selectedDiet, notes)}
+                initialDiet={dietPreference}
+                initialNotes={dietNotes}
+                isLoading={dietLoading}
             />
 
             {isInstallModalOpen && (
