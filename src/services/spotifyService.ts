@@ -2,17 +2,30 @@
 
 /**
  * Spotify PKCE OAuth & Web API Service para APEX Hypertrophy OS.
- * Implementa el flujo OAuth 2.0 PKCE directamente en el cliente (sin backend ni client_secret).
+ * Implementa el flujo oficial OAuth 2.0 PKCE directamente en el cliente (sin backend).
+ * Credenciales aseguradas: El Client ID se gestiona internamente y nunca se expone en formularios del frontend.
  */
 
+// Client ID por defecto configurado internamente
+const INTERNAL_CLIENT_ID = process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID || "26c08add7afa417bb1da14684cca1b02";
+
 const STORAGE_KEYS = {
-    CLIENT_ID: "apex_spotify_client_id",
     ACCESS_TOKEN: "apex_spotify_access_token",
     REFRESH_TOKEN: "apex_spotify_refresh_token",
     EXPIRES_AT: "apex_spotify_expires_at",
     CODE_VERIFIER: "apex_spotify_code_verifier",
     STATE: "apex_spotify_state"
 };
+
+export interface SpotifyDevice {
+    id: string;
+    is_active: boolean;
+    is_private_session: boolean;
+    is_restricted: boolean;
+    name: string;
+    type: string;
+    volume_percent: number;
+}
 
 export interface SpotifyTrack {
     id: string;
@@ -25,6 +38,10 @@ export interface SpotifyTrack {
     isPlaying: boolean;
     uri: string;
     deviceName?: string;
+    deviceId?: string;
+    shuffleState?: boolean;
+    repeatState?: "off" | "track" | "context";
+    volumePercent?: number;
 }
 
 export interface WorkoutPlaylist {
@@ -44,7 +61,7 @@ export const CURATED_WORKOUT_PLAYLISTS: WorkoutPlaylist[] = [
         genre: "Techno / Industrial",
         bpm: "140 BPM",
         description: "BPM sostenido para series efectivas y máxima activación neuromuscular.",
-        spotifyUri: "spotify:playlist:37i9dQZF1DXdLEN7aqioXM", // Workout Techno oficial
+        spotifyUri: "spotify:playlist:37i9dQZF1DXdLEN7aqioXM",
         accentColor: "#10B981"
     },
     {
@@ -53,7 +70,7 @@ export const CURATED_WORKOUT_PLAYLISTS: WorkoutPlaylist[] = [
         genre: "Heavy Metal / Hard Rock",
         bpm: "135-150 BPM",
         description: "Distorsión pesada y energía para series pesadas en sentadilla y banca.",
-        spotifyUri: "spotify:playlist:37i9dQZF1DXdFESNN9TzQT", // Rock Hard Workout
+        spotifyUri: "spotify:playlist:37i9dQZF1DXdFESNN9TzQT",
         accentColor: "#FF2A2A"
     },
     {
@@ -62,7 +79,7 @@ export const CURATED_WORKOUT_PLAYLISTS: WorkoutPlaylist[] = [
         genre: "Trap / Dark Hip-Hop",
         bpm: "130-145 BPM",
         description: "Bajos profundos y concentración mental para hipertrofia con RIR 1.",
-        spotifyUri: "spotify:playlist:37i9dQZF1DX76t638V64Cr", // Beast Mode oficial
+        spotifyUri: "spotify:playlist:37i9dQZF1DX76t638V64Cr",
         accentColor: "#F59E0B"
     },
     {
@@ -71,7 +88,7 @@ export const CURATED_WORKOUT_PLAYLISTS: WorkoutPlaylist[] = [
         genre: "Lo-Fi Beats",
         bpm: "80-95 BPM",
         description: "Baja frecuencia cardíaca para pausas entre series y movilidad final.",
-        spotifyUri: "spotify:playlist:37i9dQZF1DWWQRwui0ExPn", // Lo-Fi Cafe
+        spotifyUri: "spotify:playlist:37i9dQZF1DWWQRwui0ExPn",
         accentColor: "#8B5CF6"
     }
 ];
@@ -103,22 +120,6 @@ function base64UrlEncode(buffer: ArrayBuffer): string {
         .replace(/=+$/, "");
 }
 
-export const DEFAULT_SPOTIFY_CLIENT_ID = "26c08add7afa417bb1da14684cca1b02";
-
-export function getStoredSpotifyClientId(): string {
-    if (typeof window === "undefined") return DEFAULT_SPOTIFY_CLIENT_ID;
-    return (
-        localStorage.getItem(STORAGE_KEYS.CLIENT_ID) ||
-        process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID ||
-        DEFAULT_SPOTIFY_CLIENT_ID
-    );
-}
-
-export function setStoredSpotifyClientId(clientId: string): void {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(STORAGE_KEYS.CLIENT_ID, clientId.trim());
-}
-
 export function isSpotifyConnected(): boolean {
     if (typeof window === "undefined") return false;
     const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
@@ -136,17 +137,16 @@ export function disconnectSpotify(): void {
 }
 
 /**
- * Inicia el flujo de autorización Spotify PKCE OAuth en el navegador.
+ * Inicia el flujo oficial de autorización Spotify PKCE OAuth en el navegador.
+ * Ya no requiere que el usuario teclee o vea ninguna API key ni Client ID.
  */
-export async function initiateSpotifyLogin(customClientId?: string): Promise<void> {
+export async function initiateSpotifyLogin(): Promise<void> {
     if (typeof window === "undefined") return;
 
-    const clientId = customClientId || getStoredSpotifyClientId();
+    const clientId = INTERNAL_CLIENT_ID;
     if (!clientId) {
-        throw new Error("No se ha configurado un Spotify Client ID.");
+        throw new Error("Client ID no configurado.");
     }
-
-    setStoredSpotifyClientId(clientId);
 
     const codeVerifier = generateRandomString(64);
     const hashed = await sha256(codeVerifier);
@@ -156,10 +156,14 @@ export async function initiateSpotifyLogin(customClientId?: string): Promise<voi
     localStorage.setItem(STORAGE_KEYS.CODE_VERIFIER, codeVerifier);
     localStorage.setItem(STORAGE_KEYS.STATE, state);
 
-    // Redirect URI limpia sin query params
+    // Redirect URI limpia
     const redirectUri = `${window.location.origin}${window.location.pathname}`;
 
+    // Scopes oficiales requeridos por Spotify Web Playback SDK & Web API
     const scope = [
+        "streaming",
+        "user-read-email",
+        "user-read-private",
         "user-read-playback-state",
         "user-modify-playback-state",
         "user-read-currently-playing",
@@ -181,7 +185,6 @@ export async function initiateSpotifyLogin(customClientId?: string): Promise<voi
 
 /**
  * Procesa el callback al regresar de Spotify si existen ?code y ?state en la URL.
- * Devuelve true si procesó la autenticación con éxito.
  */
 export async function handleSpotifyCallback(): Promise<boolean> {
     if (typeof window === "undefined") return false;
@@ -201,7 +204,7 @@ export async function handleSpotifyCallback(): Promise<boolean> {
 
     const storedVerifier = localStorage.getItem(STORAGE_KEYS.CODE_VERIFIER);
     const storedState = localStorage.getItem(STORAGE_KEYS.STATE);
-    const clientId = getStoredSpotifyClientId();
+    const clientId = INTERNAL_CLIENT_ID;
 
     if (!storedVerifier || !clientId) {
         cleanUrlParams();
@@ -247,7 +250,6 @@ export async function handleSpotifyCallback(): Promise<boolean> {
         }
         localStorage.setItem(STORAGE_KEYS.EXPIRES_AT, expiresAt.toString());
 
-        // Limpiar verifiers
         localStorage.removeItem(STORAGE_KEYS.CODE_VERIFIER);
         localStorage.removeItem(STORAGE_KEYS.STATE);
 
@@ -278,7 +280,7 @@ export async function getValidAccessToken(): Promise<string | null> {
     const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
     const expiresAtStr = localStorage.getItem(STORAGE_KEYS.EXPIRES_AT);
     const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
-    const clientId = getStoredSpotifyClientId();
+    const clientId = INTERNAL_CLIENT_ID;
 
     if (!token && !refreshToken) return null;
 
@@ -356,7 +358,7 @@ export async function getCurrentPlayback(): Promise<SpotifyTrack | null> {
         if (!res) return null;
 
         if (res.status === 204 || res.status === 404) {
-            return null; // Nada reproduciéndose en este momento
+            return null;
         }
 
         if (!res.ok) {
@@ -377,7 +379,11 @@ export async function getCurrentPlayback(): Promise<SpotifyTrack | null> {
             progressMs: data.progress_ms || 0,
             isPlaying: Boolean(data.is_playing),
             uri: item.uri || "",
-            deviceName: data.device?.name
+            deviceName: data.device?.name,
+            deviceId: data.device?.id,
+            shuffleState: Boolean(data.shuffle_state),
+            repeatState: data.repeat_state || "off",
+            volumePercent: data.device?.volume_percent ?? 100
         };
     } catch (err) {
         console.error("Error fetching Spotify playback:", err);
@@ -427,6 +433,84 @@ export async function spotifyNext(): Promise<boolean> {
 export async function spotifyPrevious(): Promise<boolean> {
     try {
         const res = await spotifyFetch("/me/player/previous", { method: "POST" });
+        return Boolean(res && (res.status === 204 || res.ok));
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Control: Buscar posición en la pista (Seek en milisegundos).
+ */
+export async function spotifySeek(positionMs: number): Promise<boolean> {
+    try {
+        const res = await spotifyFetch(`/me/player/seek?position_ms=${Math.floor(positionMs)}`, { method: "PUT" });
+        return Boolean(res && (res.status === 204 || res.ok));
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Control: Modo Aleatorio (Shuffle).
+ */
+export async function spotifySetShuffle(state: boolean): Promise<boolean> {
+    try {
+        const res = await spotifyFetch(`/me/player/shuffle?state=${state}`, { method: "PUT" });
+        return Boolean(res && (res.status === 204 || res.ok));
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Control: Repetir pista o contexto (off, track, context).
+ */
+export async function spotifySetRepeat(state: "off" | "track" | "context"): Promise<boolean> {
+    try {
+        const res = await spotifyFetch(`/me/player/repeat?state=${state}`, { method: "PUT" });
+        return Boolean(res && (res.status === 204 || res.ok));
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Control: Volumen (0-100).
+ */
+export async function spotifySetVolume(volumePercent: number): Promise<boolean> {
+    try {
+        const res = await spotifyFetch(`/me/player/volume?volume_percent=${Math.round(volumePercent)}`, { method: "PUT" });
+        return Boolean(res && (res.status === 204 || res.ok));
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Obtener lista de dispositivos conectados en Spotify.
+ */
+export async function spotifyGetDevices(): Promise<SpotifyDevice[]> {
+    try {
+        const res = await spotifyFetch("/me/player/devices");
+        if (!res || !res.ok) return [];
+        const data = await res.json();
+        return data.devices || [];
+    } catch {
+        return [];
+    }
+}
+
+/**
+ * Transferir reproducción a un dispositivo específico.
+ */
+export async function spotifyTransferPlayback(deviceId: string, play: boolean = true): Promise<boolean> {
+    try {
+        const res = await spotifyFetch("/me/player", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ device_ids: [deviceId], play })
+        });
         return Boolean(res && (res.status === 204 || res.ok));
     } catch {
         return false;

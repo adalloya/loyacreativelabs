@@ -8,20 +8,29 @@ import {
     Pause,
     SkipForward,
     SkipBack,
+    Shuffle,
+    Repeat,
+    Repeat1,
+    Volume2,
+    VolumeX,
+    Speaker,
     Disc,
     Sliders,
-    Radio,
-    Sparkles,
-    Volume2,
-    RefreshCw
+    ExternalLink,
+    Radio
 } from "lucide-react";
 import {
     isSpotifyConnected,
+    initiateSpotifyLogin,
     getCurrentPlayback,
     spotifyPlay,
     spotifyPause,
     spotifyNext,
     spotifyPrevious,
+    spotifySeek,
+    spotifySetShuffle,
+    spotifySetRepeat,
+    spotifySetVolume,
     SpotifyTrack
 } from "@/services/spotifyService";
 
@@ -29,6 +38,14 @@ interface SpotifyPlayerWidgetProps {
     onOpenSettings: () => void;
     restRemaining: number | null;
     onSkipRest: () => void;
+}
+
+function formatTime(ms: number): string {
+    if (!ms || isNaN(ms)) return "0:00";
+    const totalSecs = Math.floor(ms / 1000);
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
 export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
@@ -40,9 +57,16 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
     const [track, setTrack] = useState<SpotifyTrack | null>(null);
     const [isOptimisticPlaying, setIsOptimisticPlaying] = useState<boolean | null>(null);
     const [isActionPending, setIsActionPending] = useState(false);
-    const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const [localProgressMs, setLocalProgressMs] = useState(0);
+    const [isSeeking, setIsSeeking] = useState(false);
+    const [volume, setVolume] = useState(100);
+    const [isMuted, setIsMuted] = useState(false);
+    const prevVolumeRef = useRef(100);
 
-    // Check connection status & update
+    const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const tickerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Fetch live playback state from Spotify Web API
     const updatePlayback = useCallback(async () => {
         const isConn = isSpotifyConnected();
         setConnected(isConn);
@@ -55,19 +79,24 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
         if (current) {
             setTrack(current);
             setIsOptimisticPlaying(null);
+            if (!isSeeking) {
+                setLocalProgressMs(current.progressMs);
+            }
+            if (current.volumePercent !== undefined) {
+                setVolume(current.volumePercent);
+            }
         } else {
-            // Nothing actively playing or paused
             setTrack(prev => (prev ? { ...prev, isPlaying: false } : null));
         }
-    }, []);
+    }, [isSeeking]);
 
-    // Polling effect every 3.5 seconds
+    // Initial check and periodic polling
     useEffect(() => {
         updatePlayback();
 
         pollIntervalRef.current = setInterval(() => {
             updatePlayback();
-        }, 3500);
+        }, 3000);
 
         return () => {
             if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
@@ -76,9 +105,28 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
 
     const isPlaying = isOptimisticPlaying !== null ? isOptimisticPlaying : (track?.isPlaying ?? false);
 
+    // Smooth client-side ticker: updates progressMs second-by-second for real Spotify scrubber
+    useEffect(() => {
+        if (isPlaying && track && !isSeeking) {
+            tickerIntervalRef.current = setInterval(() => {
+                setLocalProgressMs(prev => {
+                    if (track.durationMs && prev >= track.durationMs) return prev;
+                    return prev + 1000;
+                });
+            }, 1000);
+        } else {
+            if (tickerIntervalRef.current) clearInterval(tickerIntervalRef.current);
+        }
+
+        return () => {
+            if (tickerIntervalRef.current) clearInterval(tickerIntervalRef.current);
+        };
+    }, [isPlaying, track, isSeeking]);
+
+    // Control Handlers
     const handleTogglePlay = async () => {
         if (!connected) {
-            onOpenSettings();
+            initiateSpotifyLogin();
             return;
         }
 
@@ -118,60 +166,110 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
         }, 500);
     };
 
+    const handleToggleShuffle = async () => {
+        if (!track) return;
+        const nextShuffle = !track.shuffleState;
+        setTrack({ ...track, shuffleState: nextShuffle });
+        await spotifySetShuffle(nextShuffle);
+    };
+
+    const handleToggleRepeat = async () => {
+        if (!track) return;
+        const currentMode = track.repeatState || "off";
+        const nextMode = currentMode === "off" ? "context" : currentMode === "context" ? "track" : "off";
+        setTrack({ ...track, repeatState: nextMode });
+        await spotifySetRepeat(nextMode);
+    };
+
+    const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = parseInt(e.target.value, 10);
+        setLocalProgressMs(val);
+    };
+
+    const handleSeekCommit = async () => {
+        setIsSeeking(false);
+        await spotifySeek(localProgressMs);
+    };
+
+    const handleVolumeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = parseInt(e.target.value, 10);
+        setVolume(val);
+        setIsMuted(val === 0);
+        await spotifySetVolume(val);
+    };
+
+    const handleToggleMute = async () => {
+        if (isMuted) {
+            const restored = prevVolumeRef.current || 50;
+            setVolume(restored);
+            setIsMuted(false);
+            await spotifySetVolume(restored);
+        } else {
+            prevVolumeRef.current = volume;
+            setVolume(0);
+            setIsMuted(true);
+            await spotifySetVolume(0);
+        }
+    };
+
+    const progressPct = track && track.durationMs > 0
+        ? Math.min(100, Math.max(0, (localProgressMs / track.durationMs) * 100))
+        : 0;
+
     return (
-        <div className="fixed bottom-0 left-0 right-0 z-30 bg-[#000000]/90 backdrop-blur-2xl border-t border-white/[0.1] px-3 sm:px-5 py-2.5 shadow-2xl transition-all">
-            <div className="max-w-6xl mx-auto flex items-center justify-between gap-3 sm:gap-6 text-xs">
-                {/* Left Section: Track Info or Connect Prompt */}
-                <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1 max-w-[50%] sm:max-w-none">
+        <div className="fixed bottom-0 left-0 right-0 z-30 bg-[#000000]/95 backdrop-blur-2xl border-t border-white/[0.12] px-3 sm:px-6 py-2.5 shadow-2xl transition-all">
+            <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 sm:gap-6 text-xs">
+
+                {/* ZONE 1 (LEFT): Track Info & Album Art */}
+                <div className="flex items-center gap-3 min-w-0 flex-1 max-w-[45%] sm:max-w-[28%]">
                     {!connected ? (
                         <button
-                            onClick={onOpenSettings}
+                            onClick={() => initiateSpotifyLogin()}
                             className="flex items-center gap-2.5 group text-left min-w-0"
-                            title="Conectar con tu cuenta de Spotify"
+                            title="Iniciar sesión directamente con Spotify"
                         >
-                            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-[#1DB954]/15 border border-[#1DB954]/30 flex items-center justify-center text-[#1DB954] shrink-0 group-hover:scale-105 transition-transform shadow-md shadow-[#1DB954]/10">
-                                <Disc size={16} className="animate-spin-slow" />
+                            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#1DB954] flex items-center justify-center text-black shrink-0 group-hover:scale-105 transition-transform shadow-lg shadow-[#1DB954]/25">
+                                <Music size={16} fill="currentColor" />
                             </div>
                             <div className="min-w-0">
-                                <div className="flex items-center gap-1.5">
-                                    <span className="text-[11px] sm:text-xs font-bold text-white tracking-tight group-hover:text-[#1DB954] transition-colors truncate">
-                                        Conectar Spotify
-                                    </span>
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#1DB954] animate-pulse" />
-                                </div>
+                                <span className="text-xs sm:text-sm font-bold text-white tracking-tight group-hover:text-[#1DB954] transition-colors truncate block">
+                                    Conectar con Spotify
+                                </span>
                                 <span className="text-[10px] text-zinc-400 font-mono tracking-wider truncate block">
                                     Sincronizar Ritmo // BPM
                                 </span>
                             </div>
                         </button>
                     ) : track ? (
-                        <div className="flex items-center gap-2.5 min-w-0 group cursor-pointer" onClick={onOpenSettings} title="Ajustes de Spotify y Playlists">
+                        <div
+                            className="flex items-center gap-2.5 min-w-0 group cursor-pointer"
+                            onClick={onOpenSettings}
+                            title="Ver detalles de reproducción y playlists"
+                        >
                             {/* Album Artwork */}
-                            <div className="relative w-8 h-8 sm:w-10 sm:h-10 rounded-xl overflow-hidden border border-white/10 bg-zinc-900 shrink-0 shadow-md">
+                            <div className="relative w-9 h-9 sm:w-11 sm:h-11 rounded-xl overflow-hidden border border-white/10 bg-zinc-900 shrink-0 shadow-md">
                                 {track.albumArt ? (
                                     <img
                                         src={track.albumArt}
                                         alt={track.album}
-                                        className={`w-full h-full object-cover ${isPlaying ? "scale-100" : "opacity-80"}`}
+                                        className={`w-full h-full object-cover transition-opacity ${isPlaying ? "opacity-100" : "opacity-80"}`}
                                     />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-[#1DB954]">
-                                        <Music size={16} />
+                                        <Music size={18} />
                                     </div>
                                 )}
                                 {isPlaying && (
-                                    <div className="absolute bottom-0.5 right-0.5 w-2 h-2 rounded-full bg-[#1DB954] border border-black" />
+                                    <div className="absolute bottom-1 right-1 w-2 h-2 rounded-full bg-[#1DB954] border border-black animate-pulse" />
                                 )}
                             </div>
 
-                            {/* Title & Artist */}
-                            <div className="min-w-0">
-                                <div className="flex items-center gap-1.5">
-                                    <span className="text-[11px] sm:text-xs font-bold text-white tracking-tight truncate block group-hover:text-[#1DB954] transition-colors">
-                                        {track.name}
-                                    </span>
-                                </div>
-                                <span className="text-[10px] text-zinc-400 truncate block font-normal">
+                            {/* Song Title & Artist */}
+                            <div className="min-w-0 flex-1">
+                                <span className="text-xs sm:text-sm font-bold text-white tracking-tight truncate block group-hover:text-[#1DB954] transition-colors">
+                                    {track.name}
+                                </span>
+                                <span className="text-[11px] text-zinc-400 truncate block font-normal">
                                     {track.artist}
                                 </span>
                             </div>
@@ -180,81 +278,139 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                         <div
                             onClick={onOpenSettings}
                             className="flex items-center gap-2.5 cursor-pointer text-left min-w-0"
-                            title="Spotify Conectado - Abre Spotify en tu dispositivo"
+                            title="Spotify conectado sin sesión activa"
                         >
-                            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-[#1DB954]/20 border border-[#1DB954]/40 flex items-center justify-center text-[#1DB954] shrink-0">
-                                <Music size={15} />
+                            <div className="w-8 h-8 rounded-full bg-[#1DB954]/20 border border-[#1DB954]/40 flex items-center justify-center text-[#1DB954] shrink-0">
+                                <Music size={16} />
                             </div>
                             <div className="min-w-0">
-                                <span className="text-[11px] font-semibold text-white truncate block">
+                                <span className="text-xs font-semibold text-white truncate block">
                                     Spotify Conectado
                                 </span>
                                 <span className="text-[10px] text-zinc-400 font-mono truncate block">
-                                    Pausado o sin sesión activa
+                                    Abre Spotify en tu dispositivo
                                 </span>
                             </div>
                         </div>
                     )}
                 </div>
 
-                {/* Center Section: Minimalist Controls (Previous, Play/Pause, Next) */}
-                <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-                    <button
-                        onClick={handlePrevious}
-                        disabled={!connected}
-                        className="p-1.5 sm:p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
-                        title="Pista Anterior"
-                        aria-label="Pista anterior"
-                    >
-                        <SkipBack size={15} />
-                    </button>
+                {/* ZONE 2 (CENTER): Official Spotify Controls & Scrubber */}
+                <div className="flex flex-col items-center flex-1 max-w-xl px-2">
+                    {/* Controls Row */}
+                    <div className="flex items-center gap-2 sm:gap-4">
+                        {/* Shuffle */}
+                        <button
+                            onClick={handleToggleShuffle}
+                            disabled={!connected || !track}
+                            className={`p-1.5 rounded-full transition-all disabled:opacity-20 ${
+                                track?.shuffleState
+                                    ? "text-[#1DB954] hover:text-[#1ed760]"
+                                    : "text-zinc-400 hover:text-white"
+                            }`}
+                            title={track?.shuffleState ? "Modo aleatorio activado" : "Activar modo aleatorio"}
+                        >
+                            <Shuffle size={14} />
+                        </button>
 
-                    <button
-                        onClick={handleTogglePlay}
-                        disabled={isActionPending}
-                        className={`w-8 h-8 sm:w-9 sm:h-9 rounded-2xl flex items-center justify-center transition-all active:scale-95 shadow-md ${
-                            isPlaying
-                                ? "bg-white text-black hover:bg-zinc-200"
-                                : "bg-white/[0.1] text-white hover:bg-white hover:text-black border border-white/20"
-                        }`}
-                        title={isPlaying ? "Pausar" : "Reproducir"}
-                        aria-label={isPlaying ? "Pausar" : "Reproducir"}
-                    >
-                        {isPlaying ? (
-                            <Pause size={14} fill="currentColor" />
-                        ) : (
-                            <Play size={14} fill="currentColor" className="ml-0.5" />
-                        )}
-                    </button>
+                        {/* Previous */}
+                        <button
+                            onClick={handlePrevious}
+                            disabled={!connected}
+                            className="p-1.5 text-zinc-400 hover:text-white transition-all disabled:opacity-20 active:scale-95"
+                            title="Pista Anterior"
+                        >
+                            <SkipBack size={17} />
+                        </button>
 
-                    <button
-                        onClick={handleNext}
-                        disabled={!connected}
-                        className="p-1.5 sm:p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
-                        title="Siguiente Pista"
-                        aria-label="Siguiente pista"
-                    >
-                        <SkipForward size={15} />
-                    </button>
+                        {/* Play / Pause Circular Official Button */}
+                        <button
+                            onClick={handleTogglePlay}
+                            disabled={isActionPending}
+                            className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all active:scale-95 shadow-lg ${
+                                isPlaying
+                                    ? "bg-white text-black hover:scale-105"
+                                    : "bg-white text-black hover:bg-[#1DB954] hover:text-black hover:scale-105"
+                            }`}
+                            title={isPlaying ? "Pausar" : "Reproducir"}
+                        >
+                            {isPlaying ? (
+                                <Pause size={17} fill="currentColor" />
+                            ) : (
+                                <Play size={17} fill="currentColor" className="ml-0.5" />
+                            )}
+                        </button>
 
-                    {/* Botón de Playlists & Configuración */}
-                    <button
-                        onClick={onOpenSettings}
-                        className="p-1.5 sm:p-2 rounded-xl text-zinc-400 hover:text-[#1DB954] hover:bg-white/[0.08] transition-all active:scale-95 ml-0.5"
-                        title="Playlists de Entrenamiento y Configuración"
-                        aria-label="Playlists de entrenamiento"
-                    >
-                        <Sliders size={14} />
-                    </button>
+                        {/* Next */}
+                        <button
+                            onClick={handleNext}
+                            disabled={!connected}
+                            className="p-1.5 text-zinc-400 hover:text-white transition-all disabled:opacity-20 active:scale-95"
+                            title="Siguiente Pista"
+                        >
+                            <SkipForward size={17} />
+                        </button>
+
+                        {/* Repeat */}
+                        <button
+                            onClick={handleToggleRepeat}
+                            disabled={!connected || !track}
+                            className={`p-1.5 rounded-full transition-all disabled:opacity-20 ${
+                                track?.repeatState && track.repeatState !== "off"
+                                    ? "text-[#1DB954] hover:text-[#1ed760]"
+                                    : "text-zinc-400 hover:text-white"
+                            }`}
+                            title={`Repetir: ${track?.repeatState || "off"}`}
+                        >
+                            {track?.repeatState === "track" ? <Repeat1 size={15} /> : <Repeat size={14} />}
+                        </button>
+                    </div>
+
+                    {/* Timeline & Scrubber Row (Official Spotify Progress Bar) */}
+                    <div className="w-full flex items-center gap-2 mt-1 hidden xs:flex">
+                        <span className="text-[10px] font-mono text-zinc-400 w-8 text-right shrink-0 select-none">
+                            {formatTime(localProgressMs)}
+                        </span>
+
+                        <div className="relative flex-1 group/scrub flex items-center py-1">
+                            {/* Track bar background */}
+                            <div className="w-full h-1 bg-white/[0.15] rounded-full overflow-hidden relative">
+                                <div
+                                    className="h-full bg-white group-hover/scrub:bg-[#1DB954] transition-colors rounded-full"
+                                    style={{ width: `${progressPct}%` }}
+                                />
+                            </div>
+
+                            {/* Range input for scrubbing */}
+                            <input
+                                type="range"
+                                min={0}
+                                max={track?.durationMs || 100}
+                                value={localProgressMs}
+                                onMouseDown={() => setIsSeeking(true)}
+                                onTouchStart={() => setIsSeeking(true)}
+                                onChange={handleSeekChange}
+                                onMouseUp={handleSeekCommit}
+                                onTouchEnd={handleSeekCommit}
+                                disabled={!connected || !track}
+                                className="absolute inset-0 w-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                            />
+                        </div>
+
+                        <span className="text-[10px] font-mono text-zinc-400 w-8 text-left shrink-0 select-none">
+                            {formatTime(track?.durationMs || 0)}
+                        </span>
+                    </div>
                 </div>
 
-                {/* Right Section: Rest Countdown Timer OR Cadence / BPM indicator */}
-                <div className="flex items-center justify-end shrink-0">
+                {/* ZONE 3 (RIGHT): Device, Volume & Rest Telemetry */}
+                <div className="flex items-center justify-end gap-3 sm:gap-4 shrink-0 min-w-0 max-w-[30%]">
+                    {/* Rest Countdown Timer OR Device / Volume */}
                     {restRemaining !== null ? (
                         <div className="flex items-center gap-2 sm:gap-3 bg-white/[0.08] border border-white/[0.15] px-2.5 sm:px-4 py-1.5 rounded-full shadow-lg animate-in fade-in">
                             <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-[#10B981] animate-ping shrink-0" />
                             <div className="flex items-center gap-1 sm:gap-1.5">
-                                <span className="text-[9px] text-zinc-400 uppercase font-medium hidden xs:inline">
+                                <span className="text-[9px] text-zinc-400 uppercase font-medium hidden sm:inline">
                                     DESCANSO
                                 </span>
                                 <span className="text-xs sm:text-base font-bold font-mono text-[#10B981]">
@@ -269,26 +425,52 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                             </button>
                         </div>
                     ) : (
-                        <div className="flex items-center gap-2">
-                            <div className="hidden md:flex flex-col items-end">
-                                <span className="text-[9px] font-mono uppercase text-zinc-500 tracking-wide">
-                                    CADENCIA
-                                </span>
-                                <span className="text-[11px] font-mono font-bold text-[#10B981]">
-                                    140 BPM
-                                </span>
-                            </div>
-                            <div
+                        <div className="flex items-center gap-3">
+                            {/* Active Device Info */}
+                            {connected && track?.deviceName && (
+                                <button
+                                    onClick={onOpenSettings}
+                                    className="hidden lg:flex items-center gap-1.5 text-[11px] font-mono text-zinc-400 hover:text-[#1DB954] transition-colors"
+                                    title={`Dispositivo activo: ${track.deviceName}`}
+                                >
+                                    <Speaker size={13} className="text-[#1DB954]" />
+                                    <span className="truncate max-w-[110px]">{track.deviceName}</span>
+                                </button>
+                            )}
+
+                            {/* Volume Slider */}
+                            {connected && (
+                                <div className="hidden md:flex items-center gap-1.5 group/vol">
+                                    <button
+                                        onClick={handleToggleMute}
+                                        className="text-zinc-400 hover:text-white transition-colors"
+                                        title={isMuted ? "Desactivar silencio" : "Silenciar"}
+                                    >
+                                        {isMuted || volume === 0 ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                                    </button>
+                                    <input
+                                        type="range"
+                                        min={0}
+                                        max={100}
+                                        value={isMuted ? 0 : volume}
+                                        onChange={handleVolumeChange}
+                                        className="w-16 h-1 bg-white/[0.15] accent-[#1DB954] rounded-full cursor-pointer"
+                                    />
+                                </div>
+                            )}
+
+                            {/* Quick Playlists & Settings shortcut */}
+                            <button
                                 onClick={onOpenSettings}
-                                className="cursor-pointer px-2.5 py-1 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-[10px] font-mono text-zinc-300 flex items-center gap-1.5 transition-all"
+                                className="p-2 rounded-xl text-zinc-400 hover:text-[#1DB954] hover:bg-white/[0.08] transition-all active:scale-95"
+                                title="Playlists de Hipertrofia y Ajustes"
                             >
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#1DB954]" />
-                                <span className="hidden sm:inline">HIPERTROFIA</span>
-                                <span>140 BPM</span>
-                            </div>
+                                <Sliders size={15} />
+                            </button>
                         </div>
                     )}
                 </div>
+
             </div>
         </div>
     );
