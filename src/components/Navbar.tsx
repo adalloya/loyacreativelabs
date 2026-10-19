@@ -51,11 +51,15 @@ export function Navbar() {
                         { label: t.nav.work, href: "#work" },
                         { label: t.nav.services, href: "#services" },
                         { label: t.nav.about, href: "#about" },
+                        { label: "APEX OS", href: "/apex" },
                     ].map((item) => (
                         <Link
                             key={item.label}
                             href={item.href}
-                            className="text-sm font-medium text-gray-300 hover:text-white transition-colors"
+                            className={`text-sm font-medium transition-colors ${item.label === "APEX OS"
+                                ? "text-red-400 font-mono font-bold hover:text-red-300"
+                                : "text-gray-300 hover:text-white"
+                                }`}
                         >
                             {item.label}
                         </Link>
@@ -103,11 +107,15 @@ export function Navbar() {
                             { label: t.nav.work, href: "#work" },
                             { label: t.nav.services, href: "#services" },
                             { label: t.nav.about, href: "#about" },
+                            { label: "APEX OS", href: "/apex" },
                         ].map((item) => (
                             <Link
                                 key={item.label}
                                 href={item.href}
-                                className="text-lg font-medium text-gray-300 hover:text-white block py-2 border-b border-white/5"
+                                className={`text-lg font-medium block py-2 border-b border-white/5 ${item.label === "APEX OS"
+                                    ? "text-red-400 font-mono font-bold"
+                                    : "text-gray-300 hover:text-white"
+                                    }`}
                                 onClick={() => setIsMobileMenuOpen(false)}
                             >
                                 {item.label}

@@ -1,0 +1,22 @@
+{
+  "name": "APEX — Hypertrophy & Biomechanics OS",
+  "short_name": "APEX OS",
+  "description": "Autopilot de Hipertrofia Científica, Telemetría 3D y Nutrición Clínica",
+  "start_url": "/apex",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
