@@ -14,6 +14,7 @@ import {
     Shield,
     Sparkles,
     CheckCircle2,
+    Check,
     Plus,
     Utensils,
     Smartphone,
@@ -55,7 +56,7 @@ import {
 } from "@/lib/nutrition-logistics";
 
 import { useGymHardware } from "@/hooks/useGymHardware";
-import { AnatomyVisualizer } from "@/components/apex/AnatomyVisualizer";
+import { AnatomyVisualizer, MUSCLE_PALETTE, ORDERED_MUSCLE_GROUPS } from "@/components/apex/AnatomyVisualizer";
 import { ExerciseMotionViewer } from "@/components/apex/ExerciseMotionViewer";
 import { MuscleTargetDrawer } from "@/components/apex/MuscleTargetDrawer";
 import { PlateCalculatorModal } from "@/components/apex/PlateCalculatorModal";
@@ -473,10 +474,12 @@ export default function ApexDashboard() {
                             <span className="text-zinc-300 font-medium">{isScreenLocked ? "PANTALLA ACTIVA" : "WAKE LOCK"}</span>
                         </div>
 
-                        {/* Menú de Tres Rayitas tipo Apple / Tesla (incluye PDF, Entorno y Configuración) */}
+                        {/* Menú de Tres Rayitas tipo Apple / Tesla (incluye PDF, Entorno, Disposición Hoy y Configuración) */}
                         <AppHeaderMenu
                             environmentMode={environmentMode}
                             onEnvironmentChange={(mode) => setEnvironmentMode(mode as any)}
+                            readiness={readiness}
+                            onReadinessChange={setReadiness}
                             onInstallClick={() => setIsInstallModalOpen(true)}
                             showInstallButton={true}
                             pdfProfile={pdfProfile}
@@ -487,30 +490,6 @@ export default function ApexDashboard() {
                                 window.location.reload();
                             }}
                         />
-                    </div>
-                </div>
-
-                {/* Sub-bar: Readiness Check (Entorno ahora vive dentro del menú de 3 rayitas) */}
-                <div className="max-w-6xl mx-auto mt-2.5 pt-2 border-t border-white/[0.06] flex items-center justify-between text-xs flex-wrap gap-2">
-                    {/* Readiness Switch */}
-                    <div className="flex items-center gap-1.5">
-                        <span className="text-zinc-500 text-xs font-medium">DISPOSICIÓN HOY:</span>
-                        {(["optimal", "normal", "fatigued"] as ReadinessState[]).map(state => (
-                            <button
-                                key={state}
-                                onClick={() => setReadiness(state)}
-                                className={`px-3 py-1 rounded-full text-xs transition-all font-medium border ${readiness === state
-                                    ? "bg-white text-black border-white shadow-sm font-semibold"
-                                    : "bg-white/[0.04] text-zinc-400 border-white/[0.06] hover:text-white"
-                                    }`}
-                            >
-                                {state === "optimal" ? "Óptimo (RIR 1)" : state === "normal" ? "Normal" : "Fatigado (-5%)"}
-                            </button>
-                        ))}
-                    </div>
-
-                    <div className="text-[11px] font-mono text-zinc-400 hidden sm:block">
-                        ENTORNO: <span className="text-white font-semibold capitalize">{environmentMode.replace("_", " ")}</span>
                     </div>
                 </div>
             </header>
@@ -772,7 +751,7 @@ export default function ApexDashboard() {
                                                         return (
                                                             <div
                                                                 key={setIdx}
-                                                                className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
+                                                                className={`flex items-center justify-between p-2.5 sm:p-3 rounded-2xl border transition-all gap-1.5 sm:gap-3 ${
                                                                     isCompleted
                                                                         ? "bg-[#10B981]/10 border-[#10B981]/30 text-white"
                                                                         : isVoiceActive && isVoiceListening
@@ -781,14 +760,14 @@ export default function ApexDashboard() {
                                                                 }`}
                                                             >
                                                                 {/* Set Badge & Tactile Input Controls */}
-                                                                <div className="flex items-center gap-3">
-                                                                    <span className="w-7 h-7 rounded-xl bg-white/[0.08] flex items-center justify-center font-bold text-white text-xs font-mono">
+                                                                <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+                                                                    <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-white/[0.08] flex items-center justify-center font-bold text-white text-[11px] sm:text-xs font-mono shrink-0">
                                                                         S{setIdx + 1}
                                                                     </span>
 
-                                                                    <div className="flex items-center gap-2">
+                                                                    <div className="flex items-center gap-1 sm:gap-1.5">
                                                                         {/* Tactile Weight Input */}
-                                                                        <div className="flex items-center gap-1 bg-white/[0.06] border border-white/[0.08] rounded-xl px-2.5 py-1">
+                                                                        <div className="flex items-center gap-0.5 sm:gap-1 bg-white/[0.06] border border-white/[0.08] rounded-xl px-1.5 sm:px-2.5 py-1">
                                                                             <input
                                                                                 type="number"
                                                                                 step="0.5"
@@ -801,15 +780,15 @@ export default function ApexDashboard() {
                                                                                         [key]: { ...currentInput, weight: val }
                                                                                     }));
                                                                                 }}
-                                                                                className="w-16 bg-transparent text-white font-mono font-semibold text-sm sm:text-base text-center outline-none placeholder:text-zinc-600"
+                                                                                className="w-11 sm:w-14 bg-transparent text-white font-mono font-semibold text-xs sm:text-sm text-center outline-none placeholder:text-zinc-600"
                                                                             />
-                                                                            <span className="text-[11px] text-zinc-400 font-mono">kg</span>
+                                                                            <span className="text-[10px] sm:text-[11px] text-zinc-400 font-mono">kg</span>
                                                                         </div>
 
-                                                                        <span className="text-zinc-500 font-mono text-xs">×</span>
+                                                                        <span className="text-zinc-500 font-mono text-[10px] sm:text-xs">×</span>
 
                                                                         {/* Tactile Reps Input */}
-                                                                        <div className="flex items-center gap-1 bg-white/[0.06] border border-white/[0.08] rounded-xl px-2.5 py-1">
+                                                                        <div className="flex items-center gap-0.5 sm:gap-1 bg-white/[0.06] border border-white/[0.08] rounded-xl px-1.5 sm:px-2.5 py-1">
                                                                             <input
                                                                                 type="number"
                                                                                 step="1"
@@ -822,15 +801,15 @@ export default function ApexDashboard() {
                                                                                         [key]: { ...currentInput, reps: val }
                                                                                     }));
                                                                                 }}
-                                                                                className="w-12 bg-transparent text-white font-mono font-semibold text-sm sm:text-base text-center outline-none placeholder:text-zinc-600"
+                                                                                className="w-8 sm:w-11 bg-transparent text-white font-mono font-semibold text-xs sm:text-sm text-center outline-none placeholder:text-zinc-600"
                                                                             />
-                                                                            <span className="text-[11px] text-zinc-400 font-mono">reps</span>
+                                                                            <span className="text-[10px] sm:text-[11px] text-zinc-400 font-mono">reps</span>
                                                                         </div>
                                                                     </div>
                                                                 </div>
 
-                                                                {/* Actions: Dictate & Complete */}
-                                                                <div className="flex items-center gap-2">
+                                                                {/* Actions: Dictate & Complete (Palomita Only) */}
+                                                                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                                                                     <span className="text-[11px] text-zinc-500 font-mono hidden md:inline">
                                                                         Descanso {ex.rest_seconds}s
                                                                     </span>
@@ -841,7 +820,7 @@ export default function ApexDashboard() {
                                                                             setVoiceActiveSet({ exerciseId: ex.id, setIdx });
                                                                             startVoiceLogging();
                                                                         }}
-                                                                        className={`p-2 rounded-xl border transition-all ${
+                                                                        className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl border transition-all ${
                                                                             isVoiceActive && isVoiceListening
                                                                                 ? "bg-[#FF2A2A] text-white animate-pulse border-[#FF2A2A]"
                                                                                 : "bg-white/[0.06] border-white/[0.08] text-zinc-300 hover:text-white hover:bg-white/[0.12]"
@@ -853,14 +832,15 @@ export default function ApexDashboard() {
 
                                                                     <button
                                                                         onClick={() => handleCompleteSet(ex.id, setIdx, ex.rest_seconds)}
-                                                                        className={`px-4 py-2 rounded-xl font-semibold text-xs transition-all flex items-center gap-1.5 ${
+                                                                        className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl font-semibold transition-all active:scale-95 ${
                                                                             isCompleted
                                                                                 ? "bg-[#10B981] text-black shadow-md shadow-[#10B981]/20"
-                                                                                : "bg-white hover:bg-zinc-200 text-black active:scale-95 shadow-md shadow-white/10"
+                                                                                : "bg-white hover:bg-zinc-200 text-black shadow-md shadow-white/10"
                                                                         }`}
+                                                                        title={isCompleted ? "Completada" : "Registrar serie"}
+                                                                        aria-label={isCompleted ? "Completada" : "Registrar serie"}
                                                                     >
-                                                                        <CheckCircle2 size={14} />
-                                                                        <span>{isCompleted ? "COMPLETA" : "LOG"}</span>
+                                                                        <Check size={16} strokeWidth={3} />
                                                                     </button>
                                                                 </div>
                                                             </div>
@@ -1051,29 +1031,26 @@ export default function ApexDashboard() {
                                 <h4 className="text-xs font-semibold text-zinc-400 mb-3 uppercase tracking-wider">
                                     ACCESO RÁPIDO A GRUPOS MUSCULARES
                                 </h4>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-                                    {[
-                                        { id: "chest", label: "Pectoral" },
-                                        { id: "lats", label: "Dorsal Ancho" },
-                                        { id: "upper_back", label: "Espalda Alta" },
-                                        { id: "delts", label: "Deltoides" },
-                                        { id: "quads", label: "Cuádriceps" },
-                                        { id: "hamstrings", label: "Isquiotibiales" },
-                                        { id: "glutes", label: "Glúteos" },
-                                        { id: "biceps", label: "Bíceps" },
-                                        { id: "triceps", label: "Tríceps" },
-                                        { id: "calves", label: "Pantorrillas" },
-                                        { id: "core", label: "Abdomen / Core" }
-                                    ].map(m => (
-                                        <button
-                                            key={m.id}
-                                            onClick={() => setSelectedMuscle(m.id as any)}
-                                            className="p-3 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/20 rounded-2xl text-left text-zinc-300 hover:text-white transition-all flex items-center justify-between"
-                                        >
-                                            <span className="font-medium">{m.label}</span>
-                                            <ArrowRight size={12} className="text-zinc-500" />
-                                        </button>
-                                    ))}
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+                                    {ORDERED_MUSCLE_GROUPS.map(mg => {
+                                        const meta = MUSCLE_PALETTE[mg];
+                                        return (
+                                            <button
+                                                key={mg}
+                                                onClick={() => setSelectedMuscle(mg)}
+                                                className="p-3 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/20 rounded-2xl text-left text-zinc-300 hover:text-white transition-all flex items-center justify-between group active:scale-[0.98]"
+                                            >
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    <span 
+                                                        className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs" 
+                                                        style={{ backgroundColor: meta.hex, boxShadow: `0 0 8px ${meta.hex}60` }}
+                                                    />
+                                                    <span className="font-medium truncate">{meta.name}</span>
+                                                </div>
+                                                <ArrowRight size={12} className="text-zinc-500 group-hover:text-white group-hover:translate-x-0.5 transition-all shrink-0 ml-1" />
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </div>

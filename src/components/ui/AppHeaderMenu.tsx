@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { Menu, X, Download, Shield, RefreshCw } from 'lucide-react';
+import { Menu, X, Download, Shield, RefreshCw, Zap } from 'lucide-react';
 import { DownloadPDFButton } from '@/components/pdf/DownloadPDFButton';
 
 export function AppHeaderMenu({ 
@@ -14,7 +14,9 @@ export function AppHeaderMenu({
   pdfProfile,
   pdfRoutine,
   pdfDiet,
-  onResetProfile
+  onResetProfile,
+  readiness = 'normal',
+  onReadinessChange
 }: { 
   environmentMode: string;
   onEnvironmentChange: (mode: string) => void;
@@ -24,6 +26,8 @@ export function AppHeaderMenu({
   pdfRoutine?: any[];
   pdfDiet?: any;
   onResetProfile?: () => void;
+  readiness?: string;
+  onReadinessChange?: (readiness: any) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -47,7 +51,7 @@ export function AppHeaderMenu({
             onClick={() => setIsOpen(false)} 
           />
 
-          <div className="absolute right-0 mt-3 w-80 bg-[#121214]/95 backdrop-blur-2xl border border-white/[0.12] rounded-3xl p-5 shadow-2xl z-50 text-white animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="absolute right-0 mt-3 w-80 bg-[#121214]/95 backdrop-blur-2xl border border-white/[0.12] rounded-3xl p-5 shadow-2xl z-50 text-white animate-in fade-in slide-in-from-top-2 duration-200 font-sans">
             
             {/* Cabecera del Menú con Logo APEX */}
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.08]">
@@ -64,7 +68,7 @@ export function AppHeaderMenu({
                 <span className="text-xs font-mono tracking-widest uppercase text-white font-bold">APEX</span>
               </div>
               <span className="text-[10px] font-mono text-zinc-500 bg-white/[0.04] px-2 py-0.5 rounded-full border border-white/[0.06]">
-                MENU
+                SISTEMA
               </span>
             </div>
 
@@ -84,10 +88,42 @@ export function AppHeaderMenu({
               </div>
             )}
 
+            {/* Disposición del Atleta Hoy (Readiness) */}
+            {onReadinessChange && (
+              <div className="mb-4 pb-4 border-b border-white/[0.08]">
+                <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider block mb-2 flex items-center justify-between">
+                  <span>DISPOSICIÓN HOY (READINESS)</span>
+                  <span className="text-[#FF2A2A] text-[9px]">AUTORREGULACIÓN</span>
+                </label>
+                <div className="grid grid-cols-3 gap-1 bg-black/40 p-1 rounded-2xl border border-white/[0.08]">
+                  {[
+                    { id: 'optimal', label: 'Óptimo', sub: 'RIR 1' },
+                    { id: 'normal', label: 'Normal', sub: 'RIR 1-2' },
+                    { id: 'fatigued', label: 'Fatigado', sub: '-5%' }
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => onReadinessChange(item.id)}
+                      className={`py-2 px-1 rounded-xl text-center transition-all ${
+                        readiness === item.id
+                          ? 'bg-white text-black font-semibold shadow-md'
+                          : 'text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      <div className="text-xs leading-none">{item.label}</div>
+                      <div className={`text-[9px] mt-0.5 ${readiness === item.id ? 'text-zinc-700' : 'text-zinc-500'}`}>
+                        {item.sub}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Selector de Disposición / Entorno dentro del menú */}
             <div className="mb-4 pb-4 border-b border-white/[0.08]">
               <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider block mb-2">
-                Disposición / Entorno Activo
+                Entorno de Entrenamiento
               </label>
               <div className="grid grid-cols-1 gap-1.5 font-mono text-xs">
                 {[

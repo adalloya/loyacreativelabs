@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { MuscleGroup, ExerciseItem, EXERCISE_DATABASE } from "@/lib/hypertrophy-engine";
 import { ExerciseMotionViewer } from "./ExerciseMotionViewer";
+import { MUSCLE_PALETTE } from "./AnatomyVisualizer";
 import { X, Plus, Sparkles, Check, Play, ExternalLink } from "lucide-react";
 
 interface MuscleTargetDrawerProps {
@@ -13,20 +14,6 @@ interface MuscleTargetDrawerProps {
     onToggleSpecialization?: (muscle: MuscleGroup) => void;
     specializedMuscle?: string | null;
 }
-
-const MUSCLE_NAMES: Record<MuscleGroup, string> = {
-    chest: "Pectorales",
-    lats: "Dorsal Ancho",
-    upper_back: "Espalda Alta & Trapecio",
-    delts: "Hombros & Deltoides",
-    quads: "Cuádriceps",
-    hamstrings: "Isquiotibiales",
-    glutes: "Glúteos",
-    biceps: "Bíceps",
-    triceps: "Tríceps",
-    calves: "Pantorrillas",
-    core: "Core & Abdomen"
-};
 
 const RESISTANCE_LABELS: Record<string, { label: string; color: string }> = {
     lengthened_bias: { label: "Estiramiento Máximo (Tier S)", color: "text-white border-white/20 bg-white/[0.06]" },
@@ -68,6 +55,7 @@ export function MuscleTargetDrawer({
     );
 
     const isSpecialized = specializedMuscle === selectedMuscle;
+    const muscleMeta = MUSCLE_PALETTE[selectedMuscle] || { name: selectedMuscle, hex: "#FF2A2A" };
 
     const handleAdd = (ex: ExerciseItem) => {
         onInjectExercise(ex);
@@ -84,19 +72,23 @@ export function MuscleTargetDrawer({
                 {/* Drag bar for mobile */}
                 <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-3 sm:hidden" />
 
-                {/* Header (Apple / Tesla style) */}
+                {/* Header (Apple / Tesla style with distinct muscle color badge) */}
                 <div className="flex justify-between items-start border-b border-white/[0.06] pb-4 mb-4">
                     <div>
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1.5">
+                            <span 
+                                className="w-2.5 h-2.5 rounded-full shadow-sm"
+                                style={{ backgroundColor: muscleMeta.hex }}
+                            />
                             <span className="text-[11px] font-medium tracking-wide text-zinc-400 uppercase">
                                 Catálogo Biomecánico
                             </span>
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#FF2A2A]/10 text-[#FF2A2A] border border-[#FF2A2A]/20">
-                                Hipertrofia Tier S / A
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/[0.06] text-zinc-300 border border-white/[0.08]">
+                                Tier S / A
                             </span>
                         </div>
-                        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-                            {MUSCLE_NAMES[selectedMuscle]}
+                        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white flex items-center gap-2">
+                            {muscleMeta.name}
                         </h2>
                     </div>
 
@@ -114,7 +106,7 @@ export function MuscleTargetDrawer({
                     <div className="mb-4 p-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center shrink-0">
-                                <Sparkles size={16} className={isSpecialized ? "text-[#FF2A2A]" : "text-zinc-400"} />
+                                <Sparkles size={16} style={{ color: isSpecialized ? muscleMeta.hex : "#71717A" }} />
                             </div>
                             <div>
                                 <p className="text-xs font-semibold text-white">Especialización de 4 Semanas</p>
