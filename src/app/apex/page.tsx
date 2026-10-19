@@ -55,6 +55,7 @@ import { ExerciseMotionViewer } from "@/components/apex/ExerciseMotionViewer";
 import { MuscleTargetDrawer } from "@/components/apex/MuscleTargetDrawer";
 import { PlateCalculatorModal } from "@/components/apex/PlateCalculatorModal";
 import { PwaInstallModal } from "@/components/apex/PwaInstallModal";
+import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { MirrorMuscleOverlay } from "@/components/vision/MirrorMuscleOverlay";
 import { logSetOfflineFirst } from "@/lib/local-db";
 import { playTempoPulse, startTempoLoop, stopTempoLoop } from "@/lib/tempo-sonar";
@@ -1242,6 +1243,9 @@ export default function ApexDashboard() {
                     </div>
                 </div>
             )}
+
+            {/* PWA Floating Installation Prompt Banner */}
+            <PWAInstallBanner />
         </div>
     );
 }
