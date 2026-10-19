@@ -37,7 +37,8 @@ import {
     calculateTodayTarget,
     RoutineDay,
     ReadinessState,
-    findBiomechanicalSwaps
+    findBiomechanicalSwaps,
+    formatPlatesSummary
 } from "@/lib/hypertrophy-engine";
 
 import {
@@ -50,6 +51,7 @@ import {
 
 import { useGymHardware } from "@/hooks/useGymHardware";
 import { AnatomyVisualizer } from "@/components/apex/AnatomyVisualizer";
+import { ExerciseMotionViewer } from "@/components/apex/ExerciseMotionViewer";
 import { MuscleTargetDrawer } from "@/components/apex/MuscleTargetDrawer";
 import { PlateCalculatorModal } from "@/components/apex/PlateCalculatorModal";
 import { PwaInstallModal } from "@/components/apex/PwaInstallModal";
@@ -84,6 +86,12 @@ export default function ApexDashboard() {
 
     // Hot-Swap: Tempo Sonar state per exercise (default OFF)
     const [tempoActive, setTempoActive] = useState<Record<string, boolean>>({});
+
+    // Inline Plate breakdown state
+    const [inlinePlatesExId, setInlinePlatesExId] = useState<string | null>(null);
+
+    // Tactile editable inputs per set: { [exId_setIdx]: { weight: number, reps: number } }
+    const [setInputs, setSetInputs] = useState<Record<string, { weight: number; reps: number }>>({});
 
     // Hot-Swap: Voice Logger active target
     const [voiceActiveSet, setVoiceActiveSet] = useState<{ exerciseId: string; setIdx: number } | null>(null);
@@ -165,12 +173,19 @@ export default function ApexDashboard() {
         setCompletedSets(prev => ({ ...prev, [key]: newState }));
 
         const exMemory = exerciseMemory[exerciseId] || { weight: 60, reps: 10 };
-        const weightToLog = customWeight || exMemory.weight;
-        const repsToLog = customReps || exMemory.reps;
+        const inputVal = setInputs[key];
+        const weightToLog = customWeight !== undefined ? customWeight : (inputVal?.weight !== undefined ? inputVal.weight : exMemory.weight);
+        const repsToLog = customReps !== undefined ? customReps : (inputVal?.reps !== undefined ? inputVal.reps : exMemory.reps);
 
         if (newState) {
             setRestTotal(restSeconds);
             setRestRemaining(restSeconds);
+
+            // Update memory with real executed values
+            setExerciseMemory(prev => ({
+                ...prev,
+                [exerciseId]: { weight: weightToLog, reps: repsToLog }
+            }));
 
             // A. Motor Offline-First Dexie (< 2ms)
             logSetOfflineFirst({
@@ -187,11 +202,12 @@ export default function ApexDashboard() {
     // Voice Logger Hook
     const { isListening: isVoiceListening, startListening: startVoiceLogging } = useVoiceLogger((result) => {
         if (voiceActiveSet) {
-            handleCompleteSet(voiceActiveSet.exerciseId, voiceActiveSet.setIdx, 90, result.weightKg, result.reps);
-            setExerciseMemory(prev => ({
+            const key = `${voiceActiveSet.exerciseId}_${voiceActiveSet.setIdx}`;
+            setSetInputs(prev => ({
                 ...prev,
-                [voiceActiveSet.exerciseId]: { weight: result.weightKg, reps: result.reps }
+                [key]: { weight: result.weightKg, reps: result.reps }
             }));
+            handleCompleteSet(voiceActiveSet.exerciseId, voiceActiveSet.setIdx, 90, result.weightKg, result.reps);
             setVoiceActiveSet(null);
         }
     });
@@ -279,18 +295,18 @@ export default function ApexDashboard() {
     }, [activeExercises]);
 
     return (
-        <div className="min-h-screen bg-[#050505] text-[#EAEAEA] font-sans antialiased selection:bg-[#FF2A2A]/30 selection:text-white pb-24">
+        <div className="min-h-screen bg-[#000000] text-[#EAEAEA] font-sans antialiased selection:bg-[#FF2A2A]/30 selection:text-white pb-24">
             {/* Top Navigation & Telemetry Header */}
-            <header className="sticky top-0 z-40 bg-[#0A0D12]/90 backdrop-blur-xl border-b border-[#1E2633] px-4 py-3">
+            <header className="sticky top-0 z-40 bg-[#000000]/80 backdrop-blur-2xl border-b border-white/[0.08] px-4 py-3">
                 <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
                     {/* Brand */}
                     <div className="flex items-center gap-3">
-                        <Link href="/" className="text-[11px] font-mono text-[#8892B0] hover:text-white flex items-center gap-1 border border-[#232D3F] px-2 py-1 rounded-lg">
+                        <Link href="/" className="text-xs text-zinc-400 hover:text-white flex items-center gap-1.5 border border-white/[0.08] bg-white/[0.04] px-3 py-1 rounded-full font-medium transition-colors">
                             ← LOYA LABS
                         </Link>
                         <div className="flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-[#FF2A2A] animate-pulse" />
-                            <h1 className="text-sm font-extrabold tracking-widest text-white font-mono">
+                            <h1 className="text-sm font-semibold tracking-wider text-white">
                                 APEX // HYPERTROPHY OS
                             </h1>
                         </div>
@@ -299,15 +315,15 @@ export default function ApexDashboard() {
                     {/* Right Telemetry Badges */}
                     <div className="flex items-center gap-2">
                         {/* Screen Lock Badge */}
-                        <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-mono px-2.5 py-1 rounded-full bg-[#131924] border border-[#232D3F]">
+                        <div className="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08]">
                             <span className={`w-1.5 h-1.5 rounded-full ${isScreenLocked ? "bg-[#10B981]" : "bg-[#F59E0B]"}`} />
-                            <span className="text-[#CBD5E1]">{isScreenLocked ? "PANTALLA ACTIVA" : "WAKE LOCK"}</span>
+                            <span className="text-zinc-300 font-medium">{isScreenLocked ? "PANTALLA ACTIVA" : "WAKE LOCK"}</span>
                         </div>
 
                         {/* PWA Install Trigger */}
                         <button
                             onClick={() => setIsInstallModalOpen(true)}
-                            className="flex items-center gap-1.5 text-xs font-mono font-semibold px-3 py-1.5 rounded-lg bg-[#FF2A2A] hover:bg-[#E11D48] text-white shadow-lg shadow-[#FF2A2A]/20 transition-all active:scale-95"
+                            className="flex items-center gap-1.5 text-xs font-semibold px-4 py-1.5 rounded-full bg-white hover:bg-zinc-200 text-black shadow-md transition-all active:scale-95"
                             title="Instalar en tu teléfono"
                         >
                             <Smartphone size={13} />
@@ -317,21 +333,17 @@ export default function ApexDashboard() {
                 </div>
 
                 {/* Sub-bar: Readiness Check & Environment */}
-                <div className="max-w-6xl mx-auto mt-2.5 pt-2 border-t border-[#161C26] flex items-center justify-between text-xs font-mono flex-wrap gap-2">
+                <div className="max-w-6xl mx-auto mt-2.5 pt-2 border-t border-white/[0.06] flex items-center justify-between text-xs flex-wrap gap-2">
                     {/* Readiness Switch */}
                     <div className="flex items-center gap-1.5">
-                        <span className="text-[#8892B0] text-[11px]">DISPOSICIÓN HOY:</span>
+                        <span className="text-zinc-500 text-xs font-medium">DISPOSICIÓN HOY:</span>
                         {(["optimal", "normal", "fatigued"] as ReadinessState[]).map(state => (
                             <button
                                 key={state}
                                 onClick={() => setReadiness(state)}
-                                className={`px-2 py-0.5 rounded text-[11px] transition-all uppercase ${readiness === state
-                                    ? state === "optimal"
-                                        ? "bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/40 font-bold"
-                                        : state === "normal"
-                                            ? "bg-[#38BDF8]/20 text-[#38BDF8] border border-[#38BDF8]/40 font-bold"
-                                            : "bg-[#F59E0B]/20 text-[#F59E0B] border border-[#F59E0B]/40 font-bold"
-                                    : "bg-[#10141D] text-[#717C96] hover:text-white"
+                                className={`px-3 py-1 rounded-full text-xs transition-all font-medium border ${readiness === state
+                                    ? "bg-white text-black border-white shadow-sm font-semibold"
+                                    : "bg-white/[0.04] text-zinc-400 border-white/[0.06] hover:text-white"
                                     }`}
                             >
                                 {state === "optimal" ? "Óptimo (RIR 1)" : state === "normal" ? "Normal" : "Fatigado (-5%)"}
@@ -341,7 +353,7 @@ export default function ApexDashboard() {
 
                     {/* Environment Switch */}
                     <div className="flex items-center gap-1.5">
-                        <span className="text-[#8892B0] text-[11px]">ENTORNO:</span>
+                        <span className="text-zinc-500 text-xs font-medium">ENTORNO:</span>
                         {[
                             { id: "full_gym", label: "Gimnasio Completo" },
                             { id: "hotel_gym", label: "Hotel (Mancuernas)" },
@@ -350,9 +362,9 @@ export default function ApexDashboard() {
                             <button
                                 key={env.id}
                                 onClick={() => setEnvironmentMode(env.id as any)}
-                                className={`px-2 py-0.5 rounded text-[11px] transition-all ${environmentMode === env.id
-                                    ? "bg-white text-black font-bold"
-                                    : "bg-[#10141D] text-[#717C96] hover:text-white"
+                                className={`px-3 py-1 rounded-full text-xs transition-all font-medium border ${environmentMode === env.id
+                                    ? "bg-white text-black border-white shadow-sm font-semibold"
+                                    : "bg-white/[0.04] text-zinc-400 border-white/[0.06] hover:text-white"
                                     }`}
                             >
                                 {env.label}
@@ -363,8 +375,8 @@ export default function ApexDashboard() {
             </header>
 
             {/* Main Tabs Navigation Bar */}
-            <div className="max-w-6xl mx-auto px-4 mt-4">
-                <div className="grid grid-cols-4 bg-[#0A0D12] border border-[#1E2633] rounded-xl p-1 font-mono text-xs">
+            <div className="max-w-6xl mx-auto px-4 mt-5">
+                <div className="grid grid-cols-4 bg-[#121214]/90 border border-white/[0.08] rounded-2xl p-1 text-xs font-medium backdrop-blur-xl">
                     {[
                         { id: "workout", label: "RUTINA EN VIVO", icon: Dumbbell },
                         { id: "anatomy", label: "MAPA ANATÓMICO", icon: Activity },
@@ -377,9 +389,9 @@ export default function ApexDashboard() {
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as any)}
-                                className={`flex items-center justify-center gap-2 py-2.5 rounded-lg transition-all ${isActive
-                                    ? "bg-white text-black font-bold shadow-lg"
-                                    : "text-[#8892B0] hover:text-white hover:bg-[#131924]"
+                                className={`flex items-center justify-center gap-2 py-2.5 rounded-xl transition-all ${isActive
+                                    ? "bg-white text-black font-semibold shadow-lg"
+                                    : "text-zinc-400 hover:text-white hover:bg-white/[0.04]"
                                     }`}
                             >
                                 <Icon size={14} />
@@ -398,33 +410,33 @@ export default function ApexDashboard() {
                 {activeTab === "workout" && (
                     <div className="space-y-6">
                         {/* Day Selector Bar */}
-                        <div className="flex items-center justify-between bg-[#0A0D12] border border-[#1E2633] rounded-2xl p-4 flex-wrap gap-3">
+                        <div className="flex items-center justify-between bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-5 flex-wrap gap-3 shadow-xl">
                             <div>
                                 <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-[10px] font-mono text-[#64FFDA] px-2 py-0.5 rounded bg-[#64FFDA]/10 border border-[#64FFDA]/30 uppercase">
+                                    <span className="text-[11px] font-semibold text-zinc-300 px-2.5 py-0.5 rounded-full bg-white/[0.06] border border-white/[0.08] uppercase tracking-wide">
                                         FRECUENCIA FULL-BODY
                                     </span>
-                                    <span className="text-xs text-[#8892B0] font-mono">
-                                        Tiempo objetivo: {currentRoutine.estimatedMinutes} min
+                                    <span className="text-xs text-zinc-400 font-medium">
+                                        Tiempo objetivo: <span className="font-mono text-white">{currentRoutine.estimatedMinutes}</span> min
                                     </span>
                                 </div>
                                 <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
                                     {currentRoutine.title}
                                 </h2>
-                                <p className="text-xs text-[#94A3B8] mt-0.5 font-mono">
+                                <p className="text-xs text-zinc-400 mt-0.5 font-normal">
                                     {currentRoutine.focus}
                                 </p>
                             </div>
 
                             {/* Day pagination pills */}
-                            <div className="flex items-center gap-1.5 font-mono text-xs">
+                            <div className="flex items-center gap-1.5 text-xs font-mono">
                                 {weeklyProgram.map((d, idx) => (
                                     <button
                                         key={d.dayNumber}
                                         onClick={() => setCurrentDayIndex(idx)}
-                                        className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold transition-all ${currentDayIndex === idx
-                                            ? "bg-[#FF2A2A] text-white shadow-md shadow-[#FF2A2A]/30"
-                                            : "bg-[#131924] text-[#8892B0] hover:text-white"
+                                        className={`w-9 h-9 rounded-full flex items-center justify-center font-semibold transition-all ${currentDayIndex === idx
+                                            ? "bg-white text-black shadow-md font-bold"
+                                            : "bg-white/[0.04] text-zinc-400 border border-white/[0.06] hover:text-white"
                                             }`}
                                     >
                                         D{d.dayNumber}
@@ -433,8 +445,8 @@ export default function ApexDashboard() {
                             </div>
                         </div>
 
-                        {/* Exercises List */}
-                        <div className="space-y-4">
+                        {/* Exercises List (Apple Fitness+ 2-Column Layout) */}
+                        <div className="space-y-5">
                             {activeExercises.map((ex, exIdx) => {
                                 const memory = exerciseMemory[ex.id] || { weight: 60, reps: 10 };
                                 const target = calculateTodayTarget(
@@ -448,168 +460,244 @@ export default function ApexDashboard() {
                                 return (
                                     <div
                                         key={`${ex.id}_${exIdx}`}
-                                        className="bg-[#0A0D12] border border-[#1E2633] rounded-2xl p-4 sm:p-5 transition-all hover:border-[#2E3A4E]"
+                                        className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-2xl transition-all hover:border-white/[0.15]"
                                     >
-                                        {/* Exercise Header */}
-                                        <div className="flex justify-between items-start gap-3 border-b border-[#161C26] pb-3 mb-3">
-                                            <div>
-                                                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                                    <span className="text-[10px] font-mono bg-[#161C26] text-[#CBD5E1] px-2 py-0.5 rounded uppercase">
-                                                        {ex.anatomical_subdivision}
-                                                    </span>
-                                                    <span className="text-[10px] font-mono bg-[#FF2A2A]/10 text-[#FF2A2A] border border-[#FF2A2A]/30 px-2 py-0.5 rounded uppercase">
-                                                        Tier {ex.hypertrophy_tier}
-                                                    </span>
-                                                    <span className="text-[10px] font-mono text-[#8892B0] uppercase">
-                                                        • {ex.equipment}
-                                                    </span>
-                                                </div>
-                                                <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
-                                                    {ex.name}
-                                                </h3>
-                                                <p className="text-xs text-[#94A3B8] mt-1 font-mono leading-relaxed">
-                                                    💡 {ex.biomechanical_cue}
-                                                </p>
+                                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                                            {/* Column 1 (Left): Visor Biomecánico con conexión oficial a free-exercise-db */}
+                                            <div className="lg:col-span-5 xl:col-span-4">
+                                                <ExerciseMotionViewer
+                                                    githubId={ex.github_id || "Barbell_Bench_Press_-_Medium_Grip"}
+                                                    exerciseName={ex.name}
+                                                    activationPct={ex.activation_pct || 94}
+                                                />
                                             </div>
 
-                                            {/* Top Actions: Tempo, VBT, Calculator & Swap */}
-                                            <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
-                                                {/* Tempo Sonar Pill-Toggle */}
-                                                <button
-                                                    onClick={() => {
-                                                        const nextState = !tempoActive[ex.id];
-                                                        setTempoActive(prev => ({ ...prev, [ex.id]: nextState }));
-                                                        if (nextState) {
-                                                            playTempoPulse("eccentric_tick");
-                                                        }
-                                                    }}
-                                                    className={`px-2 py-1 rounded-lg text-[10px] font-mono border transition-all ${
-                                                        tempoActive[ex.id]
-                                                            ? "bg-[#FF2A2A]/20 border-[#FF2A2A] text-[#FF2A2A] font-bold"
-                                                            : "bg-[#131924] border-[#232D3F] text-[#8892B0] hover:text-white"
-                                                    }`}
-                                                    title="Sonar Acústico de Tempo (3-1-1)"
-                                                >
-                                                    TEMPO 3-1-1: {tempoActive[ex.id] ? "ON" : "OFF"}
-                                                </button>
-
-                                                {/* VBT Camera Tracker */}
-                                                <button
-                                                    onClick={() => {
-                                                        setVbtExerciseName(ex.name);
-                                                        setIsVbtModalOpen(true);
-                                                    }}
-                                                    className="p-2 bg-[#131924] hover:bg-[#1E2633] border border-[#232D3F] rounded-lg text-slate-200 text-xs font-mono transition-all flex items-center gap-1"
-                                                    title="Modo Velocidad VBT y Espejo IA"
-                                                >
-                                                    <Gauge size={14} className="text-[#10B981]" />
-                                                    <span className="hidden sm:inline">VBT</span>
-                                                </button>
-
-                                                <button
-                                                    onClick={() => {
-                                                        setPlateModalWeight(target.suggestedWeight);
-                                                        setIsPlateModalOpen(true);
-                                                    }}
-                                                    className="p-2 bg-[#131924] hover:bg-[#1E2633] border border-[#232D3F] rounded-lg text-slate-200 text-xs font-mono transition-all flex items-center gap-1"
-                                                    title="Calculadora de Discos"
-                                                >
-                                                    <Disc size={14} className="text-[#38BDF8]" />
-                                                    <span className="hidden sm:inline">Discos</span>
-                                                </button>
-
-                                                <button
-                                                    onClick={() => handleSwapExercise(exIdx)}
-                                                    className="p-2 bg-[#131924] hover:bg-[#1E2633] border border-[#232D3F] rounded-lg text-slate-200 text-xs font-mono transition-all flex items-center gap-1"
-                                                    title="Buscar Alternativa Biomecánica"
-                                                >
-                                                    <RotateCcw size={14} className="text-[#F59E0B]" />
-                                                    <span className="hidden sm:inline">Swap</span>
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* Target Telemetry (Ghost Inputs) */}
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4 font-mono text-xs">
-                                            <div className="p-2 rounded-lg bg-[#10141D] border border-[#161C26]">
-                                                <span className="text-[10px] text-[#8892B0] block">ÚLTIMO REGISTRO</span>
-                                                <span className="text-white font-bold">{memory.weight} kg × {memory.reps} reps</span>
-                                            </div>
-                                            <div className="p-2 rounded-lg bg-[#10141D] border border-[#161C26]">
-                                                <span className="text-[10px] text-[#64FFDA] block">META HOY (OVERLOAD)</span>
-                                                <span className="text-white font-bold">{target.suggestedWeight} kg × {target.suggestedReps} reps</span>
-                                            </div>
-                                            <div className="p-2 rounded-lg bg-[#10141D] border border-[#161C26]">
-                                                <span className="text-[10px] text-[#8892B0] block">1RM ESTIMADO</span>
-                                                <span className="text-white font-bold">{target.estimated1RM} kg</span>
-                                            </div>
-                                            <div className="p-2 rounded-lg bg-[#10141D] border border-[#161C26]">
-                                                <span className="text-[10px] text-[#8892B0] block">PROXIMIDAD AL FALLO</span>
-                                                <span className="text-white font-bold">RIR {target.targetRir} (1-2 en reserva)</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Interactive Sets Tracker */}
-                                        <div className="space-y-2">
-                                            {Array.from({ length: ex.default_sets }).map((_, setIdx) => {
-                                                const key = `${ex.id}_${setIdx}`;
-                                                const isCompleted = Boolean(completedSets[key]);
-                                                const isVoiceActive = voiceActiveSet?.exerciseId === ex.id && voiceActiveSet?.setIdx === setIdx;
-
-                                                return (
-                                                    <div
-                                                        key={setIdx}
-                                                        className={`flex items-center justify-between p-2.5 rounded-xl border font-mono text-xs transition-all ${isCompleted
-                                                            ? "bg-[#10B981]/10 border-[#10B981]/40 text-white"
-                                                            : isVoiceActive && isVoiceListening
-                                                                ? "bg-[#FF2A2A]/10 border-[#FF2A2A]/50 text-white ring-1 ring-[#FF2A2A]"
-                                                                : "bg-[#10141D] border-[#1C2433] text-[#CBD5E1]"
-                                                            }`}
-                                                    >
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="w-6 h-6 rounded-md bg-[#161C26] flex items-center justify-center font-bold text-white text-[11px]">
-                                                                S{setIdx + 1}
+                                            {/* Column 2 (Right): Telemetría, Controles y Series */}
+                                            <div className="lg:col-span-7 xl:col-span-8 space-y-4">
+                                                {/* Exercise Header */}
+                                                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-3 border-b border-white/[0.06]">
+                                                    <div>
+                                                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                                            <span className="text-[11px] font-medium bg-white/[0.06] text-zinc-300 px-2.5 py-0.5 rounded-full border border-white/[0.08]">
+                                                                {ex.anatomical_subdivision}
                                                             </span>
-                                                            <span>
-                                                                {target.suggestedWeight} kg × {target.suggestedReps} reps
+                                                            <span className="text-[11px] font-semibold bg-[#FF2A2A]/10 text-[#FF2A2A] border border-[#FF2A2A]/20 px-2.5 py-0.5 rounded-full">
+                                                                Tier {ex.hypertrophy_tier}
+                                                            </span>
+                                                            <span className="text-xs text-zinc-400 capitalize">
+                                                                • {ex.equipment}
                                                             </span>
                                                         </div>
-
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-[10px] text-[#8892B0] hidden sm:inline">
-                                                                Descanso {ex.rest_seconds}s
-                                                            </span>
-
-                                                            {/* Voice Dictation Mic Button */}
-                                                            <button
-                                                                onClick={() => {
-                                                                    setVoiceActiveSet({ exerciseId: ex.id, setIdx });
-                                                                    startVoiceLogging();
-                                                                }}
-                                                                className={`p-1.5 rounded-lg border transition-all ${
-                                                                    isVoiceActive && isVoiceListening
-                                                                        ? "bg-[#FF2A2A] text-white animate-pulse border-[#FF2A2A]"
-                                                                        : "bg-[#131924] border-[#232D3F] text-[#8892B0] hover:text-white"
-                                                                }`}
-                                                                title="Dictar serie por voz (ej. '80 por 10')"
-                                                            >
-                                                                <Mic size={13} className={isVoiceActive && isVoiceListening ? "animate-bounce" : ""} />
-                                                            </button>
-
-                                                            <button
-                                                                onClick={() => handleCompleteSet(ex.id, setIdx, ex.rest_seconds)}
-                                                                className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 ${isCompleted
-                                                                    ? "bg-[#10B981] text-black"
-                                                                    : "bg-[#1E2633] hover:bg-[#2B3547] text-white active:scale-95"
-                                                                    }`}
-                                                            >
-                                                                <CheckCircle2 size={14} />
-                                                                <span>{isCompleted ? "COMPLETA" : "LOG"}</span>
-                                                            </button>
-                                                        </div>
+                                                        <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight">
+                                                            {ex.name}
+                                                        </h3>
+                                                        <p className="text-xs text-zinc-400 mt-1 leading-relaxed font-normal">
+                                                            Instrucción biomecánica: {ex.biomechanical_cue}
+                                                        </p>
                                                     </div>
-                                                );
-                                            })}
+
+                                                    {/* Top Actions: Monochromatic Apple pills */}
+                                                    <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                                                        {/* Tempo Sonar Pill */}
+                                                        <button
+                                                            onClick={() => {
+                                                                const nextState = !tempoActive[ex.id];
+                                                                setTempoActive(prev => ({ ...prev, [ex.id]: nextState }));
+                                                                if (nextState) playTempoPulse("eccentric_tick");
+                                                            }}
+                                                            className={`px-3 py-1.5 rounded-full text-xs font-mono font-medium transition-all border ${
+                                                                tempoActive[ex.id]
+                                                                    ? "bg-[#FF2A2A] text-white border-[#FF2A2A]"
+                                                                    : "bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 border-white/[0.08]"
+                                                            }`}
+                                                            title="Sonar Acústico de Tempo (3-1-1)"
+                                                        >
+                                                            TEMPO 3-1-1: {tempoActive[ex.id] ? "ON" : "OFF"}
+                                                        </button>
+
+                                                        {/* VBT Mode */}
+                                                        <button
+                                                            onClick={() => {
+                                                                setVbtExerciseName(ex.name);
+                                                                setIsVbtModalOpen(true);
+                                                            }}
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 border border-white/[0.08] transition-all"
+                                                            title="Modo Velocidad VBT y Espejo IA"
+                                                        >
+                                                            <Gauge size={13} className="text-zinc-300" />
+                                                            <span>VBT</span>
+                                                        </button>
+
+                                                        {/* Discos Inline Toggle */}
+                                                        <button
+                                                            onClick={() => setInlinePlatesExId(prev => prev === ex.id ? null : ex.id)}
+                                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                                                inlinePlatesExId === ex.id
+                                                                    ? "bg-white text-black border-white font-semibold"
+                                                                    : "bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 border-white/[0.08]"
+                                                            }`}
+                                                            title="Desglose de Discos"
+                                                        >
+                                                            <Disc size={13} className={inlinePlatesExId === ex.id ? "text-black" : "text-zinc-300"} />
+                                                            <span>Discos</span>
+                                                        </button>
+
+                                                        {/* Swap */}
+                                                        <button
+                                                            onClick={() => handleSwapExercise(exIdx)}
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 border border-white/[0.08] transition-all"
+                                                            title="Buscar Alternativa Biomecánica"
+                                                        >
+                                                            <RotateCcw size={13} className="text-zinc-300" />
+                                                            <span>Swap</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Inline Plate Calculation Pill */}
+                                                {inlinePlatesExId === ex.id && (
+                                                    <div className="p-3 bg-white/[0.04] border border-white/[0.08] rounded-2xl flex items-center justify-between text-xs text-zinc-300 animate-in fade-in">
+                                                        <div>
+                                                            <span className="text-[10px] uppercase text-zinc-500 font-medium tracking-wide block">Desglose exacto de carga por lado (Barra olímpica 20 kg)</span>
+                                                            <span className="font-mono text-white text-sm font-semibold">{formatPlatesSummary(target.suggestedWeight)}</span>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => {
+                                                                setPlateModalWeight(target.suggestedWeight);
+                                                                setIsPlateModalOpen(true);
+                                                            }}
+                                                            className="text-[11px] text-zinc-400 hover:text-white underline font-medium ml-3"
+                                                        >
+                                                            Ver cálculo completo →
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                {/* Target Telemetry */}
+                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                                                    <div className="p-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+                                                        <span className="text-[10px] text-zinc-500 font-medium tracking-wide block">ÚLTIMO REGISTRO</span>
+                                                        <span className="text-white font-mono font-semibold">{memory.weight} kg × {memory.reps} reps</span>
+                                                    </div>
+                                                    <div className="p-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+                                                        <span className="text-[10px] text-zinc-400 font-medium tracking-wide block">META HOY (OVERLOAD)</span>
+                                                        <span className="text-white font-mono font-semibold">{target.suggestedWeight} kg × {target.suggestedReps} reps</span>
+                                                    </div>
+                                                    <div className="p-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+                                                        <span className="text-[10px] text-zinc-500 font-medium tracking-wide block">1RM ESTIMADO</span>
+                                                        <span className="text-white font-mono font-semibold">{target.estimated1RM} kg</span>
+                                                    </div>
+                                                    <div className="p-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+                                                        <span className="text-[10px] text-zinc-500 font-medium tracking-wide block">PROXIMIDAD AL FALLO</span>
+                                                        <span className="text-white font-mono font-semibold">RIR {target.targetRir} (1-2 reserva)</span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Interactive Sets Tracker with Tactile Number Inputs */}
+                                                <div className="space-y-2 pt-1">
+                                                    {Array.from({ length: ex.default_sets }).map((_, setIdx) => {
+                                                        const key = `${ex.id}_${setIdx}`;
+                                                        const isCompleted = Boolean(completedSets[key]);
+                                                        const isVoiceActive = voiceActiveSet?.exerciseId === ex.id && voiceActiveSet?.setIdx === setIdx;
+                                                        const currentInput = setInputs[key] || { weight: target.suggestedWeight, reps: target.suggestedReps };
+
+                                                        return (
+                                                            <div
+                                                                key={setIdx}
+                                                                className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
+                                                                    isCompleted
+                                                                        ? "bg-[#10B981]/10 border-[#10B981]/30 text-white"
+                                                                        : isVoiceActive && isVoiceListening
+                                                                            ? "bg-[#FF2A2A]/10 border-[#FF2A2A]/50 text-white ring-1 ring-[#FF2A2A]"
+                                                                            : "bg-white/[0.03] border-white/[0.06] text-zinc-200"
+                                                                }`}
+                                                            >
+                                                                {/* Set Badge & Tactile Input Controls */}
+                                                                <div className="flex items-center gap-3">
+                                                                    <span className="w-7 h-7 rounded-xl bg-white/[0.08] flex items-center justify-center font-bold text-white text-xs font-mono">
+                                                                        S{setIdx + 1}
+                                                                    </span>
+
+                                                                    <div className="flex items-center gap-2">
+                                                                        {/* Tactile Weight Input */}
+                                                                        <div className="flex items-center gap-1 bg-white/[0.06] border border-white/[0.08] rounded-xl px-2.5 py-1">
+                                                                            <input
+                                                                                type="number"
+                                                                                step="0.5"
+                                                                                value={currentInput.weight}
+                                                                                onChange={e => {
+                                                                                    const val = parseFloat(e.target.value) || 0;
+                                                                                    setSetInputs(prev => ({
+                                                                                        ...prev,
+                                                                                        [key]: { ...currentInput, weight: val }
+                                                                                    }));
+                                                                                }}
+                                                                                className="w-16 bg-transparent text-white font-mono font-semibold text-sm sm:text-base text-center outline-none"
+                                                                            />
+                                                                            <span className="text-[11px] text-zinc-400 font-mono">kg</span>
+                                                                        </div>
+
+                                                                        <span className="text-zinc-500 font-mono text-xs">×</span>
+
+                                                                        {/* Tactile Reps Input */}
+                                                                        <div className="flex items-center gap-1 bg-white/[0.06] border border-white/[0.08] rounded-xl px-2.5 py-1">
+                                                                            <input
+                                                                                type="number"
+                                                                                step="1"
+                                                                                value={currentInput.reps}
+                                                                                onChange={e => {
+                                                                                    const val = parseInt(e.target.value, 10) || 0;
+                                                                                    setSetInputs(prev => ({
+                                                                                        ...prev,
+                                                                                        [key]: { ...currentInput, reps: val }
+                                                                                    }));
+                                                                                }}
+                                                                                className="w-12 bg-transparent text-white font-mono font-semibold text-sm sm:text-base text-center outline-none"
+                                                                            />
+                                                                            <span className="text-[11px] text-zinc-400 font-mono">reps</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Actions: Dictate & Complete */}
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-[11px] text-zinc-500 font-mono hidden md:inline">
+                                                                        Descanso {ex.rest_seconds}s
+                                                                    </span>
+
+                                                                    {/* Voice Dictation Button */}
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setVoiceActiveSet({ exerciseId: ex.id, setIdx });
+                                                                            startVoiceLogging();
+                                                                        }}
+                                                                        className={`p-2 rounded-xl border transition-all ${
+                                                                            isVoiceActive && isVoiceListening
+                                                                                ? "bg-[#FF2A2A] text-white animate-pulse border-[#FF2A2A]"
+                                                                                : "bg-white/[0.06] border-white/[0.08] text-zinc-300 hover:text-white hover:bg-white/[0.12]"
+                                                                        }`}
+                                                                        title="Dictar serie por voz (ej. '80 por 10')"
+                                                                    >
+                                                                        <Mic size={14} className={isVoiceActive && isVoiceListening ? "animate-bounce" : ""} />
+                                                                    </button>
+
+                                                                    <button
+                                                                        onClick={() => handleCompleteSet(ex.id, setIdx, ex.rest_seconds)}
+                                                                        className={`px-4 py-2 rounded-xl font-semibold text-xs transition-all flex items-center gap-1.5 ${
+                                                                            isCompleted
+                                                                                ? "bg-[#10B981] text-black shadow-md shadow-[#10B981]/20"
+                                                                                : "bg-white hover:bg-zinc-200 text-black active:scale-95 shadow-md shadow-white/10"
+                                                                        }`}
+                                                                    >
+                                                                        <CheckCircle2 size={14} />
+                                                                        <span>{isCompleted ? "COMPLETA" : "LOG"}</span>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 );
@@ -618,36 +706,39 @@ export default function ApexDashboard() {
 
                         {/* Cardio Finisher Block */}
                         {currentRoutine.cardio.durationMinutes > 0 && (
-                            <div className="bg-[#0A0D12] border border-[#1E2633] rounded-2xl p-4 sm:p-5 flex items-start gap-4">
-                                <div className="w-10 h-10 rounded-xl bg-[#0284C7]/10 border border-[#0284C7]/30 flex items-center justify-center text-[#38BDF8] shrink-0">
-                                    <HeartPulse size={22} />
+                            <div className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-xl flex items-start gap-4">
+                                <div className="w-10 h-10 rounded-2xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-white shrink-0">
+                                    <HeartPulse size={20} />
                                 </div>
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#0284C7]/20 text-[#38BDF8] border border-[#0284C7]/30 uppercase font-semibold">
+                                        <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-white/[0.06] text-zinc-300 border border-white/[0.08] uppercase tracking-wide">
                                             CARDIO ZONA 2 (FINAL DE SESIÓN)
                                         </span>
-                                        <span className="text-xs font-mono text-[#8892B0]">{currentRoutine.cardio.durationMinutes} minutos</span>
+                                        <span className="text-xs text-zinc-400 font-medium">
+                                            <span className="font-mono text-white">{currentRoutine.cardio.durationMinutes}</span> minutos
+                                        </span>
                                     </div>
-                                    <h4 className="text-base font-bold text-white">{currentRoutine.cardio.type}</h4>
-                                    <p className="text-xs text-[#94A3B8] font-mono">{currentRoutine.cardio.protocol}</p>
+                                    <h4 className="text-base font-bold text-white tracking-tight">{currentRoutine.cardio.type}</h4>
+                                    <p className="text-xs text-zinc-400 leading-relaxed font-normal">{currentRoutine.cardio.protocol}</p>
                                 </div>
                             </div>
                         )}
 
                         {/* Extra Volume Button */}
-                        <div className="p-4 bg-[#0A0D12] border border-[#1E2633] rounded-2xl text-center space-y-2">
-                            <p className="text-xs font-mono text-[#8892B0]">
+                        <div className="p-6 bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl text-center space-y-2.5 shadow-xl">
+                            <p className="text-xs text-zinc-400 font-normal">
                                 ¿Terminaste la rutina y tienes energía extra para continuar?
                             </p>
                             <button
                                 onClick={() => setSelectedMuscle("delts")}
-                                className="px-5 py-2.5 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-mono text-xs font-bold rounded-xl shadow-lg transition-all active:scale-95 flex items-center gap-2 mx-auto"
+                                className="px-6 py-3 bg-white hover:bg-zinc-200 text-black text-xs font-semibold rounded-full shadow-lg transition-all active:scale-95 flex items-center gap-2 mx-auto"
                             >
-                                <Flame size={16} /> ME SIENTO CON ENERGÍA: AGREGAR VOLUMEN EXTRA
+                                <Flame size={15} />
+                                <span>AGREGAR VOLUMEN EXTRA A LA SESIÓN</span>
                             </button>
-                            <p className="text-[10px] font-mono text-[#717C96]">
-                                *El motor descontará automáticamente estas series accesorias del resto de la semana.
+                            <p className="text-[11px] text-zinc-500 font-normal">
+                                El motor descontará automáticamente estas series accesorias del resto de la semana.
                             </p>
                         </div>
                     </div>
@@ -667,46 +758,46 @@ export default function ApexDashboard() {
                         </div>
 
                         <div className="lg:col-span-7 space-y-4">
-                            <div className="bg-[#0A0D12] border border-[#1E2633] rounded-2xl p-5">
+                            <div className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-6 shadow-xl">
                                 <div className="flex items-center gap-2 mb-2">
-                                    <Shield size={16} className="text-[#38BDF8]" />
-                                    <h3 className="text-base font-bold text-white font-mono uppercase">
+                                    <Shield size={16} className="text-white" />
+                                    <h3 className="text-sm font-semibold text-white tracking-tight">
                                         RADAR DE EQUILIBRIO ARTICULAR
                                     </h3>
                                 </div>
-                                <p className="text-xs text-[#94A3B8] font-mono mb-4 leading-relaxed">
-                                    El visor detecta la proporción de volumen entre patrones antagonistas para prevenir lesiones de manguito rotador y tendón patelar.
+                                <p className="text-xs text-zinc-400 mb-4 leading-relaxed font-normal">
+                                    El visor evalúa la proporción de volumen entre patrones de movimiento antagonistas para proteger el manguito rotador y los tendones patelares.
                                 </p>
 
-                                <div className="space-y-3 font-mono text-xs">
+                                <div className="space-y-4 text-xs">
                                     <div>
-                                        <div className="flex justify-between text-[11px] mb-1">
-                                            <span className="text-slate-300">Empuje vs Tracción (Horizontal & Vertical)</span>
-                                            <span className="text-[#10B981] font-bold">1.05 (Óptimo)</span>
+                                        <div className="flex justify-between text-xs mb-1.5 font-medium">
+                                            <span className="text-zinc-300">Empuje vs Tracción (Horizontal & Vertical)</span>
+                                            <span className="text-[#10B981] font-mono font-semibold">1.05 (Óptimo)</span>
                                         </div>
-                                        <div className="w-full bg-[#161C26] h-2 rounded-full overflow-hidden">
+                                        <div className="w-full bg-white/[0.06] h-2 rounded-full overflow-hidden">
                                             <div className="bg-[#10B981] h-full rounded-full" style={{ width: "52%" }} />
                                         </div>
                                     </div>
 
                                     <div>
-                                        <div className="flex justify-between text-[11px] mb-1">
-                                            <span className="text-slate-300">Cuádriceps vs Cadena Posterior (Isquios/Glúteo)</span>
-                                            <span className="text-[#38BDF8] font-bold">1.18 (Saludable)</span>
+                                        <div className="flex justify-between text-xs mb-1.5 font-medium">
+                                            <span className="text-zinc-300">Cuádriceps vs Cadena Posterior (Isquios/Glúteo)</span>
+                                            <span className="text-white font-mono font-semibold">1.18 (Saludable)</span>
                                         </div>
-                                        <div className="w-full bg-[#161C26] h-2 rounded-full overflow-hidden">
-                                            <div className="bg-[#38BDF8] h-full rounded-full" style={{ width: "55%" }} />
+                                        <div className="w-full bg-white/[0.06] h-2 rounded-full overflow-hidden">
+                                            <div className="bg-white h-full rounded-full" style={{ width: "55%" }} />
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Quick Muscle Selector List */}
-                            <div className="bg-[#0A0D12] border border-[#1E2633] rounded-2xl p-5">
-                                <h4 className="text-xs font-mono font-bold text-[#8892B0] mb-3 uppercase tracking-wider">
+                            <div className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-6 shadow-xl">
+                                <h4 className="text-xs font-semibold text-zinc-400 mb-3 uppercase tracking-wider">
                                     ACCESO RÁPIDO A GRUPOS MUSCULARES
                                 </h4>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 font-mono text-xs">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
                                     {[
                                         { id: "chest", label: "Pectoral" },
                                         { id: "lats", label: "Dorsal Ancho" },
@@ -723,10 +814,10 @@ export default function ApexDashboard() {
                                         <button
                                             key={m.id}
                                             onClick={() => setSelectedMuscle(m.id as any)}
-                                            className="p-2.5 bg-[#10141D] hover:bg-[#1A2333] border border-[#1E2633] hover:border-[#38BDF8] rounded-xl text-left text-slate-200 transition-all flex items-center justify-between"
+                                            className="p-3 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/20 rounded-2xl text-left text-zinc-300 hover:text-white transition-all flex items-center justify-between"
                                         >
-                                            <span>{m.label}</span>
-                                            <ArrowRight size={12} className="text-[#8892B0]" />
+                                            <span className="font-medium">{m.label}</span>
+                                            <ArrowRight size={12} className="text-zinc-500" />
                                         </button>
                                     ))}
                                 </div>
@@ -741,65 +832,65 @@ export default function ApexDashboard() {
                 {activeTab === "nutrition" && (
                     <div className="space-y-6">
                         {/* Macro Summary Dashboard */}
-                        <div className="bg-[#0A0D12] border border-[#1E2633] rounded-2xl p-5">
-                            <div className="flex justify-between items-start mb-4">
+                        <div className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-6 shadow-2xl">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
                                 <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-[10px] font-mono text-[#64FFDA] px-2 py-0.5 rounded bg-[#64FFDA]/10 border border-[#64FFDA]/30 uppercase font-semibold">
+                                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                        <span className="text-[11px] font-semibold text-zinc-300 px-2.5 py-0.5 rounded-full bg-white/[0.06] border border-white/[0.08] uppercase tracking-wide">
                                             {macros.formulaUsed}
                                         </span>
-                                        <span className="text-xs font-mono text-[#8892B0]">
-                                            TMB: {macros.tmb} kcal • TDEE: {macros.tdee} kcal
+                                        <span className="text-xs text-zinc-400">
+                                            TMB: <span className="font-mono text-white">{macros.tmb}</span> kcal • TDEE: <span className="font-mono text-white">{macros.tdee}</span> kcal
                                         </span>
                                     </div>
-                                    <h3 className="text-2xl font-black text-white font-mono">
-                                        {macros.targetCalories} <span className="text-sm font-normal text-[#8892B0]">kcal/día (-{bio.caloricDeficitPct}%)</span>
+                                    <h3 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                                        <span className="font-mono">{macros.targetCalories}</span> <span className="text-sm font-normal text-zinc-400">kcal/día (-{bio.caloricDeficitPct}%)</span>
                                     </h3>
                                 </div>
 
                                 <button
                                     onClick={() => setIsOffPlanModalOpen(true)}
-                                    className="px-3 py-1.5 bg-[#1C2433] hover:bg-[#253247] border border-[#334155] text-amber-300 font-mono text-xs rounded-xl flex items-center gap-1.5 transition-all"
+                                    className="px-4 py-2 bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] text-zinc-200 text-xs font-medium rounded-full flex items-center gap-1.5 transition-all self-start sm:self-auto"
                                 >
-                                    <AlertCircle size={14} />
+                                    <AlertCircle size={14} className="text-zinc-300" />
                                     <span>Comí Fuera del Plan</span>
                                 </button>
                             </div>
 
                             {/* Macro Bars */}
-                            <div className="grid grid-cols-3 gap-3 font-mono text-xs">
-                                <div className="p-3 bg-[#10141D] rounded-xl border border-[#1E2633]">
-                                    <span className="text-[10px] text-[#38BDF8] block font-bold">PROTEÍNA (2.2g/kg)</span>
-                                    <span className="text-xl font-bold text-white my-1 block">{macros.proteinG}g</span>
-                                    <div className="w-full bg-[#161C26] h-1.5 rounded-full overflow-hidden">
-                                        <div className="bg-[#38BDF8] h-full rounded-full" style={{ width: "85%" }} />
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                                <div className="p-4 bg-white/[0.03] rounded-2xl border border-white/[0.06]">
+                                    <span className="text-[11px] text-zinc-400 block font-medium uppercase tracking-wider">PROTEÍNA (2.2g/kg)</span>
+                                    <span className="text-2xl font-bold font-mono text-white my-1 block">{macros.proteinG}g</span>
+                                    <div className="w-full bg-white/[0.06] h-1.5 rounded-full overflow-hidden mt-2">
+                                        <div className="bg-white h-full rounded-full" style={{ width: "85%" }} />
                                     </div>
                                 </div>
 
-                                <div className="p-3 bg-[#10141D] rounded-xl border border-[#1E2633]">
-                                    <span className="text-[10px] text-[#F59E0B] block font-bold">CARBOHIDRATOS</span>
-                                    <span className="text-xl font-bold text-white my-1 block">{macros.carbsG}g</span>
-                                    <div className="w-full bg-[#161C26] h-1.5 rounded-full overflow-hidden">
-                                        <div className="bg-[#F59E0B] h-full rounded-full" style={{ width: "70%" }} />
+                                <div className="p-4 bg-white/[0.03] rounded-2xl border border-white/[0.06]">
+                                    <span className="text-[11px] text-zinc-400 block font-medium uppercase tracking-wider">CARBOHIDRATOS</span>
+                                    <span className="text-2xl font-bold font-mono text-white my-1 block">{macros.carbsG}g</span>
+                                    <div className="w-full bg-white/[0.06] h-1.5 rounded-full overflow-hidden mt-2">
+                                        <div className="bg-zinc-400 h-full rounded-full" style={{ width: "70%" }} />
                                     </div>
                                 </div>
 
-                                <div className="p-3 bg-[#10141D] rounded-xl border border-[#1E2633]">
-                                    <span className="text-[10px] text-[#EC4899] block font-bold">GRASAS SALUDABLES</span>
-                                    <span className="text-xl font-bold text-white my-1 block">{macros.fatsG}g</span>
-                                    <div className="w-full bg-[#161C26] h-1.5 rounded-full overflow-hidden">
-                                        <div className="bg-[#EC4899] h-full rounded-full" style={{ width: "65%" }} />
+                                <div className="p-4 bg-white/[0.03] rounded-2xl border border-white/[0.06]">
+                                    <span className="text-[11px] text-zinc-400 block font-medium uppercase tracking-wider">GRASAS SALUDABLES</span>
+                                    <span className="text-2xl font-bold font-mono text-white my-1 block">{macros.fatsG}g</span>
+                                    <div className="w-full bg-white/[0.06] h-1.5 rounded-full overflow-hidden mt-2">
+                                        <div className="bg-zinc-500 h-full rounded-full" style={{ width: "65%" }} />
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         {/* AI 30-Day Plan Generator */}
-                        <div className="bg-[#0A0D12] border border-[#1E2633] rounded-2xl p-5">
-                            <div className="flex justify-between items-center mb-3">
+                        <div className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-6 shadow-2xl">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                                 <div className="flex items-center gap-2">
-                                    <Calendar size={18} className="text-[#64FFDA]" />
-                                    <h4 className="text-base font-bold text-white font-mono uppercase">
+                                    <Calendar size={18} className="text-white" />
+                                    <h4 className="text-base font-bold text-white tracking-tight">
                                         PLAN DE DIETA MENSUAL CLÍNICA (30 DÍAS)
                                     </h4>
                                 </div>
@@ -807,7 +898,7 @@ export default function ApexDashboard() {
                                 <button
                                     onClick={handleGenerateAiDiet}
                                     disabled={dietLoading}
-                                    className="px-3.5 py-1.5 bg-[#FF2A2A] hover:bg-[#E11D48] text-white font-mono text-xs font-semibold rounded-xl transition-all disabled:opacity-50 flex items-center gap-1.5"
+                                    className="px-5 py-2 bg-white hover:bg-zinc-200 text-black text-xs font-semibold rounded-full shadow-md transition-all disabled:opacity-50 flex items-center gap-1.5 self-start sm:self-auto"
                                 >
                                     <Sparkles size={14} />
                                     <span>{dietLoading ? "GENERANDO CON GEMINI..." : "GENERAR CON GEMINI AI"}</span>
@@ -815,47 +906,47 @@ export default function ApexDashboard() {
                             </div>
 
                             {dietPlan ? (
-                                <div className="space-y-4 font-sans text-xs">
-                                    <p className="text-[#CBD5E1] bg-[#10141D] p-3 rounded-xl border border-[#1E2633] font-mono">
-                                        📋 {dietPlan.monthlySummary}
+                                <div className="space-y-4 text-xs">
+                                    <p className="text-zinc-300 bg-white/[0.03] p-4 rounded-2xl border border-white/[0.06] leading-relaxed">
+                                        {dietPlan.monthlySummary}
                                     </p>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         {dietPlan.weeklyTemplates?.[0]?.meals?.map((m: any, idx: number) => (
-                                            <div key={idx} className="p-3 bg-[#10141D] border border-[#1E2633] rounded-xl">
-                                                <div className="flex justify-between font-mono font-bold text-white mb-1">
+                                            <div key={idx} className="p-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl">
+                                                <div className="flex justify-between font-semibold text-white mb-1.5">
                                                     <span>{m.name}</span>
-                                                    <span className="text-[#64FFDA]">{m.calories} kcal ({m.proteinG}g P)</span>
+                                                    <span className="text-zinc-400 font-mono text-xs">{m.calories} kcal ({m.proteinG}g P)</span>
                                                 </div>
-                                                <p className="text-slate-300 font-mono text-[11px] leading-relaxed">{m.items}</p>
+                                                <p className="text-zinc-400 text-xs leading-relaxed">{m.items}</p>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             ) : (
-                                <div className="text-center py-6 border border-dashed border-[#1E2633] rounded-xl text-xs font-mono text-[#8892B0]">
-                                    Presiona "Generar con Gemini AI" para estructurar tus 30 días de alimentación exacta.
+                                <div className="text-center py-8 border border-dashed border-white/[0.08] rounded-2xl text-xs text-zinc-500 font-normal">
+                                    Presiona "Generar con Gemini AI" para estructurar tus 30 días de alimentación exacta calculada a tu déficit.
                                 </div>
                             )}
                         </div>
 
                         {/* Clinical Supplements Stack */}
-                        <div className="bg-[#0A0D12] border border-[#1E2633] rounded-2xl p-5">
-                            <div className="flex items-center gap-2 mb-3">
-                                <Flame size={18} className="text-[#F59E0B]" />
-                                <h4 className="text-base font-bold text-white font-mono uppercase">
+                        <div className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-6 shadow-2xl">
+                            <div className="flex items-center gap-2 mb-4">
+                                <Shield size={18} className="text-white" />
+                                <h4 className="text-base font-bold text-white tracking-tight">
                                     STACK DE SUPLEMENTACIÓN CLÍNICA (EVIDENCIA GRADO A)
                                 </h4>
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                 {supplements.map((sup, idx) => (
-                                    <div key={idx} className="p-3.5 bg-[#10141D] border border-[#1E2633] rounded-xl flex flex-col justify-between">
+                                    <div key={idx} className="p-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl flex flex-col justify-between">
                                         <div>
-                                            <h5 className="font-bold text-white text-xs mb-1">{sup.name}</h5>
-                                            <p className="text-[11px] text-[#64FFDA] font-mono font-semibold mb-1">{sup.dosage}</p>
-                                            <p className="text-[10px] text-[#8892B0] font-mono mb-2">⏱ {sup.timing}</p>
+                                            <h5 className="font-bold text-white text-xs mb-1 tracking-tight">{sup.name}</h5>
+                                            <p className="text-xs text-zinc-300 font-mono font-semibold mb-1">{sup.dosage}</p>
+                                            <p className="text-[11px] text-zinc-500 mb-2 font-medium">Momento: {sup.timing}</p>
                                         </div>
-                                        <p className="text-[11px] text-[#94A3B8] leading-relaxed border-t border-[#1C2433] pt-2">
+                                        <p className="text-xs text-zinc-400 leading-relaxed border-t border-white/[0.06] pt-2 mt-1">
                                             {sup.clinicalReason}
                                         </p>
                                     </div>
@@ -864,22 +955,22 @@ export default function ApexDashboard() {
                         </div>
 
                         {/* Consolidated Grocery List */}
-                        <div className="bg-[#0A0D12] border border-[#1E2633] rounded-2xl p-5">
-                            <div className="flex items-center gap-2 mb-3">
-                                <ShoppingCart size={18} className="text-[#38BDF8]" />
-                                <h4 className="text-base font-bold text-white font-mono uppercase">
+                        <div className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-6 shadow-2xl">
+                            <div className="flex items-center gap-2 mb-4">
+                                <ShoppingCart size={18} className="text-white" />
+                                <h4 className="text-base font-bold text-white tracking-tight">
                                     LISTA CONSOLIDADA DE SUPERMERCADO SEMANAL (1 VIAJE)
                                 </h4>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 font-mono text-xs">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                                 {groceryList.map((g, idx) => (
-                                    <div key={idx} className="p-2.5 bg-[#10141D] border border-[#1E2633] rounded-xl flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-[#38BDF8]" />
-                                            <span className="text-white">{g.item}</span>
+                                    <div key={idx} className="p-3 bg-white/[0.03] border border-white/[0.06] rounded-2xl flex items-center justify-between">
+                                        <div className="flex items-center gap-2.5">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
+                                            <span className="text-zinc-200 font-medium">{g.item}</span>
                                         </div>
-                                        <span className="text-[#64FFDA] font-bold bg-[#161C26] px-2 py-0.5 rounded border border-[#232D3F]">
+                                        <span className="font-mono text-white text-xs font-semibold bg-white/[0.06] px-2.5 py-1 rounded-full border border-white/[0.08]">
                                             {g.totalAmount}
                                         </span>
                                     </div>
@@ -894,99 +985,99 @@ export default function ApexDashboard() {
                    ========================================================================= */}
                 {activeTab === "biometrics" && (
                     <div className="max-w-2xl mx-auto space-y-6">
-                        <div className="bg-[#0A0D12] border border-[#1E2633] rounded-2xl p-5 sm:p-6 font-mono text-xs">
-                            <div className="flex justify-between items-center border-b border-[#1E2633] pb-3 mb-4">
-                                <h3 className="text-base font-bold text-white uppercase flex items-center gap-2">
-                                    <Sliders size={18} className="text-[#64FFDA]" /> PERFIL BIOMÉTRICO DEL ATLETA
+                        <div className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-6 sm:p-8 shadow-2xl text-xs">
+                            <div className="flex justify-between items-center border-b border-white/[0.06] pb-4 mb-5">
+                                <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+                                    <Sliders size={18} className="text-white" /> PERFIL BIOMÉTRICO DEL ATLETA
                                 </h3>
                                 <button
                                     onClick={() => setIsProtocolModalOpen(true)}
-                                    className="px-2.5 py-1 bg-[#131924] hover:bg-[#1E2633] border border-[#232D3F] rounded-lg text-slate-300 text-[11px] flex items-center gap-1.5"
+                                    className="px-3 py-1.5 bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] rounded-full text-zinc-300 text-xs font-medium flex items-center gap-1.5 transition-all"
                                 >
-                                    <Info size={13} className="text-[#38BDF8]" />
+                                    <Info size={13} className="text-zinc-300" />
                                     <span>Protocolo de Medición</span>
                                 </button>
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-[#8892B0] text-[11px] block mb-1">GÉNERO BIOLÓGICO</label>
+                                    <label className="text-zinc-400 text-xs font-medium block mb-1.5">GÉNERO BIOLÓGICO</label>
                                     <select
                                         value={bio.gender}
                                         onChange={e => setBio({ ...bio, gender: e.target.value as any })}
-                                        className="w-full bg-[#10141D] border border-[#1E2633] rounded-xl p-2.5 text-white"
+                                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl p-3 text-white outline-none focus:border-white/30 text-xs"
                                     >
-                                        <option value="male">Masculino</option>
-                                        <option value="female">Femenino</option>
+                                        <option value="male" className="bg-zinc-900 text-white">Masculino</option>
+                                        <option value="female" className="bg-zinc-900 text-white">Femenino</option>
                                     </select>
                                 </div>
 
                                 <div>
-                                    <label className="text-[#8892B0] text-[11px] block mb-1">EDAD (AÑOS)</label>
+                                    <label className="text-zinc-400 text-xs font-medium block mb-1.5">EDAD (AÑOS)</label>
                                     <input
                                         type="number"
                                         value={bio.age}
                                         onChange={e => setBio({ ...bio, age: Number(e.target.value) })}
-                                        className="w-full bg-[#10141D] border border-[#1E2633] rounded-xl p-2.5 text-white"
+                                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl p-3 text-white font-mono outline-none focus:border-white/30 text-xs"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="text-[#8892B0] text-[11px] block mb-1">PESO CORPORAL (KG)</label>
+                                    <label className="text-zinc-400 text-xs font-medium block mb-1.5">PESO CORPORAL (KG)</label>
                                     <input
                                         type="number"
                                         step="0.1"
                                         value={bio.weightKg}
                                         onChange={e => setBio({ ...bio, weightKg: Number(e.target.value) })}
-                                        className="w-full bg-[#10141D] border border-[#1E2633] rounded-xl p-2.5 text-white"
+                                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl p-3 text-white font-mono outline-none focus:border-white/30 text-xs"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="text-[#8892B0] text-[11px] block mb-1">ESTATURA (CM)</label>
+                                    <label className="text-zinc-400 text-xs font-medium block mb-1.5">ESTATURA (CM)</label>
                                     <input
                                         type="number"
                                         value={bio.heightCm}
                                         onChange={e => setBio({ ...bio, heightCm: Number(e.target.value) })}
-                                        className="w-full bg-[#10141D] border border-[#1E2633] rounded-xl p-2.5 text-white"
+                                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl p-3 text-white font-mono outline-none focus:border-white/30 text-xs"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="text-[#8892B0] text-[11px] block mb-1">% GRASA CORPORAL (OPCIONAL)</label>
+                                    <label className="text-zinc-400 text-xs font-medium block mb-1.5">% GRASA CORPORAL (OPCIONAL)</label>
                                     <input
                                         type="number"
                                         step="0.1"
                                         placeholder="Ej. 14.5"
                                         value={bio.bodyFatPct || ""}
                                         onChange={e => setBio({ ...bio, bodyFatPct: Number(e.target.value) || undefined })}
-                                        className="w-full bg-[#10141D] border border-[#1E2633] rounded-xl p-2.5 text-white placeholder-slate-600"
+                                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl p-3 text-white font-mono placeholder-zinc-600 outline-none focus:border-white/30 text-xs"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="text-[#8892B0] text-[11px] block mb-1">DÍAS DE ENTRENAMIENTO / SEMANA</label>
+                                    <label className="text-zinc-400 text-xs font-medium block mb-1.5">DÍAS DE ENTRENAMIENTO / SEMANA</label>
                                     <select
                                         value={bio.trainingDaysPerWeek}
                                         onChange={e => setBio({ ...bio, trainingDaysPerWeek: Number(e.target.value) })}
-                                        className="w-full bg-[#10141D] border border-[#1E2633] rounded-xl p-2.5 text-white"
+                                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl p-3 text-white outline-none focus:border-white/30 text-xs"
                                     >
                                         {[2, 3, 4, 5, 6, 7].map(d => (
-                                            <option key={d} value={d}>{d} Días / Semana (Full-Body)</option>
+                                            <option key={d} value={d} className="bg-zinc-900 text-white">{d} Días / Semana (Full-Body)</option>
                                         ))}
                                     </select>
                                 </div>
 
                                 <div className="sm:col-span-2">
-                                    <label className="text-[#8892B0] text-[11px] block mb-1">DÉFICIT CALÓRICO OBJETIVO (%)</label>
+                                    <label className="text-zinc-400 text-xs font-medium block mb-1.5">DÉFICIT CALÓRICO OBJETIVO (%)</label>
                                     <div className="flex gap-2">
                                         {[10, 15, 20, 25].map(pct => (
                                             <button
                                                 key={pct}
                                                 onClick={() => setBio({ ...bio, caloricDeficitPct: pct })}
-                                                className={`flex-1 py-2 rounded-xl border text-xs font-bold transition-all ${bio.caloricDeficitPct === pct
-                                                    ? "bg-white text-black border-white"
-                                                    : "bg-[#10141D] text-[#8892B0] border-[#1E2633]"
+                                                className={`flex-1 py-2.5 rounded-2xl border text-xs font-semibold transition-all ${bio.caloricDeficitPct === pct
+                                                    ? "bg-white text-black border-white shadow-sm"
+                                                    : "bg-white/[0.04] text-zinc-400 border-white/[0.06] hover:text-white"
                                                     }`}
                                             >
                                                 -{pct}%
@@ -1001,42 +1092,42 @@ export default function ApexDashboard() {
             </main>
 
             {/* Floating Tesla-Style Rest Timer & Spotify Bar */}
-            <div className="fixed bottom-0 left-0 right-0 z-30 bg-[#0A0D12]/95 backdrop-blur-xl border-t border-[#1E2633] px-4 py-2.5 font-mono">
+            <div className="fixed bottom-0 left-0 right-0 z-30 bg-[#000000]/85 backdrop-blur-2xl border-t border-white/[0.08] px-4 py-2.5">
                 <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 text-xs">
                     {/* Spotify Telemetry Phase */}
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-[#1DB954]/10 border border-[#1DB954]/30 flex items-center justify-center text-[#1DB954] shrink-0">
-                            <Music size={16} />
+                        <div className="w-8 h-8 rounded-full bg-[#1DB954]/10 border border-[#1DB954]/30 flex items-center justify-center text-[#1DB954] shrink-0">
+                            <Music size={15} />
                         </div>
                         <div>
-                            <span className="text-[10px] text-[#8892B0] block">CADENCIA BIOMECÁNICA</span>
-                            <span className="text-white font-bold text-[11px] sm:text-xs">
+                            <span className="text-[10px] text-zinc-500 font-medium tracking-wide block uppercase">CADENCIA BIOMECÁNICA</span>
+                            <span className="text-white font-semibold text-xs tracking-tight">
                                 {restRemaining !== null
-                                    ? "[PAUSA ACTIVA • 110 BPM]"
-                                    : "[SERIES EFECTIVAS • 138-145 BPM]"}
+                                    ? "PAUSA ACTIVA • 110 BPM"
+                                    : "SERIES EFECTIVAS • 138-145 BPM"}
                             </span>
                         </div>
                     </div>
 
                     {/* Rest Countdown Timer */}
                     {restRemaining !== null ? (
-                        <div className="flex items-center gap-3 bg-[#10141D] border border-[#10B981]/40 px-3.5 py-1.5 rounded-xl">
+                        <div className="flex items-center gap-3 bg-white/[0.06] border border-white/[0.1] px-4 py-1.5 rounded-full">
                             <span className="w-2 h-2 rounded-full bg-[#10B981] animate-ping" />
                             <div>
-                                <span className="text-[9px] text-[#8892B0] block uppercase">DESCANSO ACTIVO</span>
-                                <span className="text-base font-extrabold text-[#10B981]">
+                                <span className="text-[9px] text-zinc-400 block uppercase font-medium">DESCANSO ACTIVO</span>
+                                <span className="text-base font-bold font-mono text-[#10B981]">
                                     {Math.floor(restRemaining / 60)}:{(restRemaining % 60).toString().padStart(2, "0")}
                                 </span>
                             </div>
                             <button
                                 onClick={() => setRestRemaining(null)}
-                                className="text-[10px] text-[#8892B0] hover:text-white ml-2 underline"
+                                className="text-[10px] text-zinc-400 hover:text-white ml-2 underline font-medium"
                             >
                                 Saltar
                             </button>
                         </div>
                     ) : (
-                        <div className="text-[11px] text-[#717C96] hidden sm:block">
+                        <div className="text-xs text-zinc-500 hidden sm:block font-normal">
                             Marca una serie como LOG para iniciar el temporizador de descanso
                         </div>
                     )}
@@ -1072,20 +1163,20 @@ export default function ApexDashboard() {
 
             {/* Protocol Modal */}
             {isProtocolModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xl p-4 animate-in fade-in">
                     <div className="absolute inset-0" onClick={() => setIsProtocolModalOpen(false)} />
-                    <div className="relative w-full max-w-lg bg-[#0A0D12] border border-[#1E2633] rounded-2xl p-6 shadow-2xl z-10 font-sans text-white">
-                        <div className="flex justify-between items-center border-b border-[#1E2633] pb-3 mb-4">
-                            <h3 className="font-bold text-sm font-mono tracking-tight text-[#64FFDA]">
+                    <div className="relative w-full max-w-lg bg-[#121214] border border-white/[0.08] rounded-3xl p-6 shadow-2xl z-10 font-sans text-white">
+                        <div className="flex justify-between items-center border-b border-white/[0.06] pb-3 mb-4">
+                            <h3 className="font-semibold text-sm tracking-tight text-white">
                                 {MEASUREMENT_PROTOCOL.title}
                             </h3>
-                            <button onClick={() => setIsProtocolModalOpen(false)} className="text-[#8892B0]">✕</button>
+                            <button onClick={() => setIsProtocolModalOpen(false)} className="text-zinc-400 hover:text-white">✕</button>
                         </div>
-                        <div className="space-y-3 font-mono text-xs text-[#CBD5E1]">
+                        <div className="space-y-3 text-xs text-zinc-300">
                             {MEASUREMENT_PROTOCOL.criteria.map((c, i) => (
-                                <div key={i} className="p-3 bg-[#10141D] rounded-xl border border-[#1E2633]">
-                                    <h4 className="font-bold text-white mb-1">✔ {c.rule}</h4>
-                                    <p className="text-[11px] text-[#94A3B8] leading-relaxed">{c.detail}</p>
+                                <div key={i} className="p-3.5 bg-white/[0.03] rounded-2xl border border-white/[0.06]">
+                                    <h4 className="font-semibold text-white mb-1 tracking-tight">{c.rule}</h4>
+                                    <p className="text-xs text-zinc-400 leading-relaxed">{c.detail}</p>
                                 </div>
                             ))}
                         </div>
@@ -1095,17 +1186,17 @@ export default function ApexDashboard() {
 
             {/* Off-Plan Modal */}
             {isOffPlanModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xl p-4 animate-in fade-in">
                     <div className="absolute inset-0" onClick={() => setIsOffPlanModalOpen(false)} />
-                    <div className="relative w-full max-w-lg bg-[#0A0D12] border border-[#1E2633] rounded-2xl p-6 shadow-2xl z-10 font-sans text-white">
-                        <div className="flex justify-between items-center border-b border-[#1E2633] pb-3 mb-3">
-                            <h3 className="font-bold text-sm font-mono text-amber-400">
-                                RECÁLCULO DINÁMICO: "COMÍ FUERA DEL PLAN"
+                    <div className="relative w-full max-w-lg bg-[#121214] border border-white/[0.08] rounded-3xl p-6 shadow-2xl z-10 font-sans text-white">
+                        <div className="flex justify-between items-center border-b border-white/[0.06] pb-3 mb-3">
+                            <h3 className="font-semibold text-sm tracking-tight text-white">
+                                RECÁLCULO DINÁMICO: COMÍ FUERA DEL PLAN
                             </h3>
-                            <button onClick={() => setIsOffPlanModalOpen(false)} className="text-[#8892B0]">✕</button>
+                            <button onClick={() => setIsOffPlanModalOpen(false)} className="text-zinc-400 hover:text-white">✕</button>
                         </div>
 
-                        <p className="text-xs text-[#94A3B8] font-mono mb-3">
+                        <p className="text-xs text-zinc-400 mb-3 leading-relaxed">
                             Describe lo que comiste (ej. "2 rebanadas de pizza y un refresco"). Gemini reajustará tu cena y los próximos 2 días para proteger tu déficit.
                         </p>
 
@@ -1113,27 +1204,27 @@ export default function ApexDashboard() {
                             value={offPlanText}
                             onChange={e => setOffPlanText(e.target.value)}
                             placeholder="Ej. Hamburguesa doble con papas a la francesa..."
-                            className="w-full bg-[#10141D] border border-[#1E2633] rounded-xl p-3 text-xs font-mono text-white mb-3 h-20 outline-none focus:border-amber-400"
+                            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl p-3.5 text-xs text-white mb-3 h-24 outline-none focus:border-white/30"
                         />
 
                         <button
                             onClick={handleRecalculateMeal}
                             disabled={offPlanLoading || !offPlanText.trim()}
-                            className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-mono font-bold text-xs rounded-xl transition-all disabled:opacity-50"
+                            className="w-full py-3 bg-white hover:bg-zinc-200 text-black font-semibold text-xs rounded-full transition-all disabled:opacity-50"
                         >
                             {offPlanLoading ? "RECALCULANDO CON GEMINI..." : "RECALCULAR CENA Y DÉFICIT"}
                         </button>
 
                         {offPlanResult && (
-                            <div className="mt-4 p-3 bg-[#10141D] border border-amber-500/30 rounded-xl space-y-2 text-xs font-mono">
-                                <p className="text-amber-300 font-bold">{offPlanResult.explanation}</p>
-                                <div className="p-2 bg-[#161C26] rounded-lg">
-                                    <span className="text-slate-400 block text-[10px]">CENA REAJUSTADA HOY:</span>
-                                    <span className="text-white">{offPlanResult.adjustedDinner}</span>
+                            <div className="mt-4 p-4 bg-white/[0.03] border border-white/[0.08] rounded-2xl space-y-2.5 text-xs">
+                                <p className="text-white font-semibold">{offPlanResult.explanation}</p>
+                                <div className="p-3 bg-white/[0.04] rounded-xl">
+                                    <span className="text-zinc-400 block text-[10px] font-medium uppercase tracking-wide">CENA REAJUSTADA HOY:</span>
+                                    <span className="text-white font-medium">{offPlanResult.adjustedDinner}</span>
                                 </div>
-                                <div className="p-2 bg-[#161C26] rounded-lg">
-                                    <span className="text-slate-400 block text-[10px]">COMPENSACIÓN SUAVE:</span>
-                                    <span className="text-emerald-400">{offPlanResult.nextDaysAdvice}</span>
+                                <div className="p-3 bg-white/[0.04] rounded-xl">
+                                    <span className="text-zinc-400 block text-[10px] font-medium uppercase tracking-wide">COMPENSACIÓN SUAVE:</span>
+                                    <span className="text-[#10B981] font-medium">{offPlanResult.nextDaysAdvice}</span>
                                 </div>
                             </div>
                         )}

@@ -36,6 +36,8 @@ export interface ExerciseItem {
     rep_range_max: number;
     rest_seconds: number;
     target_rir: number;
+    github_id?: string;
+    activation_pct?: number;
 }
 
 export interface PlateBreakdown {
@@ -72,7 +74,9 @@ export const EXERCISE_DATABASE: ExerciseItem[] = [
         rep_range_min: 8,
         rep_range_max: 10,
         rest_seconds: 120,
-        target_rir: 1
+        target_rir: 1,
+        github_id: "Incline_Dumbbell_Press",
+        activation_pct: 94
     },
     {
         id: "barbell-bench-press",
@@ -89,7 +93,9 @@ export const EXERCISE_DATABASE: ExerciseItem[] = [
         rep_range_min: 6,
         rep_range_max: 8,
         rest_seconds: 180,
-        target_rir: 2
+        target_rir: 2,
+        github_id: "Barbell_Bench_Press_-_Medium_Grip",
+        activation_pct: 91
     },
     {
         id: "pec-deck-flye",
@@ -106,7 +112,9 @@ export const EXERCISE_DATABASE: ExerciseItem[] = [
         rep_range_min: 10,
         rep_range_max: 12,
         rest_seconds: 90,
-        target_rir: 1
+        target_rir: 1,
+        github_id: "Butterfly",
+        activation_pct: 96
     },
     {
         id: "convergent-chest-press",
@@ -123,7 +131,9 @@ export const EXERCISE_DATABASE: ExerciseItem[] = [
         rep_range_min: 8,
         rep_range_max: 12,
         rest_seconds: 90,
-        target_rir: 1
+        target_rir: 1,
+        github_id: "Cable_Chest_Press",
+        activation_pct: 89
     },
 
     // --- DORSAL (LATS) ---
@@ -142,7 +152,9 @@ export const EXERCISE_DATABASE: ExerciseItem[] = [
         rep_range_min: 8,
         rep_range_max: 10,
         rest_seconds: 90,
-        target_rir: 1
+        target_rir: 1,
+        github_id: "Close-Grip_Front_Lat_Pulldown",
+        activation_pct: 95
     },
     {
         id: "chest-supported-t-bar-row",
@@ -159,7 +171,9 @@ export const EXERCISE_DATABASE: ExerciseItem[] = [
         rep_range_min: 8,
         rep_range_max: 10,
         rest_seconds: 120,
-        target_rir: 1
+        target_rir: 1,
+        github_id: "Lying_T-Bar_Row",
+        activation_pct: 93
     },
     {
         id: "cable-pullover",
@@ -176,7 +190,9 @@ export const EXERCISE_DATABASE: ExerciseItem[] = [
         rep_range_min: 12,
         rep_range_max: 15,
         rest_seconds: 60,
-        target_rir: 0
+        target_rir: 0,
+        github_id: "Bent-Arm_Barbell_Pullover",
+        activation_pct: 90
     },
 
     // --- ESPALDA ALTA (UPPER BACK) ---
@@ -195,7 +211,9 @@ export const EXERCISE_DATABASE: ExerciseItem[] = [
         rep_range_min: 10,
         rep_range_max: 12,
         rest_seconds: 90,
-        target_rir: 1
+        target_rir: 1,
+        github_id: "Seated_Cable_Rows",
+        activation_pct: 92
     },
     {
         id: "face-pull-cable",
@@ -212,7 +230,9 @@ export const EXERCISE_DATABASE: ExerciseItem[] = [
         rep_range_min: 12,
         rep_range_max: 15,
         rest_seconds: 60,
-        target_rir: 1
+        target_rir: 1,
+        github_id: "Face_Pull",
+        activation_pct: 88
     },
 
     // --- HOMBRO / DELTOIDES (DELTS) ---
@@ -231,7 +251,9 @@ export const EXERCISE_DATABASE: ExerciseItem[] = [
         rep_range_min: 12,
         rep_range_max: 15,
         rest_seconds: 60,
-        target_rir: 0
+        target_rir: 0,
+        github_id: "Side_Lateral_Raise",
+        activation_pct: 97
     },
     {
         id: "seated-dumbbell-shoulder-press",
@@ -248,7 +270,9 @@ export const EXERCISE_DATABASE: ExerciseItem[] = [
         rep_range_min: 8,
         rep_range_max: 10,
         rest_seconds: 120,
-        target_rir: 1
+        target_rir: 1,
+        github_id: "Dumbbell_Shoulder_Press",
+        activation_pct: 91
     },
     {
         id: "rear-delt-flye-cable",
@@ -265,7 +289,9 @@ export const EXERCISE_DATABASE: ExerciseItem[] = [
         rep_range_min: 12,
         rep_range_max: 15,
         rest_seconds: 60,
-        target_rir: 0
+        target_rir: 0,
+        github_id: "Cable_Rear_Delt_Fly",
+        activation_pct: 94
     },
 
     // --- CUÁDRICEPS (QUADS) ---
@@ -284,7 +310,9 @@ export const EXERCISE_DATABASE: ExerciseItem[] = [
         rep_range_min: 8,
         rep_range_max: 10,
         rest_seconds: 150,
-        target_rir: 1
+        target_rir: 1,
+        github_id: "Hack_Squat",
+        activation_pct: 96
     },
     {
         id: "leg-press-45",
@@ -301,7 +329,9 @@ export const EXERCISE_DATABASE: ExerciseItem[] = [
         rep_range_min: 10,
         rep_range_max: 12,
         rest_seconds: 120,
-        target_rir: 1
+        target_rir: 1,
+        github_id: "Leg_Press",
+        activation_pct: 92
     },
     {
         id: "leg-extension-machine",
@@ -318,7 +348,9 @@ export const EXERCISE_DATABASE: ExerciseItem[] = [
         rep_range_min: 12,
         rep_range_max: 15,
         rest_seconds: 75,
-        target_rir: 0
+        target_rir: 0,
+        github_id: "Leg_Extensions",
+        activation_pct: 98
     },
 
     // --- ISQUIOTIBIALES (HAMSTRINGS) ---
@@ -337,7 +369,9 @@ export const EXERCISE_DATABASE: ExerciseItem[] = [
         rep_range_min: 10,
         rep_range_max: 12,
         rest_seconds: 90,
-        target_rir: 0
+        target_rir: 0,
+        github_id: "Seated_Leg_Curl",
+        activation_pct: 97
     },
     {
         id: "romanian-deadlift-dumbbell",
@@ -354,7 +388,9 @@ export const EXERCISE_DATABASE: ExerciseItem[] = [
         rep_range_min: 8,
         rep_range_max: 10,
         rest_seconds: 120,
-        target_rir: 2
+        target_rir: 2,
+        github_id: "Romanian_Deadlift",
+        activation_pct: 95
     },
 
     // --- GLÚTEOS (GLUTES) ---
@@ -373,7 +409,9 @@ export const EXERCISE_DATABASE: ExerciseItem[] = [
         rep_range_min: 8,
         rep_range_max: 12,
         rest_seconds: 120,
-        target_rir: 1
+        target_rir: 1,
+        github_id: "Barbell_Hip_Thrust",
+        activation_pct: 96
     },
 
     // --- BÍCEPS (BICEPS) ---
@@ -392,7 +430,9 @@ export const EXERCISE_DATABASE: ExerciseItem[] = [
         rep_range_min: 10,
         rep_range_max: 12,
         rest_seconds: 75,
-        target_rir: 0
+        target_rir: 0,
+        github_id: "Alternate_Incline_Dumbbell_Curl",
+        activation_pct: 93
     },
     {
         id: "preacher-curl-machine",
@@ -409,7 +449,9 @@ export const EXERCISE_DATABASE: ExerciseItem[] = [
         rep_range_min: 10,
         rep_range_max: 12,
         rest_seconds: 75,
-        target_rir: 1
+        target_rir: 1,
+        github_id: "Cable_Preacher_Curl",
+        activation_pct: 95
     },
 
     // --- TRÍCEPS (TRICEPS) ---
@@ -428,7 +470,9 @@ export const EXERCISE_DATABASE: ExerciseItem[] = [
         rep_range_min: 10,
         rep_range_max: 12,
         rest_seconds: 75,
-        target_rir: 0
+        target_rir: 0,
+        github_id: "Cable_Incline_Triceps_Extension",
+        activation_pct: 96
     },
     {
         id: "triceps-rope-pushdown",
@@ -445,7 +489,9 @@ export const EXERCISE_DATABASE: ExerciseItem[] = [
         rep_range_min: 12,
         rep_range_max: 15,
         rest_seconds: 60,
-        target_rir: 0
+        target_rir: 0,
+        github_id: "Triceps_Pushdown",
+        activation_pct: 90
     },
 
     // --- PANTORRILLAS (CALVES) ---
@@ -464,7 +510,9 @@ export const EXERCISE_DATABASE: ExerciseItem[] = [
         rep_range_min: 10,
         rep_range_max: 12,
         rest_seconds: 90,
-        target_rir: 0
+        target_rir: 0,
+        github_id: "Standing_Calf_Raises",
+        activation_pct: 94
     },
 
     // --- CORE / ABDOMEN ---
@@ -483,7 +531,9 @@ export const EXERCISE_DATABASE: ExerciseItem[] = [
         rep_range_min: 12,
         rep_range_max: 15,
         rest_seconds: 60,
-        target_rir: 1
+        target_rir: 1,
+        github_id: "Cable_Crunch",
+        activation_pct: 92
     }
 ];
 
@@ -510,6 +560,16 @@ export function calculatePlatesPerSide(
         }
     }
     return breakdown;
+}
+
+export function formatPlatesSummary(targetWeightKg: number, barWeightKg: number = 20): string {
+    if (targetWeightKg <= barWeightKg) {
+        return `Barra olímpica sola (${barWeightKg} kg)`;
+    }
+    const breakdown = calculatePlatesPerSide(targetWeightKg, barWeightKg);
+    if (breakdown.length === 0) return `${targetWeightKg} kg`;
+    const details = breakdown.map(p => `${p.countPerSide}x${p.plateKg}kg`).join(" + ");
+    return `Barra ${barWeightKg}kg + ${details} por lado`;
 }
 
 // ------------------------------------------------------------------------
