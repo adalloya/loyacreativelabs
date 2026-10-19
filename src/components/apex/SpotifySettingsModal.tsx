@@ -15,7 +15,8 @@ import {
     Flame,
     Zap,
     Sparkles,
-    Disc
+    Disc,
+    Copy
 } from "lucide-react";
 import {
     getStoredSpotifyClientId,
@@ -46,6 +47,7 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
     const [showHelp, setShowHelp] = useState(false);
     const [playingPlaylistId, setPlayingPlaylistId] = useState<string | null>(null);
     const [customUri, setCustomUri] = useState("");
+    const [copiedUri, setCopiedUri] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -189,18 +191,38 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                                     />
                                 </div>
 
+                                {/* Redirect URI Box para configuración en Spotify Dashboard */}
+                                <div className="p-3 bg-black/40 border border-white/[0.06] rounded-xl space-y-1.5">
+                                    <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400">
+                                        <span>REDIRECT URI CONFIGURADA:</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const uri = typeof window !== "undefined" ? `${window.location.origin}${window.location.pathname}` : "http://localhost:3000/apex";
+                                                navigator.clipboard.writeText(uri);
+                                                setCopiedUri(true);
+                                                setTimeout(() => setCopiedUri(false), 2000);
+                                            }}
+                                            className="text-[#1DB954] hover:underline flex items-center gap-1 font-sans"
+                                        >
+                                            {copiedUri ? <Check size={11} /> : <Copy size={11} />}
+                                            <span>{copiedUri ? "¡Copiada!" : "Copiar URI"}</span>
+                                        </button>
+                                    </div>
+                                    <code className="block text-[11px] text-zinc-300 font-mono bg-white/[0.04] p-1.5 rounded truncate border border-white/[0.04]">
+                                        {typeof window !== "undefined" ? `${window.location.origin}${window.location.pathname}` : "http://localhost:3000/apex"}
+                                    </code>
+                                </div>
+
                                 {showHelp && (
                                     <div className="p-3 bg-black/60 border border-white/[0.06] rounded-xl text-[11px] text-zinc-300 space-y-1.5 leading-relaxed">
-                                        <p className="font-semibold text-white">Pasos para tu Client ID (gratis en 1 minuto):</p>
+                                        <p className="font-semibold text-white">Configuración en Spotify Developer Dashboard:</p>
                                         <ol className="list-decimal list-inside space-y-1 text-zinc-400 font-mono text-[10px]">
                                             <li>Entra a <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noreferrer" className="text-[#1DB954] underline">developer.spotify.com/dashboard</a>.</li>
-                                            <li>Haz clic en <strong>Create app</strong>.</li>
-                                            <li>En <strong>Redirect URIs</strong>, agrega exactamente:
-                                                <code className="block text-white bg-white/10 p-1 rounded mt-0.5 truncate">
-                                                    {typeof window !== "undefined" ? `${window.location.origin}${window.location.pathname}` : "http://localhost:3000/apex"}
-                                                </code>
-                                            </li>
-                                            <li>Guarda la app, copia el <strong>Client ID</strong> y pégalo arriba.</li>
+                                            <li>Abre tu app (o crea una nueva) y entra a <strong>Settings</strong>.</li>
+                                            <li>En <strong>Redirect URIs</strong>, agrega exactamente la URI copiada arriba.</li>
+                                            <li>En <strong>Which API/SDKs are you planning to use?</strong> selecciona <strong>Web API</strong>.</li>
+                                            <li>Guarda cambios y pulsa <strong>Conectar Spotify</strong> abajo.</li>
                                         </ol>
                                     </div>
                                 )}

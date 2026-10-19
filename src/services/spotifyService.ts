@@ -103,12 +103,14 @@ function base64UrlEncode(buffer: ArrayBuffer): string {
         .replace(/=+$/, "");
 }
 
+export const DEFAULT_SPOTIFY_CLIENT_ID = "26c08add7afa417bb1da14684cca1b02";
+
 export function getStoredSpotifyClientId(): string {
-    if (typeof window === "undefined") return "";
+    if (typeof window === "undefined") return DEFAULT_SPOTIFY_CLIENT_ID;
     return (
         localStorage.getItem(STORAGE_KEYS.CLIENT_ID) ||
         process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID ||
-        ""
+        DEFAULT_SPOTIFY_CLIENT_ID
     );
 }
 
