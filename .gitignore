@@ -47,3 +47,4 @@ list_models*.js
 test_*.js
 verify_*.js
 replication-prompt.txt
+scripts/translation_cache.json

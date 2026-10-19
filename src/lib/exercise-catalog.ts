@@ -10,6 +10,7 @@ import {
   mapRawEquipmentToEquipmentType,
   getExerciseImageUrl
 } from "@/data/exerciseDatabase";
+import spanishInstructionsData from "@/data/spanish-instructions.json";
 import {
   ExerciseItem,
   MuscleGroup,
@@ -18,6 +19,8 @@ import {
   ResistanceProfile
 } from "./hypertrophy-engine";
 
+const SPANISH_INSTRUCTIONS_MAP: Record<string, string[]> = spanishInstructionsData as Record<string, string[]>;
+
 export const GITHUB_FREE_EXERCISE_DB_URL =
   "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json";
 
@@ -25,6 +28,7 @@ export const CATALOG_CACHE_KEY = "apex_exercise_catalog_873_v2";
 
 /**
  * Convierte un ítem raw de Free-Exercise-DB a un ExerciseItem oficial de APEX.
+ * Aplica automáticamente instrucciones y biomechanical_cue en ESPAÑOL.
  */
 export function convertRawToExerciseItem(item: FreeExerciseItem): ExerciseItem {
   const pMuscles = (item.primaryMuscles || []).map((m) => m.toLowerCase());
@@ -46,9 +50,16 @@ export function convertRawToExerciseItem(item: FreeExerciseItem): ExerciseItem {
     .reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const activation = 85 + (seed % 14);
 
+  // Instrucciones e indicaciones biomecánicas 100% en español
+  const spanishList =
+    (item as any).instructions_es ||
+    SPANISH_INSTRUCTIONS_MAP[item.id] ||
+    item.instructions ||
+    [];
+
   const instructionCue =
-    item.instructions && item.instructions.length > 0
-      ? item.instructions[0]
+    spanishList && spanishList.length > 0
+      ? spanishList[0]
       : "Control excéntrico estricto y rango completo de movimiento.";
 
   const images =
@@ -79,7 +90,7 @@ export function convertRawToExerciseItem(item: FreeExerciseItem): ExerciseItem {
     github_id: item.id,
     activation_pct: activation,
     images: images,
-    instructions: item.instructions || [],
+    instructions: spanishList,
     category: item.category || "strength",
     primaryMuscles: pMuscles.length > 0 ? pMuscles : [rawPrimary]
   };

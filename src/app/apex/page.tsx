@@ -34,7 +34,8 @@ import {
     ChevronUp,
     Trash2,
     Shuffle,
-    RefreshCw
+    RefreshCw,
+    Camera
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 
@@ -73,6 +74,7 @@ import { AnatomyVisualizer, MUSCLE_PALETTE, ORDERED_MUSCLE_GROUPS } from "@/comp
 import { ExerciseMotionViewer } from "@/components/apex/ExerciseMotionViewer";
 import { MuscleTargetDrawer } from "@/components/apex/MuscleTargetDrawer";
 import { ExerciseLibraryModal } from "@/components/apex/ExerciseLibraryModal";
+import { GymEquipmentScannerModal } from "@/components/apex/GymEquipmentScannerModal";
 import { ExerciseSwapModal } from "@/components/apex/ExerciseSwapModal";
 import { PlateCalculatorModal } from "@/components/apex/PlateCalculatorModal";
 import { PwaInstallModal } from "@/components/apex/PwaInstallModal";
@@ -164,6 +166,7 @@ export default function ApexDashboard() {
     const [isProtocolModalOpen, setIsProtocolModalOpen] = useState(false);
     const [isOffPlanModalOpen, setIsOffPlanModalOpen] = useState(false);
     const [isExerciseLibraryOpen, setIsExerciseLibraryOpen] = useState(false);
+    const [isScannerOpen, setIsScannerOpen] = useState(false);
 
     // Hot-Swap: VBT Velocity Modal State
     const [isVbtModalOpen, setIsVbtModalOpen] = useState(false);
@@ -876,13 +879,24 @@ export default function ApexDashboard() {
                                 </div>
                             </div>
 
-                            <button
-                                onClick={() => setIsExerciseLibraryOpen(true)}
-                                className="px-5 py-2.5 bg-white hover:bg-zinc-200 text-black text-xs font-semibold rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 shrink-0"
-                            >
-                                <Dumbbell size={14} />
-                                <span>Ver Librería Completa</span>
-                            </button>
+                            <div className="flex items-center gap-2.5 flex-wrap">
+                                <button
+                                    onClick={() => setIsScannerOpen(true)}
+                                    className="px-4 py-2.5 bg-white/[0.08] hover:bg-white text-white hover:text-black text-xs font-semibold rounded-2xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 shrink-0 border border-white/20 hover:border-white group"
+                                    title="Escanear Máquina o Equipo con Cámara IA"
+                                >
+                                    <Camera size={14} className="text-[#FF2A2A] group-hover:text-black shrink-0 transition-colors" />
+                                    <span>Escanear Máquina</span>
+                                </button>
+
+                                <button
+                                    onClick={() => setIsExerciseLibraryOpen(true)}
+                                    className="px-5 py-2.5 bg-white hover:bg-zinc-200 text-black text-xs font-semibold rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 shrink-0"
+                                >
+                                    <Dumbbell size={14} />
+                                    <span>Ver Librería Completa</span>
+                                </button>
+                            </div>
                         </div>
 
                         {/* Exercises List (Apple Fitness+ 2-Column Layout) */}
@@ -2038,6 +2052,14 @@ export default function ApexDashboard() {
                 isOpen={isExerciseLibraryOpen}
                 onClose={() => setIsExerciseLibraryOpen(false)}
                 onAddExercise={handleAddExerciseToSession}
+                activeExerciseIds={activeExercises.map(e => e.id)}
+            />
+
+            {/* Modal de Escáner IA de Máquinas y Equipos */}
+            <GymEquipmentScannerModal
+                isOpen={isScannerOpen}
+                onClose={() => setIsScannerOpen(false)}
+                onAddExerciseToSession={handleAddExerciseToSession}
                 activeExerciseIds={activeExercises.map(e => e.id)}
             />
 

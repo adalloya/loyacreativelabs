@@ -13,7 +13,9 @@ import {
     Flame,
     Zap,
     RotateCcw,
-    ImageIcon
+    ImageIcon,
+    BookOpen,
+    ChevronDown
 } from "lucide-react";
 import {
     MuscleGroup,
@@ -63,59 +65,92 @@ const RESISTANCE_LABELS: Record<string, { label: string; badgeClass: string }> =
 /**
  * Vista previa interactiva de las imágenes 0.jpg y 1.jpg desde GitHub
  */
-const ExerciseImagePreview: React.FC<{ exerciseId: string; name: string }> = ({ exerciseId, name }) => {
+const ExerciseImagePreview: React.FC<{ exerciseId: string; name: string; instructions?: string[] }> = ({ exerciseId, name, instructions = [] }) => {
     const [frame, setFrame] = useState<0 | 1>(0);
     const [imgError, setImgError] = useState(false);
-
-    if (imgError) {
-        return (
-            <div className="w-full h-36 bg-black/40 border border-white/[0.06] rounded-2xl flex flex-col items-center justify-center text-zinc-500 gap-1.5">
-                <Dumbbell size={22} className="opacity-40" />
-                <span className="text-[10px] uppercase font-mono tracking-wider">Librería APEX (873)</span>
-            </div>
-        );
-    }
+    const [showInstructions, setShowInstructions] = useState(false);
 
     const imgUrl = getExerciseImageUrl(exerciseId, frame);
 
     return (
-        <div className="w-full h-40 bg-zinc-950 rounded-2xl relative overflow-hidden border border-white/[0.08] group/img">
-            <img
-                src={imgUrl}
-                alt={name}
-                loading="lazy"
-                onError={() => setImgError(true)}
-                className="w-full h-full object-cover object-center transition-all duration-300 group-hover/img:scale-105"
-            />
-            {/* Toggle de Fase 0.jpg / 1.jpg */}
-            <div className="absolute bottom-2 right-2 flex items-center gap-1 bg-black/80 backdrop-blur-md px-1.5 py-0.5 rounded-lg border border-white/15 z-10 shadow-lg">
-                <button
-                    type="button"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        setFrame(0);
-                    }}
-                    className={`text-[9px] font-mono px-2 py-0.5 rounded transition-all ${
-                        frame === 0 ? "bg-white text-black font-bold shadow-sm" : "text-zinc-400 hover:text-white"
-                    }`}
-                    title="Ver posición inicial (0.jpg)"
-                >
-                    0.jpg
-                </button>
-                <button
-                    type="button"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        setFrame(1);
-                    }}
-                    className={`text-[9px] font-mono px-2 py-0.5 rounded transition-all ${
-                        frame === 1 ? "bg-white text-black font-bold shadow-sm" : "text-zinc-400 hover:text-white"
-                    }`}
-                    title="Ver posición pico (1.jpg)"
-                >
-                    1.jpg
-                </button>
+        <div className="space-y-2.5">
+            <div className="w-full h-40 bg-zinc-950 rounded-2xl relative overflow-hidden border border-white/[0.08] group/img">
+                {!imgError ? (
+                    <img
+                        src={imgUrl}
+                        alt={name}
+                        loading="lazy"
+                        onError={() => setImgError(true)}
+                        className="w-full h-full object-cover object-center transition-all duration-300 group-hover/img:scale-105"
+                    />
+                ) : (
+                    <div className="w-full h-full bg-black/40 border border-white/[0.06] rounded-2xl flex flex-col items-center justify-center text-zinc-500 gap-1.5">
+                        <Dumbbell size={22} className="opacity-40" />
+                        <span className="text-[10px] uppercase font-mono tracking-wider">Librería APEX (873)</span>
+                    </div>
+                )}
+
+                {/* Toggle de Fase 0.jpg / 1.jpg */}
+                <div className="absolute bottom-2 right-2 flex items-center gap-1 bg-black/80 backdrop-blur-md px-1.5 py-0.5 rounded-lg border border-white/15 z-10 shadow-lg">
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setFrame(0);
+                        }}
+                        className={`text-[9px] font-mono px-2 py-0.5 rounded transition-all ${
+                            frame === 0 ? "bg-white text-black font-bold shadow-sm" : "text-zinc-400 hover:text-white"
+                        }`}
+                        title="Ver posición inicial (0.jpg)"
+                    >
+                        0.jpg (Inicio)
+                    </button>
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setFrame(1);
+                        }}
+                        className={`text-[9px] font-mono px-2 py-0.5 rounded transition-all ${
+                            frame === 1 ? "bg-white text-black font-bold shadow-sm" : "text-zinc-400 hover:text-white"
+                        }`}
+                        title="Ver posición pico (1.jpg)"
+                    >
+                        1.jpg (Pico)
+                    </button>
+                </div>
             </div>
+
+            {/* Selector Desplegable de Instrucciones en Español */}
+            {instructions && instructions.length > 0 && (
+                <div>
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setShowInstructions(prev => !prev);
+                        }}
+                        className="text-[11px] font-medium text-zinc-400 hover:text-white flex items-center gap-1.5 transition-all py-0.5"
+                    >
+                        <BookOpen size={12} className="text-[#FF2A2A]" />
+                        <span>{showInstructions ? "Ocultar Instrucciones" : "Ver Instrucciones Paso a Paso"}</span>
+                        <ChevronDown size={12} className={`transition-transform duration-200 ${showInstructions ? "rotate-180" : ""}`} />
+                    </button>
+
+                    {showInstructions && (
+                        <div className="mt-2 p-3 bg-black/50 border border-white/[0.06] rounded-xl text-xs text-zinc-300 space-y-2 animate-in fade-in duration-150">
+                            {instructions.map((step, idx) => (
+                                <div key={idx} className="flex items-start gap-2 leading-relaxed">
+                                    <span className="font-mono text-[10px] text-[#FF2A2A] font-bold mt-0.5 shrink-0 bg-[#FF2A2A]/10 px-1.5 py-0.5 rounded">
+                                        Paso {idx + 1}
+                                    </span>
+                                    <span>{step}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 };
@@ -391,8 +426,8 @@ export const ExerciseSwapModal: React.FC<ExerciseSwapModalProps> = ({
                                             }`}
                                         >
                                             <div className="space-y-3">
-                                                {/* Miniatura de GitHub 0.jpg / 1.jpg */}
-                                                <ExerciseImagePreview exerciseId={ex.id} name={ex.name} />
+                                                {/* Miniatura de GitHub 0.jpg / 1.jpg e Instrucciones Paso a Paso */}
+                                                <ExerciseImagePreview exerciseId={ex.id} name={ex.name} instructions={ex.instructions} />
 
                                                 {/* Badges Bar */}
                                                 <div className="flex items-center justify-between gap-2 flex-wrap">
