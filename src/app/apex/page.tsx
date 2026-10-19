@@ -262,18 +262,41 @@ export default function ApexDashboard() {
         };
     }, []);
 
-    // Nike Editorial PDF Blueprint Data
+    // APEX Editorial PDF Blueprint Data (completo con todas las decisiones del perfil)
     const pdfProfile = useMemo(() => ({
-        weightKg: bio.weightKg,
+        firstName: profile?.firstName || "Atleta",
+        lastName: profile?.lastName || "",
+        age: profile?.age || bio.age,
+        gender: profile?.gender || bio.gender,
+        weightKg: profile?.weightKg || bio.weightKg,
+        heightCm: profile?.heightCm || bio.heightCm,
+        bodyFatPct: profile?.bodyFatPct || bio.bodyFatPct,
+        trainingDaysPerWeek: profile?.trainingDaysPerWeek || bio.trainingDaysPerWeek,
+        sessionDurationMins: profile?.sessionDurationMins || 60,
+        fitnessGoal: profile?.fitnessGoal || bio.fitnessGoal || "deficit",
+        caloricAdjustmentPct: bio.caloricAdjustmentPct,
         caloricDeficitPct: bio.caloricDeficitPct,
+        calculatedBmr: macros.tmb,
         calculatedTdee: macros.tdee,
         targetCalories: macros.targetCalories,
-        targetProteinG: macros.proteinG
-    }), [bio, macros]);
+        targetProteinG: macros.proteinG,
+        targetCarbsG: macros.carbsG,
+        targetFatsG: macros.fatsG,
+        waterLiters: Math.round(bio.weightKg * 0.04 * 10) / 10,
+        environmentMode: environmentMode,
+        readiness: readiness,
+        dayTitle: currentRoutine?.title || "Rutina Activa",
+        dayFocus: currentRoutine?.focus || "Hipertrofia Avanzada",
+        cardioType: todayCardio.type,
+        cardioMinutes: todayCardio.minutes,
+        cardioProtocol: CARDIO_PROTOCOLS[todayCardio.type]?.protocol || ""
+    }), [profile, bio, macros, environmentMode, readiness, currentRoutine, todayCardio]);
 
     const pdfDiet = useMemo(() => ({
-        dailySupplements: supplements
-    }), [supplements]);
+        dailySupplements: supplements,
+        groceryList: groceryList,
+        macros: macros
+    }), [supplements, groceryList, macros]);
 
     // Set Completion with Dexie.js Offline-First logging
     const handleCompleteSet = (exerciseId: string, setIdx: number, restSeconds: number, customWeight?: number, customReps?: number) => {
@@ -419,7 +442,7 @@ export default function ApexDashboard() {
     }
 
     return (
-        <div className="min-h-screen bg-[#000000] text-[#EAEAEA] font-sans antialiased selection:bg-[#FF2A2A]/30 selection:text-white pb-24">
+        <div className="min-h-screen bg-[#000000] text-[#EAEAEA] font-sans antialiased selection:bg-[#FF2A2A]/30 selection:text-white pb-28 w-full max-w-full overflow-x-hidden">
             {/* Top Navigation & Telemetry Header */}
             <header className="sticky top-0 z-40 bg-[#000000]/80 backdrop-blur-2xl border-b border-white/[0.08] px-4 py-3">
                 <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
@@ -1413,44 +1436,44 @@ export default function ApexDashboard() {
                 )}
             </main>
 
-            {/* Floating Tesla-Style Rest Timer & Spotify Bar */}
-            <div className="fixed bottom-0 left-0 right-0 z-30 bg-[#000000]/85 backdrop-blur-2xl border-t border-white/[0.08] px-4 py-2.5">
-                <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 text-xs">
+            {/* Floating Tesla-Style Rest Timer & Spotify Bar (Responsive, no overflow) */}
+            <div className="fixed bottom-0 left-0 right-0 z-30 bg-[#000000]/90 backdrop-blur-2xl border-t border-white/[0.08] px-3 sm:px-4 py-2 sm:py-2.5">
+                <div className="max-w-6xl mx-auto flex items-center justify-between gap-2 sm:gap-4 text-xs">
                     {/* Spotify Telemetry Phase */}
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[#1DB954]/10 border border-[#1DB954]/30 flex items-center justify-center text-[#1DB954] shrink-0">
-                            <Music size={15} />
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#1DB954]/10 border border-[#1DB954]/30 flex items-center justify-center text-[#1DB954] shrink-0">
+                            <Music size={14} />
                         </div>
-                        <div>
-                            <span className="text-[10px] text-zinc-500 font-medium tracking-wide block uppercase">CADENCIA BIOMECÁNICA</span>
-                            <span className="text-white font-semibold text-xs tracking-tight">
+                        <div className="min-w-0">
+                            <span className="text-[9px] sm:text-[10px] text-zinc-500 font-medium tracking-wide block uppercase truncate">CADENCIA</span>
+                            <span className="text-white font-semibold text-[11px] sm:text-xs tracking-tight truncate block">
                                 {restRemaining !== null
-                                    ? "PAUSA ACTIVA • 110 BPM"
-                                    : "SERIES EFECTIVAS • 138-145 BPM"}
+                                    ? "PAUSA • 110 BPM"
+                                    : "SERIE • 140 BPM"}
                             </span>
                         </div>
                     </div>
 
                     {/* Rest Countdown Timer */}
                     {restRemaining !== null ? (
-                        <div className="flex items-center gap-3 bg-white/[0.06] border border-white/[0.1] px-4 py-1.5 rounded-full">
-                            <span className="w-2 h-2 rounded-full bg-[#10B981] animate-ping" />
-                            <div>
-                                <span className="text-[9px] text-zinc-400 block uppercase font-medium">DESCANSO ACTIVO</span>
-                                <span className="text-base font-bold font-mono text-[#10B981]">
+                        <div className="flex items-center gap-2 sm:gap-3 bg-white/[0.08] border border-white/[0.12] px-3 sm:px-4 py-1.5 rounded-full shrink-0 shadow-lg">
+                            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-[#10B981] animate-ping shrink-0" />
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-[9px] text-zinc-400 uppercase font-medium hidden xs:inline">DESCANSO</span>
+                                <span className="text-sm sm:text-base font-bold font-mono text-[#10B981]">
                                     {Math.floor(restRemaining / 60)}:{(restRemaining % 60).toString().padStart(2, "0")}
                                 </span>
                             </div>
                             <button
                                 onClick={() => setRestRemaining(null)}
-                                className="text-[10px] text-zinc-400 hover:text-white ml-2 underline font-medium"
+                                className="text-[10px] text-zinc-400 hover:text-white ml-1 sm:ml-2 underline font-medium"
                             >
                                 Saltar
                             </button>
                         </div>
                     ) : (
-                        <div className="text-xs text-zinc-500 hidden sm:block font-normal">
-                            Marca una serie como LOG para iniciar el temporizador de descanso
+                        <div className="text-[11px] text-zinc-500 hidden md:block font-normal truncate">
+                            Marca una serie como LOG para iniciar descanso
                         </div>
                     )}
                 </div>
