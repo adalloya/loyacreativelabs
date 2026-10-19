@@ -41,7 +41,9 @@ import {
     RoutineDay,
     ReadinessState,
     findBiomechanicalSwaps,
-    formatPlatesSummary
+    formatPlatesSummary,
+    CARDIO_PROTOCOLS,
+    CardioType
 } from "@/lib/hypertrophy-engine";
 
 import {
@@ -155,15 +157,44 @@ export default function ApexDashboard() {
     const weeklyProgram = useMemo(() => {
         return generateWeeklyProgram(
             profile?.trainingDaysPerWeek || 6,
-            profile?.sessionDurationMins || 60,
-            (profile?.preferredCardio && profile.preferredCardio !== "none")
-                ? profile.preferredCardio
-                : "incline_treadmill"
+            profile?.sessionDurationMins || 60
         );
-    }, [profile?.trainingDaysPerWeek, profile?.sessionDurationMins, profile?.preferredCardio]);
+    }, [profile?.trainingDaysPerWeek, profile?.sessionDurationMins]);
 
     const [currentDayIndex, setCurrentDayIndex] = useState(0);
     const currentRoutine: RoutineDay = weeklyProgram[currentDayIndex] || weeklyProgram[0];
+
+    // Daily Cardio Finisher Selection (configurable per session at the end of each day)
+    const [dailyCardio, setDailyCardio] = useLocalStorage<Record<number, { type: CardioType; minutes: number; completed: boolean }>>("apex_daily_cardio", {});
+
+    const todayCardio = dailyCardio[currentDayIndex] || {
+        type: (currentRoutine.cardio.durationMinutes > 0 ? "incline_treadmill" : "none") as CardioType,
+        minutes: currentRoutine.cardio.durationMinutes || 20,
+        completed: false
+    };
+
+    const handleUpdateCardio = (type: CardioType, minutes?: number, completed?: boolean) => {
+        setDailyCardio(prev => {
+            const current = prev[currentDayIndex] || {
+                type: "incline_treadmill",
+                minutes: 20,
+                completed: false
+            };
+            const nextType = type;
+            const nextMinutes = minutes !== undefined 
+                ? minutes 
+                : (nextType === "none" ? 0 : (current.minutes || CARDIO_PROTOCOLS[nextType]?.defaultMinutes || 20));
+            const nextCompleted = completed !== undefined ? completed : current.completed;
+            return {
+                ...prev,
+                [currentDayIndex]: {
+                    type: nextType,
+                    minutes: nextMinutes,
+                    completed: nextCompleted
+                }
+            };
+        });
+    };
 
     // Workouts dynamic list (supports injecting exercises and swap)
     const [activeExercises, setActiveExercises] = useState<ExerciseItem[]>(currentRoutine.exercises);
@@ -820,26 +851,110 @@ export default function ApexDashboard() {
                             })}
                         </div>
 
-                        {/* Cardio Finisher Block */}
-                        {currentRoutine.cardio.durationMinutes > 0 && (
-                            <div className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-xl flex items-start gap-4">
-                                <div className="w-10 h-10 rounded-2xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-white shrink-0">
-                                    <HeartPulse size={20} />
-                                </div>
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-white/[0.06] text-zinc-300 border border-white/[0.08] uppercase tracking-wide">
-                                            CARDIO ZONA 2 (FINAL DE SESIÓN)
-                                        </span>
-                                        <span className="text-xs text-zinc-400 font-medium">
-                                            <span className="font-mono text-white">{currentRoutine.cardio.durationMinutes}</span> minutos
-                                        </span>
+                        {/* Cardio Finisher Block (Selector Diario al Final de la Sesión) */}
+                        <div className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/[0.06]">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-2xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-white shrink-0">
+                                        <HeartPulse size={20} className={todayCardio.completed ? "text-[#10B981]" : "text-[#FF2A2A]"} />
                                     </div>
-                                    <h4 className="text-base font-bold text-white tracking-tight">{currentRoutine.cardio.type}</h4>
-                                    <p className="text-xs text-zinc-400 leading-relaxed font-normal">{currentRoutine.cardio.protocol}</p>
+                                    <div>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-white/[0.06] text-zinc-300 border border-white/[0.08] uppercase tracking-wide">
+                                                CARDIO ZONA 2 (FINAL DE SESIÓN)
+                                            </span>
+                                            {todayCardio.completed && (
+                                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/20">
+                                                    COMPLETADO
+                                                </span>
+                                            )}
+                                        </div>
+                                        <h4 className="text-base font-bold text-white tracking-tight mt-0.5">
+                                            {CARDIO_PROTOCOLS[todayCardio.type]?.type || "Cardio Zona 2"}
+                                        </h4>
+                                    </div>
+                                </div>
+
+                                {todayCardio.type !== "none" && (
+                                    <button
+                                        onClick={() => handleUpdateCardio(todayCardio.type, todayCardio.minutes, !todayCardio.completed)}
+                                        className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
+                                            todayCardio.completed
+                                                ? "bg-[#10B981] text-black shadow-md shadow-[#10B981]/20"
+                                                : "bg-white hover:bg-zinc-200 text-black shadow-md shadow-white/10 active:scale-95"
+                                        }`}
+                                    >
+                                        <CheckCircle2 size={14} />
+                                        <span>{todayCardio.completed ? "CARDIO LOGRADO" : "MARCAR REALIZADO"}</span>
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Selector de Modalidad Diario */}
+                            <div className="space-y-2">
+                                <span className="text-[11px] text-zinc-400 font-medium block">
+                                    Elige tu cardio para hoy (puedes cambiarlo libremente al final de la sesión):
+                                </span>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                                    {(["incline_treadmill", "stairmaster", "stationary_bike", "none"] as CardioType[]).map((key) => {
+                                        const isSelected = todayCardio.type === key;
+                                        return (
+                                            <button
+                                                key={key}
+                                                onClick={() => handleUpdateCardio(key)}
+                                                className={`p-3 rounded-2xl text-left border transition-all ${
+                                                    isSelected
+                                                        ? "bg-white text-black border-white font-semibold shadow-md"
+                                                        : "bg-white/[0.03] border-white/[0.06] text-zinc-300 hover:text-white hover:bg-white/[0.06]"
+                                                }`}
+                                            >
+                                                <div className="font-bold text-xs">{CARDIO_PROTOCOLS[key]?.label}</div>
+                                                <div className={`text-[10px] mt-0.5 ${isSelected ? "text-zinc-700" : "text-zinc-500"}`}>
+                                                    {key === "none" ? "0 min" : `${CARDIO_PROTOCOLS[key]?.defaultMinutes} min rec.`}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
-                        )}
+
+                            {/* Si eligió cardio, selector de duración y protocolo */}
+                            {todayCardio.type !== "none" ? (
+                                <div className="pt-2 space-y-3">
+                                    <div className="flex items-center justify-between text-xs flex-wrap gap-2">
+                                        <span className="text-zinc-400 text-[11px]">Duración objetivo:</span>
+                                        <div className="flex gap-1.5">
+                                            {[15, 20, 25, 30].map((mins) => (
+                                                <button
+                                                    key={mins}
+                                                    onClick={() => handleUpdateCardio(todayCardio.type, mins)}
+                                                    className={`px-3 py-1 rounded-full text-xs font-mono transition-all border ${
+                                                        todayCardio.minutes === mins
+                                                            ? "bg-white text-black border-white font-bold"
+                                                            : "bg-white/[0.04] text-zinc-400 border-white/[0.06] hover:text-white"
+                                                    }`}
+                                                >
+                                                    {mins} min
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="p-3 bg-white/[0.03] border border-white/[0.06] rounded-2xl space-y-1">
+                                        <p className="text-xs text-zinc-300 leading-relaxed font-normal">
+                                            {CARDIO_PROTOCOLS[todayCardio.type]?.protocol}
+                                        </p>
+                                        <p className="text-[10px] text-zinc-500 font-mono">
+                                            Zona 2 (120-140 BPM): Estimulación mitocondrial suave sin interferir en la vía mTOR de hipertrofia muscular.
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="p-3 bg-white/[0.03] border border-white/[0.06] rounded-2xl text-xs text-zinc-400 leading-relaxed font-normal">
+                                    Has seleccionado descansar de cardio hoy. Todo el volumen metabólico se enfoca en la recuperación muscular y síntesis proteica de las series de fuerza.
+                                </div>
+                            )}
+                        </div>
 
                         {/* Extra Volume Button */}
                         <div className="p-6 bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl text-center space-y-2.5 shadow-xl">

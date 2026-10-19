@@ -1101,32 +1101,54 @@ export interface RoutineDay {
     };
 }
 
+export type CardioType = "incline_treadmill" | "stairmaster" | "stationary_bike" | "none";
+
+export interface CardioProtocolInfo {
+    id: CardioType;
+    label: string;
+    type: string;
+    protocol: string;
+    defaultMinutes: number;
+}
+
+export const CARDIO_PROTOCOLS: Record<CardioType, CardioProtocolInfo> = {
+    incline_treadmill: {
+        id: "incline_treadmill",
+        label: "Caminadora",
+        type: "Caminadora con Inclinación",
+        protocol: "Zona 2: 12% Inclinación, 4.8 km/h. Sin sujetarse de los pasamanos para reclutar cadena posterior.",
+        defaultMinutes: 20
+    },
+    stairmaster: {
+        id: "stairmaster",
+        label: "Escaladora",
+        type: "Escaladora / StairMaster",
+        protocol: "Zona 2: Nivel 5-7 con cadencia constante. Mantén el torso vertical y apoya toda la planta del pie.",
+        defaultMinutes: 15
+    },
+    stationary_bike: {
+        id: "stationary_bike",
+        label: "Bicicleta",
+        type: "Bicicleta Estática",
+        protocol: "Zona 2: Resistencia media, 80-90 RPM continuas. Cero impacto articular en rodillas y columna.",
+        defaultMinutes: 20
+    },
+    none: {
+        id: "none",
+        label: "Sin cardio hoy",
+        type: "Sin cardio",
+        protocol: "Sesión 100% hipertrofia y tensión mecánica. Descanso metabólico para optimizar recuperación.",
+        defaultMinutes: 0
+    }
+};
+
 export function generateWeeklyProgram(
     daysPerWeek: number = 4,
     sessionDurationMins: number = 60,
     preferredCardio: string = "incline_treadmill"
 ): RoutineDay[] {
-    const cardioProtocols: Record<string, { type: string; protocol: string }> = {
-        incline_treadmill: {
-            type: "Caminadora con Inclinación",
-            protocol: "Zona 2: 12% Inclinación, 4.8 km/h. Sin sujetarse de los pasamanos."
-        },
-        stairmaster: {
-            type: "Escaladora / StairMaster",
-            protocol: "Zona 2: Nivel 5-7 cadencia constante. Mantén el torso vertical."
-        },
-        stationary_bike: {
-            type: "Bicicleta Estática",
-            protocol: "Zona 2: Resistencia media, 80-90 RPM continuas."
-        },
-        none: {
-            type: "Sin cardio",
-            protocol: "Recuperación activa."
-        }
-    };
-
-    const cardioConfig = cardioProtocols[preferredCardio] || cardioProtocols.incline_treadmill;
-    const cardioDuration = preferredCardio === "none" ? 0 : 20;
+    const cardioConfig = CARDIO_PROTOCOLS[preferredCardio as CardioType] || CARDIO_PROTOCOLS.incline_treadmill;
+    const cardioDuration = cardioConfig.defaultMinutes;
 
     // Helper para buscar ejercicios garantizados por ID
     const getEx = (id: string): ExerciseItem => {

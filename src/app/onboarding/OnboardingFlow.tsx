@@ -529,23 +529,6 @@ export function OnboardingFlow({ onComplete }: { onComplete?: (savedProfile?: Us
                 </div>
               </div>
 
-              {/* Preferencia de Cardio */}
-              <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-4">
-                <label className="text-xs font-mono text-zinc-400 block mb-2 flex items-center">
-                  CARDIO FINAL (ZONA 2)
-                  <Tooltip text="Estimulación mitocondrial suave al final de la sesión para oxidación lipídica sin interferencia con mTOR." />
-                </label>
-                <select
-                  value={profile.preferredCardio}
-                  onChange={(e) => handleChange('preferredCardio', e.target.value)}
-                  className="w-full bg-[#1A1A1C] border border-white/[0.1] rounded-xl px-4 py-3 text-white text-sm focus:outline-none"
-                >
-                  <option value="incline_treadmill">Caminadora con Inclinación (12° / 4.8 km/h)</option>
-                  <option value="stairmaster">Escaladora (Nivel 5-7)</option>
-                  <option value="stationary_bike">Bicicleta Estática (Cadencia constante)</option>
-                  <option value="none">Ninguno (Solo cargas de hipertrofia)</option>
-                </select>
-              </div>
 
               <div className="flex gap-3 pt-2">
                 <button
