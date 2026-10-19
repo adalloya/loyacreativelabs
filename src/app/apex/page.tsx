@@ -31,7 +31,8 @@ import {
     Gauge,
     ExternalLink,
     ChevronDown,
-    ChevronUp
+    ChevronUp,
+    Trash2
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 
@@ -73,7 +74,7 @@ import { ApexCalendarView } from "@/components/calendar/ApexCalendarView";
 import { DailyNutritionLog, getLocalDateString } from "@/lib/nutrition-tracker";
 import { ApexFooter } from "@/components/apex/ApexFooter";
 import { MirrorMuscleOverlay } from "@/components/vision/MirrorMuscleOverlay";
-import { logSetOfflineFirst } from "@/lib/local-db";
+import { logSetOfflineFirst, localDb } from "@/lib/local-db";
 import { playTempoPulse, startTempoLoop, stopTempoLoop } from "@/lib/tempo-sonar";
 import { useVoiceLogger } from "@/hooks/useVoiceLogger";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
@@ -142,8 +143,12 @@ export default function ApexDashboard() {
     // Inline Plate breakdown state
     const [inlinePlatesExId, setInlinePlatesExId] = useState<string | null>(null);
 
-    // Tactile editable inputs per set: { [exId_setIdx]: { weight: number, reps: number } }
-    const [setInputs, setSetInputs] = useState<Record<string, { weight: number; reps: number }>>({});
+    // Tactile editable inputs per set: { [exId_setIdx]: { weight: number | string, reps: number | string } }
+    const [setInputs, setSetInputs] = useState<Record<string, { weight: number | string; reps: number | string }>>({});
+
+    // Reset Exercise Data confirmation modal state
+    const [isResetExerciseModalOpen, setIsResetExerciseModalOpen] = useState(false);
+    const [resetSuccessMessage, setResetSuccessMessage] = useState<string | null>(null);
 
     // Hot-Swap: Voice Logger active target
     const [voiceActiveSet, setVoiceActiveSet] = useState<{ exerciseId: string; setIdx: number } | null>(null);
@@ -252,12 +257,27 @@ export default function ApexDashboard() {
     // Completed sets tracker: { [exerciseId_setIndex]: boolean }
     const [completedSets, setCompletedSets] = useState<Record<string, boolean>>({});
     // Ghost input memory: { [exerciseId]: { weight: number, reps: number } }
-    const [exerciseMemory, setExerciseMemory] = useState<Record<string, { weight: number; reps: number }>>({
-        "barbell-bench-press": { weight: 85, reps: 8 },
-        "incline-dumbbell-press": { weight: 32, reps: 10 },
-        "hack-squat-machine": { weight: 140, reps: 10 },
-        "lat-pulldown-neutral": { weight: 75, reps: 10 }
-    });
+    // Inicia en {} (0 reps y 0 kg previos) hasta que el usuario guarde sus series reales
+    const [exerciseMemory, setExerciseMemory] = useLocalStorage<Record<string, { weight: number; reps: number }>>(
+        "apex_exercise_memory",
+        {}
+    );
+
+    // Borrado completo de datos de ejercicios previos solicitado por el usuario
+    const handleClearAllExerciseData = async () => {
+        try {
+            await localDb.exercise_logs.clear();
+            setExerciseMemory({});
+            localStorage.removeItem("apex_exercise_memory");
+            setCompletedSets({});
+            setSetInputs({});
+            setIsResetExerciseModalOpen(false);
+            setResetSuccessMessage("Todos los datos de ejercicios previos han sido borrados. Tus repeticiones inician en 0.");
+            setTimeout(() => setResetSuccessMessage(null), 5000);
+        } catch (err) {
+            console.error("Error al borrar datos de ejercicio:", err);
+        }
+    };
 
     // Rest Timer State
     const [restRemaining, setRestRemaining] = useState<number | null>(null);
@@ -349,10 +369,12 @@ export default function ApexDashboard() {
 
         setCompletedSets(prev => ({ ...prev, [key]: newState }));
 
-        const exMemory = exerciseMemory[exerciseId] || { weight: 60, reps: 10 };
+        const exMemory = exerciseMemory[exerciseId] || { weight: 0, reps: 0 };
         const inputVal = setInputs[key];
-        const weightToLog = customWeight !== undefined ? customWeight : (inputVal?.weight !== undefined ? inputVal.weight : exMemory.weight);
-        const repsToLog = customReps !== undefined ? customReps : (inputVal?.reps !== undefined ? inputVal.reps : exMemory.reps);
+        const rawWeight = customWeight !== undefined ? customWeight : (inputVal?.weight !== undefined && inputVal.weight !== "" ? inputVal.weight : exMemory.weight);
+        const rawReps = customReps !== undefined ? customReps : (inputVal?.reps !== undefined && inputVal.reps !== "" ? inputVal.reps : exMemory.reps);
+        const weightToLog = typeof rawWeight === "number" ? rawWeight : (parseFloat(String(rawWeight)) || 0);
+        const repsToLog = typeof rawReps === "number" ? rawReps : (parseInt(String(rawReps), 10) || 0);
 
         if (newState) {
             setRestTotal(restSeconds);
@@ -769,7 +791,7 @@ export default function ApexDashboard() {
                         {/* Exercises List (Apple Fitness+ 2-Column Layout) */}
                         <div className="space-y-5">
                             {activeExercises.map((ex, exIdx) => {
-                                const memory = exerciseMemory[ex.id] || { weight: 60, reps: 10 };
+                                const memory = exerciseMemory[ex.id] || { weight: 0, reps: 0 };
                                 const target = calculateTodayTarget(
                                     memory.weight,
                                     memory.reps,
@@ -916,15 +938,23 @@ export default function ApexDashboard() {
                                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                                                     <div className="p-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
                                                         <span className="text-[10px] text-zinc-500 font-medium tracking-wide block">ÚLTIMO REGISTRO</span>
-                                                        <span className="text-white font-mono font-semibold">{memory.weight} kg × {memory.reps} reps</span>
+                                                        <span className="text-white font-mono font-semibold">
+                                                            {memory.reps > 0 ? `${memory.weight} kg × ${memory.reps} reps` : "0 kg × 0 reps"}
+                                                        </span>
                                                     </div>
                                                     <div className="p-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
                                                         <span className="text-[10px] text-zinc-400 font-medium tracking-wide block">META HOY (OVERLOAD)</span>
-                                                        <span className="text-white font-mono font-semibold">{target.suggestedWeight} kg × {target.suggestedReps} reps</span>
+                                                        <span className="text-white font-mono font-semibold">
+                                                            {target.suggestedReps > 0
+                                                                ? `${target.suggestedWeight} kg × ${target.suggestedReps} reps`
+                                                                : `${ex.rep_range_min}-${ex.rep_range_max} reps (0 kg)`}
+                                                        </span>
                                                     </div>
                                                     <div className="p-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
                                                         <span className="text-[10px] text-zinc-500 font-medium tracking-wide block">1RM ESTIMADO</span>
-                                                        <span className="text-white font-mono font-semibold">{target.estimated1RM} kg</span>
+                                                        <span className="text-white font-mono font-semibold">
+                                                            {target.estimated1RM > 0 ? `${target.estimated1RM} kg` : "0 kg"}
+                                                        </span>
                                                     </div>
                                                     <div className="p-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
                                                         <span className="text-[10px] text-zinc-500 font-medium tracking-wide block">PROXIMIDAD AL FALLO</span>
@@ -938,7 +968,10 @@ export default function ApexDashboard() {
                                                         const key = `${ex.id}_${setIdx}`;
                                                         const isCompleted = Boolean(completedSets[key]);
                                                         const isVoiceActive = voiceActiveSet?.exerciseId === ex.id && voiceActiveSet?.setIdx === setIdx;
-                                                        const currentInput = setInputs[key] || { weight: target.suggestedWeight, reps: target.suggestedReps };
+                                                        const currentInput = setInputs[key] || {
+                                                            weight: memory.reps > 0 ? memory.weight : 0,
+                                                            reps: 0
+                                                        };
 
                                                         return (
                                                             <div
@@ -963,13 +996,13 @@ export default function ApexDashboard() {
                                                                             <input
                                                                                 type="number"
                                                                                 step="0.5"
-                                                                                placeholder="Peso"
-                                                                                value={currentInput.weight || ""}
+                                                                                placeholder="0"
+                                                                                value={currentInput.weight !== undefined && currentInput.weight !== "" ? currentInput.weight : ""}
                                                                                 onChange={e => {
-                                                                                    const val = parseFloat(e.target.value) || 0;
+                                                                                    const val = e.target.value;
                                                                                     setSetInputs(prev => ({
                                                                                         ...prev,
-                                                                                        [key]: { ...currentInput, weight: val }
+                                                                                        [key]: { ...currentInput, weight: val === "" ? "" : (parseFloat(val) || 0) }
                                                                                     }));
                                                                                 }}
                                                                                 className="w-11 sm:w-14 bg-transparent text-white font-mono font-semibold text-xs sm:text-sm text-center outline-none placeholder:text-zinc-600"
@@ -984,13 +1017,13 @@ export default function ApexDashboard() {
                                                                             <input
                                                                                 type="number"
                                                                                 step="1"
-                                                                                placeholder="Reps"
-                                                                                value={currentInput.reps || ""}
+                                                                                placeholder="0"
+                                                                                value={currentInput.reps !== undefined && currentInput.reps !== "" ? currentInput.reps : ""}
                                                                                 onChange={e => {
-                                                                                    const val = parseInt(e.target.value, 10) || 0;
+                                                                                    const val = e.target.value;
                                                                                     setSetInputs(prev => ({
                                                                                         ...prev,
-                                                                                        [key]: { ...currentInput, reps: val }
+                                                                                        [key]: { ...currentInput, reps: val === "" ? "" : (parseInt(val, 10) || 0) }
                                                                                     }));
                                                                                 }}
                                                                                 className="w-8 sm:w-11 bg-transparent text-white font-mono font-semibold text-xs sm:text-sm text-center outline-none placeholder:text-zinc-600"
@@ -1574,6 +1607,52 @@ export default function ApexDashboard() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Mantenimiento & Borrado de Datos de Ejercicio */}
+                        <div className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] hover:border-[#FF2A2A]/30 rounded-3xl p-6 sm:p-7 shadow-2xl transition-all text-xs space-y-4">
+                            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-8 h-8 rounded-xl bg-[#FF2A2A]/10 border border-[#FF2A2A]/20 flex items-center justify-center text-[#FF2A2A] shrink-0">
+                                        <Trash2 size={16} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-white tracking-tight uppercase">
+                                            MANTENIMIENTO DE DATOS DE EJERCICIO
+                                        </h4>
+                                        <p className="text-[11px] text-zinc-400 font-normal">
+                                            Reinicia repeticiones previas, memoria de pesos y series registradas.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {resetSuccessMessage && (
+                                <div className="p-3.5 bg-[#10B981]/10 border border-[#10B981]/30 rounded-2xl text-xs text-[#10B981] flex items-center gap-2">
+                                    <CheckCircle2 size={16} className="shrink-0" />
+                                    <span>{resetSuccessMessage}</span>
+                                </div>
+                            )}
+
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/[0.02] p-4 rounded-2xl border border-white/[0.04]">
+                                <div>
+                                    <span className="font-semibold text-white block">
+                                        Borrar Historial de Ejercicios Previos
+                                    </span>
+                                    <span className="text-zinc-400 text-[11px]">
+                                        Limpia todas las repeticiones y pesos guardados para que inicien en 0 reps.
+                                    </span>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setIsResetExerciseModalOpen(true)}
+                                    className="px-4 py-2 bg-[#FF2A2A]/15 hover:bg-[#FF2A2A]/25 text-[#FF2A2A] border border-[#FF2A2A]/30 rounded-xl font-semibold transition-all shrink-0 self-start sm:self-auto active:scale-95 flex items-center gap-1.5"
+                                >
+                                    <Trash2 size={13} />
+                                    <span>Borrar Datos Previos</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
             </main>
@@ -1723,6 +1802,48 @@ export default function ApexDashboard() {
                                 </div>
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Confirmación para Borrar Historial de Ejercicios */}
+            {isResetExerciseModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xl p-4 animate-in fade-in">
+                    <div className="absolute inset-0" onClick={() => setIsResetExerciseModalOpen(false)} />
+                    <div className="relative w-full max-w-md bg-[#121214] border border-white/[0.12] rounded-3xl p-6 shadow-2xl z-10 font-sans text-white space-y-4">
+                        <div className="flex items-center gap-3 border-b border-white/[0.08] pb-3">
+                            <div className="w-10 h-10 rounded-2xl bg-[#FF2A2A]/15 border border-[#FF2A2A]/30 flex items-center justify-center text-[#FF2A2A] shrink-0">
+                                <AlertCircle size={20} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-sm sm:text-base tracking-tight text-white uppercase">
+                                    ¿BORRAR DATOS PREVIOS?
+                                </h3>
+                                <p className="text-xs text-zinc-400">Esta acción no se puede deshacer.</p>
+                            </div>
+                        </div>
+
+                        <p className="text-xs text-zinc-300 leading-relaxed font-normal">
+                            Se eliminarán todas las repeticiones previas, la memoria de pesos en ejercicios y el historial de series en tu dispositivo. Tus ejercicios volverán a iniciar en <strong>0 repeticiones</strong> hasta que los vayas guardando nuevamente.
+                        </p>
+
+                        <div className="flex justify-end gap-2.5 pt-2">
+                            <button
+                                type="button"
+                                onClick={() => setIsResetExerciseModalOpen(false)}
+                                className="px-4 py-2 rounded-xl text-xs font-medium text-zinc-400 hover:text-white transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleClearAllExerciseData}
+                                className="px-5 py-2 rounded-xl text-xs font-semibold bg-[#FF2A2A] hover:bg-[#FF2A2A]/90 text-white shadow-lg transition-all active:scale-95 flex items-center gap-1.5"
+                            >
+                                <Trash2 size={13} />
+                                <span>Sí, Borrar Todos los Datos</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

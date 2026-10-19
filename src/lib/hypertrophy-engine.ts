@@ -1045,6 +1045,10 @@ export function calculateTodayTarget(
     targetRepsMax: number,
     readiness: ReadinessState
 ) {
+    if (!lastReps || lastReps <= 0 || !lastWeightKg || lastWeightKg <= 0) {
+        return { suggestedWeight: 0, suggestedReps: 0, targetRir: 1, estimated1RM: 0 };
+    }
+
     let suggestedWeight = lastWeightKg;
     let suggestedReps = lastReps;
     let targetRir = 1;
