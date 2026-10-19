@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { getExerciseGitHubId } from "@/data/exerciseDatabase";
 
 interface ExerciseMotionViewerProps {
     githubId: string;
@@ -19,8 +20,9 @@ export function ExerciseMotionViewer({
     const [isLoaded, setIsLoaded] = useState(false);
     const [hasError, setHasError] = useState(false);
 
-    const frame0Url = `https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/${githubId}/0.jpg`;
-    const frame1Url = `https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/${githubId}/1.jpg`;
+    const resolvedId = getExerciseGitHubId(githubId || exerciseName);
+    const frame0Url = `https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/${resolvedId}/0.jpg`;
+    const frame1Url = `https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/${resolvedId}/1.jpg`;
 
     // Preload both images into browser cache to eliminate any visual flickers
     useEffect(() => {

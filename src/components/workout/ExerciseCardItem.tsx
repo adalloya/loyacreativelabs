@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { ExternalLink, Play } from 'lucide-react';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { getExerciseGitHubId } from '@/data/exerciseDatabase';
 
 export function ExerciseCardItem({ exercise }: { exercise: any }) {
   const [frameIndex, setFrameIndex] = useState(0);
@@ -21,7 +22,7 @@ export function ExerciseCardItem({ exercise }: { exercise: any }) {
     exercise.name + ' form technique hypertrophy'
   )}`;
 
-  const exerciseId = exercise.github_id || exercise.id || 'Barbell_Bench_Press_-_Medium_Grip';
+  const exerciseId = getExerciseGitHubId(exercise.github_id || exercise.name || exercise.id);
 
   return (
     <div className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-5 mb-4 text-white">
