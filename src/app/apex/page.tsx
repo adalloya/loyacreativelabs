@@ -29,7 +29,9 @@ import {
     ShoppingCart,
     Mic,
     Gauge,
-    ExternalLink
+    ExternalLink,
+    ChevronDown,
+    ChevronUp
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 
@@ -77,8 +79,9 @@ export default function ApexDashboard() {
     // Hardware Hooks (Screen WakeLock & Haptic/Audio)
     const { isScreenLocked, triggerRestTimerAlert } = useGymHardware();
 
-    // Active Navigation Tab
-    const [activeTab, setActiveTab] = useState<"workout" | "anatomy" | "nutrition" | "biometrics">("workout");
+    // Active Navigation Tab (3 Pestañas: Gimnasio, Nutrición, Ajustes)
+    const [activeTab, setActiveTab] = useState<"workout" | "nutrition" | "biometrics">("workout");
+    const [isMuscleMapOpen, setIsMuscleMapOpen] = useState(false);
 
     // Readiness & Environment Telemetry
     const [readiness, setReadiness] = useState<ReadinessState>("optimal");
@@ -499,14 +502,13 @@ export default function ApexDashboard() {
                 </div>
             </header>
 
-            {/* Main Tabs Navigation Bar */}
+            {/* Main Tabs Navigation Bar (3 Pestañas: GIMNASIO, NUTRICIÓN, AJUSTES) */}
             <div className="max-w-6xl mx-auto px-4 mt-5">
-                <div className="grid grid-cols-4 bg-[#121214]/90 border border-white/[0.08] rounded-2xl p-1 text-xs font-medium backdrop-blur-xl">
+                <div className="grid grid-cols-3 bg-[#121214]/90 border border-white/[0.08] rounded-2xl p-1 text-xs font-medium backdrop-blur-xl">
                     {[
-                        { id: "workout", label: "RUTINA EN VIVO", icon: Dumbbell },
-                        { id: "anatomy", label: "MAPA ANATÓMICO", icon: Activity },
-                        { id: "nutrition", label: "NUTRICIÓN GEMINI", icon: Utensils },
-                        { id: "biometrics", label: "BIOMETRÍA", icon: Sliders }
+                        { id: "workout", label: "GIMNASIO", icon: Dumbbell },
+                        { id: "nutrition", label: "NUTRICIÓN", icon: Utensils },
+                        { id: "biometrics", label: "AJUSTES", icon: Sliders }
                     ].map(tab => {
                         const Icon = tab.icon;
                         const isActive = activeTab === tab.id;
@@ -520,7 +522,7 @@ export default function ApexDashboard() {
                                     }`}
                             >
                                 <Icon size={14} />
-                                <span className="hidden sm:inline">{tab.label}</span>
+                                <span>{tab.label}</span>
                             </button>
                         );
                     })}
@@ -577,6 +579,117 @@ export default function ApexDashboard() {
                                     </button>
                                 ))}
                             </div>
+                        </div>
+
+                        {/* Selector de Músculos & Mapa Anatómico (Contraído por defecto para ahorrar espacio) */}
+                        <div className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl overflow-hidden shadow-xl transition-all">
+                            <button
+                                onClick={() => setIsMuscleMapOpen(!isMuscleMapOpen)}
+                                className="w-full p-4 sm:p-5 flex items-center justify-between hover:bg-white/[0.02] transition-all text-left group"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-2xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-white shrink-0 shadow-sm">
+                                        <Activity size={18} className="text-[#FF2A2A]" />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="text-xs sm:text-sm font-bold text-white tracking-tight uppercase">
+                                                MAPA ANATÓMICO & SELECTOR MUSCULAR
+                                            </h3>
+                                            <span className="text-[10px] font-mono text-zinc-400 bg-white/[0.06] px-2 py-0.5 rounded-full border border-white/[0.08]">
+                                                11 GRUPOS
+                                            </span>
+                                        </div>
+                                        <p className="text-[11px] sm:text-xs text-zinc-400 mt-0.5 font-normal">
+                                            {isMuscleMapOpen ? "Toca para contraer" : "Explora músculos, agrega ejercicios y revisa balance articular"}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <span className="text-xs font-mono text-zinc-400 hidden sm:inline">
+                                        {isMuscleMapOpen ? "Ocultar" : "Expandir"}
+                                    </span>
+                                    <div className="w-8 h-8 rounded-full bg-white/[0.06] flex items-center justify-center text-zinc-300 group-hover:text-white transition-all">
+                                        {isMuscleMapOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                    </div>
+                                </div>
+                            </button>
+
+                            {isMuscleMapOpen && (
+                                <div className="p-5 sm:p-6 border-t border-white/[0.06] space-y-6 animate-in fade-in duration-200">
+                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                                        <div className="lg:col-span-5">
+                                            <AnatomyVisualizer
+                                                selectedMuscle={selectedMuscle}
+                                                activeMusclesToday={activeMusclesToday}
+                                                onSelectMuscle={m => setSelectedMuscle(m)}
+                                            />
+                                        </div>
+
+                                        <div className="lg:col-span-7 space-y-4">
+                                            <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-5">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Shield size={16} className="text-white" />
+                                                    <h4 className="text-xs font-semibold text-white tracking-tight uppercase">
+                                                        RADAR DE EQUILIBRIO ARTICULAR
+                                                    </h4>
+                                                </div>
+                                                <p className="text-xs text-zinc-400 mb-3 leading-relaxed font-normal">
+                                                    Proporción de volumen entre patrones antagonistas para proteger tendones y articulaciones.
+                                                </p>
+                                                <div className="space-y-3 text-xs">
+                                                    <div>
+                                                        <div className="flex justify-between text-[11px] mb-1 font-medium">
+                                                            <span className="text-zinc-300">Empuje vs Tracción</span>
+                                                            <span className="text-[#10B981] font-mono">1.05 (Óptimo)</span>
+                                                        </div>
+                                                        <div className="w-full bg-white/[0.06] h-1.5 rounded-full overflow-hidden">
+                                                            <div className="bg-[#10B981] h-full rounded-full" style={{ width: "52%" }} />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex justify-between text-[11px] mb-1 font-medium">
+                                                            <span className="text-zinc-300">Cuádriceps vs Cadena Posterior</span>
+                                                            <span className="text-white font-mono">1.18 (Saludable)</span>
+                                                        </div>
+                                                        <div className="w-full bg-white/[0.06] h-1.5 rounded-full overflow-hidden">
+                                                            <div className="bg-white h-full rounded-full" style={{ width: "55%" }} />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-5">
+                                                <h4 className="text-xs font-semibold text-zinc-400 mb-3 uppercase tracking-wider">
+                                                    ACCESO RÁPIDO A GRUPOS MUSCULARES
+                                                </h4>
+                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+                                                    {ORDERED_MUSCLE_GROUPS.map(mg => {
+                                                        const meta = MUSCLE_PALETTE[mg];
+                                                        return (
+                                                            <button
+                                                                key={mg}
+                                                                onClick={() => setSelectedMuscle(mg)}
+                                                                className="p-3 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/20 rounded-2xl text-left text-zinc-300 hover:text-white transition-all flex items-center justify-between group active:scale-[0.98]"
+                                                            >
+                                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                                    <span 
+                                                                        className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs" 
+                                                                        style={{ backgroundColor: meta.hex, boxShadow: `0 0 8px ${meta.hex}60` }}
+                                                                    />
+                                                                    <span className="font-medium truncate">{meta.name}</span>
+                                                                </div>
+                                                                <ArrowRight size={12} className="text-zinc-500 group-hover:text-white group-hover:translate-x-0.5 transition-all shrink-0 ml-1" />
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Exercises List (Apple Fitness+ 2-Column Layout) */}
@@ -983,84 +1096,6 @@ export default function ApexDashboard() {
                     </div>
                 )}
 
-                {/* =========================================================================
-                    TAB 2: MAPA ANATÓMICO 3D / 2D
-                   ========================================================================= */}
-                {activeTab === "anatomy" && (
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                        <div className="lg:col-span-5">
-                            <AnatomyVisualizer
-                                selectedMuscle={selectedMuscle}
-                                activeMusclesToday={activeMusclesToday}
-                                onSelectMuscle={m => setSelectedMuscle(m)}
-                            />
-                        </div>
-
-                        <div className="lg:col-span-7 space-y-4">
-                            <div className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-6 shadow-xl">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Shield size={16} className="text-white" />
-                                    <h3 className="text-sm font-semibold text-white tracking-tight">
-                                        RADAR DE EQUILIBRIO ARTICULAR
-                                    </h3>
-                                </div>
-                                <p className="text-xs text-zinc-400 mb-4 leading-relaxed font-normal">
-                                    El visor evalúa la proporción de volumen entre patrones de movimiento antagonistas para proteger el manguito rotador y los tendones patelares.
-                                </p>
-
-                                <div className="space-y-4 text-xs">
-                                    <div>
-                                        <div className="flex justify-between text-xs mb-1.5 font-medium">
-                                            <span className="text-zinc-300">Empuje vs Tracción (Horizontal & Vertical)</span>
-                                            <span className="text-[#10B981] font-mono font-semibold">1.05 (Óptimo)</span>
-                                        </div>
-                                        <div className="w-full bg-white/[0.06] h-2 rounded-full overflow-hidden">
-                                            <div className="bg-[#10B981] h-full rounded-full" style={{ width: "52%" }} />
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <div className="flex justify-between text-xs mb-1.5 font-medium">
-                                            <span className="text-zinc-300">Cuádriceps vs Cadena Posterior (Isquios/Glúteo)</span>
-                                            <span className="text-white font-mono font-semibold">1.18 (Saludable)</span>
-                                        </div>
-                                        <div className="w-full bg-white/[0.06] h-2 rounded-full overflow-hidden">
-                                            <div className="bg-white h-full rounded-full" style={{ width: "55%" }} />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Quick Muscle Selector List */}
-                            <div className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-6 shadow-xl">
-                                <h4 className="text-xs font-semibold text-zinc-400 mb-3 uppercase tracking-wider">
-                                    ACCESO RÁPIDO A GRUPOS MUSCULARES
-                                </h4>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
-                                    {ORDERED_MUSCLE_GROUPS.map(mg => {
-                                        const meta = MUSCLE_PALETTE[mg];
-                                        return (
-                                            <button
-                                                key={mg}
-                                                onClick={() => setSelectedMuscle(mg)}
-                                                className="p-3 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/20 rounded-2xl text-left text-zinc-300 hover:text-white transition-all flex items-center justify-between group active:scale-[0.98]"
-                                            >
-                                                <div className="flex items-center gap-2.5 min-w-0">
-                                                    <span 
-                                                        className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs" 
-                                                        style={{ backgroundColor: meta.hex, boxShadow: `0 0 8px ${meta.hex}60` }}
-                                                    />
-                                                    <span className="font-medium truncate">{meta.name}</span>
-                                                </div>
-                                                <ArrowRight size={12} className="text-zinc-500 group-hover:text-white group-hover:translate-x-0.5 transition-all shrink-0 ml-1" />
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
 
                 {/* =========================================================================
                     TAB 3: NUTRICIÓN & GEMINI CLINICAL
