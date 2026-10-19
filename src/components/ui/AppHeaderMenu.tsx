@@ -9,6 +9,8 @@ import { DownloadPDFButton } from '@/components/pdf/DownloadPDFButton';
 export function AppHeaderMenu({ 
   environmentMode, 
   onEnvironmentChange, 
+  weightUnit = 'lbs',
+  onWeightUnitChange,
   onInstallClick, 
   showInstallButton,
   pdfProfile,
@@ -22,6 +24,8 @@ export function AppHeaderMenu({
 }: { 
   environmentMode: string;
   onEnvironmentChange: (mode: string) => void;
+  weightUnit?: 'lbs' | 'kg';
+  onWeightUnitChange?: (unit: 'lbs' | 'kg') => void;
   onInstallClick: () => void;
   showInstallButton: boolean;
   pdfProfile?: any;
@@ -123,6 +127,46 @@ export function AppHeaderMenu({
                 </div>
               </div>
             )}
+
+            {/* Selector de Unidad de Peso (LBS / KG) */}
+            <div className="mb-4 pb-4 border-b border-white/[0.08]">
+              <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider block mb-2 flex items-center justify-between">
+                <span>UNIDAD DE PESAS</span>
+                <span className="text-white font-mono text-[9px] uppercase tracking-wider font-bold bg-white/[0.06] px-1.5 py-0.5 rounded border border-white/[0.08]">
+                  {weightUnit === 'lbs' ? 'LBS // DEFAULT' : 'KG // MÉTRICO'}
+                </span>
+              </label>
+              <div className="grid grid-cols-2 gap-1 bg-black/40 p-1 rounded-2xl border border-white/[0.08]">
+                <button
+                  type="button"
+                  onClick={() => onWeightUnitChange?.('lbs')}
+                  className={`py-2 px-1.5 rounded-xl text-center transition-all ${
+                    weightUnit === 'lbs'
+                      ? 'bg-white text-black font-semibold shadow-md'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <div className="text-xs leading-none font-bold">LBS (Libras)</div>
+                  <div className={`text-[9px] mt-0.5 ${weightUnit === 'lbs' ? 'text-zinc-700' : 'text-zinc-500'}`}>
+                    Barra 45 lbs
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onWeightUnitChange?.('kg')}
+                  className={`py-2 px-1.5 rounded-xl text-center transition-all ${
+                    weightUnit === 'kg'
+                      ? 'bg-white text-black font-semibold shadow-md'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <div className="text-xs leading-none font-bold">KG (Kilos)</div>
+                  <div className={`text-[9px] mt-0.5 ${weightUnit === 'kg' ? 'text-zinc-700' : 'text-zinc-500'}`}>
+                    Barra 20 kg
+                  </div>
+                </button>
+              </div>
+            </div>
 
             {/* Spotify Integration Section */}
             {onOpenSpotifyModal && (

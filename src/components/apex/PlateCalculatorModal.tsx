@@ -7,10 +7,16 @@ import { X, Disc, Flame, ChevronDown, ChevronUp, Check } from "lucide-react";
 
 interface PlateCalculatorModalProps {
     initialWeightKg?: number;
+    initialWeight?: number;
+    unit?: "lbs" | "kg";
     onClose: () => void;
 }
 
 const PLATE_COLORS: Record<number, { bg: string; text: string; border: string; ring: string }> = {
+    // LBS Standard
+    45: { bg: "bg-[#3B82F6]", text: "text-white", border: "border-blue-400", ring: "ring-blue-500/30" },
+    35: { bg: "bg-[#EAB308]", text: "text-black", border: "border-yellow-300", ring: "ring-yellow-500/30" },
+    // KG & LBS Shared
     25: { bg: "bg-[#EF4444]", text: "text-white", border: "border-red-400", ring: "ring-red-500/30" },
     20: { bg: "bg-[#3B82F6]", text: "text-white", border: "border-blue-400", ring: "ring-blue-500/30" },
     15: { bg: "bg-[#EAB308]", text: "text-black", border: "border-yellow-300", ring: "ring-yellow-500/30" },
@@ -21,15 +27,25 @@ const PLATE_COLORS: Record<number, { bg: string; text: string; border: string; r
 };
 
 export function PlateCalculatorModal({
-    initialWeightKg = 80,
+    initialWeightKg,
+    initialWeight,
+    unit = "lbs",
     onClose
 }: PlateCalculatorModalProps) {
-    const [targetWeight, setTargetWeight] = useState(initialWeightKg);
-    const [barWeight, setBarWeight] = useState(20);
+    const activeUnit = unit || "lbs";
+    const defaultBar = activeUnit === "lbs" ? 45 : 20;
+    const defaultTarget = initialWeight !== undefined 
+        ? initialWeight 
+        : initialWeightKg !== undefined 
+            ? initialWeightKg 
+            : (activeUnit === "lbs" ? 135 : 80);
+
+    const [targetWeight, setTargetWeight] = useState(defaultTarget);
+    const [barWeight, setBarWeight] = useState(defaultBar);
     const [showWarmup, setShowWarmup] = useState(false);
 
     const platesPerSide = calculatePlatesPerSide(targetWeight, barWeight);
-    const warmupSets = generateWarmupProtocol(targetWeight, barWeight);
+    const warmupSets = generateWarmupProtocol(targetWeight, barWeight, activeUnit);
 
     const adjustWeight = (delta: number) => {
         setTargetWeight(prev => Math.max(barWeight, Math.round((prev + delta) * 10) / 10));
@@ -40,10 +56,15 @@ export function PlateCalculatorModal({
     // Expandir lista plana de discos para visualización de manga
     const plateListForSleeve: number[] = [];
     platesPerSide.forEach(p => {
+        const val = p.plateWeight ?? p.plateKg;
         for (let i = 0; i < p.countPerSide; i++) {
-            plateListForSleeve.push(p.plateKg);
+            plateListForSleeve.push(val);
         }
     });
+
+    const steppers = activeUnit === "lbs" 
+        ? [-20, -10, -5, +5, +10, +20] 
+        : [-10, -5, -2.5, +2.5, +5, +10];
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-200 font-sans text-white">
@@ -61,7 +82,7 @@ export function PlateCalculatorModal({
                                 CALCULADORA DE DISCOS
                             </h2>
                             <p className="text-[11px] text-zinc-400 font-mono">
-                                Barra Olímpica Estándar: {barWeight} kg
+                                Barra Olímpica: {barWeight} {activeUnit}
                             </p>
                         </div>
                     </div>
@@ -76,28 +97,28 @@ export function PlateCalculatorModal({
                 {/* Selector de Peso Total */}
                 <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 mb-4 text-center">
                     <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest block">
-                        PESO TOTAL EN BARRA
+                        PESO TOTAL EN BARRA ({activeUnit.toUpperCase()})
                     </span>
                     <div className="flex items-center justify-center gap-1.5 my-1">
                         <input
                             type="number"
-                            step="0.5"
+                            step={activeUnit === "lbs" ? "1" : "0.5"}
                             value={targetWeight}
                             onChange={(e) => setTargetWeight(Math.max(barWeight, parseFloat(e.target.value) || barWeight))}
                             className="text-4xl sm:text-5xl font-extrabold font-mono text-white text-center bg-transparent outline-none w-36"
                         />
-                        <span className="text-xl font-normal text-zinc-500 font-mono">kg</span>
+                        <span className="text-xl font-normal text-zinc-500 font-mono">{activeUnit}</span>
                     </div>
 
                     {/* Quick Steppers */}
                     <div className="flex justify-center gap-1.5 font-mono text-xs mt-2 flex-wrap">
-                        {[-10, -2.5, +2.5, +5, +10].map(val => (
+                        {steppers.map(val => (
                             <button
                                 key={val}
                                 onClick={() => adjustWeight(val)}
                                 className="px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.12] border border-white/[0.08] text-zinc-200 hover:text-white font-semibold transition-all active:scale-95"
                             >
-                                {val > 0 ? `+${val}` : val} kg
+                                {val > 0 ? `+${val}` : val} {activeUnit}
                             </button>
                         ))}
                     </div>
@@ -109,10 +130,10 @@ export function PlateCalculatorModal({
                         CARGA EN CADA LADO (IZQUIERDO Y DERECHO)
                     </span>
                     <div className="text-3xl sm:text-4xl font-black font-mono text-emerald-400 tracking-tight my-1">
-                        {weightPerSide.toFixed(1)} <span className="text-lg font-normal text-zinc-400">kg por lado</span>
+                        {weightPerSide.toFixed(1)} <span className="text-lg font-normal text-zinc-400">{activeUnit} por lado</span>
                     </div>
                     <p className="text-[11px] text-zinc-500 font-mono mt-1">
-                        {weightPerSide} kg izq + {weightPerSide} kg der + barra {barWeight} kg = {targetWeight} kg total
+                        {weightPerSide} {activeUnit} izq + {weightPerSide} {activeUnit} der + barra {barWeight} {activeUnit} = {targetWeight} {activeUnit} total
                     </p>
 
                     {/* Manga Visual de la Barra con Discos en Orden */}
@@ -125,17 +146,23 @@ export function PlateCalculatorModal({
                                 {/* Cuello de la barra */}
                                 <div className="w-4 h-16 bg-zinc-700 rounded-l-md border border-zinc-600 shrink-0" title="Tope de la barra" />
                                 
-                                {plateListForSleeve.map((plateKg, idx) => {
-                                    const style = PLATE_COLORS[plateKg] || { bg: "bg-zinc-800", text: "text-white", border: "border-zinc-700" };
-                                    const heightClass = plateKg >= 20 ? "h-20" : plateKg >= 10 ? "h-16" : plateKg >= 5 ? "h-12" : "h-10";
+                                {plateListForSleeve.map((plateVal, idx) => {
+                                    const style = PLATE_COLORS[plateVal] || { bg: "bg-zinc-800", text: "text-white", border: "border-zinc-700" };
+                                    const heightClass = plateVal >= (activeUnit === "lbs" ? 45 : 20)
+                                        ? "h-20"
+                                        : plateVal >= (activeUnit === "lbs" ? 25 : 10)
+                                            ? "h-16"
+                                            : plateVal >= (activeUnit === "lbs" ? 10 : 5)
+                                                ? "h-12"
+                                                : "h-10";
                                     return (
                                         <div
                                             key={idx}
                                             className={`w-9 sm:w-10 ${heightClass} ${style.bg} ${style.text} ${style.border} border-2 rounded-md flex flex-col items-center justify-center font-mono font-black text-[10px] sm:text-xs shrink-0 shadow-lg`}
-                                            title={`Disco de ${plateKg} kg`}
+                                            title={`Disco de ${plateVal} ${activeUnit}`}
                                         >
-                                            <span>{plateKg}</span>
-                                            <span className="text-[8px] opacity-75">kg</span>
+                                            <span>{plateVal}</span>
+                                            <span className="text-[8px] opacity-75">{activeUnit}</span>
                                         </div>
                                     );
                                 })}
@@ -156,7 +183,8 @@ export function PlateCalculatorModal({
                     {platesPerSide.length > 0 ? (
                         <div className="space-y-2">
                             {platesPerSide.map((p, idx) => {
-                                const style = PLATE_COLORS[p.plateKg] || { bg: "bg-zinc-800", text: "text-white", border: "border-zinc-700" };
+                                const val = p.plateWeight ?? p.plateKg;
+                                const style = PLATE_COLORS[val] || { bg: "bg-zinc-800", text: "text-white", border: "border-zinc-700" };
                                 return (
                                     <div
                                         key={idx}
@@ -165,11 +193,11 @@ export function PlateCalculatorModal({
                                         <div className="flex items-center gap-3">
                                             <span className={`w-3.5 h-3.5 rounded-full ${style.bg} border ${style.border} shrink-0`} />
                                             <span className="text-sm font-bold text-white">
-                                                {p.countPerSide} × disco{p.countPerSide > 1 ? "s" : ""} de {p.plateKg} kg
+                                                {p.countPerSide} × disco{p.countPerSide > 1 ? "s" : ""} de {val} {activeUnit}
                                             </span>
                                         </div>
                                         <span className="text-xs font-semibold text-zinc-400 bg-white/[0.06] px-2.5 py-1 rounded-xl">
-                                            = {(p.countPerSide * p.plateKg).toFixed(1)} kg
+                                            = {(p.countPerSide * val).toFixed(1)} {activeUnit}
                                         </span>
                                     </div>
                                 );
@@ -177,7 +205,7 @@ export function PlateCalculatorModal({
                         </div>
                     ) : (
                         <div className="p-3 text-center bg-white/[0.02] rounded-xl text-xs font-mono text-zinc-400">
-                            Solo la barra olímpica vacía ({barWeight} kg). No agregues discos.
+                            Solo la barra olímpica vacía ({barWeight} {activeUnit}). No agregues discos.
                         </div>
                     )}
                 </div>
@@ -204,7 +232,7 @@ export function PlateCalculatorModal({
                                 >
                                     <div>
                                         <span className="text-zinc-400 font-semibold mr-2">Serie {w.setNumber}:</span>
-                                        <span className="text-white font-bold">{w.weightKg} kg</span>
+                                        <span className="text-white font-bold">{w.weightKg} {activeUnit}</span>
                                         <span className="text-zinc-500 text-[11px] ml-1.5">× {w.reps} reps ({w.percentage}%)</span>
                                     </div>
                                     <span className="text-[10px] text-zinc-500">Descanso: {w.restSeconds}s</span>

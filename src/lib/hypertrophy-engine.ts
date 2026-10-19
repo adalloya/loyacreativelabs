@@ -50,6 +50,7 @@ export interface ExerciseItem {
 
 export interface PlateBreakdown {
     plateKg: number;
+    plateWeight?: number;
     countPerSide: number;
 }
 
@@ -74,52 +75,72 @@ export function updateExerciseDatabase(newCatalog: ExerciseItem[]): void {
 }
 
 // ------------------------------------------------------------------------
-// 2. CALCULADORA DE DISCOS POR LADO (ESTÁNDAR OLÍMPICO 20 KG)
+// 2. CALCULADORA DE DISCOS POR LADO (ESTÁNDAR LBS 45 LBS / KG 20 KG)
 // ------------------------------------------------------------------------
 export function calculatePlatesPerSide(
-    targetWeightKg: number,
-    barWeightKg: number = 20,
-    availablePlates: number[] = [25, 20, 15, 10, 5, 2.5, 1.25]
+    targetWeight: number,
+    barWeight: number = 45,
+    availablePlates?: number[]
 ): PlateBreakdown[] {
-    if (targetWeightKg <= barWeightKg) return [];
+    if (targetWeight <= barWeight) return [];
 
-    let weightPerSide = (targetWeightKg - barWeightKg) / 2;
+    const defaultPlates = barWeight >= 40
+        ? [45, 35, 25, 10, 5, 2.5, 1.25]
+        : [25, 20, 15, 10, 5, 2.5, 1.25];
+    const plates = availablePlates || defaultPlates;
+
+    let weightPerSide = (targetWeight - barWeight) / 2;
     const breakdown: PlateBreakdown[] = [];
 
-    const sortedPlates = [...availablePlates].sort((a, b) => b - a);
+    const sortedPlates = [...plates].sort((a, b) => b - a);
 
     for (const plate of sortedPlates) {
         const count = Math.floor(weightPerSide / plate);
         if (count > 0) {
-            breakdown.push({ plateKg: plate, countPerSide: count });
+            breakdown.push({ plateKg: plate, plateWeight: plate, countPerSide: count });
             weightPerSide = Number((weightPerSide - count * plate).toFixed(2));
         }
     }
     return breakdown;
 }
 
-export function formatPlatesSummary(targetWeightKg: number, barWeightKg: number = 20): string {
-    if (targetWeightKg <= barWeightKg) {
-        return `Barra olímpica sola (${barWeightKg} kg)`;
+export function formatPlatesSummary(
+    targetWeight: number,
+    barWeight?: number,
+    unit: "lbs" | "kg" = "lbs"
+): string {
+    const defaultBar = unit === "lbs" ? 45 : 20;
+    const actualBar = barWeight !== undefined ? barWeight : defaultBar;
+
+    if (targetWeight <= actualBar) {
+        return `Barra olímpica sola (${actualBar} ${unit})`;
     }
-    const breakdown = calculatePlatesPerSide(targetWeightKg, barWeightKg);
-    if (breakdown.length === 0) return `${targetWeightKg} kg`;
-    const details = breakdown.map(p => `${p.countPerSide}x${p.plateKg}kg`).join(" + ");
-    return `Barra ${barWeightKg}kg + ${details} por lado`;
+    const breakdown = calculatePlatesPerSide(targetWeight, actualBar);
+    if (breakdown.length === 0) return `${targetWeight} ${unit}`;
+    const details = breakdown.map(p => `${p.countPerSide}x${p.plateWeight ?? p.plateKg}${unit}`).join(" + ");
+    return `Barra ${actualBar} ${unit} + ${details} por lado`;
 }
 
 // ------------------------------------------------------------------------
 // 3. GENERADOR DE SERIES DE CALENTAMIENTO (CERO FATIGA)
 // ------------------------------------------------------------------------
-export function generateWarmupProtocol(workingWeightKg: number, barWeightKg: number = 20): WarmupSet[] {
-    const roundToNearest2_5 = (val: number) => Math.max(barWeightKg, Math.round(val / 2.5) * 2.5);
+export function generateWarmupProtocol(
+    workingWeight: number,
+    barWeight?: number,
+    unit: "lbs" | "kg" = "lbs"
+): WarmupSet[] {
+    const defaultBar = unit === "lbs" ? 45 : 20;
+    const actualBar = barWeight !== undefined ? barWeight : defaultBar;
+    const step = unit === "lbs" ? 5 : 2.5;
+    const threshold = unit === "lbs" ? 75 : 35;
+    const roundToNearest = (val: number) => Math.max(actualBar, Math.round(val / step) * step);
 
-    if (workingWeightKg <= 35) {
+    if (workingWeight <= threshold) {
         return [
             {
                 setNumber: 1,
                 percentage: 50,
-                weightKg: barWeightKg,
+                weightKg: actualBar,
                 reps: 8,
                 restSeconds: 45,
                 purpose: "Lubricación articular y aclimatación motora"
@@ -131,7 +152,7 @@ export function generateWarmupProtocol(workingWeightKg: number, barWeightKg: num
         {
             setNumber: 1,
             percentage: 50,
-            weightKg: roundToNearest2_5(workingWeightKg * 0.50),
+            weightKg: roundToNearest(workingWeight * 0.50),
             reps: 8,
             restSeconds: 60,
             purpose: "Flujo sanguíneo y temperatura muscular"
@@ -139,7 +160,7 @@ export function generateWarmupProtocol(workingWeightKg: number, barWeightKg: num
         {
             setNumber: 2,
             percentage: 70,
-            weightKg: roundToNearest2_5(workingWeightKg * 0.70),
+            weightKg: roundToNearest(workingWeight * 0.70),
             reps: 4,
             restSeconds: 90,
             purpose: "Transición neuromuscular sin lactato"
@@ -147,7 +168,7 @@ export function generateWarmupProtocol(workingWeightKg: number, barWeightKg: num
         {
             setNumber: 3,
             percentage: 85,
-            weightKg: roundToNearest2_5(workingWeightKg * 0.85),
+            weightKg: roundToNearest(workingWeight * 0.85),
             reps: 1,
             restSeconds: 120,
             purpose: "Potenciación post-activación (PAP) para serie efectiva"
@@ -159,23 +180,25 @@ export function generateWarmupProtocol(workingWeightKg: number, barWeightKg: num
 // 4. AUTO-REGULACIÓN DIARIA (READINESS CHECK) & 1RM
 // ------------------------------------------------------------------------
 export function calculateTodayTarget(
-    lastWeightKg: number,
+    lastWeight: number,
     lastReps: number,
     targetRepsMin: number,
     targetRepsMax: number,
-    readiness: ReadinessState
+    readiness: ReadinessState,
+    unit: "lbs" | "kg" = "lbs"
 ) {
-    if (!lastReps || lastReps <= 0 || !lastWeightKg || lastWeightKg <= 0) {
+    if (!lastReps || lastReps <= 0 || !lastWeight || lastWeight <= 0) {
         return { suggestedWeight: 0, suggestedReps: 0, targetRir: 1, estimated1RM: 0 };
     }
 
-    let suggestedWeight = lastWeightKg;
+    let suggestedWeight = lastWeight;
     let suggestedReps = lastReps;
     let targetRir = 1;
+    const step = unit === "lbs" ? 5 : 2.5;
 
     if (readiness === "optimal") {
         if (lastReps >= targetRepsMax) {
-            suggestedWeight = Math.round((lastWeightKg * 1.025) / 2.5) * 2.5;
+            suggestedWeight = Math.round((lastWeight * 1.025) / step) * step;
             suggestedReps = targetRepsMin;
         } else {
             suggestedReps = lastReps + 1;
@@ -186,7 +209,7 @@ export function calculateTodayTarget(
         targetRir = 1;
     } else if (readiness === "fatigued") {
         // Reducción preventiva del 5% o +1 RIR para proteger articulaciones
-        suggestedWeight = Math.round((lastWeightKg * 0.95) / 2.5) * 2.5;
+        suggestedWeight = Math.round((lastWeight * 0.95) / step) * step;
         suggestedReps = lastReps;
         targetRir = 2;
     }

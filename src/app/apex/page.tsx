@@ -150,6 +150,7 @@ export default function ApexDashboard() {
     // Readiness & Environment Telemetry
     const [readiness, setReadiness] = useState<ReadinessState>("optimal");
     const [environmentMode, setEnvironmentMode] = useState<"full_gym" | "hotel_gym" | "bodyweight" | "home_gym">("full_gym");
+    const [weightUnit, setWeightUnit] = useLocalStorage<"lbs" | "kg">("apex_weight_unit", "lbs");
 
     // Catálogo en Vivo de 873+ Ejercicios (GitHub + Caché Local)
     const [catalogCount, setCatalogCount] = useState<number>(EXERCISE_DATABASE.length);
@@ -176,7 +177,7 @@ export default function ApexDashboard() {
     const [selectedMuscle, setSelectedMuscle] = useState<MuscleGroup | null>(null);
     const [specializedMuscle, setSpecializedMuscle] = useState<MuscleGroup | null>(null);
     const [isPlateModalOpen, setIsPlateModalOpen] = useState(false);
-    const [plateModalWeight, setPlateModalWeight] = useState(80);
+    const [plateModalWeight, setPlateModalWeight] = useState(135);
     const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
     const [isProtocolModalOpen, setIsProtocolModalOpen] = useState(false);
     const [isOffPlanModalOpen, setIsOffPlanModalOpen] = useState(false);
@@ -515,11 +516,12 @@ export default function ApexDashboard() {
     const { isListening: isVoiceListening, startListening: startVoiceLogging } = useVoiceLogger((result) => {
         if (voiceActiveSet) {
             const key = `${voiceActiveSet.exerciseId}_${voiceActiveSet.setIdx}`;
+            const recordedWeight = result.weight ?? result.weightKg;
             setSetInputs(prev => ({
                 ...prev,
-                [key]: { weight: result.weightKg, reps: result.reps }
+                [key]: { weight: recordedWeight, reps: result.reps }
             }));
-            handleCompleteSet(voiceActiveSet.exerciseId, voiceActiveSet.setIdx, 90, result.weightKg, result.reps);
+            handleCompleteSet(voiceActiveSet.exerciseId, voiceActiveSet.setIdx, 90, recordedWeight, result.reps);
             setVoiceActiveSet(null);
         }
     });
@@ -677,6 +679,8 @@ export default function ApexDashboard() {
                         <AppHeaderMenu
                             environmentMode={environmentMode}
                             onEnvironmentChange={(mode) => setEnvironmentMode(mode as any)}
+                            weightUnit={weightUnit}
+                            onWeightUnitChange={setWeightUnit}
                             readiness={readiness}
                             onReadinessChange={setReadiness}
                             onInstallClick={() => setIsInstallModalOpen(true)}
@@ -928,7 +932,8 @@ export default function ApexDashboard() {
                                     memory.reps,
                                     ex.rep_range_min,
                                     ex.rep_range_max,
-                                    readiness
+                                    readiness,
+                                    weightUnit
                                 );
 
                                 return (
@@ -1062,8 +1067,12 @@ export default function ApexDashboard() {
                                                 {inlinePlatesExId === ex.id && isPlateLoadedExercise(ex.equipment, ex.name) && (
                                                     <div className="p-3 bg-white/[0.04] border border-white/[0.08] rounded-2xl flex items-center justify-between text-xs text-zinc-300 animate-in fade-in">
                                                         <div>
-                                                            <span className="text-[10px] uppercase text-zinc-500 font-medium tracking-wide block">Desglose exacto de carga por lado (Barra olímpica 20 kg)</span>
-                                                            <span className="font-mono text-white text-sm font-semibold">{formatPlatesSummary(target.suggestedWeight)}</span>
+                                                            <span className="text-[10px] uppercase text-zinc-500 font-medium tracking-wide block">
+                                                                Desglose exacto de carga por lado (Barra olímpica {weightUnit === "lbs" ? "45 lbs" : "20 kg"})
+                                                            </span>
+                                                            <span className="font-mono text-white text-sm font-semibold">
+                                                                {formatPlatesSummary(target.suggestedWeight, weightUnit === "lbs" ? 45 : 20, weightUnit)}
+                                                            </span>
                                                         </div>
                                                         <button
                                                             onClick={() => {
@@ -1082,21 +1091,21 @@ export default function ApexDashboard() {
                                                     <div className="p-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
                                                         <span className="text-[10px] text-zinc-500 font-medium tracking-wide block">ÚLTIMO REGISTRO</span>
                                                         <span className="text-white font-mono font-semibold">
-                                                            {memory.reps > 0 ? `${memory.weight} kg × ${memory.reps} reps` : "0 kg × 0 reps"}
+                                                            {memory.reps > 0 ? `${memory.weight} ${weightUnit} × ${memory.reps} reps` : `0 ${weightUnit} × 0 reps`}
                                                         </span>
                                                     </div>
                                                     <div className="p-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
                                                         <span className="text-[10px] text-zinc-400 font-medium tracking-wide block">META HOY (OVERLOAD)</span>
                                                         <span className="text-white font-mono font-semibold">
                                                             {target.suggestedReps > 0
-                                                                ? `${target.suggestedWeight} kg × ${target.suggestedReps} reps`
-                                                                : `${ex.rep_range_min}-${ex.rep_range_max} reps (0 kg)`}
+                                                                ? `${target.suggestedWeight} ${weightUnit} × ${target.suggestedReps} reps`
+                                                                : `${ex.rep_range_min}-${ex.rep_range_max} reps (0 ${weightUnit})`}
                                                         </span>
                                                     </div>
                                                     <div className="p-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
                                                         <span className="text-[10px] text-zinc-500 font-medium tracking-wide block">1RM ESTIMADO</span>
                                                         <span className="text-white font-mono font-semibold">
-                                                            {target.estimated1RM > 0 ? `${target.estimated1RM} kg` : "0 kg"}
+                                                            {target.estimated1RM > 0 ? `${target.estimated1RM} ${weightUnit}` : `0 ${weightUnit}`}
                                                         </span>
                                                     </div>
                                                     <div className="p-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
@@ -1138,7 +1147,7 @@ export default function ApexDashboard() {
                                                                         <div className="flex items-center gap-0.5 sm:gap-1 bg-white/[0.06] border border-white/[0.08] rounded-xl px-1.5 sm:px-2.5 py-1">
                                                                             <input
                                                                                 type="number"
-                                                                                step="0.5"
+                                                                                step={weightUnit === "lbs" ? "1" : "0.5"}
                                                                                 placeholder="0"
                                                                                 value={currentInput.weight !== undefined && currentInput.weight !== "" ? currentInput.weight : ""}
                                                                                 onChange={e => {
@@ -1150,7 +1159,7 @@ export default function ApexDashboard() {
                                                                                 }}
                                                                                 className="w-11 sm:w-14 bg-transparent text-white font-mono font-semibold text-xs sm:text-sm text-center outline-none placeholder:text-zinc-600"
                                                                             />
-                                                                            <span className="text-[10px] sm:text-[11px] text-zinc-400 font-mono">kg</span>
+                                                                            <span className="text-[10px] sm:text-[11px] text-zinc-400 font-mono">{weightUnit}</span>
                                                                         </div>
 
                                                                         <span className="text-zinc-500 font-mono text-[10px] sm:text-xs">×</span>
@@ -1193,7 +1202,7 @@ export default function ApexDashboard() {
                                                                                 ? "bg-[#FF2A2A] text-white animate-pulse border-[#FF2A2A]"
                                                                                 : "bg-white/[0.06] border-white/[0.08] text-zinc-300 hover:text-white hover:bg-white/[0.12]"
                                                                         }`}
-                                                                        title="Dictar serie por voz (ej. '80 por 10')"
+                                                                        title={`Dictar serie por voz (ej. '${weightUnit === "lbs" ? "135 por 10" : "80 por 10"}')`}
                                                                     >
                                                                         <Mic size={14} className={isVoiceActive && isVoiceListening ? "animate-bounce" : ""} />
                                                                     </button>
@@ -2028,7 +2037,8 @@ export default function ApexDashboard() {
 
             {isPlateModalOpen && (
                 <PlateCalculatorModal
-                    initialWeightKg={plateModalWeight}
+                    initialWeight={plateModalWeight > 0 ? plateModalWeight : (weightUnit === "lbs" ? 135 : 80)}
+                    unit={weightUnit}
                     onClose={() => setIsPlateModalOpen(false)}
                 />
             )}

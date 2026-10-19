@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from "react";
 
 interface VoiceLoggerResult {
     weightKg: number;
+    weight: number;
     reps: number;
 }
 
@@ -12,17 +13,20 @@ export function useVoiceLogger(onLogDetected: (result: VoiceLoggerResult) => voi
     const [transcript, setTranscript] = useState("");
     const recognitionRef = useRef<any>(null);
 
-    // Parser inteligente de texto a números (soporta español e inglés)
+    // Parser inteligente de texto a números (soporta español e inglés, lbs y kg)
     const parseSpokenWorkout = (text: string): VoiceLoggerResult | null => {
         const clean = text.toLowerCase();
 
-        // Patrón 1: "X kilos por Y" o "X por Y" (ej. "80 kilos por 10", "100 por 8")
-        const regex1 = /(\d+(?:\.\d+)?)\s*(?:kilos?|kg)?\s*(?:por|x|\*)\s*(\d+)/i;
+        // Patrón 1: "X kilos/libras por Y" o "X por Y" (ej. "135 libras por 10", "80 kilos por 10", "100 por 8")
+        const regex1 = /(\d+(?:\.\d+)?)\s*(?:kilos?|kg|libras?|lbs?|lb)?\s*(?:por|x|\*)\s*(\d+)/i;
         const match1 = clean.match(regex1);
         if (match1) {
+            const w = parseFloat(match1[1]);
+            const r = parseInt(match1[2], 10);
             return {
-                weightKg: parseFloat(match1[1]),
-                reps: parseInt(match1[2], 10)
+                weightKg: w,
+                weight: w,
+                reps: r
             };
         }
 
@@ -45,9 +49,12 @@ export function useVoiceLogger(onLogDetected: (result: VoiceLoggerResult) => voi
         }
 
         if (numbersFound.length >= 2) {
+            const w = numbersFound[0];
+            const r = Math.round(numbersFound[1]);
             return {
-                weightKg: numbersFound[0],
-                reps: Math.round(numbersFound[1])
+                weightKg: w,
+                weight: w,
+                reps: r
             };
         }
 
