@@ -67,6 +67,9 @@ import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { DownloadPDFButton } from "@/components/pdf/DownloadPDFButton";
 import { AppHeaderMenu } from "@/components/ui/AppHeaderMenu";
 import { ShoppingList } from "@/components/nutrition/ShoppingList";
+import { DailyMealTracker } from "@/components/nutrition/DailyMealTracker";
+import { ApexCalendarView } from "@/components/calendar/ApexCalendarView";
+import { DailyNutritionLog, getLocalDateString } from "@/lib/nutrition-tracker";
 import { ApexFooter } from "@/components/apex/ApexFooter";
 import { MirrorMuscleOverlay } from "@/components/vision/MirrorMuscleOverlay";
 import { logSetOfflineFirst } from "@/lib/local-db";
@@ -79,9 +82,40 @@ export default function ApexDashboard() {
     // Hardware Hooks (Screen WakeLock & Haptic/Audio)
     const { isScreenLocked, triggerRestTimerAlert } = useGymHardware();
 
-    // Active Navigation Tab (3 Pestañas: Gimnasio, Nutrición, Ajustes)
-    const [activeTab, setActiveTab] = useState<"workout" | "nutrition" | "biometrics">("workout");
+    // Active Navigation Tab (4 Pestañas: Gimnasio, Calendario, Nutrición, Ajustes)
+    const [activeTab, setActiveTab] = useState<"workout" | "calendar" | "nutrition" | "biometrics">("workout");
     const [isMuscleMapOpen, setIsMuscleMapOpen] = useState(false);
+
+    // Daily Nutrition Tracker persistent logs by date (YYYY-MM-DD)
+    const [allNutritionLogs, setAllNutritionLogs] = useLocalStorage<Record<string, DailyNutritionLog>>("apex_daily_nutrition_logs", {});
+    const [activeNutritionDate, setActiveNutritionDate] = useState<string>(() => getLocalDateString());
+
+    const handleSaveNutritionLog = (date: string, log: DailyNutritionLog) => {
+        setAllNutritionLogs(prev => ({
+            ...prev,
+            [date]: log
+        }));
+    };
+
+    // Time-based greeting (Buenos días / Buenas tardes / Buenas noches) & Current date in Spanish
+    const timeGreeting = useMemo(() => {
+        const hour = new Date().getHours();
+        if (hour >= 5 && hour < 12) return "Buenos días";
+        if (hour >= 12 && hour < 19) return "Buenas tardes";
+        return "Buenas noches";
+    }, []);
+
+    const todayFormattedDate = useMemo(() => {
+        const now = new Date();
+        const options: Intl.DateTimeFormatOptions = {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric"
+        };
+        const formatted = now.toLocaleDateString("es-MX", options);
+        return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+    }, []);
 
     // Readiness & Environment Telemetry
     const [readiness, setReadiness] = useState<ReadinessState>("optimal");
@@ -469,8 +503,11 @@ export default function ApexDashboard() {
                         </div>
                         <div>
                             <h1 className="text-base sm:text-lg font-bold tracking-tight text-white uppercase leading-none">
-                                Hola {profile.firstName}
+                                {timeGreeting}, {profile.firstName}
                             </h1>
+                            <p className="text-xs text-zinc-400 mt-1 capitalize font-normal">
+                                {todayFormattedDate}
+                            </p>
                         </div>
                     </div>
 
@@ -502,11 +539,12 @@ export default function ApexDashboard() {
                 </div>
             </header>
 
-            {/* Main Tabs Navigation Bar (3 Pestañas: GIMNASIO, NUTRICIÓN, AJUSTES) */}
+            {/* Main Tabs Navigation Bar (4 Pestañas: GIMNASIO, CALENDARIO, NUTRICIÓN, AJUSTES) */}
             <div className="max-w-6xl mx-auto px-4 mt-5">
-                <div className="grid grid-cols-3 bg-[#121214]/90 border border-white/[0.08] rounded-2xl p-1 text-xs font-medium backdrop-blur-xl">
+                <div className="grid grid-cols-4 bg-[#121214]/90 border border-white/[0.08] rounded-2xl p-1 text-xs font-medium backdrop-blur-xl">
                     {[
                         { id: "workout", label: "GIMNASIO", icon: Dumbbell },
+                        { id: "calendar", label: "CALENDARIO", icon: Calendar },
                         { id: "nutrition", label: "NUTRICIÓN", icon: Utensils },
                         { id: "biometrics", label: "AJUSTES", icon: Sliders }
                     ].map(tab => {
@@ -516,13 +554,13 @@ export default function ApexDashboard() {
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as any)}
-                                className={`flex items-center justify-center gap-2 py-2.5 rounded-xl transition-all ${isActive
+                                className={`flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 rounded-xl transition-all ${isActive
                                     ? "bg-white text-black font-semibold shadow-lg"
                                     : "text-zinc-400 hover:text-white hover:bg-white/[0.04]"
                                     }`}
                             >
                                 <Icon size={14} />
-                                <span>{tab.label}</span>
+                                <span className="truncate">{tab.label}</span>
                             </button>
                         );
                     })}
@@ -1096,6 +1134,21 @@ export default function ApexDashboard() {
                     </div>
                 )}
 
+                {/* =========================================================================
+                    TAB 2: CALENDARIO & HISTORIAL UNIFICADO
+                   ========================================================================= */}
+                {activeTab === "calendar" && (
+                    <ApexCalendarView
+                        targetCalories={macros.targetCalories}
+                        allNutritionLogs={allNutritionLogs}
+                        dailyCardio={dailyCardio}
+                        onSelectDateForNutrition={(d) => {
+                            setActiveNutritionDate(d);
+                            setActiveTab("nutrition");
+                        }}
+                        onGoToGym={() => setActiveTab("workout")}
+                    />
+                )}
 
                 {/* =========================================================================
                     TAB 3: NUTRICIÓN & GEMINI CLINICAL
@@ -1164,6 +1217,19 @@ export default function ApexDashboard() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Módulo de Registro Diario en 5 Tiempos & Checklist de Suplementos */}
+                        <DailyMealTracker
+                            targetCalories={macros.targetCalories}
+                            targetProteinG={macros.proteinG}
+                            supplements={supplements}
+                            allNutritionLogs={allNutritionLogs}
+                            onSaveLog={handleSaveNutritionLog}
+                            activeDate={activeNutritionDate}
+                            onSelectDate={setActiveNutritionDate}
+                            dietPlan={dietPlan}
+                            onGoToCalendar={() => setActiveTab("calendar")}
+                        />
 
                         {/* AI 30-Day Plan Generator */}
                         <div className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-6 shadow-2xl">
