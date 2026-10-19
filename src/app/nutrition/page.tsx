@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { DownloadPDFButton } from '@/components/pdf/DownloadPDFButton';
+import { ShoppingList } from '@/components/nutrition/ShoppingList';
 
 export interface DietPlanData {
   monthYear: string;
@@ -140,6 +141,9 @@ export default function NutritionPage() {
               ))}
             </div>
           </div>
+
+          {/* Lista de Compras Dinámica Consolidada de 30 Días */}
+          <ShoppingList />
 
         </div>
       )}

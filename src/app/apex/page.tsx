@@ -60,6 +60,7 @@ import { PwaInstallModal } from "@/components/apex/PwaInstallModal";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { DownloadPDFButton } from "@/components/pdf/DownloadPDFButton";
 import { AppHeaderMenu } from "@/components/ui/AppHeaderMenu";
+import { ShoppingList } from "@/components/nutrition/ShoppingList";
 import { MirrorMuscleOverlay } from "@/components/vision/MirrorMuscleOverlay";
 import { logSetOfflineFirst } from "@/lib/local-db";
 import { playTempoPulse, startTempoLoop, stopTempoLoop } from "@/lib/tempo-sonar";
@@ -1071,6 +1072,9 @@ export default function ApexDashboard() {
                                 ))}
                             </div>
                         </div>
+
+                        {/* Consolidated 30-Day Checklist */}
+                        <ShoppingList />
                     </div>
                 )}
 
