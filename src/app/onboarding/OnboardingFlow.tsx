@@ -7,6 +7,8 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { SliderField } from '@/components/onboarding/SliderField';
 import { Tooltip } from '@/components/ui/Tooltip';
 
+export type FitnessGoal = 'deficit' | 'maintenance' | 'surplus';
+
 export interface UserApexProfile {
   firstName: string;
   lastName: string;
@@ -18,7 +20,9 @@ export interface UserApexProfile {
   trainingDaysPerWeek: number;
   sessionDurationMins: number;
   preferredCardio: 'incline_treadmill' | 'stairmaster' | 'stationary_bike' | 'none';
-  caloricDeficitPct: number;
+  fitnessGoal: FitnessGoal;
+  caloricAdjustmentPct: number; // e.g. -15 for deficit, 0 for maintenance, +15 for surplus
+  caloricDeficitPct: number; // backwards compatibility
   isConfigured: boolean;
 }
 
@@ -32,6 +36,8 @@ export const initialProfile: UserApexProfile = {
   trainingDaysPerWeek: 6,
   sessionDurationMins: 60,
   preferredCardio: 'incline_treadmill',
+  fitnessGoal: 'deficit',
+  caloricAdjustmentPct: -15,
   caloricDeficitPct: 15,
   isConfigured: false,
 };
@@ -185,6 +191,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
                 />
               </div>
 
+              {/* Frecuencia y Duración */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <SliderField
                   label="Días / Semana"
@@ -196,14 +203,182 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
                   onChange={(val) => handleChange('trainingDaysPerWeek', val)}
                 />
                 <SliderField
-                  label="Déficit Calórico"
-                  value={profile.caloricDeficitPct}
-                  min={5}
-                  max={30}
-                  step={5}
-                  unit="%"
-                  onChange={(val) => handleChange('caloricDeficitPct', val)}
+                  label="Duración Sesión"
+                  value={profile.sessionDurationMins}
+                  min={45}
+                  max={90}
+                  step={15}
+                  unit="min"
+                  onChange={(val) => handleChange('sessionDurationMins', val)}
                 />
+              </div>
+
+              {/* OBJETIVO PRINCIPAL DEL ATLETA */}
+              <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-4 sm:p-5">
+                <div className="flex justify-between items-center mb-3">
+                  <label className="text-xs font-mono text-zinc-400 uppercase tracking-wider flex items-center">
+                    OBJETIVO PRINCIPAL
+                    <Tooltip text="Define si el balance calórico y macronutrientes se dirigen a pérdida de grasa, mantenimiento de peso o construcción de masa muscular." />
+                  </label>
+                  <span className={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full border ${
+                    (profile.fitnessGoal || 'deficit') === 'deficit'
+                      ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                      : (profile.fitnessGoal || 'deficit') === 'surplus'
+                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                      : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                  }`}>
+                    {profile.caloricAdjustmentPct > 0 ? `+${profile.caloricAdjustmentPct}%` : `${profile.caloricAdjustmentPct ?? -15}%`}
+                  </span>
+                </div>
+
+                {/* Selector de las 3 opciones principales */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {/* Opción 1: Pérdida / Definición */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleChange('fitnessGoal', 'deficit');
+                      handleChange('caloricAdjustmentPct', -15);
+                      handleChange('caloricDeficitPct', 15);
+                    }}
+                    className={`p-3.5 rounded-xl border text-left transition-all ${
+                      (profile.fitnessGoal || 'deficit') === 'deficit'
+                        ? 'bg-white/[0.08] border-white text-white shadow-md'
+                        : 'bg-black/40 border-white/[0.06] text-zinc-400 hover:text-white hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold font-mono tracking-tight text-white">DÉFICIT</span>
+                      <span className="text-[10px] font-mono text-amber-400 font-bold bg-amber-500/10 px-1.5 py-0.5 rounded">
+                        Negativo (-)
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-zinc-400 leading-snug">
+                      Definición y quema de grasa protegiendo masa magra
+                    </p>
+                  </button>
+
+                  {/* Opción 2: Mantenimiento / Recomposición */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleChange('fitnessGoal', 'maintenance');
+                      handleChange('caloricAdjustmentPct', 0);
+                      handleChange('caloricDeficitPct', 0);
+                    }}
+                    className={`p-3.5 rounded-xl border text-left transition-all ${
+                      profile.fitnessGoal === 'maintenance'
+                        ? 'bg-white/[0.08] border-white text-white shadow-md'
+                        : 'bg-black/40 border-white/[0.06] text-zinc-400 hover:text-white hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold font-mono tracking-tight text-white">MANTENER</span>
+                      <span className="text-[10px] font-mono text-blue-400 font-bold bg-blue-500/10 px-1.5 py-0.5 rounded">
+                        0% Balance
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-zinc-400 leading-snug">
+                      Recomposición corporal y sostenimiento de peso actual
+                    </p>
+                  </button>
+
+                  {/* Opción 3: Superávit / Volumen */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleChange('fitnessGoal', 'surplus');
+                      handleChange('caloricAdjustmentPct', 15);
+                      handleChange('caloricDeficitPct', 0);
+                    }}
+                    className={`p-3.5 rounded-xl border text-left transition-all ${
+                      profile.fitnessGoal === 'surplus'
+                        ? 'bg-white/[0.08] border-white text-white shadow-md'
+                        : 'bg-black/40 border-white/[0.06] text-zinc-400 hover:text-white hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold font-mono tracking-tight text-white">SUPERÁVIT</span>
+                      <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                        Positivo (+)
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-zinc-400 leading-snug">
+                      Volumen muscular e hipertrofia acelerada
+                    </p>
+                  </button>
+                </div>
+
+                {/* Ajuste fino del porcentaje según el objetivo */}
+                <div className="mt-4 pt-3 border-t border-white/[0.06]">
+                  {(profile.fitnessGoal || 'deficit') === 'deficit' && (
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-[11px] font-mono text-zinc-400 uppercase">Intensidad del Déficit</span>
+                        <span className="text-xs font-mono font-bold text-amber-400">
+                          {profile.caloricAdjustmentPct ?? -15}%
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        {[-10, -15, -20, -25].map((val) => (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => {
+                              handleChange('caloricAdjustmentPct', val);
+                              handleChange('caloricDeficitPct', Math.abs(val));
+                            }}
+                            className={`flex-1 py-2 rounded-xl text-xs font-mono font-semibold transition-all border ${
+                              (profile.caloricAdjustmentPct ?? -15) === val
+                                ? 'bg-amber-500/20 border-amber-400 text-white font-bold'
+                                : 'bg-white/[0.03] border-white/[0.08] text-zinc-400 hover:text-white'
+                            }`}
+                          >
+                            {val}%
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {profile.fitnessGoal === 'maintenance' && (
+                    <div className="text-center py-1">
+                      <span className="text-xs font-mono text-zinc-300">
+                        Normocalórica exacta (0% de ajuste) • 100% de tu gasto calórico diario (TDEE).
+                      </span>
+                    </div>
+                  )}
+
+                  {profile.fitnessGoal === 'surplus' && (
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-[11px] font-mono text-zinc-400 uppercase">Excedente Calórico (Surplus)</span>
+                        <span className="text-xs font-mono font-bold text-emerald-400">
+                          +{profile.caloricAdjustmentPct || 15}%
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        {[5, 10, 15, 20].map((val) => (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => {
+                              handleChange('caloricAdjustmentPct', val);
+                              handleChange('caloricDeficitPct', 0);
+                            }}
+                            className={`flex-1 py-2 rounded-xl text-xs font-mono font-semibold transition-all border ${
+                              (profile.caloricAdjustmentPct || 15) === val
+                                ? 'bg-emerald-500/20 border-emerald-400 text-white font-bold'
+                                : 'bg-white/[0.03] border-white/[0.08] text-zinc-400 hover:text-white'
+                            }`}
+                          >
+                            +{val}%
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Preferencia de Cardio */}

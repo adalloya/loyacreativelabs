@@ -34,7 +34,7 @@ export interface DietPlanData {
 export default function NutritionPage() {
   // 1. Guardar y leer el plan de dieta localmente en el navegador
   const [dietPlan, setDietPlan] = useLocalStorage<DietPlanData | null>('apex_diet_plan', null);
-  const [profile] = useLocalStorage('apex_user_profile', { weightKg: 80, targetCalories: 2200, targetProteinG: 180, caloricDeficitPct: 15 });
+  const [profile] = useLocalStorage('apex_user_profile', { weightKg: 80, targetCalories: 2200, targetProteinG: 180, caloricDeficitPct: 15, fitnessGoal: 'deficit', caloricAdjustmentPct: -15 });
   const [loading, setLoading] = useState(false);
 
   // 2. Función para invocar a Gemini y guardar el resultado localmente

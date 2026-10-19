@@ -52,7 +52,14 @@ export async function POST(req: NextRequest) {
 }`
                 });
 
-                const prompt = `Genera el plan mensual para un atleta de ${weight} kg con meta de ${targetCalories} kcal y ${targetProtein}g de proteína en déficit controlado.`;
+                const goal = profile.fitnessGoal || (profile.caloricAdjustmentPct > 0 ? "surplus" : "deficit");
+                const goalDesc = goal === "surplus"
+                    ? `superávit calórico controlado (+${profile.caloricAdjustmentPct || 15}%) para ganancia muscular e hipertrofia`
+                    : goal === "maintenance"
+                    ? `mantenimiento normocalórico (0% de ajuste) para recomposición corporal`
+                    : `déficit calórico (${profile.caloricAdjustmentPct || -15}%) para definición y pérdida de grasa preservando músculo`;
+
+                const prompt = `Genera el plan mensual para un atleta de ${weight} kg con meta de ${targetCalories} kcal y ${targetProtein}g de proteína enfocado en ${goalDesc}.`;
                 const result = await model.generateContent(prompt);
                 const text = result.response.text();
                 const cleaned = text.replace(/```json/g, "").replace(/```/g, "").trim();

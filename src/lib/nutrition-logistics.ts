@@ -2,6 +2,8 @@
 // APEX HYPERTROPHY OS - CLINICAL NUTRITION & LOGISTICS ENGINE
 // ========================================================================
 
+export type FitnessGoal = "deficit" | "maintenance" | "surplus";
+
 export interface BiometricProfile {
     gender: "male" | "female";
     age: number;
@@ -10,7 +12,9 @@ export interface BiometricProfile {
     bodyFatPct?: number;
     skeletalMusclePct?: number;
     trainingDaysPerWeek: number;
-    caloricDeficitPct: number; // e.g. 15 or 20
+    fitnessGoal?: FitnessGoal;
+    caloricAdjustmentPct?: number; // e.g. -15 for deficit, 0 for maintenance, +15 for surplus
+    caloricDeficitPct?: number; // backwards compatibility
 }
 
 export interface MacroTarget {
@@ -88,12 +92,25 @@ export function calculateMetabolism(bio: BiometricProfile): MacroTarget {
     }
 
     const tdee = Math.round(tmb * activityMultiplier);
-    const deficitFactor = 1 - (bio.caloricDeficitPct || 15) / 100;
-    const targetCalories = Math.round(tdee * deficitFactor);
+
+    // Ajuste Calórico con Signo (+ o -):
+    // Si caloricAdjustmentPct viene explícito (ej. -15, 0, +15), lo usamos directamente.
+    // Si viene caloricDeficitPct histórico (ej. 15), se aplica como negativo (-15).
+    let adjustmentPct = -15;
+    if (typeof bio.caloricAdjustmentPct === "number") {
+        adjustmentPct = bio.caloricAdjustmentPct;
+    } else if (typeof bio.caloricDeficitPct === "number") {
+        adjustmentPct = -Math.abs(bio.caloricDeficitPct);
+    }
+
+    const caloricFactor = 1 + (adjustmentPct / 100);
+    const targetCalories = Math.max(1200, Math.round(tdee * caloricFactor));
 
     // Distribución de macronutrientes:
-    // Proteína fija en 2.2g / kg de peso corporal (óptimo para retención muscular en déficit)
-    const proteinG = Math.round(bio.weightKg * 2.2);
+    // Proteína: 2.2g / kg en déficit (preservación muscular); 2.0g / kg en superávit o mantenimiento
+    const proteinRatio = adjustmentPct < 0 ? 2.2 : 2.0;
+    const proteinG = Math.round(bio.weightKg * proteinRatio);
+
     // Grasas soporte hormonal: 0.85g / kg
     const fatsG = Math.round(bio.weightKg * 0.85);
 

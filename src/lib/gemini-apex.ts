@@ -76,11 +76,18 @@ Formato JSON requerido:
 }
 `;
 
+    const goalLabel = bio.fitnessGoal === "surplus"
+        ? `Superávit de +${bio.caloricAdjustmentPct || 15}% (Ganancia muscular e hipertrofia)`
+        : bio.fitnessGoal === "maintenance"
+        ? "Normocalórica / Mantenimiento (0% de ajuste, recomposición corporal)"
+        : `Déficit de ${bio.caloricAdjustmentPct || -15}% (Pérdida de grasa / definición)`;
+
     const userPrompt = `
 Datos del atleta:
 - Género: ${bio.gender} | Edad: ${bio.age} años | Peso: ${bio.weightKg} kg | Altura: ${bio.heightCm} cm
 - Grasa Corporal: ${bio.bodyFatPct ? bio.bodyFatPct + "%" : "No especificada"}
-- Meta Diaria: ${macros.targetCalories} kcal (Déficit de ${bio.caloricDeficitPct}%)
+- Objetivo Fisiológico: ${goalLabel}
+- Meta Diaria: ${macros.targetCalories} kcal
 - Macros Clave: ${macros.proteinG}g Proteína | ${macros.carbsG}g Carbohidratos | ${macros.fatsG}g Grasas
 - Entrenamiento: ${bio.trainingDaysPerWeek} días/semana.
 `;
@@ -93,11 +100,11 @@ Datos del atleta:
         console.warn("Fallback to local template for diet plan:", e);
         // Fallback robusto instantáneo
         return {
-            monthlySummary: `Plan estructurado para déficit calórico de ${bio.caloricDeficitPct}% con ${macros.proteinG}g de proteína diaria para preservación de tejido contráctil.`,
+            monthlySummary: `Plan estructurado para ${goalLabel} con ${macros.proteinG}g de proteína diaria (${macros.targetCalories} kcal/día).`,
             weeklyTemplates: [
                 {
                     weekNumber: 1,
-                    focus: "Estabilización de glucógeno y saciedad",
+                    focus: bio.fitnessGoal === "surplus" ? "Superávit anabólico y recarga de glucógeno" : bio.fitnessGoal === "maintenance" ? "Recomposición corporal y balance energético" : "Estabilización de glucógeno y saciedad",
                     meals: [
                         { name: "Comida 1 (Desayuno)", items: "3 huevos al gusto + 60g de avena en hojuelas", calories: Math.round(macros.targetCalories * 0.25), proteinG: Math.round(macros.proteinG * 0.25) },
                         { name: "Comida 2 (Almuerzo Peri-Workout)", items: `${Math.round(bio.weightKg * 2.2)}g pechuga de pollo + 150g arroz cocido + espinacas`, calories: Math.round(macros.targetCalories * 0.35), proteinG: Math.round(macros.proteinG * 0.40) },

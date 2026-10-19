@@ -123,7 +123,13 @@ export function WorkoutPDFDocument({ profile, routine = [], diet }: { profile: a
             <Text style={styles.brand}>APEX</Text>
             <Text style={styles.title}>Blueprint de Entrenamiento</Text>
           </View>
-          <Text style={styles.badge}>DEFICIT -{profile?.caloricDeficitPct || 15}%</Text>
+          <Text style={styles.badge}>
+            {profile?.fitnessGoal === "surplus"
+              ? `SURPLUS +${profile?.caloricAdjustmentPct || 15}%`
+              : profile?.fitnessGoal === "maintenance"
+              ? "MAINTENANCE 0%"
+              : `DEFICIT ${profile?.caloricAdjustmentPct ? `${profile.caloricAdjustmentPct}%` : `-${profile?.caloricDeficitPct || 15}%`}`}
+          </Text>
         </View>
 
         {/* Bloque Biométrico */}

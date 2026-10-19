@@ -111,16 +111,24 @@ export default function ApexDashboard() {
     const [refreshKey, setRefreshKey] = useState(0);
 
     // Biometrics State adapted from calibrated profile
-    const bio: BiometricProfile = useMemo(() => ({
-        gender: profile?.gender || "male",
-        age: profile?.age || 38,
-        weightKg: profile?.weightKg || 80,
-        heightCm: profile?.heightCm || 178,
-        bodyFatPct: profile?.bodyFatPct || 14.5,
-        skeletalMusclePct: 42.0,
-        trainingDaysPerWeek: profile?.trainingDaysPerWeek || 6,
-        caloricDeficitPct: profile?.caloricDeficitPct || 15
-    }), [profile]);
+    const bio: BiometricProfile = useMemo(() => {
+        const goal = profile?.fitnessGoal || "deficit";
+        const adj = typeof profile?.caloricAdjustmentPct === "number"
+            ? profile.caloricAdjustmentPct
+            : (profile?.caloricDeficitPct ? -Math.abs(profile.caloricDeficitPct) : -15);
+        return {
+            gender: profile?.gender || "male",
+            age: profile?.age || 38,
+            weightKg: profile?.weightKg || 80,
+            heightCm: profile?.heightCm || 178,
+            bodyFatPct: profile?.bodyFatPct || 14.5,
+            skeletalMusclePct: 42.0,
+            trainingDaysPerWeek: profile?.trainingDaysPerWeek || 6,
+            fitnessGoal: goal,
+            caloricAdjustmentPct: adj,
+            caloricDeficitPct: adj < 0 ? Math.abs(adj) : 0
+        };
+    }, [profile]);
 
     const setBio = (updated: BiometricProfile) => {
         if (!profile) return;
@@ -132,7 +140,9 @@ export default function ApexDashboard() {
             heightCm: updated.heightCm,
             bodyFatPct: updated.bodyFatPct,
             trainingDaysPerWeek: updated.trainingDaysPerWeek,
-            caloricDeficitPct: updated.caloricDeficitPct
+            fitnessGoal: updated.fitnessGoal || profile.fitnessGoal || "deficit",
+            caloricAdjustmentPct: updated.caloricAdjustmentPct !== undefined ? updated.caloricAdjustmentPct : profile.caloricAdjustmentPct,
+            caloricDeficitPct: updated.caloricDeficitPct !== undefined ? updated.caloricDeficitPct : profile.caloricDeficitPct
         });
     };
 
@@ -955,7 +965,16 @@ export default function ApexDashboard() {
                                         </span>
                                     </div>
                                     <h3 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-                                        <span className="font-mono">{macros.targetCalories}</span> <span className="text-sm font-normal text-zinc-400">kcal/día (-{bio.caloricDeficitPct}%)</span>
+                                        <span className="font-mono">{macros.targetCalories}</span>{" "}
+                                        <span className="text-sm font-normal text-zinc-400">
+                                            kcal/día (
+                                            {bio.caloricAdjustmentPct === 0
+                                                ? "Mantenimiento 0%"
+                                                : (bio.caloricAdjustmentPct && bio.caloricAdjustmentPct > 0)
+                                                ? `+${bio.caloricAdjustmentPct}% Superávit`
+                                                : `${bio.caloricAdjustmentPct || -15}% Déficit`}
+                                            )
+                                        </span>
                                     </h3>
                                 </div>
 
@@ -1185,22 +1204,98 @@ export default function ApexDashboard() {
                                     </select>
                                 </div>
 
-                                <div className="sm:col-span-2">
-                                    <label className="text-zinc-400 text-xs font-medium block mb-1.5">DÉFICIT CALÓRICO OBJETIVO (%)</label>
-                                    <div className="flex gap-2">
-                                        {[10, 15, 20, 25].map(pct => (
-                                            <button
-                                                key={pct}
-                                                onClick={() => setBio({ ...bio, caloricDeficitPct: pct })}
-                                                className={`flex-1 py-2.5 rounded-2xl border text-xs font-semibold transition-all ${bio.caloricDeficitPct === pct
-                                                    ? "bg-white text-black border-white shadow-sm"
-                                                    : "bg-white/[0.04] text-zinc-400 border-white/[0.06] hover:text-white"
-                                                    }`}
-                                            >
-                                                -{pct}%
-                                            </button>
-                                        ))}
+                                <div className="sm:col-span-2 space-y-3 pt-1">
+                                    <div className="flex justify-between items-center">
+                                        <label className="text-zinc-400 text-xs font-medium block">
+                                            OBJETIVO NUTRICIONAL & CALÓRICO
+                                        </label>
+                                        <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full border ${
+                                            (bio.fitnessGoal || "deficit") === "deficit"
+                                                ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                                                : (bio.fitnessGoal || "deficit") === "surplus"
+                                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                                : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                                        }`}>
+                                            {bio.caloricAdjustmentPct && bio.caloricAdjustmentPct > 0 ? `+${bio.caloricAdjustmentPct}%` : `${bio.caloricAdjustmentPct ?? -15}%`}
+                                        </span>
                                     </div>
+
+                                    {/* 3 Botones de Objetivo */}
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <button
+                                            onClick={() => setBio({ ...bio, fitnessGoal: "deficit", caloricAdjustmentPct: -15, caloricDeficitPct: 15 })}
+                                            className={`py-2 rounded-xl border text-xs font-semibold transition-all ${
+                                                (bio.fitnessGoal || "deficit") === "deficit"
+                                                    ? "bg-white text-black border-white shadow-sm font-bold"
+                                                    : "bg-white/[0.04] text-zinc-400 border-white/[0.06] hover:text-white"
+                                            }`}
+                                        >
+                                            Déficit (-)
+                                        </button>
+                                        <button
+                                            onClick={() => setBio({ ...bio, fitnessGoal: "maintenance", caloricAdjustmentPct: 0, caloricDeficitPct: 0 })}
+                                            className={`py-2 rounded-xl border text-xs font-semibold transition-all ${
+                                                bio.fitnessGoal === "maintenance"
+                                                    ? "bg-white text-black border-white shadow-sm font-bold"
+                                                    : "bg-white/[0.04] text-zinc-400 border-white/[0.06] hover:text-white"
+                                            }`}
+                                        >
+                                            Mantener (0%)
+                                        </button>
+                                        <button
+                                            onClick={() => setBio({ ...bio, fitnessGoal: "surplus", caloricAdjustmentPct: 15, caloricDeficitPct: 0 })}
+                                            className={`py-2 rounded-xl border text-xs font-semibold transition-all ${
+                                                bio.fitnessGoal === "surplus"
+                                                    ? "bg-white text-black border-white shadow-sm font-bold"
+                                                    : "bg-white/[0.04] text-zinc-400 border-white/[0.06] hover:text-white"
+                                            }`}
+                                        >
+                                            Superávit (+)
+                                        </button>
+                                    </div>
+
+                                    {/* Botones de Porcentaje según el Objetivo */}
+                                    {(bio.fitnessGoal || "deficit") === "deficit" && (
+                                        <div className="flex gap-2 pt-1">
+                                            {[-10, -15, -20, -25].map(pct => (
+                                                <button
+                                                    key={pct}
+                                                    onClick={() => setBio({ ...bio, caloricAdjustmentPct: pct, caloricDeficitPct: Math.abs(pct) })}
+                                                    className={`flex-1 py-2 rounded-xl border text-xs font-mono font-semibold transition-all ${
+                                                        (bio.caloricAdjustmentPct ?? -15) === pct
+                                                            ? "bg-amber-500/20 text-amber-300 border-amber-400/50 shadow-sm"
+                                                            : "bg-white/[0.04] text-zinc-400 border-white/[0.06] hover:text-white"
+                                                    }`}
+                                                >
+                                                    {pct}%
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {bio.fitnessGoal === "maintenance" && (
+                                        <div className="text-center py-1 text-zinc-400 text-xs font-mono">
+                                            Balance 0% • 100% TDEE ({macros.tdee} kcal/día)
+                                        </div>
+                                    )}
+
+                                    {bio.fitnessGoal === "surplus" && (
+                                        <div className="flex gap-2 pt-1">
+                                            {[5, 10, 15, 20].map(pct => (
+                                                <button
+                                                    key={pct}
+                                                    onClick={() => setBio({ ...bio, caloricAdjustmentPct: pct, caloricDeficitPct: 0 })}
+                                                    className={`flex-1 py-2 rounded-xl border text-xs font-mono font-semibold transition-all ${
+                                                        (bio.caloricAdjustmentPct || 15) === pct
+                                                            ? "bg-emerald-500/20 text-emerald-300 border-emerald-400/50 shadow-sm"
+                                                            : "bg-white/[0.04] text-zinc-400 border-white/[0.06] hover:text-white"
+                                                    }`}
+                                                >
+                                                    +{pct}%
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
