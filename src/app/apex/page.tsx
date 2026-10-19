@@ -26,8 +26,10 @@ import {
     Calendar,
     ShoppingCart,
     Mic,
-    Gauge
+    Gauge,
+    ExternalLink
 } from "lucide-react";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 import {
     MuscleGroup,
@@ -580,8 +582,9 @@ export default function ApexDashboard() {
                                                                 • {ex.equipment}
                                                             </span>
                                                         </div>
-                                                        <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight">
+                                                        <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight flex items-center">
                                                             {ex.name}
+                                                            <Tooltip text="Seleccionado por su perfil de resistencia óptimo para generar tensión mecánica en fase de estiramiento." />
                                                         </h3>
                                                         <p className="text-xs text-zinc-400 mt-1 leading-relaxed font-normal">
                                                             Instrucción biomecánica: {ex.biomechanical_cue}
@@ -590,6 +593,19 @@ export default function ApexDashboard() {
 
                                                     {/* Top Actions: Monochromatic Apple pills */}
                                                     <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                                                        {/* YouTube Direct Search Button */}
+                                                        <a
+                                                            href={`https://www.youtube.com/results?search_query=${encodeURIComponent(ex.name + " form technique hypertrophy")}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-medium bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 hover:text-white border border-white/[0.08] transition-all"
+                                                            title="Ver técnica en YouTube"
+                                                        >
+                                                            <Play className="w-3 h-3 fill-white text-white" />
+                                                            <span>YouTube</span>
+                                                            <ExternalLink className="w-3 h-3 opacity-60" />
+                                                        </a>
+
                                                         {/* Tempo Sonar Pill */}
                                                         <button
                                                             onClick={() => {
