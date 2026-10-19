@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { Download, X } from 'lucide-react';
 
 export function PWAInstallBanner() {
@@ -49,8 +50,14 @@ export function PWAInstallBanner() {
       <div className="bg-[#121214]/90 backdrop-blur-2xl border border-white/[0.12] rounded-3xl p-4 shadow-2xl flex items-center justify-between gap-4 text-white">
         
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-zinc-800 to-black border border-white/10 flex items-center justify-center flex-shrink-0 shadow-inner">
-            <span className="font-mono font-bold text-sm text-[#FF2A2A]">APEX</span>
+          <div className="relative w-12 h-12 rounded-2xl overflow-hidden border border-white/10 bg-[#111111] shrink-0 shadow-lg shadow-red-950/20">
+            <Image
+              src="/apex-logo.png"
+              alt="APEX OS Logo"
+              width={48}
+              height={48}
+              className="w-full h-full object-cover"
+            />
           </div>
           <div>
             <h4 className="text-sm font-semibold tracking-tight">Instalar Apex Hypertrophy OS</h4>

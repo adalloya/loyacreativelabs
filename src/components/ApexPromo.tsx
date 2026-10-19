@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { Dumbbell, Activity, Sparkles, Smartphone, Shield, Zap, ArrowRight, Check } from "lucide-react";
 
@@ -13,6 +14,18 @@ export default function ApexPromo() {
             <div className="max-w-7xl mx-auto relative z-10">
                 {/* Header Badge & Title */}
                 <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
+                    <div className="flex justify-center mb-2">
+                        <div className="relative w-16 h-16 rounded-2xl overflow-hidden border border-white/10 bg-[#111111] shadow-2xl shadow-red-950/40">
+                            <Image
+                                src="/apex-logo.png"
+                                alt="APEX OS"
+                                width={64}
+                                height={64}
+                                className="w-full h-full object-cover"
+                            />
+                        </div>
+                    </div>
+
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-950/40 border border-red-500/30 text-red-400 text-xs font-mono font-bold tracking-widest uppercase">
                         <Zap size={14} className="fill-red-400" /> LOYA LABS SOFTWARE // NUEVA HERRAMIENTA
                     </div>

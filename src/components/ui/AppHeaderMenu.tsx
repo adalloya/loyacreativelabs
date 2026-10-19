@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { Menu, X, Download, Shield, Sliders } from 'lucide-react';
 
 export function AppHeaderMenu({ 
@@ -39,12 +40,23 @@ export function AppHeaderMenu({
 
           <div className="absolute right-0 mt-3 w-72 bg-[#121214]/95 backdrop-blur-2xl border border-white/[0.12] rounded-3xl p-5 shadow-2xl z-50 text-white animate-in fade-in slide-in-from-top-2 duration-200">
             
-            {/* Cabecera del Menú */}
+            {/* Cabecera del Menú con Logo APEX */}
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.08]">
-              <div className="flex items-center gap-2">
-                <Sliders className="w-4 h-4 text-[#FF2A2A]" />
-                <span className="text-xs font-mono tracking-widest uppercase text-zinc-400">CONFIGURACIÓN OS</span>
+              <div className="flex items-center gap-2.5">
+                <div className="relative w-6 h-6 rounded-lg overflow-hidden border border-white/10 bg-black shrink-0">
+                  <Image
+                    src="/apex-logo.png"
+                    alt="APEX OS"
+                    width={24}
+                    height={24}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <span className="text-xs font-mono tracking-widest uppercase text-white font-bold">APEX OS</span>
               </div>
+              <span className="text-[10px] font-mono text-zinc-500 bg-white/[0.04] px-2 py-0.5 rounded-full border border-white/[0.06]">
+                MENU
+              </span>
             </div>
 
             {/* Selector de Disposición / Entorno dentro del menú */}

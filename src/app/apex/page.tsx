@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
     Activity,
@@ -61,6 +62,7 @@ import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { DownloadPDFButton } from "@/components/pdf/DownloadPDFButton";
 import { AppHeaderMenu } from "@/components/ui/AppHeaderMenu";
 import { ShoppingList } from "@/components/nutrition/ShoppingList";
+import { ApexFooter } from "@/components/apex/ApexFooter";
 import { MirrorMuscleOverlay } from "@/components/vision/MirrorMuscleOverlay";
 import { logSetOfflineFirst } from "@/lib/local-db";
 import { playTempoPulse, startTempoLoop, stopTempoLoop } from "@/lib/tempo-sonar";
@@ -371,13 +373,25 @@ export default function ApexDashboard() {
             {/* Top Navigation & Telemetry Header */}
             <header className="sticky top-0 z-40 bg-[#000000]/80 backdrop-blur-2xl border-b border-white/[0.08] px-4 py-3">
                 <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
-                    {/* Brand & Greeting (No unnecessary back/home buttons) */}
-                    <div className="flex items-center gap-2.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-[#FF2A2A] animate-pulse shrink-0" />
+                    {/* Brand & Greeting with APEX Logo */}
+                    <div className="flex items-center gap-3">
+                        <div className="relative w-9 h-9 rounded-xl overflow-hidden border border-white/[0.12] bg-[#111111] shrink-0 shadow-md shadow-red-950/20">
+                            <Image
+                                src="/apex-logo.png"
+                                alt="APEX OS"
+                                width={36}
+                                height={36}
+                                className="w-full h-full object-cover"
+                                priority
+                            />
+                        </div>
                         <div>
-                            <span className="text-[10px] font-mono text-[#FF2A2A] tracking-widest uppercase block">
-                                APEX // HYPERTROPHY OS
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#FF2A2A] animate-pulse shrink-0" />
+                                <span className="text-[10px] font-mono text-[#FF2A2A] tracking-widest uppercase block">
+                                    APEX // HYPERTROPHY OS
+                                </span>
+                            </div>
                             <h1 className="text-base sm:text-lg font-bold tracking-tight text-white uppercase leading-none mt-0.5">
                                 Hola, {profile.firstName} ⚡
                             </h1>
@@ -1329,6 +1343,9 @@ export default function ApexDashboard() {
                     </div>
                 </div>
             )}
+
+            {/* Executive Apple / Tesla Style Footer */}
+            <ApexFooter />
 
             {/* PWA Floating Installation Prompt Banner */}
             <PWAInstallBanner />

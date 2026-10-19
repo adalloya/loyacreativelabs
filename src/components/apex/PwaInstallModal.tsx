@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { X, Smartphone, Share2, PlusSquare, CheckCircle, Zap } from "lucide-react";
 
 interface PwaInstallModalProps {
@@ -14,9 +15,15 @@ export function PwaInstallModal({ onClose }: PwaInstallModalProps) {
             <div className="relative w-full max-w-md bg-[#0A0D12] border border-[#1E2633] rounded-2xl p-5 sm:p-6 shadow-2xl z-10 text-white">
                 {/* Header */}
                 <div className="flex justify-between items-start border-b border-[#1E2633] pb-3 mb-4">
-                    <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-[#FF2A2A]/10 border border-[#FF2A2A]/30 flex items-center justify-center text-[#FF2A2A]">
-                            <Smartphone size={18} />
+                    <div className="flex items-center gap-3">
+                        <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-white/10 bg-[#111111] shrink-0 shadow-lg shadow-red-950/20">
+                            <Image
+                                src="/apex-logo.png"
+                                alt="APEX OS Logo"
+                                width={40}
+                                height={40}
+                                className="w-full h-full object-cover"
+                            />
                         </div>
                         <div>
                             <h2 className="text-base font-bold tracking-tight text-white">INSTALAR APEX EN TU CELULAR</h2>

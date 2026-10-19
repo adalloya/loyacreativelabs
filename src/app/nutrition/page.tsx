@@ -2,10 +2,12 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { DownloadPDFButton } from '@/components/pdf/DownloadPDFButton';
 import { ShoppingList } from '@/components/nutrition/ShoppingList';
+import { ApexFooter } from '@/components/apex/ApexFooter';
 
 export interface DietPlanData {
   monthYear: string;
@@ -65,11 +67,23 @@ export default function NutritionPage() {
         </Link>
       </div>
 
-      {/* Header Editorial */}
+      {/* Header Editorial con Logo APEX */}
       <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-white/[0.08] pb-6 mb-8 gap-4">
-        <div>
-          <span className="text-xs font-mono text-zinc-500 tracking-widest uppercase">MÓDULO CLÍNICO // NUTRICIÓN OS</span>
-          <h1 className="text-3xl font-bold tracking-tight mt-1">PLAN MENSUAL & SUPLEMENTACIÓN</h1>
+        <div className="flex items-center gap-3.5">
+          <div className="relative w-12 h-12 rounded-2xl overflow-hidden border border-white/[0.12] bg-[#111111] shrink-0 shadow-lg shadow-red-950/20">
+            <Image
+              src="/apex-logo.png"
+              alt="APEX OS Logo"
+              width={48}
+              height={48}
+              className="w-full h-full object-cover"
+              priority
+            />
+          </div>
+          <div>
+            <span className="text-xs font-mono text-[#FF2A2A] tracking-widest uppercase block">MÓDULO CLÍNICO // NUTRICIÓN OS</span>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mt-0.5">PLAN MENSUAL & SUPLEMENTACIÓN</h1>
+          </div>
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
@@ -148,6 +162,8 @@ export default function NutritionPage() {
         </div>
       )}
 
+      {/* Executive Apple / Tesla Style Footer */}
+      <ApexFooter />
     </div>
   );
 }

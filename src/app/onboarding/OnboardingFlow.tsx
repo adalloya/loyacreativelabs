@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { SliderField } from '@/components/onboarding/SliderField';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -57,20 +58,32 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
     <div className="min-h-screen bg-black text-white flex items-center justify-center p-4 sm:p-6 selection:bg-[#FF2A2A]/30 selection:text-white">
       <div className="w-full max-w-xl bg-[#121214]/90 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 sm:p-8 shadow-2xl">
         
-        {/* Header de Configuración */}
-        <div className="mb-6 border-b border-white/[0.08] pb-4">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#FF2A2A] animate-pulse" />
-            <span className="text-[10px] font-mono tracking-widest text-[#FF2A2A] uppercase">
-              SISTEMA DE CALIBRACIÓN // APEX OS
-            </span>
+        {/* Header de Configuración con Logo APEX */}
+        <div className="mb-6 border-b border-white/[0.08] pb-4 flex items-start gap-4">
+          <div className="relative w-12 h-12 rounded-2xl overflow-hidden border border-white/[0.12] bg-[#111111] shrink-0 shadow-lg shadow-red-950/20">
+            <Image
+              src="/apex-logo.png"
+              alt="APEX OS Logo"
+              width={48}
+              height={48}
+              className="w-full h-full object-cover"
+              priority
+            />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight uppercase mt-1">
-            {step === 1 ? 'Identificación del Atleta' : 'Parámetros Biomecánicos'}
-          </h1>
-          <p className="text-xs text-zinc-400 mt-1 font-mono">
-            Paso {step} de 2 • Todo el motor de hipertrofia y dieta se adaptará a estos datos.
-          </p>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#FF2A2A] animate-pulse" />
+              <span className="text-[10px] font-mono tracking-widest text-[#FF2A2A] uppercase">
+                SISTEMA DE CALIBRACIÓN // APEX OS
+              </span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight uppercase mt-0.5">
+              {step === 1 ? 'Identificación del Atleta' : 'Parámetros Biomecánicos'}
+            </h1>
+            <p className="text-xs text-zinc-400 mt-1 font-mono">
+              Paso {step} de 2 • Todo el motor de hipertrofia y dieta se adaptará a estos datos.
+            </p>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">

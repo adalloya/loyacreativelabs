@@ -10,6 +10,7 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://loyacreativelab.com"),
   title: {
     default: "Loya Creative Lab | Diseño Web, Branding & IA",
     template: "%s | Loya Creative Lab"
