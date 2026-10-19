@@ -1,75 +1,141 @@
 // ========================================================================
-// APEX HYPERTROPHY OS - TEMPO SONAR PACER (TONE.JS)
+// APEX HYPERTROPHY OS - ACOUSTIC TEMPO SONAR ENGINE (TONE.JS)
 // ========================================================================
 
-let audioContext: AudioContext | null = null;
+import * as Tone from "tone";
 
-function getSafeAudioContext(): AudioContext | null {
+let synth: Tone.Synth | null = null;
+
+// Registry of active interval timers by exercise ID
+const activeTempoIntervals: Map<string, NodeJS.Timeout> = new Map();
+
+/**
+ * Inicializa y obtiene la instancia de Tone.Synth bajo demanda en el cliente
+ */
+async function getOrInitSynth(): Promise<Tone.Synth | null> {
     if (typeof window === "undefined") return null;
-    if (!audioContext) {
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioCtx) {
-            audioContext = new AudioCtx();
+
+    try {
+        // En los navegadores modernos, AudioContext requiere gesto del usuario
+        if (Tone.context.state !== "running") {
+            await Tone.start();
         }
+
+        if (!synth) {
+            synth = new Tone.Synth({
+                oscillator: {
+                    type: "sine"
+                },
+                envelope: {
+                    attack: 0.005,
+                    decay: 0.12,
+                    sustain: 0.0,
+                    release: 0.1
+                }
+            }).toDestination();
+
+            // Atenuación suave (-8dB) para no saturar con música de fondo o AirPods
+            synth.volume.value = -8;
+        }
+
+        return synth;
+    } catch (e) {
+        console.warn("[Tone.js] Error initializing synth:", e);
+        return null;
     }
-    if (audioContext && audioContext.state === "suspended") {
-        audioContext.resume().catch(() => {});
+}
+
+export type TempoPhase = "eccentric_tick" | "stretch_pause" | "concentric_blast";
+
+/**
+ * Emite los tonos exactos mediante Tone.Synth según la fase biomecánica:
+ * - eccentric_tick: Tono descendente sutil (G3 -> D3)
+ * - stretch_pause: Clic seco percusivo en estiramiento máximo (C6 seco)
+ * - concentric_blast: Pulso ascendente explosivo (C4 -> G4)
+ */
+export async function playTempoPulse(phase: TempoPhase): Promise<void> {
+    const s = await getOrInitSynth();
+    if (!s) return;
+
+    try {
+        const now = Tone.now();
+
+        if (phase === "eccentric_tick") {
+            // Fase Excéntrica: Descenso controlado de tono (G3 -> D3)
+            s.triggerAttack("G3", now);
+            s.frequency.rampTo("D3", 0.15, now);
+            s.triggerRelease(now + 0.15);
+        } else if (phase === "stretch_pause") {
+            // Pausa isométrica en estiramiento: Clic seco ultra corto
+            s.triggerAttackRelease("C6", "32n", now);
+        } else if (phase === "concentric_blast") {
+            // Fase Concéntrica: Aceleración ascendente de tono (C4 -> G4)
+            s.triggerAttack("C4", now);
+            s.frequency.rampTo("G4", 0.18, now);
+            s.triggerRelease(now + 0.18);
+        }
+    } catch (e) {
+        console.warn("[Tone.js] Error triggering tempo pulse:", e);
     }
-    return audioContext;
 }
 
 /**
- * Emite pulsos sonoros espaciales y de volumen atenuado para no cortar Spotify/AirPods
+ * Inicia el loop del metrónomo acústico biomecánico (3 segundos excéntrica, 1 pausa, 1 concéntrica)
  */
-export function playTempoPulse(phase: "eccentric_tick" | "stretch_pause" | "concentric_blast") {
-    const ctx = getSafeAudioContext();
-    if (!ctx) return;
+export function startTempoLoop(
+    exerciseId: string,
+    cadence = { eccentric: 3, pause: 1, concentric: 1 },
+    onTick?: (phase: TempoPhase, count: number) => void
+): void {
+    stopTempoLoop(exerciseId);
 
-    try {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
+    const totalSeconds = cadence.eccentric + cadence.pause + cadence.concentric;
+    let currentSecond = 0;
 
-        const now = ctx.currentTime;
+    // Primer pulso inmediato
+    playTempoPulse("eccentric_tick");
+    if (onTick) onTick("eccentric_tick", 1);
 
-        if (phase === "eccentric_tick") {
-            // Fase excéntrica: tono grave descendente sutil (220Hz -> 140Hz)
-            osc.type = "sine";
-            osc.frequency.setValueAtTime(220, now);
-            osc.frequency.exponentialRampToValueAtTime(140, now + 0.15);
-            gain.gain.setValueAtTime(0.06, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+    const interval = setInterval(() => {
+        currentSecond = (currentSecond + 1) % totalSeconds;
 
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start(now);
-            osc.stop(now + 0.15);
-
-        } else if (phase === "stretch_pause") {
-            // Pausa isométrica en máximo estiramiento: clic seco técnico (300Hz)
-            osc.type = "triangle";
-            osc.frequency.setValueAtTime(320, now);
-            gain.gain.setValueAtTime(0.09, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start(now);
-            osc.stop(now + 0.08);
-
-        } else if (phase === "concentric_blast") {
-            // Fase concéntrica explosiva: pulso ascendente limpio (440Hz -> 660Hz)
-            osc.type = "sine";
-            osc.frequency.setValueAtTime(440, now);
-            osc.frequency.exponentialRampToValueAtTime(660, now + 0.2);
-            gain.gain.setValueAtTime(0.08, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start(now);
-            osc.stop(now + 0.2);
+        if (currentSecond < cadence.eccentric) {
+            // Segundos de la excéntrica (1, 2, 3...)
+            playTempoPulse("eccentric_tick");
+            if (onTick) onTick("eccentric_tick", currentSecond + 1);
+        } else if (currentSecond < cadence.eccentric + cadence.pause) {
+            // Segundo de la pausa isométrica
+            playTempoPulse("stretch_pause");
+            if (onTick) onTick("stretch_pause", 1);
+        } else {
+            // Segundo de la concéntrica explosiva
+            playTempoPulse("concentric_blast");
+            if (onTick) onTick("concentric_blast", 1);
         }
-    } catch (e) {
-        console.warn("[TEMPO SONAR] Audio context error:", e);
+    }, 1000);
+
+    activeTempoIntervals.set(exerciseId, interval);
+}
+
+/**
+ * Detiene el loop del metrónomo acústico para un ejercicio o para todos
+ */
+export function stopTempoLoop(exerciseId?: string): void {
+    if (exerciseId) {
+        const interval = activeTempoIntervals.get(exerciseId);
+        if (interval) {
+            clearInterval(interval);
+            activeTempoIntervals.delete(exerciseId);
+        }
+    } else {
+        activeTempoIntervals.forEach((interval) => clearInterval(interval));
+        activeTempoIntervals.clear();
     }
+}
+
+/**
+ * Comprueba si el sonar está activo para un ejercicio
+ */
+export function isTempoLoopActive(exerciseId: string): boolean {
+    return activeTempoIntervals.has(exerciseId);
 }

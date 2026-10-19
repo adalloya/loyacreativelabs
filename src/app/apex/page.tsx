@@ -57,7 +57,7 @@ import { PlateCalculatorModal } from "@/components/apex/PlateCalculatorModal";
 import { PwaInstallModal } from "@/components/apex/PwaInstallModal";
 import { MirrorMuscleOverlay } from "@/components/vision/MirrorMuscleOverlay";
 import { logSetOfflineFirst } from "@/lib/local-db";
-import { playTempoPulse } from "@/lib/tempo-sonar";
+import { playTempoPulse, startTempoLoop, stopTempoLoop } from "@/lib/tempo-sonar";
 import { useVoiceLogger } from "@/hooks/useVoiceLogger";
 
 export default function ApexDashboard() {
@@ -164,6 +164,13 @@ export default function ApexDashboard() {
 
         return () => clearInterval(interval);
     }, [restRemaining, triggerRestTimerAlert]);
+
+    // Cleanup active tempo sonar loops on unmount
+    useEffect(() => {
+        return () => {
+            stopTempoLoop();
+        };
+    }, []);
 
     // Set Completion with Dexie.js Offline-First logging
     const handleCompleteSet = (exerciseId: string, setIdx: number, restSeconds: number, customWeight?: number, customReps?: number) => {
@@ -503,7 +510,11 @@ export default function ApexDashboard() {
                                                             onClick={() => {
                                                                 const nextState = !tempoActive[ex.id];
                                                                 setTempoActive(prev => ({ ...prev, [ex.id]: nextState }));
-                                                                if (nextState) playTempoPulse("eccentric_tick");
+                                                                if (nextState) {
+                                                                    startTempoLoop(ex.id);
+                                                                } else {
+                                                                    stopTempoLoop(ex.id);
+                                                                }
                                                             }}
                                                             className={`px-3 py-1.5 rounded-full text-xs font-mono font-medium transition-all border ${
                                                                 tempoActive[ex.id]

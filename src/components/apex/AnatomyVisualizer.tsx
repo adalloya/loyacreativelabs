@@ -5,7 +5,8 @@ import dynamic from "next/dynamic";
 import { MuscleGroup } from "@/lib/hypertrophy-engine";
 import type { IExerciseData, IMuscleStats, Muscle } from "react-body-highlighter";
 
-// Import react-body-highlighter dynamically with ssr: false for zero hydration mismatches
+// Importación dinámica del componente oficial Model de react-body-highlighter
+// ssr: false previene cualquier advertencia de hidratación por IDs dinámicos en los SVG
 const Model = dynamic(() => import("react-body-highlighter"), {
     ssr: false,
     loading: () => (
@@ -21,7 +22,7 @@ interface AnatomyVisualizerProps {
     onSelectMuscle: (muscle: MuscleGroup) => void;
 }
 
-// Mapping from internal MuscleGroup to react-body-highlighter Muscle identifiers
+// Mapeo exhaustivo entre el motor biomecánico y los polígonos de react-body-highlighter
 const ENGINE_TO_MODEL_MUSCLES: Record<MuscleGroup, Muscle[]> = {
     chest: ["chest"],
     lats: ["upper-back"],
@@ -30,13 +31,13 @@ const ENGINE_TO_MODEL_MUSCLES: Record<MuscleGroup, Muscle[]> = {
     quads: ["quadriceps", "adductor", "abductors"],
     hamstrings: ["hamstring"],
     glutes: ["gluteal"],
-    biceps: ["biceps"],
+    biceps: ["biceps", "forearm"],
     triceps: ["triceps"],
     calves: ["calves", "left-soleus", "right-soleus"],
     core: ["abs", "obliques"]
 };
 
-// Map clicked model muscle string back to internal MuscleGroup
+// Mapeo inverso de polígono clickeado al grupo muscular del motor
 function mapModelMuscleToEngine(muscleStr: string): MuscleGroup | null {
     const m = muscleStr.toLowerCase();
     if (m === "chest") return "chest";
@@ -61,26 +62,28 @@ export function AnatomyVisualizer({
 }: AnatomyVisualizerProps) {
     const [view, setView] = useState<"anterior" | "posterior">("anterior");
 
-    // Build the data array that highlights muscles in react-body-highlighter
+    // Construye el arreglo de músculos con realce cromático para react-body-highlighter
     const modelData: IExerciseData[] = useMemo(() => {
         const highlightedList: Muscle[] = [];
 
-        // Add active muscles today
+        // Inyecta los músculos activos programados para la sesión de hoy
         activeMusclesToday.forEach(mg => {
             const mapped = ENGINE_TO_MODEL_MUSCLES[mg];
             if (mapped) highlightedList.push(...mapped);
         });
 
-        // Add selected muscle with priority
+        // Inyecta el músculo seleccionado por el usuario para inspección
         if (selectedMuscle) {
             const selectedMapped = ENGINE_TO_MODEL_MUSCLES[selectedMuscle];
             if (selectedMapped) highlightedList.push(...selectedMapped);
         }
 
+        const uniqueMuscles = Array.from(new Set(highlightedList));
+
         return [
             {
-                name: "Highlighted Biomechanical Muscles",
-                muscles: Array.from(new Set(highlightedList)),
+                name: "Músculos Biomecánicos Activos",
+                muscles: uniqueMuscles,
                 frequency: 2
             }
         ];
@@ -96,18 +99,18 @@ export function AnatomyVisualizer({
 
     return (
         <div className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-6 shadow-2xl flex flex-col items-center select-none">
-            {/* Header Telemetry */}
+            {/* Cabecera y Selector de Perspectiva */}
             <div className="w-full flex justify-between items-center mb-4 pb-3 border-b border-white/[0.06]">
                 <div>
                     <h3 className="text-sm font-semibold text-white tracking-tight">
                         MAPA ANATÓMICO POLIGONAL
                     </h3>
                     <p className="text-[11px] text-zinc-400 mt-0.5">
-                        Toca cualquier polígono para inspeccionar ejercicios Tier S
+                        Toca cualquier polígono muscular para desplegar ejercicios Tier S
                     </p>
                 </div>
 
-                {/* View Switcher Pills */}
+                {/* Switcher Anterior / Posterior estilo Apple */}
                 <div className="flex items-center gap-1 bg-white/[0.04] p-1 rounded-full border border-white/[0.06]">
                     <button
                         onClick={() => setView("anterior")}
@@ -132,7 +135,7 @@ export function AnatomyVisualizer({
                 </div>
             </div>
 
-            {/* Model Container */}
+            {/* Renderizado de Polígonos de react-body-highlighter */}
             <div className="relative w-full max-w-[280px] h-[380px] flex items-center justify-center py-2">
                 <Model
                     data={modelData}
@@ -145,15 +148,15 @@ export function AnatomyVisualizer({
                 />
             </div>
 
-            {/* Footer Legend */}
+            {/* Leyenda Biomecánica */}
             <div className="w-full mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs text-zinc-400">
                 <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-[#FF2A2A]" />
-                    <span className="text-[11px]">Enfoque hoy / Seleccionado</span>
+                    <span className="text-[11px]">Enfoque sesión / Seleccionado</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-[#1F2024] border border-white/20" />
-                    <span className="text-[11px]">En descanso</span>
+                    <span className="text-[11px]">Sin carga directa</span>
                 </div>
             </div>
         </div>
