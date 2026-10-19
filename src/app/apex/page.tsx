@@ -91,6 +91,9 @@ import { logSetOfflineFirst, localDb } from "@/lib/local-db";
 import { playTempoPulse, startTempoLoop, stopTempoLoop } from "@/lib/tempo-sonar";
 import { useVoiceLogger } from "@/hooks/useVoiceLogger";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { SpotifyPlayerWidget } from "@/components/apex/SpotifyPlayerWidget";
+import { SpotifySettingsModal } from "@/components/apex/SpotifySettingsModal";
+import { isSpotifyConnected, handleSpotifyCallback } from "@/services/spotifyService";
 import { OnboardingFlow, UserApexProfile } from "@/app/onboarding/OnboardingFlow";
 
 /**
@@ -179,6 +182,18 @@ export default function ApexDashboard() {
     const [isOffPlanModalOpen, setIsOffPlanModalOpen] = useState(false);
     const [isExerciseLibraryOpen, setIsExerciseLibraryOpen] = useState(false);
     const [isScannerOpen, setIsScannerOpen] = useState(false);
+    const [isSpotifyModalOpen, setIsSpotifyModalOpen] = useState(false);
+    const [isSpotifyLinked, setIsSpotifyLinked] = useState(false);
+
+    // Spotify PKCE OAuth Callback Handler & Status Initialization
+    useEffect(() => {
+        setIsSpotifyLinked(isSpotifyConnected());
+        handleSpotifyCallback().then((success) => {
+            if (success) {
+                setIsSpotifyLinked(true);
+            }
+        });
+    }, []);
 
     // Hot-Swap: VBT Velocity Modal State
     const [isVbtModalOpen, setIsVbtModalOpen] = useState(false);
@@ -673,6 +688,8 @@ export default function ApexDashboard() {
                                 localStorage.removeItem('apex_user_profile');
                                 window.location.reload();
                             }}
+                            onOpenSpotifyModal={() => setIsSpotifyModalOpen(true)}
+                            isSpotifyConnected={isSpotifyLinked}
                         />
                     </div>
                 </div>
@@ -708,7 +725,7 @@ export default function ApexDashboard() {
             </div>
 
             {/* Dynamic Content */}
-            <main className="max-w-6xl mx-auto px-4 mt-6">
+            <main className="max-w-6xl mx-auto px-4 mt-6 pb-24 sm:pb-28">
                 {/* =========================================================================
                     TAB 1: WORKOUT EN VIVO
                    ========================================================================= */}
@@ -1993,48 +2010,12 @@ export default function ApexDashboard() {
                 )}
             </main>
 
-            {/* Floating Tesla-Style Rest Timer & Spotify Bar (Responsive, no overflow) */}
-            <div className="fixed bottom-0 left-0 right-0 z-30 bg-[#000000]/90 backdrop-blur-2xl border-t border-white/[0.08] px-3 sm:px-4 py-2 sm:py-2.5">
-                <div className="max-w-6xl mx-auto flex items-center justify-between gap-2 sm:gap-4 text-xs">
-                    {/* Spotify Telemetry Phase */}
-                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#1DB954]/10 border border-[#1DB954]/30 flex items-center justify-center text-[#1DB954] shrink-0">
-                            <Music size={14} />
-                        </div>
-                        <div className="min-w-0">
-                            <span className="text-[9px] sm:text-[10px] text-zinc-500 font-medium tracking-wide block uppercase truncate">CADENCIA</span>
-                            <span className="text-white font-semibold text-[11px] sm:text-xs tracking-tight truncate block">
-                                {restRemaining !== null
-                                    ? "PAUSA • 110 BPM"
-                                    : "SERIE • 140 BPM"}
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Rest Countdown Timer */}
-                    {restRemaining !== null ? (
-                        <div className="flex items-center gap-2 sm:gap-3 bg-white/[0.08] border border-white/[0.12] px-3 sm:px-4 py-1.5 rounded-full shrink-0 shadow-lg">
-                            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-[#10B981] animate-ping shrink-0" />
-                            <div className="flex items-center gap-1.5">
-                                <span className="text-[9px] text-zinc-400 uppercase font-medium hidden xs:inline">DESCANSO</span>
-                                <span className="text-sm sm:text-base font-bold font-mono text-[#10B981]">
-                                    {Math.floor(restRemaining / 60)}:{(restRemaining % 60).toString().padStart(2, "0")}
-                                </span>
-                            </div>
-                            <button
-                                onClick={() => setRestRemaining(null)}
-                                className="text-[10px] text-zinc-400 hover:text-white ml-1 sm:ml-2 underline font-medium"
-                            >
-                                Saltar
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="text-[11px] text-zinc-500 hidden md:block font-normal truncate">
-                            Marca una serie como LOG para iniciar descanso
-                        </div>
-                    )}
-                </div>
-            </div>
+            {/* Floating Tesla-Style Spotify Player & Rest Countdown Bar */}
+            <SpotifyPlayerWidget
+                onOpenSettings={() => setIsSpotifyModalOpen(true)}
+                restRemaining={restRemaining}
+                onSkipRest={() => setRestRemaining(null)}
+            />
 
             {/* Modals & Drawers */}
             <MuscleTargetDrawer
@@ -2066,6 +2047,13 @@ export default function ApexDashboard() {
                 onClose={() => setIsScannerOpen(false)}
                 onAddExerciseToSession={handleAddExerciseToSession}
                 activeExerciseIds={activeExercises.map(e => e.id)}
+            />
+
+            {/* Modal de Spotify & Playlists de Entrenamiento */}
+            <SpotifySettingsModal
+                isOpen={isSpotifyModalOpen}
+                onClose={() => setIsSpotifyModalOpen(false)}
+                onStatusChange={() => setIsSpotifyLinked(isSpotifyConnected())}
             />
 
             {/* Modal de Swap con Buscador y Filtros Biomecánicos */}

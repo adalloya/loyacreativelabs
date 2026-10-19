@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { Menu, X, Download, Shield, RefreshCw, Zap } from 'lucide-react';
+import { Menu, X, Download, Shield, RefreshCw, Zap, Music } from 'lucide-react';
 import { DownloadPDFButton } from '@/components/pdf/DownloadPDFButton';
 
 export function AppHeaderMenu({ 
@@ -16,7 +16,9 @@ export function AppHeaderMenu({
   pdfDiet,
   onResetProfile,
   readiness = 'normal',
-  onReadinessChange
+  onReadinessChange,
+  onOpenSpotifyModal,
+  isSpotifyConnected = false
 }: { 
   environmentMode: string;
   onEnvironmentChange: (mode: string) => void;
@@ -28,6 +30,8 @@ export function AppHeaderMenu({
   onResetProfile?: () => void;
   readiness?: string;
   onReadinessChange?: (readiness: any) => void;
+  onOpenSpotifyModal?: () => void;
+  isSpotifyConnected?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -117,6 +121,31 @@ export function AppHeaderMenu({
                     </button>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Spotify Integration Section */}
+            {onOpenSpotifyModal && (
+              <div className="mb-4 pb-4 border-b border-white/[0.08]">
+                <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider block mb-2 flex items-center justify-between">
+                  <span>MÚSICA // SPOTIFY</span>
+                  <span className={isSpotifyConnected ? "text-[#1DB954]" : "text-zinc-500"}>
+                    {isSpotifyConnected ? "CONECTADO" : "SINCRONIZAR"}
+                  </span>
+                </label>
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    onOpenSpotifyModal();
+                  }}
+                  className="w-full bg-[#1DB954]/10 hover:bg-[#1DB954]/20 border border-[#1DB954]/30 text-white font-medium text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-between active:scale-95 group"
+                >
+                  <div className="flex items-center gap-2">
+                    <Music className="w-4 h-4 text-[#1DB954]" />
+                    <span>{isSpotifyConnected ? "Control & Playlists (140 BPM)" : "Conectar Spotify"}</span>
+                  </div>
+                  <span className={`w-2 h-2 rounded-full ${isSpotifyConnected ? "bg-[#1DB954] animate-pulse" : "bg-zinc-600"}`} />
+                </button>
               </div>
             )}
 
