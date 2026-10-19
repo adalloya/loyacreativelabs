@@ -99,10 +99,10 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
                   <input
                     type="text"
                     required
-                    placeholder="Adalberto"
+                    placeholder="Nombre"
                     value={profile.firstName}
                     onChange={(e) => handleChange('firstName', e.target.value)}
-                    className="w-full bg-white/[0.06] border border-white/[0.1] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-white/40"
+                    className="w-full bg-white/[0.06] border border-white/[0.1] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-white/40 placeholder:text-zinc-500"
                   />
                 </div>
                 <div>
@@ -110,10 +110,10 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
                   <input
                     type="text"
                     required
-                    placeholder="Loya"
+                    placeholder="Apellido"
                     value={profile.lastName}
                     onChange={(e) => handleChange('lastName', e.target.value)}
-                    className="w-full bg-white/[0.06] border border-white/[0.1] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-white/40"
+                    className="w-full bg-white/[0.06] border border-white/[0.1] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-white/40 placeholder:text-zinc-500"
                   />
                 </div>
               </div>

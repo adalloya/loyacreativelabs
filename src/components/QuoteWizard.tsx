@@ -101,7 +101,7 @@ Mi email es: ${data.email}.
                                     value={data.name}
                                     onChange={(e) => setData({ ...data, name: e.target.value })}
                                     className="w-full bg-transparent border-b-2 border-zinc-700 text-3xl py-2 focus:outline-none focus:border-white transition-colors placeholder:text-zinc-800"
-                                    placeholder="Escribe tu nombre..."
+                                    placeholder="Nombre"
                                     autoFocus
                                 />
                             </div>
@@ -112,7 +112,7 @@ Mi email es: ${data.email}.
                                     value={data.company}
                                     onChange={(e) => setData({ ...data, company: e.target.value })}
                                     className="w-full bg-transparent border-b-2 border-zinc-700 text-3xl py-2 focus:outline-none focus:border-white transition-colors placeholder:text-zinc-800"
-                                    placeholder="Nombre de la empresa..."
+                                    placeholder="Empresa o Marca"
                                 />
                             </div>
                         </div>
@@ -268,7 +268,7 @@ Mi email es: ${data.email}.
                                     value={data.email}
                                     onChange={(e) => setData({ ...data, email: e.target.value })}
                                     className="w-full bg-transparent border-b-2 border-zinc-700 text-3xl py-2 focus:outline-none focus:border-white transition-colors placeholder:text-zinc-800"
-                                    placeholder="nombre@ejemplo.com"
+                                    placeholder="Correo electrónico"
                                     autoFocus
                                 />
                             </div>
@@ -279,7 +279,7 @@ Mi email es: ${data.email}.
                                     value={data.whatsapp}
                                     onChange={(e) => setData({ ...data, whatsapp: e.target.value })}
                                     className="w-full bg-transparent border-b-2 border-zinc-700 text-3xl py-2 focus:outline-none focus:border-white transition-colors placeholder:text-zinc-800"
-                                    placeholder="+52..."
+                                    placeholder="Teléfono / WhatsApp"
                                 />
                             </div>
                         </div>

@@ -733,7 +733,8 @@ export default function ApexDashboard() {
                                                                             <input
                                                                                 type="number"
                                                                                 step="0.5"
-                                                                                value={currentInput.weight}
+                                                                                placeholder="Peso"
+                                                                                value={currentInput.weight || ""}
                                                                                 onChange={e => {
                                                                                     const val = parseFloat(e.target.value) || 0;
                                                                                     setSetInputs(prev => ({
@@ -741,7 +742,7 @@ export default function ApexDashboard() {
                                                                                         [key]: { ...currentInput, weight: val }
                                                                                     }));
                                                                                 }}
-                                                                                className="w-16 bg-transparent text-white font-mono font-semibold text-sm sm:text-base text-center outline-none"
+                                                                                className="w-16 bg-transparent text-white font-mono font-semibold text-sm sm:text-base text-center outline-none placeholder:text-zinc-600"
                                                                             />
                                                                             <span className="text-[11px] text-zinc-400 font-mono">kg</span>
                                                                         </div>
@@ -753,7 +754,8 @@ export default function ApexDashboard() {
                                                                             <input
                                                                                 type="number"
                                                                                 step="1"
-                                                                                value={currentInput.reps}
+                                                                                placeholder="Reps"
+                                                                                value={currentInput.reps || ""}
                                                                                 onChange={e => {
                                                                                     const val = parseInt(e.target.value, 10) || 0;
                                                                                     setSetInputs(prev => ({
@@ -761,7 +763,7 @@ export default function ApexDashboard() {
                                                                                         [key]: { ...currentInput, reps: val }
                                                                                     }));
                                                                                 }}
-                                                                                className="w-12 bg-transparent text-white font-mono font-semibold text-sm sm:text-base text-center outline-none"
+                                                                                className="w-12 bg-transparent text-white font-mono font-semibold text-sm sm:text-base text-center outline-none placeholder:text-zinc-600"
                                                                             />
                                                                             <span className="text-[11px] text-zinc-400 font-mono">reps</span>
                                                                         </div>
@@ -1128,9 +1130,10 @@ export default function ApexDashboard() {
                                     <label className="text-zinc-400 text-xs font-medium block mb-1.5">EDAD (AÑOS)</label>
                                     <input
                                         type="number"
+                                        placeholder="Edad"
                                         value={bio.age}
                                         onChange={e => setBio({ ...bio, age: Number(e.target.value) })}
-                                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl p-3 text-white font-mono outline-none focus:border-white/30 text-xs"
+                                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl p-3 text-white font-mono placeholder:text-zinc-600 outline-none focus:border-white/30 text-xs"
                                     />
                                 </div>
 
@@ -1139,9 +1142,10 @@ export default function ApexDashboard() {
                                     <input
                                         type="number"
                                         step="0.1"
+                                        placeholder="Peso corporal"
                                         value={bio.weightKg}
                                         onChange={e => setBio({ ...bio, weightKg: Number(e.target.value) })}
-                                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl p-3 text-white font-mono outline-none focus:border-white/30 text-xs"
+                                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl p-3 text-white font-mono placeholder:text-zinc-600 outline-none focus:border-white/30 text-xs"
                                     />
                                 </div>
 
@@ -1149,9 +1153,10 @@ export default function ApexDashboard() {
                                     <label className="text-zinc-400 text-xs font-medium block mb-1.5">ESTATURA (CM)</label>
                                     <input
                                         type="number"
+                                        placeholder="Estatura"
                                         value={bio.heightCm}
                                         onChange={e => setBio({ ...bio, heightCm: Number(e.target.value) })}
-                                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl p-3 text-white font-mono outline-none focus:border-white/30 text-xs"
+                                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl p-3 text-white font-mono placeholder:text-zinc-600 outline-none focus:border-white/30 text-xs"
                                     />
                                 </div>
 
@@ -1160,10 +1165,10 @@ export default function ApexDashboard() {
                                     <input
                                         type="number"
                                         step="0.1"
-                                        placeholder="Ej. 14.5"
+                                        placeholder="% Grasa corporal"
                                         value={bio.bodyFatPct || ""}
                                         onChange={e => setBio({ ...bio, bodyFatPct: Number(e.target.value) || undefined })}
-                                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl p-3 text-white font-mono placeholder-zinc-600 outline-none focus:border-white/30 text-xs"
+                                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl p-3 text-white font-mono placeholder:text-zinc-600 outline-none focus:border-white/30 text-xs"
                                     />
                                 </div>
 
@@ -1315,8 +1320,8 @@ export default function ApexDashboard() {
                         <textarea
                             value={offPlanText}
                             onChange={e => setOffPlanText(e.target.value)}
-                            placeholder="Ej. Hamburguesa doble con papas a la francesa..."
-                            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl p-3.5 text-xs text-white mb-3 h-24 outline-none focus:border-white/30"
+                            placeholder="Alimentos consumidos fuera del plan"
+                            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl p-3.5 text-xs text-white mb-3 h-24 outline-none focus:border-white/30 placeholder:text-zinc-500"
                         />
 
                         <button
