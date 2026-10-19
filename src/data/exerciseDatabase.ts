@@ -1,15 +1,40 @@
 // src/data/exerciseDatabase.ts
-// APEX - CATÁLOGO MAESTRO Y MAPEO DIRECTO A FREE-EXERCISE-DB (800+ EJERCICIOS)
+// APEX - CATÁLOGO MAESTRO Y RESPALDO LOCAL DE FREE-EXERCISE-DB (876 EJERCICIOS)
 
-export interface ExerciseDefinition {
-  id: string; // ID exacto del repositorio open-source free-exercise-db
+import rawExerciseData from "./free-exercise-db.json";
+
+export interface FreeExerciseItem {
+  id: string;
   name: string;
-  muscleGroup: string;
-  equipment: string;
-  tier: number;
+  force?: string | null;
+  level?: string;
+  mechanic?: string | null;
+  equipment?: string | null;
+  primaryMuscles: string[];
+  secondaryMuscles: string[];
+  instructions: string[];
+  category: string;
+  images: string[];
 }
 
-// Catálogo maestro optimizado con IDs reales verificados del repositorio oficial
+// Respaldo maestro local de los 876 ejercicios cargados en memoria
+export const ALL_FREE_EXERCISES: FreeExerciseItem[] = rawExerciseData as FreeExerciseItem[];
+
+// Mapa indexado en memoria O(1) por ID y por nombre normalizado
+const ID_INDEX = new Map<string, FreeExerciseItem>();
+const NAME_INDEX = new Map<string, FreeExerciseItem>();
+
+ALL_FREE_EXERCISES.forEach((item) => {
+  if (item.id) {
+    ID_INDEX.set(item.id.toLowerCase(), item);
+    ID_INDEX.set(item.id, item);
+  }
+  if (item.name) {
+    NAME_INDEX.set(item.name.toLowerCase().trim(), item);
+  }
+});
+
+// Diccionario maestro optimizado para mapeo en español y términos comunes
 export const EXERCISE_MASTER_DB: Record<string, string> = {
   // Pectoral (Pecho)
   "press inclinado con mancuernas": "Incline_Dumbbell_Press",
@@ -99,22 +124,36 @@ export const EXERCISE_MASTER_DB: Record<string, string> = {
 };
 
 /**
- * Normaliza cualquier nombre de ejercicio (generado por IA, español o inglés)
- * y devuelve el identificador oficial de GitHub en free-exercise-db.
+ * Normaliza cualquier nombre de ejercicio (IA, español o inglés)
+ * y devuelve el identificador oficial de GitHub en free-exercise-db (con respaldo offline de 876 items).
  */
 export function getExerciseGitHubId(exerciseName: string): string {
   if (!exerciseName) return "Barbell_Bench_Press_-_Medium_Grip";
-  
-  const normalized = exerciseName.toLowerCase().trim();
 
-  // 1. Búsqueda directa o parcial en el catálogo maestro
+  const raw = exerciseName.trim();
+  const normalized = raw.toLowerCase();
+
+  // 1. Si ya es un ID exacto del repositorio en memoria
+  if (ID_INDEX.has(raw)) {
+    return ID_INDEX.get(raw)!.id;
+  }
+  if (ID_INDEX.has(normalized)) {
+    return ID_INDEX.get(normalized)!.id;
+  }
+
+  // 2. Si coincide con un nombre en inglés en el catálogo de 876
+  if (NAME_INDEX.has(normalized)) {
+    return NAME_INDEX.get(normalized)!.id;
+  }
+
+  // 3. Búsqueda en el diccionario maestro en español
   for (const [key, id] of Object.entries(EXERCISE_MASTER_DB)) {
     if (normalized.includes(key) || key.includes(normalized)) {
       return id;
     }
   }
 
-  // 2. Mapeos semánticos basados en palabras clave clave
+  // 4. Mapeos heurísticos inteligentes
   if (normalized.includes("inclinad") && (normalized.includes("mancuerna") || normalized.includes("dumbbell"))) {
     return "Incline_Dumbbell_Press";
   }
@@ -182,6 +221,35 @@ export function getExerciseGitHubId(exerciseName: string): string {
     return "Ab_Crunch_Machine";
   }
 
+  // 5. Búsqueda por subcadena en los 876 nombres del repositorio
+  for (const item of ALL_FREE_EXERCISES) {
+    const itemNorm = item.name.toLowerCase();
+    if (normalized.includes(itemNorm) || itemNorm.includes(normalized)) {
+      return item.id;
+    }
+  }
+
   // Fallback seguro a ejercicio multiarticular estándar
   return "Barbell_Bench_Press_-_Medium_Grip";
+}
+
+/**
+ * Obtiene el objeto completo de un ejercicio por su ID oficial
+ */
+export function getExerciseDetails(id: string): FreeExerciseItem | undefined {
+  return ID_INDEX.get(id) || ID_INDEX.get(id.toLowerCase());
+}
+
+/**
+ * Busca ejercicios en el catálogo de 876 items
+ */
+export function searchExercises(query: string, maxResults = 20): FreeExerciseItem[] {
+  if (!query) return ALL_FREE_EXERCISES.slice(0, maxResults);
+  const q = query.toLowerCase().trim();
+  return ALL_FREE_EXERCISES.filter(
+    (ex) =>
+      ex.name.toLowerCase().includes(q) ||
+      ex.primaryMuscles.some((m) => m.toLowerCase().includes(q)) ||
+      (ex.equipment && ex.equipment.toLowerCase().includes(q))
+  ).slice(0, maxResults);
 }
