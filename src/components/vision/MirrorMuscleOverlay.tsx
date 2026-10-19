@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Camera, X, Gauge, Shield, RefreshCw, Zap, CheckCircle2 } from "lucide-react";
+import { Camera, X, Gauge, RefreshCw, Zap, CheckCircle2, SwitchCamera } from "lucide-react";
 
 interface MirrorMuscleOverlayProps {
     isOpen: boolean;
@@ -17,6 +17,7 @@ export function MirrorMuscleOverlay({
     onVelocityRecorded
 }: MirrorMuscleOverlayProps) {
     const [mode, setMode] = useState<"mirror_ai" | "velocity_vbt">("velocity_vbt");
+    const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
     const [isStreaming, setIsStreaming] = useState(false);
     const [streamError, setStreamError] = useState<string | null>(null);
 
@@ -30,28 +31,6 @@ export function MirrorMuscleOverlay({
     const videoRef = useRef<HTMLVideoElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
 
-    const startCamera = useCallback(async () => {
-        try {
-            setStreamError(null);
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 480 } },
-                    audio: false
-                });
-                streamRef.current = stream;
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
-                    videoRef.current.play();
-                }
-                setIsStreaming(true);
-            }
-        } catch (e: any) {
-            console.warn("Camera access warning:", e);
-            setStreamError("Cámara no disponible o permiso denegado. Modo de simulación VBT activo.");
-            setIsStreaming(false);
-        }
-    }, []);
-
     const stopCamera = useCallback(() => {
         if (streamRef.current) {
             streamRef.current.getTracks().forEach(t => t.stop());
@@ -59,6 +38,34 @@ export function MirrorMuscleOverlay({
         }
         setIsStreaming(false);
     }, []);
+
+    const startCamera = useCallback(async () => {
+        try {
+            setStreamError(null);
+            stopCamera();
+
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: facingMode,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                });
+                streamRef.current = stream;
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                    videoRef.current.play().catch(() => {});
+                }
+                setIsStreaming(true);
+            }
+        } catch (e: any) {
+            console.warn("Camera access warning:", e);
+            setStreamError("Cámara no disponible o permiso denegado. Modo cinemático simulado activo.");
+            setIsStreaming(false);
+        }
+    }, [facingMode, stopCamera]);
 
     useEffect(() => {
         if (isOpen) {
@@ -69,7 +76,11 @@ export function MirrorMuscleOverlay({
         return () => stopCamera();
     }, [isOpen, startCamera, stopCamera]);
 
-    // Simulación cinemática VBT en caso de que no haya cámara web conectada
+    const toggleFacingMode = () => {
+        setFacingMode(prev => (prev === "user" ? "environment" : "user"));
+    };
+
+    // Simulación cinemática VBT
     const simulateRepetition = () => {
         const vel = Math.max(0.22, Math.round((currentVelocity - 0.05 + Math.random() * 0.02) * 100) / 100);
         setCurrentVelocity(vel);
@@ -94,134 +105,158 @@ export function MirrorMuscleOverlay({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200 font-sans">
-            <div className="absolute inset-0" onClick={onClose} />
+        <div className="fixed inset-0 z-50 bg-black flex flex-col justify-between overflow-hidden font-sans select-none animate-in fade-in duration-200">
+            {/* Live Video filling 100% of the entire screen */}
+            <video
+                ref={videoRef}
+                playsInline
+                muted
+                autoPlay
+                className={`absolute inset-0 w-full h-full object-cover z-0 ${
+                    facingMode === "user" ? "scale-x-[-1]" : ""
+                } ${isStreaming ? "block" : "hidden"}`}
+            />
 
-            <div className={`relative w-full max-w-xl bg-[#121214]/95 backdrop-blur-2xl border rounded-3xl p-5 sm:p-6 shadow-2xl z-10 text-white transition-all ${
-                isFatigueThresholdReached ? "border-[#FF2A2A] shadow-[0_0_30px_rgba(255,42,42,0.25)]" : "border-white/[0.08]"
-            }`}>
-                {/* Header & Mode Switcher */}
-                <div className="flex justify-between items-center border-b border-white/[0.06] pb-3 mb-4 flex-wrap gap-2">
-                    <div className="flex items-center gap-1.5 p-1 bg-white/[0.04] rounded-xl border border-white/[0.08] text-xs font-mono">
-                        <button
-                            onClick={() => setMode("velocity_vbt")}
-                            className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${mode === "velocity_vbt"
-                                ? "bg-white text-black shadow-sm"
-                                : "text-zinc-400 hover:text-white"
-                                }`}
-                        >
-                            <Gauge size={13} className={mode === "velocity_vbt" ? "text-[#FF2A2A]" : ""} />
-                            <span>VELOCIDAD VBT</span>
-                        </button>
-                        <button
-                            onClick={() => setMode("mirror_ai")}
-                            className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${mode === "mirror_ai"
-                                ? "bg-white text-black shadow-sm"
-                                : "text-zinc-400 hover:text-white"
-                                }`}
-                        >
-                            <Camera size={13} />
-                            <span>ESPEJO IA</span>
-                        </button>
+            {/* Fallback if camera stream is inactive */}
+            {!isStreaming && (
+                <div className="absolute inset-0 z-0 bg-gradient-to-b from-[#121214] via-[#09090B] to-black flex flex-col items-center justify-center p-6 text-center space-y-3">
+                    <div className="w-16 h-16 rounded-3xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white shadow-2xl">
+                        <Camera size={28} className="text-zinc-400" />
                     </div>
+                    <p className="text-sm font-mono text-zinc-300 font-semibold max-w-xs">
+                        Visor Cinemático Activo
+                    </p>
+                    <p className="text-xs font-mono text-zinc-500 max-w-sm">
+                        {streamError || "Iniciando visor cinemático..."}
+                    </p>
+                </div>
+            )}
 
-                    <button 
-                        onClick={onClose} 
-                        className="p-1.5 text-zinc-400 hover:text-white rounded-xl bg-white/[0.04] hover:bg-white/[0.08] transition-all"
+            {/* TOP BAR (Floating Glass HUD) */}
+            <div className="relative z-20 p-4 sm:p-5 flex items-center justify-between gap-2 bg-gradient-to-b from-black/80 via-black/40 to-transparent">
+                {/* Mode Selector */}
+                <div className="flex items-center gap-1 p-1 bg-black/60 backdrop-blur-xl rounded-2xl border border-white/10 text-xs font-mono shadow-2xl">
+                    <button
+                        onClick={() => setMode("velocity_vbt")}
+                        className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
+                            mode === "velocity_vbt"
+                                ? "bg-white text-black shadow-md"
+                                : "text-zinc-400 hover:text-white"
+                        }`}
                     >
-                        <X size={16} />
+                        <Gauge size={13} className={mode === "velocity_vbt" ? "text-[#FF2A2A]" : ""} />
+                        <span>VELOCIDAD VBT</span>
+                    </button>
+                    <button
+                        onClick={() => setMode("mirror_ai")}
+                        className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
+                            mode === "mirror_ai"
+                                ? "bg-white text-black shadow-md"
+                                : "text-zinc-400 hover:text-white"
+                        }`}
+                    >
+                        <Camera size={13} />
+                        <span>ESPEJO IA</span>
                     </button>
                 </div>
 
-                {/* Viewport Area */}
-                <div className="relative w-full h-64 sm:h-72 bg-black rounded-2xl overflow-hidden border border-white/[0.08] flex items-center justify-center">
-                    <video
-                        ref={videoRef}
-                        playsInline
-                        muted
-                        className={`w-full h-full object-cover ${isStreaming ? "block" : "hidden"}`}
-                    />
-
-                    {!isStreaming && (
-                        <div className="text-center p-6 space-y-2">
-                            <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mx-auto text-white">
-                                <Camera size={22} />
-                            </div>
-                            <p className="text-xs font-mono text-zinc-400">
-                                {streamError || "Iniciando visor cinemático..."}
-                            </p>
-                        </div>
-                    )}
-
-                    {/* VBT Telemetry HUD Overlay */}
-                    {mode === "velocity_vbt" && (
-                        <div className="absolute inset-0 p-4 flex flex-col justify-between pointer-events-none font-mono">
-                            <div className="flex justify-between items-start">
-                                <span className="text-[10px] bg-black/80 px-2.5 py-1 rounded-full border border-white/10 text-white font-semibold">
-                                    ● VBT // {activeExerciseName.toUpperCase()}
-                                </span>
-                                <span className="text-[10px] bg-black/80 px-2.5 py-1 rounded-full border border-white/10 text-zinc-400">
-                                    V_BASE: {initialVelocity} m/s
-                                </span>
-                            </div>
-
-                            {/* Center Velocity Dial */}
-                            <div className="text-center bg-black/80 backdrop-blur-md p-3.5 rounded-2xl border border-white/10 max-w-xs mx-auto">
-                                <div className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-                                    {currentVelocity.toFixed(2)} <span className="text-sm font-normal text-zinc-500">m/s</span>
-                                </div>
-                                <div className="flex justify-center gap-3 text-xs mt-1">
-                                    <span className="text-[#FF2A2A] font-bold">Pérdida: -{velocityDropPct}%</span>
-                                    <span className="text-white font-bold">RIR: {estimatedRir}</span>
-                                </div>
-                            </div>
-
-                            {/* Bottom Alert Banner */}
-                            <div className="text-center">
-                                {isFatigueThresholdReached ? (
-                                    <span className="inline-block text-[11px] bg-[#FF2A2A] text-white font-bold px-3 py-1 rounded-full shadow-lg">
-                                        UMBRAL DE FATIGA ALCANZADO (TERMINA LA SERIE)
-                                    </span>
-                                ) : (
-                                    <span className="inline-block text-[10px] bg-black/80 text-zinc-300 px-3 py-1 rounded-full border border-white/10">
-                                        Velocidad concéntrica óptima (Fase de estímulo alto)
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Mirror AI Overlay */}
-                    {mode === "mirror_ai" && (
-                        <div className="absolute inset-0 p-4 flex flex-col justify-between pointer-events-none font-mono">
-                            <span className="text-[10px] bg-black/80 px-2.5 py-1 rounded-full border border-white/10 text-[#FF2A2A] w-fit font-bold">
-                                OVERLAY TÉRMICO DE CONGESTIÓN
-                            </span>
-                            <div className="text-center bg-black/80 p-2.5 rounded-2xl border border-white/10">
-                                <p className="text-xs text-white">Postura detectada (33 nodos MediaPipe)</p>
-                                <p className="text-[10px] text-zinc-400">Músculos activos en rojo térmico</p>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Footer Controls */}
-                <div className="mt-4 flex gap-2">
+                {/* Right controls: Switch Camera (Frontal/Trasera) & Close */}
+                <div className="flex items-center gap-2">
                     <button
-                        onClick={simulateRepetition}
-                        className="flex-1 py-3 bg-white hover:bg-zinc-200 text-black font-mono font-bold text-xs rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm"
+                        onClick={toggleFacingMode}
+                        className="px-3 py-2 bg-black/60 backdrop-blur-xl hover:bg-black/80 border border-white/10 hover:border-white/30 text-white rounded-2xl transition-all shadow-xl flex items-center gap-1.5 text-xs font-mono active:scale-95"
+                        title="Cambiar entre cámara frontal y trasera"
+                        aria-label="Cambiar cámara"
                     >
-                        <Zap size={14} className="fill-black" />
-                        <span>REGISTRAR REPETICIÓN (VBT)</span>
+                        <RefreshCw size={13} className="text-[#FF2A2A]" />
+                        <span className="hidden sm:inline">Cámara:</span>
+                        <span className="font-semibold uppercase">{facingMode === "user" ? "Frontal" : "Trasera"}</span>
                     </button>
 
                     <button
                         onClick={onClose}
-                        className="px-5 py-3 bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] text-white font-mono text-xs font-semibold rounded-2xl transition-all"
+                        className="p-2 bg-black/60 backdrop-blur-xl hover:bg-black/80 border border-white/10 hover:border-white/30 text-white rounded-2xl transition-all shadow-xl active:scale-95"
+                        aria-label="Cerrar visor"
                     >
-                        Listo
+                        <X size={18} />
                     </button>
                 </div>
+            </div>
+
+            {/* CENTER HUD TELEMETRY OVERLAY */}
+            <div className="relative z-10 p-4 sm:p-6 flex flex-col items-center justify-center my-auto pointer-events-none">
+                {mode === "velocity_vbt" && (
+                    <div className="space-y-4 max-w-sm w-full font-mono text-center">
+                        {/* Exercise Name Badge */}
+                        <div className="inline-flex items-center gap-2 bg-black/70 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10 text-xs text-white">
+                            <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
+                            <span className="font-bold tracking-tight">{activeExerciseName.toUpperCase()}</span>
+                            <span className="text-zinc-500">•</span>
+                            <span className="text-zinc-400 text-[11px]">V_BASE: {initialVelocity} m/s</span>
+                        </div>
+
+                        {/* Velocity Gauge Floating Center Box */}
+                        <div className={`p-6 rounded-3xl border backdrop-blur-2xl transition-all shadow-2xl ${
+                            isFatigueThresholdReached
+                                ? "bg-black/85 border-[#FF2A2A] shadow-[0_0_40px_rgba(255,42,42,0.4)]"
+                                : "bg-black/75 border-white/15"
+                        }`}>
+                            <div className="text-5xl sm:text-6xl font-black text-white tracking-tighter">
+                                {currentVelocity.toFixed(2)}{" "}
+                                <span className="text-lg font-normal text-zinc-400">m/s</span>
+                            </div>
+
+                            <div className="flex justify-center items-center gap-4 text-xs font-bold mt-2 pt-2 border-t border-white/10">
+                                <span className="text-[#FF2A2A]">PÉRDIDA: -{velocityDropPct}%</span>
+                                <span className="text-zinc-600">|</span>
+                                <span className="text-white">RIR ESTIMADO: {estimatedRir}</span>
+                            </div>
+                        </div>
+
+                        {/* Fatigue Warning Banner */}
+                        {isFatigueThresholdReached ? (
+                            <div className="bg-[#FF2A2A] text-white font-black text-xs px-4 py-2 rounded-2xl shadow-xl shadow-red-900/50 animate-bounce tracking-wide">
+                                UMBRAL DE FATIGA ALCANZADO (TERMINA LA SERIE)
+                            </div>
+                        ) : (
+                            <div className="bg-black/60 backdrop-blur-md text-zinc-300 text-[11px] px-3.5 py-1 rounded-full border border-white/10 inline-block">
+                                Velocidad concéntrica óptima • Estímulo neuromuscular alto
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {mode === "mirror_ai" && (
+                    <div className="space-y-4 max-w-sm w-full font-mono text-center">
+                        <div className="inline-flex items-center gap-2 bg-black/70 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-[#FF2A2A]/40 text-xs text-[#FF2A2A] font-bold">
+                            <span className="w-2 h-2 rounded-full bg-[#FF2A2A] animate-ping" />
+                            OVERLAY TÉRMICO DE CONGESTIÓN
+                        </div>
+
+                        <div className="bg-black/75 backdrop-blur-2xl p-5 rounded-3xl border border-white/15 space-y-1">
+                            <p className="text-sm font-bold text-white">Postura detectada (33 nodos MediaPipe)</p>
+                            <p className="text-xs text-zinc-400">Músculos activos destacados en rojo térmico biomecánico</p>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* BOTTOM BAR (Floating Glass Actions) */}
+            <div className="relative z-20 p-4 sm:p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col sm:flex-row gap-2 max-w-lg mx-auto w-full">
+                <button
+                    onClick={simulateRepetition}
+                    className="flex-1 py-3.5 bg-white hover:bg-zinc-200 text-black font-mono font-bold text-xs rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2 shadow-xl shadow-white/10"
+                >
+                    <Zap size={15} className="fill-black" />
+                    <span>REGISTRAR REPETICIÓN (VBT)</span>
+                </button>
+
+                <button
+                    onClick={onClose}
+                    className="px-6 py-3.5 bg-white/[0.1] hover:bg-white/[0.18] backdrop-blur-xl border border-white/15 text-white font-mono text-xs font-semibold rounded-2xl transition-all active:scale-95"
+                >
+                    Listo
+                </button>
             </div>
         </div>
     );

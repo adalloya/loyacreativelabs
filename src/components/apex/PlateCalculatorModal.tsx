@@ -3,12 +3,22 @@
 
 import { useState } from "react";
 import { calculatePlatesPerSide, generateWarmupProtocol } from "@/lib/hypertrophy-engine";
-import { X, Disc, Flame, Layers } from "lucide-react";
+import { X, Disc, Flame, ChevronDown, ChevronUp, Check } from "lucide-react";
 
 interface PlateCalculatorModalProps {
     initialWeightKg?: number;
     onClose: () => void;
 }
+
+const PLATE_COLORS: Record<number, { bg: string; text: string; border: string; ring: string }> = {
+    25: { bg: "bg-[#EF4444]", text: "text-white", border: "border-red-400", ring: "ring-red-500/30" },
+    20: { bg: "bg-[#3B82F6]", text: "text-white", border: "border-blue-400", ring: "ring-blue-500/30" },
+    15: { bg: "bg-[#EAB308]", text: "text-black", border: "border-yellow-300", ring: "ring-yellow-500/30" },
+    10: { bg: "bg-[#10B981]", text: "text-white", border: "border-emerald-400", ring: "ring-emerald-500/30" },
+    5: { bg: "bg-[#F4F4F5]", text: "text-black", border: "border-zinc-300", ring: "ring-zinc-400/30" },
+    2.5: { bg: "bg-[#27272A]", text: "text-white", border: "border-zinc-600", ring: "ring-zinc-700/30" },
+    1.25: { bg: "bg-[#71717A]", text: "text-white", border: "border-zinc-500", ring: "ring-zinc-600/30" }
+};
 
 export function PlateCalculatorModal({
     initialWeightKg = 80,
@@ -16,6 +26,7 @@ export function PlateCalculatorModal({
 }: PlateCalculatorModalProps) {
     const [targetWeight, setTargetWeight] = useState(initialWeightKg);
     const [barWeight, setBarWeight] = useState(20);
+    const [showWarmup, setShowWarmup] = useState(false);
 
     const platesPerSide = calculatePlatesPerSide(targetWeight, barWeight);
     const warmupSets = generateWarmupProtocol(targetWeight, barWeight);
@@ -24,43 +35,67 @@ export function PlateCalculatorModal({
         setTargetWeight(prev => Math.max(barWeight, Math.round((prev + delta) * 10) / 10));
     };
 
+    const weightPerSide = Math.max(0, (targetWeight - barWeight) / 2);
+
+    // Expandir lista plana de discos para visualización de manga
+    const plateListForSleeve: number[] = [];
+    platesPerSide.forEach(p => {
+        for (let i = 0; i < p.countPerSide; i++) {
+            plateListForSleeve.push(p.plateKg);
+        }
+    });
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-200 font-sans text-white">
             <div className="absolute inset-0" onClick={onClose} />
 
-            <div className="relative w-full max-w-lg bg-[#121214]/95 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 shadow-2xl z-10 font-sans text-white">
+            <div className="relative w-full max-w-lg bg-[#121214]/95 backdrop-blur-2xl border border-white/[0.1] rounded-3xl p-5 sm:p-6 shadow-2xl z-10 max-h-[92vh] overflow-y-auto">
                 {/* Header */}
-                <div className="flex justify-between items-center border-b border-white/[0.06] pb-3 mb-4">
+                <div className="flex justify-between items-center border-b border-white/[0.08] pb-3 mb-4">
                     <div className="flex items-center gap-2.5">
-                        <Disc size={18} className="text-white" />
-                        <h2 className="text-sm sm:text-base font-bold font-mono tracking-tight uppercase text-white">
-                            CALCULADORA DE DISCOS & APROXIMACIÓN
-                        </h2>
+                        <div className="w-8 h-8 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center">
+                            <Disc size={18} className="text-[#FF2A2A]" />
+                        </div>
+                        <div>
+                            <h2 className="text-sm sm:text-base font-bold font-mono tracking-tight uppercase text-white">
+                                CALCULADORA DE DISCOS
+                            </h2>
+                            <p className="text-[11px] text-zinc-400 font-mono">
+                                Barra Olímpica Estándar: {barWeight} kg
+                            </p>
+                        </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-1.5 text-zinc-400 hover:text-white rounded-xl bg-white/[0.04] hover:bg-white/[0.08] transition-all"
+                        className="p-2 text-zinc-400 hover:text-white rounded-xl bg-white/[0.04] hover:bg-white/[0.08] transition-all"
                     >
                         <X size={16} />
                     </button>
                 </div>
 
-                {/* Weight Input Selector */}
-                <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 mb-4 text-center">
-                    <span className="text-[10px] font-mono text-zinc-500 tracking-widest uppercase">
-                        PESO OBJETIVO DE TRABAJO
+                {/* Selector de Peso Total */}
+                <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 mb-4 text-center">
+                    <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest block">
+                        PESO TOTAL EN BARRA
                     </span>
-                    <div className="text-4xl sm:text-5xl font-extrabold font-mono text-white my-2 tracking-tight">
-                        {targetWeight} <span className="text-xl font-normal text-zinc-500">kg</span>
+                    <div className="flex items-center justify-center gap-1.5 my-1">
+                        <input
+                            type="number"
+                            step="0.5"
+                            value={targetWeight}
+                            onChange={(e) => setTargetWeight(Math.max(barWeight, parseFloat(e.target.value) || barWeight))}
+                            className="text-4xl sm:text-5xl font-extrabold font-mono text-white text-center bg-transparent outline-none w-36"
+                        />
+                        <span className="text-xl font-normal text-zinc-500 font-mono">kg</span>
                     </div>
 
                     {/* Quick Steppers */}
-                    <div className="flex justify-center gap-2 font-mono text-xs mt-3 flex-wrap">
+                    <div className="flex justify-center gap-1.5 font-mono text-xs mt-2 flex-wrap">
                         {[-10, -2.5, +2.5, +5, +10].map(val => (
                             <button
                                 key={val}
                                 onClick={() => adjustWeight(val)}
-                                className="px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] text-white font-semibold transition-all active:scale-95"
+                                className="px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.12] border border-white/[0.08] text-zinc-200 hover:text-white font-semibold transition-all active:scale-95"
                             >
                                 {val > 0 ? `+${val}` : val} kg
                             </button>
@@ -68,66 +103,124 @@ export function PlateCalculatorModal({
                     </div>
                 </div>
 
-                {/* Plates Visual Breakdown per Side */}
-                <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 mb-4">
-                    <div className="flex justify-between items-center mb-2.5">
-                        <span className="text-xs font-mono font-semibold text-zinc-300 flex items-center gap-1.5">
-                            <Layers size={14} className="text-white" /> CARGA POR CADA LADO (BARRA {barWeight}KG)
-                        </span>
-                        <span className="text-[10px] font-mono text-zinc-500">
-                            {((targetWeight - barWeight) / 2).toFixed(1)} kg por lado
-                        </span>
+                {/* HERO RESULT: Exactamente cuánto peso de cada lado */}
+                <div className="bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/[0.1] rounded-3xl p-5 mb-4 text-center">
+                    <span className="text-xs font-mono font-bold text-zinc-400 uppercase tracking-wider block mb-1">
+                        CARGA EN CADA LADO (IZQUIERDO Y DERECHO)
+                    </span>
+                    <div className="text-3xl sm:text-4xl font-black font-mono text-emerald-400 tracking-tight my-1">
+                        {weightPerSide.toFixed(1)} <span className="text-lg font-normal text-zinc-400">kg por lado</span>
                     </div>
+                    <p className="text-[11px] text-zinc-500 font-mono mt-1">
+                        {weightPerSide} kg izq + {weightPerSide} kg der + barra {barWeight} kg = {targetWeight} kg total
+                    </p>
 
-                    {platesPerSide.length > 0 ? (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 font-mono text-xs">
-                            {platesPerSide.map((p, idx) => (
-                                <div
-                                    key={idx}
-                                    className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-between"
-                                >
-                                    <span className="text-zinc-400">Disco {p.plateKg} kg:</span>
-                                    <span className="text-white font-bold text-xs bg-white/[0.08] px-2 py-0.5 rounded-lg border border-white/[0.08]">
-                                        ×{p.countPerSide}
-                                    </span>
-                                </div>
-                            ))}
+                    {/* Manga Visual de la Barra con Discos en Orden */}
+                    {plateListForSleeve.length > 0 && (
+                        <div className="mt-4 pt-3 border-t border-white/[0.06]">
+                            <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider block mb-2">
+                                ORDEN EN LA MANGA DE LA BARRA (DE ADENTRO HACIA AFUERA)
+                            </span>
+                            <div className="flex items-center justify-center gap-1.5 overflow-x-auto py-2 px-1">
+                                {/* Cuello de la barra */}
+                                <div className="w-4 h-16 bg-zinc-700 rounded-l-md border border-zinc-600 shrink-0" title="Tope de la barra" />
+                                
+                                {plateListForSleeve.map((plateKg, idx) => {
+                                    const style = PLATE_COLORS[plateKg] || { bg: "bg-zinc-800", text: "text-white", border: "border-zinc-700" };
+                                    const heightClass = plateKg >= 20 ? "h-20" : plateKg >= 10 ? "h-16" : plateKg >= 5 ? "h-12" : "h-10";
+                                    return (
+                                        <div
+                                            key={idx}
+                                            className={`w-9 sm:w-10 ${heightClass} ${style.bg} ${style.text} ${style.border} border-2 rounded-md flex flex-col items-center justify-center font-mono font-black text-[10px] sm:text-xs shrink-0 shadow-lg`}
+                                            title={`Disco de ${plateKg} kg`}
+                                        >
+                                            <span>{plateKg}</span>
+                                            <span className="text-[8px] opacity-75">kg</span>
+                                        </div>
+                                    );
+                                })}
+
+                                {/* Extremo de la barra */}
+                                <div className="w-6 h-6 bg-zinc-800 border border-zinc-700 rounded-r-md shrink-0" />
+                            </div>
                         </div>
-                    ) : (
-                        <p className="text-xs font-mono text-zinc-500 text-center py-2">
-                            Solo la barra olímpica de {barWeight} kg (sin discos adicionales).
-                        </p>
                     )}
                 </div>
 
-                {/* Warmup Protocol (Zero Glucolytic Fatigue) */}
-                <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4">
-                    <div className="flex items-center gap-1.5 mb-2.5 text-xs font-mono font-semibold text-[#FF2A2A]">
-                        <Flame size={14} /> SERIES DE APROXIMACIÓN (CERO FATIGA)
-                    </div>
+                {/* Desglose Directo y Sin Confusión: Qué discos poner */}
+                <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 mb-4">
+                    <span className="text-xs font-mono font-bold text-zinc-300 uppercase tracking-wider block mb-2.5">
+                        DISCOS EXACTOS A COLOCAR POR LADO:
+                    </span>
 
-                    <div className="space-y-2 font-mono text-xs">
-                        {warmupSets.map(w => (
-                            <div
-                                key={w.setNumber}
-                                className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]"
-                            >
-                                <div>
-                                    <span className="text-white font-semibold mr-2">Serie {w.setNumber}:</span>
-                                    <span className="text-white font-bold">{w.weightKg} kg</span>
-                                    <span className="text-zinc-400 text-[11px] ml-1.5">× {w.reps} reps ({w.percentage}%)</span>
-                                </div>
-                                <span className="text-[10px] text-zinc-500">Pausa: {w.restSeconds}s</span>
-                            </div>
-                        ))}
-                    </div>
+                    {platesPerSide.length > 0 ? (
+                        <div className="space-y-2">
+                            {platesPerSide.map((p, idx) => {
+                                const style = PLATE_COLORS[p.plateKg] || { bg: "bg-zinc-800", text: "text-white", border: "border-zinc-700" };
+                                return (
+                                    <div
+                                        key={idx}
+                                        className="p-3 rounded-2xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-between font-mono"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <span className={`w-3.5 h-3.5 rounded-full ${style.bg} border ${style.border} shrink-0`} />
+                                            <span className="text-sm font-bold text-white">
+                                                {p.countPerSide} × disco{p.countPerSide > 1 ? "s" : ""} de {p.plateKg} kg
+                                            </span>
+                                        </div>
+                                        <span className="text-xs font-semibold text-zinc-400 bg-white/[0.06] px-2.5 py-1 rounded-xl">
+                                            = {(p.countPerSide * p.plateKg).toFixed(1)} kg
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="p-3 text-center bg-white/[0.02] rounded-xl text-xs font-mono text-zinc-400">
+                            Solo la barra olímpica vacía ({barWeight} kg). No agregues discos.
+                        </div>
+                    )}
                 </div>
 
+                {/* Toggle Opcional para Calentamiento (No estorba al usuario) */}
+                <div className="border border-white/[0.06] rounded-2xl overflow-hidden mb-4">
+                    <button
+                        onClick={() => setShowWarmup(!showWarmup)}
+                        className="w-full p-3.5 bg-white/[0.02] hover:bg-white/[0.05] transition-all flex items-center justify-between text-xs font-mono text-zinc-300 font-semibold"
+                    >
+                        <span className="flex items-center gap-2">
+                            <Flame size={14} className="text-[#FF2A2A]" />
+                            <span>Series de Aproximación / Calentamiento (Opcional)</span>
+                        </span>
+                        {showWarmup ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </button>
+
+                    {showWarmup && (
+                        <div className="p-3.5 space-y-2 font-mono text-xs border-t border-white/[0.06] bg-black/40">
+                            {warmupSets.map(w => (
+                                <div
+                                    key={w.setNumber}
+                                    className="flex items-center justify-between p-2 rounded-xl bg-white/[0.03] border border-white/[0.04]"
+                                >
+                                    <div>
+                                        <span className="text-zinc-400 font-semibold mr-2">Serie {w.setNumber}:</span>
+                                        <span className="text-white font-bold">{w.weightKg} kg</span>
+                                        <span className="text-zinc-500 text-[11px] ml-1.5">× {w.reps} reps ({w.percentage}%)</span>
+                                    </div>
+                                    <span className="text-[10px] text-zinc-500">Descanso: {w.restSeconds}s</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Botón de Cierre */}
                 <button
                     onClick={onClose}
-                    className="w-full mt-4 py-3 bg-white hover:bg-zinc-200 text-black font-semibold rounded-2xl text-xs uppercase tracking-wider transition-all shadow-lg active:scale-95"
+                    className="w-full py-3.5 bg-white hover:bg-zinc-200 text-black font-semibold rounded-2xl text-xs uppercase tracking-wider transition-all shadow-xl active:scale-95 flex items-center justify-center gap-2"
                 >
-                    Listo para Entrenar
+                    <Check size={16} strokeWidth={3} />
+                    <span>Listo para Entrenar</span>
                 </button>
             </div>
         </div>

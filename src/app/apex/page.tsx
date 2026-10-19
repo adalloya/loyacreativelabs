@@ -1327,18 +1327,20 @@ export default function ApexDashboard() {
                                 </div>
 
                                 <div className="sm:col-span-2 space-y-3 pt-1">
-                                    <div className="flex justify-between items-center">
+                                    <div className="flex justify-between items-center flex-wrap gap-1.5">
                                         <label className="text-zinc-400 text-xs font-medium block">
                                             OBJETIVO NUTRICIONAL & CALÓRICO
                                         </label>
-                                        <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full border ${
+                                        <span className={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full border ${
                                             (bio.fitnessGoal || "deficit") === "deficit"
                                                 ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
                                                 : (bio.fitnessGoal || "deficit") === "surplus"
                                                 ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
                                                 : "bg-blue-500/10 text-blue-400 border-blue-500/20"
                                         }`}>
+                                            {macros.targetCalories.toLocaleString()} kcal/día (
                                             {bio.caloricAdjustmentPct && bio.caloricAdjustmentPct > 0 ? `+${bio.caloricAdjustmentPct}%` : `${bio.caloricAdjustmentPct ?? -15}%`}
+                                            )
                                         </span>
                                     </div>
 
@@ -1376,46 +1378,60 @@ export default function ApexDashboard() {
                                         </button>
                                     </div>
 
-                                    {/* Botones de Porcentaje según el Objetivo */}
+                                    {/* Botones de Porcentaje con Total Calórico Diario */}
                                     {(bio.fitnessGoal || "deficit") === "deficit" && (
                                         <div className="flex gap-2 pt-1">
-                                            {[-10, -15, -20, -25].map(pct => (
-                                                <button
-                                                    key={pct}
-                                                    onClick={() => setBio({ ...bio, caloricAdjustmentPct: pct, caloricDeficitPct: Math.abs(pct) })}
-                                                    className={`flex-1 py-2 rounded-xl border text-xs font-mono font-semibold transition-all ${
-                                                        (bio.caloricAdjustmentPct ?? -15) === pct
-                                                            ? "bg-amber-500/20 text-amber-300 border-amber-400/50 shadow-sm"
-                                                            : "bg-white/[0.04] text-zinc-400 border-white/[0.06] hover:text-white"
-                                                    }`}
-                                                >
-                                                    {pct}%
-                                                </button>
-                                            ))}
+                                            {[-10, -15, -20, -25].map(pct => {
+                                                const cal = Math.round(macros.tdee * (1 + pct / 100));
+                                                const isSelected = (bio.caloricAdjustmentPct ?? -15) === pct;
+                                                return (
+                                                    <button
+                                                        key={pct}
+                                                        onClick={() => setBio({ ...bio, caloricAdjustmentPct: pct, caloricDeficitPct: Math.abs(pct) })}
+                                                        className={`flex-1 py-2 px-1 text-center rounded-xl border text-xs font-mono transition-all ${
+                                                            isSelected
+                                                                ? "bg-amber-500/20 text-amber-300 border-amber-400/50 shadow-sm font-bold"
+                                                                : "bg-white/[0.04] text-zinc-400 border-white/[0.06] hover:text-white"
+                                                        }`}
+                                                    >
+                                                        <div className="font-bold">{pct}%</div>
+                                                        <div className={`text-[10px] ${isSelected ? "text-amber-300 font-semibold" : "text-zinc-500"}`}>
+                                                            {cal} kcal
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
                                     )}
 
                                     {bio.fitnessGoal === "maintenance" && (
-                                        <div className="text-center py-1 text-zinc-400 text-xs font-mono">
-                                            Balance 0% • 100% TDEE ({macros.tdee} kcal/día)
+                                        <div className="text-center py-2 px-3 bg-white/[0.02] border border-white/[0.06] rounded-xl text-zinc-300 text-xs font-mono">
+                                            <span className="font-bold text-white">{macros.tdee.toLocaleString()} kcal/día</span> (100% TDEE de Equilibrio)
                                         </div>
                                     )}
 
                                     {bio.fitnessGoal === "surplus" && (
                                         <div className="flex gap-2 pt-1">
-                                            {[5, 10, 15, 20].map(pct => (
-                                                <button
-                                                    key={pct}
-                                                    onClick={() => setBio({ ...bio, caloricAdjustmentPct: pct, caloricDeficitPct: 0 })}
-                                                    className={`flex-1 py-2 rounded-xl border text-xs font-mono font-semibold transition-all ${
-                                                        (bio.caloricAdjustmentPct || 15) === pct
-                                                            ? "bg-emerald-500/20 text-emerald-300 border-emerald-400/50 shadow-sm"
-                                                            : "bg-white/[0.04] text-zinc-400 border-white/[0.06] hover:text-white"
-                                                    }`}
-                                                >
-                                                    +{pct}%
-                                                </button>
-                                            ))}
+                                            {[5, 10, 15, 20].map(pct => {
+                                                const cal = Math.round(macros.tdee * (1 + pct / 100));
+                                                const isSelected = (bio.caloricAdjustmentPct || 15) === pct;
+                                                return (
+                                                    <button
+                                                        key={pct}
+                                                        onClick={() => setBio({ ...bio, caloricAdjustmentPct: pct, caloricDeficitPct: 0 })}
+                                                        className={`flex-1 py-2 px-1 text-center rounded-xl border text-xs font-mono transition-all ${
+                                                            isSelected
+                                                                ? "bg-emerald-500/20 text-emerald-300 border-emerald-400/50 shadow-sm font-bold"
+                                                                : "bg-white/[0.04] text-zinc-400 border-white/[0.06] hover:text-white"
+                                                        }`}
+                                                    >
+                                                        <div className="font-bold">+{pct}%</div>
+                                                        <div className={`text-[10px] ${isSelected ? "text-emerald-300 font-semibold" : "text-zinc-500"}`}>
+                                                            {cal} kcal
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
                                     )}
                                 </div>
