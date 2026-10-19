@@ -32,7 +32,8 @@ import {
     ExternalLink,
     ChevronDown,
     ChevronUp,
-    Trash2
+    Trash2,
+    Shuffle
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 
@@ -63,6 +64,7 @@ import { AnatomyVisualizer, MUSCLE_PALETTE, ORDERED_MUSCLE_GROUPS } from "@/comp
 import { ExerciseMotionViewer } from "@/components/apex/ExerciseMotionViewer";
 import { MuscleTargetDrawer } from "@/components/apex/MuscleTargetDrawer";
 import { ExerciseLibraryModal } from "@/components/apex/ExerciseLibraryModal";
+import { ExerciseSwapModal } from "@/components/apex/ExerciseSwapModal";
 import { PlateCalculatorModal } from "@/components/apex/PlateCalculatorModal";
 import { PwaInstallModal } from "@/components/apex/PwaInstallModal";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
@@ -419,15 +421,28 @@ export default function ApexDashboard() {
         setSelectedMuscle(null);
     };
 
-    // Exercise Swap
-    const handleSwapExercise = (index: number) => {
+    // Exercise Random Swap (Acción Instantánea)
+    const handleRandomSwapExercise = (index: number) => {
         const currentEx = activeExercises[index];
+        if (!currentEx) return;
         const swaps = findBiomechanicalSwaps(currentEx.id);
         if (swaps.length > 0) {
             const nextEx = swaps[Math.floor(Math.random() * swaps.length)];
             const updated = [...activeExercises];
             updated[index] = nextEx;
             setActiveExercises(updated);
+        }
+    };
+
+    // Exercise Manual Swap Selection (Abre Modal con Buscador)
+    const [swapTargetIndex, setSwapTargetIndex] = useState<number | null>(null);
+
+    const handleSelectSwapReplacement = (replacement: ExerciseItem) => {
+        if (swapTargetIndex !== null && swapTargetIndex >= 0 && swapTargetIndex < activeExercises.length) {
+            const updated = [...activeExercises];
+            updated[swapTargetIndex] = replacement;
+            setActiveExercises(updated);
+            setSwapTargetIndex(null);
         }
     };
 
@@ -567,14 +582,14 @@ export default function ApexDashboard() {
                 </div>
             </header>
 
-            {/* Main Tabs Navigation Bar (4 Pestañas: GIMNASIO, CALENDARIO, NUTRICIÓN, AJUSTES) */}
+            {/* Main Tabs Navigation Bar (4 Pestañas Minimalistas: Solo Iconos) */}
             <div className="max-w-6xl mx-auto px-4 mt-5">
-                <div className="grid grid-cols-4 bg-[#121214]/90 border border-white/[0.08] rounded-2xl p-1 text-xs font-medium backdrop-blur-xl">
+                <div className="grid grid-cols-4 bg-[#121214]/90 border border-white/[0.08] rounded-2xl p-1 backdrop-blur-xl">
                     {[
-                        { id: "workout", label: "GIMNASIO", icon: Dumbbell },
-                        { id: "calendar", label: "CALENDARIO", icon: Calendar },
-                        { id: "nutrition", label: "NUTRICIÓN", icon: Utensils },
-                        { id: "biometrics", label: "AJUSTES", icon: Sliders }
+                        { id: "workout", label: "Gimnasio", icon: Dumbbell },
+                        { id: "calendar", label: "Calendario", icon: Calendar },
+                        { id: "nutrition", label: "Nutrición", icon: Utensils },
+                        { id: "biometrics", label: "Ajustes", icon: Sliders }
                     ].map(tab => {
                         const Icon = tab.icon;
                         const isActive = activeTab === tab.id;
@@ -582,13 +597,14 @@ export default function ApexDashboard() {
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as any)}
-                                className={`flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 rounded-xl transition-all ${isActive
-                                    ? "bg-white text-black font-semibold shadow-lg"
+                                title={tab.label}
+                                aria-label={tab.label}
+                                className={`flex items-center justify-center py-2.5 rounded-xl transition-all ${isActive
+                                    ? "bg-white text-black shadow-lg"
                                     : "text-zinc-400 hover:text-white hover:bg-white/[0.04]"
                                     }`}
                             >
-                                <Icon size={14} />
-                                <span className="truncate">{tab.label}</span>
+                                <Icon size={18} />
                             </button>
                         );
                     })}
@@ -903,11 +919,21 @@ export default function ApexDashboard() {
                                                             <span>Discos</span>
                                                         </button>
 
-                                                        {/* Swap */}
+                                                        {/* Random Instant Biomechanical Swap */}
                                                         <button
-                                                            onClick={() => handleSwapExercise(exIdx)}
-                                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 border border-white/[0.08] transition-all"
-                                                            title="Buscar Alternativa Biomecánica"
+                                                            onClick={() => handleRandomSwapExercise(exIdx)}
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 hover:text-white border border-white/[0.08] transition-all"
+                                                            title="Swap Aleatorio Biomecánico Instantáneo"
+                                                        >
+                                                            <Shuffle size={13} className="text-zinc-300" />
+                                                            <span>Random</span>
+                                                        </button>
+
+                                                        {/* Swap Manual Selector con Buscador */}
+                                                        <button
+                                                            onClick={() => setSwapTargetIndex(exIdx)}
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 hover:text-white border border-white/[0.08] transition-all"
+                                                            title="Abrir Selector y Buscador de Ejercicios para Swap"
                                                         >
                                                             <RotateCcw size={13} className="text-zinc-300" />
                                                             <span>Swap</span>
@@ -1721,6 +1747,15 @@ export default function ApexDashboard() {
                 isOpen={isExerciseLibraryOpen}
                 onClose={() => setIsExerciseLibraryOpen(false)}
                 onAddExercise={handleAddExerciseToSession}
+                activeExerciseIds={activeExercises.map(e => e.id)}
+            />
+
+            {/* Modal de Swap con Buscador y Filtros Biomecánicos */}
+            <ExerciseSwapModal
+                isOpen={swapTargetIndex !== null}
+                onClose={() => setSwapTargetIndex(null)}
+                currentExercise={swapTargetIndex !== null ? activeExercises[swapTargetIndex] : null}
+                onSelectSwap={handleSelectSwapReplacement}
                 activeExerciseIds={activeExercises.map(e => e.id)}
             />
 
