@@ -36,7 +36,7 @@ function PDFButtonInner({ profile, routine, diet }: DownloadPDFButtonProps) {
   return (
     <a
       href={instance.url || '#'}
-      download="Apex-Hypertrophy-Blueprint.pdf"
+      download="APEX-Blueprint.pdf"
       className="bg-white hover:bg-zinc-200 text-black font-semibold text-xs px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-white/10 flex items-center gap-2 select-none active:scale-95"
     >
       <Download className="w-4 h-4 text-black" />

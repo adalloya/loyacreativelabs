@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://loyacreativelab.com"),
-  title: "APEX — Hypertrophy & Biomechanics OS",
+  title: "APEX",
   description: "Autopilot de Hipertrofia Científica, Telemetría 3D y Nutrición Clínica",
   manifest: "/apex-manifest.json",
   icons: {
@@ -19,27 +19,27 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "APEX OS"
+    title: "APEX"
   },
   openGraph: {
     type: "website",
     locale: "es_MX",
     url: "https://loyacreativelab.com/apex",
-    siteName: "APEX Hypertrophy OS",
-    title: "APEX — Hypertrophy & Biomechanics OS",
+    siteName: "APEX",
+    title: "APEX",
     description: "Autopilot de Hipertrofia Científica, Telemetría 3D y Nutrición Clínica",
     images: [
       {
         url: "/apex-og.png",
         width: 1200,
         height: 630,
-        alt: "APEX Hypertrophy OS",
+        alt: "APEX",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "APEX — Hypertrophy & Biomechanics OS",
+    title: "APEX",
     description: "Autopilot de Hipertrofia Científica, Telemetría 3D y Nutrición Clínica",
     images: ["/apex-og.png"],
   },

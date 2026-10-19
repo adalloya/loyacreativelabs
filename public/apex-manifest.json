@@ -1,6 +1,6 @@
 {
-  "name": "APEX — Hypertrophy & Biomechanics OS",
-  "short_name": "APEX OS",
+  "name": "APEX",
+  "short_name": "APEX",
   "description": "Autopilot de Hipertrofia Científica, Telemetría 3D y Nutrición Clínica",
   "start_url": "/apex",
   "display": "standalone",

@@ -53,14 +53,14 @@ export function PWAInstallBanner() {
           <div className="relative w-12 h-12 rounded-2xl overflow-hidden border border-white/10 bg-[#111111] shrink-0 shadow-lg shadow-red-950/20">
             <Image
               src="/apex-logo.png"
-              alt="APEX OS Logo"
+              alt="APEX"
               width={48}
               height={48}
               className="w-full h-full object-cover"
             />
           </div>
           <div>
-            <h4 className="text-sm font-semibold tracking-tight">Instalar Apex Hypertrophy OS</h4>
+            <h4 className="text-sm font-semibold tracking-tight">Instalar APEX</h4>
             <p className="text-xs text-zinc-400 mt-0.5">Acceso instantáneo sin barra de navegador.</p>
           </div>
         </div>

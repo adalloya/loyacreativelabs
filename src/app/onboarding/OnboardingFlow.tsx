@@ -63,7 +63,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
           <div className="relative w-12 h-12 rounded-2xl overflow-hidden border border-white/[0.12] bg-[#111111] shrink-0 shadow-lg shadow-red-950/20">
             <Image
               src="/apex-logo.png"
-              alt="APEX OS Logo"
+              alt="APEX"
               width={48}
               height={48}
               className="w-full h-full object-cover"
@@ -74,7 +74,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#FF2A2A] animate-pulse" />
               <span className="text-[10px] font-mono tracking-widest text-[#FF2A2A] uppercase">
-                SISTEMA DE CALIBRACIÓN // APEX OS
+                CALIBRACIÓN // APEX
               </span>
             </div>
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight uppercase mt-0.5">

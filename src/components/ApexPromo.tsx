@@ -18,7 +18,7 @@ export default function ApexPromo() {
                         <div className="relative w-16 h-16 rounded-2xl overflow-hidden border border-white/10 bg-[#111111] shadow-2xl shadow-red-950/40">
                             <Image
                                 src="/apex-logo.png"
-                                alt="APEX OS"
+                                alt="APEX"
                                 width={64}
                                 height={64}
                                 className="w-full h-full object-cover"
@@ -31,10 +31,7 @@ export default function ApexPromo() {
                     </div>
 
                     <h2 className="text-4xl md:text-6xl font-black tracking-tight text-white leading-tight">
-                        APEX{" "}
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-amber-400 to-white">
-                            HYPERTROPHY OS
-                        </span>
+                        APEX
                     </h2>
 
                     <p className="text-base sm:text-lg text-gray-400 font-normal leading-relaxed">
@@ -122,7 +119,7 @@ export default function ApexPromo() {
                                 href="/apex"
                                 className="w-full py-4 bg-white hover:bg-slate-200 text-black font-mono font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95 text-sm"
                             >
-                                <span>LANZAR APEX WEBAPP</span>
+                                <span>LANZAR APEX</span>
                                 <ArrowRight size={16} />
                             </Link>
 

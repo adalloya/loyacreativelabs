@@ -51,20 +51,20 @@ export function Navbar() {
                         { label: t.nav.work, href: "#work" },
                         { label: t.nav.services, href: "#services" },
                         { label: t.nav.about, href: "#about" },
-                        { label: "APEX OS", href: "/apex" },
+                        { label: "APEX", href: "/apex" },
                     ].map((item) => (
                         <Link
                             key={item.label}
                             href={item.href}
-                            className={`text-sm font-medium transition-colors flex items-center gap-1.5 ${item.label === "APEX OS"
+                            className={`text-sm font-medium transition-colors flex items-center gap-1.5 ${item.label === "APEX"
                                 ? "text-red-400 font-mono font-bold hover:text-red-300 px-2.5 py-1 rounded-full bg-red-950/30 border border-red-500/20"
                                 : "text-gray-300 hover:text-white"
                                 }`}
                         >
-                            {item.label === "APEX OS" && (
+                            {item.label === "APEX" && (
                                 <Image
                                     src="/apex-logo.png"
-                                    alt="APEX OS"
+                                    alt="APEX"
                                     width={16}
                                     height={16}
                                     className="w-4 h-4 rounded-md object-cover"
@@ -116,21 +116,21 @@ export function Navbar() {
                             { label: t.nav.work, href: "#work" },
                             { label: t.nav.services, href: "#services" },
                             { label: t.nav.about, href: "#about" },
-                            { label: "APEX OS", href: "/apex" },
+                            { label: "APEX", href: "/apex" },
                         ].map((item) => (
                             <Link
                                 key={item.label}
                                 href={item.href}
-                                className={`text-lg font-medium flex items-center gap-2 py-2 border-b border-white/5 ${item.label === "APEX OS"
+                                className={`text-lg font-medium flex items-center gap-2 py-2 border-b border-white/5 ${item.label === "APEX"
                                     ? "text-red-400 font-mono font-bold"
                                     : "text-gray-300 hover:text-white"
                                     }`}
                                 onClick={() => setIsMobileMenuOpen(false)}
                             >
-                                {item.label === "APEX OS" && (
+                                {item.label === "APEX" && (
                                     <Image
                                         src="/apex-logo.png"
-                                        alt="APEX OS"
+                                        alt="APEX"
                                         width={20}
                                         height={20}
                                         className="w-5 h-5 rounded-md object-cover"

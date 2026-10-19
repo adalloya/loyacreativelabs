@@ -46,13 +46,13 @@ export function AppHeaderMenu({
                 <div className="relative w-6 h-6 rounded-lg overflow-hidden border border-white/10 bg-black shrink-0">
                   <Image
                     src="/apex-logo.png"
-                    alt="APEX OS"
+                    alt="APEX"
                     width={24}
                     height={24}
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <span className="text-xs font-mono tracking-widest uppercase text-white font-bold">APEX OS</span>
+                <span className="text-xs font-mono tracking-widest uppercase text-white font-bold">APEX</span>
               </div>
               <span className="text-[10px] font-mono text-zinc-500 bg-white/[0.04] px-2 py-0.5 rounded-full border border-white/[0.06]">
                 MENU
@@ -106,7 +106,7 @@ export function AppHeaderMenu({
             )}
 
             <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between text-[10px] font-mono text-zinc-500">
-              <span>APEX OS // V2.5</span>
+              <span>APEX // V2.5</span>
               <span className="flex items-center gap-1 text-emerald-400">
                 <Shield className="w-3 h-3 text-emerald-400" /> Seguro
               </span>

@@ -120,7 +120,7 @@ export function WorkoutPDFDocument({ profile, routine = [], diet }: { profile: a
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.brand}>APEX // HYPERTROPHY OS</Text>
+            <Text style={styles.brand}>APEX</Text>
             <Text style={styles.title}>Blueprint de Entrenamiento</Text>
           </View>
           <Text style={styles.badge}>DEFICIT -{profile?.caloricDeficitPct || 15}%</Text>
@@ -161,7 +161,7 @@ export function WorkoutPDFDocument({ profile, routine = [], diet }: { profile: a
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text>DOCUMENTO CONFIDENCIAL • GENERADO POR APEX OS</Text>
+          <Text>DOCUMENTO CONFIDENCIAL • GENERADO POR APEX</Text>
           <Text>PÁGINA 1 DE 2</Text>
         </View>
       </Page>
@@ -170,7 +170,7 @@ export function WorkoutPDFDocument({ profile, routine = [], diet }: { profile: a
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.brand}>APEX // NUTRICIÓN CLÍNICA</Text>
+            <Text style={styles.brand}>APEX</Text>
             <Text style={styles.title}>Stack y Macros Diarios</Text>
           </View>
           <Text style={styles.badge}>PROTEÍNA: {profile?.targetProteinG || 180}G</Text>
@@ -188,7 +188,7 @@ export function WorkoutPDFDocument({ profile, routine = [], diet }: { profile: a
         ))}
 
         <View style={styles.footer}>
-          <Text>DOCUMENTO CONFIDENCIAL • GENERADO POR APEX OS</Text>
+          <Text>DOCUMENTO CONFIDENCIAL • GENERADO POR APEX</Text>
           <Text>PÁGINA 2 DE 2</Text>
         </View>
       </Page>

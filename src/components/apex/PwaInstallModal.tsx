@@ -19,7 +19,7 @@ export function PwaInstallModal({ onClose }: PwaInstallModalProps) {
                         <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-white/10 bg-[#111111] shrink-0 shadow-lg shadow-red-950/20">
                             <Image
                                 src="/apex-logo.png"
-                                alt="APEX OS Logo"
+                                alt="APEX"
                                 width={40}
                                 height={40}
                                 className="w-full h-full object-cover"

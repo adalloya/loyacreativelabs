@@ -28,13 +28,13 @@ export function Footer() {
                             <div className="relative w-4 h-4 rounded overflow-hidden">
                                 <Image
                                     src="/apex-logo.png"
-                                    alt="APEX OS"
+                                    alt="APEX"
                                     width={16}
                                     height={16}
                                     className="w-full h-full object-cover"
                                 />
                             </div>
-                            <span className="text-red-400 font-bold group-hover:text-red-300">APEX OS</span>
+                            <span className="text-red-400 font-bold group-hover:text-red-300">APEX</span>
                         </Link>
                         <Link href="#" className="hover:text-white transition-colors">Instagram</Link>
                         <Link href="#" className="hover:text-white transition-colors">LinkedIn</Link>

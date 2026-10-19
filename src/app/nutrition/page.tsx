@@ -63,7 +63,7 @@ export default function NutritionPage() {
       {/* Back button */}
       <div className="mb-6">
         <Link href="/apex" className="text-xs text-zinc-400 hover:text-white font-mono flex items-center gap-1.5 transition-colors">
-          ← VOLVER A APEX DASHBOARD
+          ← VOLVER A APEX
         </Link>
       </div>
 
@@ -73,7 +73,7 @@ export default function NutritionPage() {
           <div className="relative w-12 h-12 rounded-2xl overflow-hidden border border-white/[0.12] bg-[#111111] shrink-0 shadow-lg shadow-red-950/20">
             <Image
               src="/apex-logo.png"
-              alt="APEX OS Logo"
+              alt="APEX"
               width={48}
               height={48}
               className="w-full h-full object-cover"
@@ -81,7 +81,7 @@ export default function NutritionPage() {
             />
           </div>
           <div>
-            <span className="text-xs font-mono text-[#FF2A2A] tracking-widest uppercase block">MÓDULO CLÍNICO // NUTRICIÓN OS</span>
+            <span className="text-xs font-mono text-[#FF2A2A] tracking-widest uppercase block">APEX // NUTRICIÓN CLÍNICA</span>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mt-0.5">PLAN MENSUAL & SUPLEMENTACIÓN</h1>
           </div>
         </div>

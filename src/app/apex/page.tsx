@@ -378,7 +378,7 @@ export default function ApexDashboard() {
                         <div className="relative w-9 h-9 rounded-xl overflow-hidden border border-white/[0.12] bg-[#111111] shrink-0 shadow-md shadow-red-950/20">
                             <Image
                                 src="/apex-logo.png"
-                                alt="APEX OS"
+                                alt="APEX"
                                 width={36}
                                 height={36}
                                 className="w-full h-full object-cover"
@@ -388,8 +388,8 @@ export default function ApexDashboard() {
                         <div>
                             <div className="flex items-center gap-1.5">
                                 <span className="w-1.5 h-1.5 rounded-full bg-[#FF2A2A] animate-pulse shrink-0" />
-                                <span className="text-[10px] font-mono text-[#FF2A2A] tracking-widest uppercase block">
-                                    APEX // HYPERTROPHY OS
+                                <span className="text-[10px] font-mono text-[#FF2A2A] tracking-widest uppercase block font-bold">
+                                    APEX
                                 </span>
                             </div>
                             <h1 className="text-base sm:text-lg font-bold tracking-tight text-white uppercase leading-none mt-0.5">

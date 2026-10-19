@@ -17,7 +17,7 @@ export function ApexFooter() {
             <div className="relative w-12 h-12 rounded-2xl overflow-hidden border border-white/[0.12] bg-[#111111] shrink-0 shadow-lg shadow-red-950/20">
               <Image
                 src="/apex-logo.png"
-                alt="APEX OS"
+                alt="APEX"
                 width={48}
                 height={48}
                 className="w-full h-full object-cover"
@@ -26,7 +26,7 @@ export function ApexFooter() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono font-bold tracking-widest text-[#FF2A2A] uppercase">
-                  APEX // HYPERTROPHY OS
+                  APEX
                 </span>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.08] text-zinc-400">
                   v2.4 STABLE
@@ -91,10 +91,10 @@ export function ApexFooter() {
         {/* Bottom Credits & Quick Links */}
         <div className="pt-6 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-zinc-500">
           <div>
-            &copy; {new Date().getFullYear()} APEX OS // Una iniciativa de ingeniería de <Link href="/" className="text-zinc-300 hover:text-white transition-colors underline underline-offset-4">Loya Creative Lab</Link>.
+            &copy; {new Date().getFullYear()} APEX // Una iniciativa de ingeniería de <Link href="/" className="text-zinc-300 hover:text-white transition-colors underline underline-offset-4">Loya Creative Lab</Link>.
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/apex" className="hover:text-white transition-colors">OS Dashboard</Link>
+            <Link href="/apex" className="hover:text-white transition-colors">APEX Dashboard</Link>
             <span>•</span>
             <Link href="/nutrition" className="hover:text-white transition-colors">Nutrición & Compras</Link>
             <span>•</span>
