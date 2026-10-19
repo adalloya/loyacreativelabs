@@ -59,6 +59,7 @@ import { PlateCalculatorModal } from "@/components/apex/PlateCalculatorModal";
 import { PwaInstallModal } from "@/components/apex/PwaInstallModal";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { DownloadPDFButton } from "@/components/pdf/DownloadPDFButton";
+import { AppHeaderMenu } from "@/components/ui/AppHeaderMenu";
 import { MirrorMuscleOverlay } from "@/components/vision/MirrorMuscleOverlay";
 import { logSetOfflineFirst } from "@/lib/local-db";
 import { playTempoPulse, startTempoLoop, stopTempoLoop } from "@/lib/tempo-sonar";
@@ -369,35 +370,23 @@ export default function ApexDashboard() {
             {/* Top Navigation & Telemetry Header */}
             <header className="sticky top-0 z-40 bg-[#000000]/80 backdrop-blur-2xl border-b border-white/[0.08] px-4 py-3">
                 <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
-                    {/* Brand & Greeting */}
-                    <div className="flex items-center gap-3">
-                        <Link href="/" className="text-xs text-zinc-400 hover:text-white flex items-center gap-1.5 border border-white/[0.08] bg-white/[0.04] px-3 py-1 rounded-full font-medium transition-colors">
-                            ← LOYA LABS
-                        </Link>
-                        <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-[#FF2A2A] animate-pulse" />
-                            <h1 className="text-sm font-semibold tracking-wider text-white">
-                                APEX // HOLA, {profile.firstName.toUpperCase()}
+                    {/* Brand & Greeting (No unnecessary back/home buttons) */}
+                    <div className="flex items-center gap-2.5">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#FF2A2A] animate-pulse shrink-0" />
+                        <div>
+                            <span className="text-[10px] font-mono text-[#FF2A2A] tracking-widest uppercase block">
+                                APEX // HYPERTROPHY OS
+                            </span>
+                            <h1 className="text-base sm:text-lg font-bold tracking-tight text-white uppercase leading-none mt-0.5">
+                                Hola, {profile.firstName} ⚡
                             </h1>
                         </div>
                     </div>
 
-                    {/* Right Telemetry Badges */}
+                    {/* Right Controls & Hamburger Menu */}
                     <div className="flex items-center gap-2">
-                        {/* Reconfigurar Perfil */}
-                        <button
-                            onClick={() => {
-                                localStorage.removeItem('apex_user_profile');
-                                window.location.reload();
-                            }}
-                            className="hidden sm:inline-flex text-[11px] font-mono text-zinc-400 hover:text-white border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-full transition-colors"
-                            title="Reconfigurar Perfil Biométrico"
-                        >
-                            Reconfigurar Perfil
-                        </button>
-
                         {/* Screen Lock Badge */}
-                        <div className="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08]">
+                        <div className="hidden md:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08]">
                             <span className={`w-1.5 h-1.5 rounded-full ${isScreenLocked ? "bg-[#10B981]" : "bg-[#F59E0B]"}`} />
                             <span className="text-zinc-300 font-medium">{isScreenLocked ? "PANTALLA ACTIVA" : "WAKE LOCK"}</span>
                         </div>
@@ -405,19 +394,29 @@ export default function ApexDashboard() {
                         {/* Nike Style Blueprint PDF Export */}
                         <DownloadPDFButton profile={pdfProfile} routine={activeExercises} diet={pdfDiet} />
 
-                        {/* PWA Install Trigger */}
+                        {/* Reconfigurar Perfil */}
                         <button
-                            onClick={() => setIsInstallModalOpen(true)}
-                            className="flex items-center gap-1.5 text-xs font-semibold px-4 py-1.5 rounded-full bg-white hover:bg-zinc-200 text-black shadow-md transition-all active:scale-95"
-                            title="Instalar en tu teléfono"
+                            onClick={() => {
+                                localStorage.removeItem('apex_user_profile');
+                                window.location.reload();
+                            }}
+                            className="hidden lg:inline-flex text-[11px] font-mono text-zinc-400 hover:text-white border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-full transition-colors"
+                            title="Reconfigurar Perfil Biométrico"
                         >
-                            <Smartphone size={13} />
-                            <span className="hidden sm:inline">INSTALAR WEBAPP</span>
+                            Reconfigurar
                         </button>
+
+                        {/* Menú de Tres Rayitas tipo Apple / Tesla */}
+                        <AppHeaderMenu
+                            environmentMode={environmentMode}
+                            onEnvironmentChange={(mode) => setEnvironmentMode(mode as any)}
+                            onInstallClick={() => setIsInstallModalOpen(true)}
+                            showInstallButton={true}
+                        />
                     </div>
                 </div>
 
-                {/* Sub-bar: Readiness Check & Environment */}
+                {/* Sub-bar: Readiness Check (Entorno ahora vive dentro del menú de 3 rayitas) */}
                 <div className="max-w-6xl mx-auto mt-2.5 pt-2 border-t border-white/[0.06] flex items-center justify-between text-xs flex-wrap gap-2">
                     {/* Readiness Switch */}
                     <div className="flex items-center gap-1.5">
@@ -436,25 +435,8 @@ export default function ApexDashboard() {
                         ))}
                     </div>
 
-                    {/* Environment Switch */}
-                    <div className="flex items-center gap-1.5">
-                        <span className="text-zinc-500 text-xs font-medium">ENTORNO:</span>
-                        {[
-                            { id: "full_gym", label: "Gimnasio Completo" },
-                            { id: "hotel_gym", label: "Hotel (Mancuernas)" },
-                            { id: "bodyweight", label: "Peso Corporal" }
-                        ].map(env => (
-                            <button
-                                key={env.id}
-                                onClick={() => setEnvironmentMode(env.id as any)}
-                                className={`px-3 py-1 rounded-full text-xs transition-all font-medium border ${environmentMode === env.id
-                                    ? "bg-white text-black border-white shadow-sm font-semibold"
-                                    : "bg-white/[0.04] text-zinc-400 border-white/[0.06] hover:text-white"
-                                    }`}
-                            >
-                                {env.label}
-                            </button>
-                        ))}
+                    <div className="text-[11px] font-mono text-zinc-400 hidden sm:block">
+                        ENTORNO: <span className="text-white font-semibold capitalize">{environmentMode.replace("_", " ")}</span>
                     </div>
                 </div>
             </header>
