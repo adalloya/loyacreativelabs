@@ -16,7 +16,7 @@ export const ApexAmbientVisualizer: React.FC<ApexAmbientVisualizerProps> = ({
     bpm = 135,
     accentColor = "#10B981"
 }) => {
-    const { isFxActive } = useApexFx();
+    const { isFxActive, visualizerMode } = useApexFx();
     const containerRef = useRef<HTMLDivElement | null>(null);
 
     const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -33,8 +33,8 @@ export const ApexAmbientVisualizer: React.FC<ApexAmbientVisualizerProps> = ({
     bpmRef.current = bpm;
 
     useEffect(() => {
-        // SI FX ESTÁ APAGADO: No inicializar nada y asegurar limpieza total
-        if (!isFxActive || typeof window === "undefined" || !containerRef.current) {
+        // SI FX ESTÁ APAGADO O EN MODO AURA: No instanciar WebGL (0% uso GPU)
+        if (!isFxActive || visualizerMode === "AURA" || typeof window === "undefined" || !containerRef.current) {
             return;
         }
 
@@ -201,7 +201,7 @@ export const ApexAmbientVisualizer: React.FC<ApexAmbientVisualizerProps> = ({
             sceneRef.current = null;
             cameraRef.current = null;
         };
-    }, [isFxActive, accentColor]);
+    }, [isFxActive, visualizerMode, accentColor]);
 
     // Si el usuario tiene FX apagado, no renderiza ni 1 nodo de canvas
     if (!isFxActive) {

@@ -20,6 +20,8 @@ import {
     Sparkles
 } from "lucide-react";
 import { useApexFx } from "@/hooks/useApexFx";
+import { SpotifyThreeCanvas } from "@/components/spotify/SpotifyThreeCanvas";
+import { extractAlbumAccentColor } from "@/services/spotifyTelemetry";
 import {
     isSpotifyConnected,
     initiateSpotifyLogin,
@@ -64,7 +66,18 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
     const [isMuted, setIsMuted] = useState(false);
     const prevVolumeRef = useRef(100);
 
-    const { isFxActive, toggleFx } = useApexFx();
+    const { isFxActive, visualizerMode, cycleMode, toggleFx } = useApexFx();
+    const [accentRgb, setAccentRgb] = useState<string>("255, 42, 42");
+
+    useEffect(() => {
+        if (track?.albumArt) {
+            extractAlbumAccentColor(track.albumArt).then(color => {
+                if (color) setAccentRgb(color);
+            });
+        } else {
+            setAccentRgb("255, 42, 42");
+        }
+    }, [track?.albumArt]);
 
     const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const tickerIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -220,12 +233,26 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
         : 0;
 
     return (
-        <div className={`fixed bottom-0 left-0 right-0 z-30 bg-[#000000]/95 backdrop-blur-2xl border-t transition-all ${
+        <div className={`fixed bottom-0 left-0 right-0 z-30 bg-[#000000]/95 backdrop-blur-2xl border-t transition-all overflow-hidden ${
             isFxActive
                 ? "border-[#10B981]/30 shadow-2xl shadow-[#10B981]/15"
                 : "border-white/[0.12] shadow-2xl"
         } px-3 sm:px-6 py-2.5`}>
-            <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 sm:gap-6 text-xs">
+            {/* Master FX Three.js Audio Visualizer (0% GPU/CPU when OFF, CSS when AURA) */}
+            {visualizerMode !== "OFF" && (
+                <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-30 z-0 flex items-center justify-center">
+                    <SpotifyThreeCanvas
+                        mode={visualizerMode}
+                        isPlaying={isPlaying}
+                        bpm={135}
+                        accentRgb={accentRgb}
+                        restModeActive={restRemaining !== null}
+                        restRemainingSeconds={restRemaining || 0}
+                    />
+                </div>
+            )}
+
+            <div className="relative z-10 max-w-7xl mx-auto flex items-center justify-between gap-3 sm:gap-6 text-xs">
 
                 {/* ZONE 1 (LEFT): Track Info & Album Art */}
                 <div className="flex items-center gap-3 min-w-0 flex-1 max-w-[45%] sm:max-w-[28%]">
@@ -423,7 +450,7 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                     {/* Master FX Switch (WebGL Reactive Lights & Particle Wave) */}
                     <button
                         type="button"
-                        onClick={toggleFx}
+                        onClick={cycleMode}
                         className={`h-7 px-2 sm:px-2.5 rounded-full text-[10px] font-mono font-bold flex items-center gap-1.5 transition-all border active:scale-95 shrink-0 select-none ${
                             isFxActive
                                 ? "bg-[#10B981]/15 text-[#10B981] border-[#10B981]/40 shadow-sm shadow-[#10B981]/25 ring-1 ring-[#10B981]/30"
@@ -431,14 +458,14 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                         }`}
                         title={
                             isFxActive
-                                ? "FX: ON (Luces reactivas y partículas WebGL activas. Clic para apagar y liberar 100% GPU/batería)"
-                                : "FX: OFF (Modo silencioso/batería: Contexto WebGL destruido con renderer.dispose() a 0% CPU/GPU)"
+                                ? `FX: ${visualizerMode} (Clic para alternar: OFF, AURA, WAVE, ORB)`
+                                : "FX: OFF (Modo silencioso: WebGL destruido al 100% con 0% CPU/GPU)"
                         }
-                        aria-label={isFxActive ? "Desactivar efectos visuales WebGL" : "Activar efectos visuales WebGL"}
+                        aria-label="Alternar modo de efectos visuales"
                     >
                         <Sparkles size={11} className={isFxActive ? "text-[#10B981] animate-spin-slow" : "text-zinc-500"} />
                         <span className="hidden xs:inline">FX:</span>
-                        <span>{isFxActive ? "ON" : "OFF"}</span>
+                        <span>{visualizerMode}</span>
                     </button>
 
                     {/* Rest Countdown Timer OR Device / Volume */}

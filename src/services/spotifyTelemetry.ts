@@ -34,81 +34,62 @@ export function hexToRgb(hex: string): { r: number; g: number; b: number } {
 
 // Extrae el color RGB dominante de la portada del álbum de Spotify sin bloquear el hilo principal
 export async function extractAlbumAccentColor(imageUrl: string): Promise<string> {
-    if (!imageUrl || typeof window === 'undefined') return '255, 42, 42'; // Fallback Rojo APEX
+  if (!imageUrl || typeof window === 'undefined') return '255, 42, 42'; // Fallback Rojo APEX
+  if (colorCache.has(imageUrl)) {
+    const hex = colorCache.get(imageUrl)!;
+    const rgb = hexToRgb(hex);
+    return `${rgb.r}, ${rgb.g}, ${rgb.b}`;
+  }
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.src = imageUrl;
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 16;
+        canvas.height = 16;
+        if (!ctx) return resolve('255, 42, 42');
+        ctx.drawImage(img, 0, 0, 16, 16);
+        const data = ctx.getImageData(0, 0, 16, 16).data;
+        let r = 0, g = 0, b = 0, count = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+          // Ignorar píxeles casi negros o casi blancos para obtener un color vibrante real
+          if (brightness > 35 && brightness < 235) {
+            r += data[i];
+            g += data[i + 1];
+            b += data[i + 2];
+            count++;
+          }
+        }
+        if (count > 0) {
+          const avgR = Math.round(r / count);
+          const avgG = Math.round(g / count);
+          const avgB = Math.round(b / count);
+          colorCache.set(imageUrl, rgbToHex(avgR, avgG, avgB));
+          resolve(`${avgR}, ${avgG}, ${avgB}`);
+        } else {
+          colorCache.set(imageUrl, '#10B981');
+          resolve('16, 185, 129'); // Esmeralda fallback
+        }
+      } catch {
+        resolve('255, 42, 42');
+      }
+    };
+    img.onerror = () => resolve('255, 42, 42');
+  });
+}
 
-    if (colorCache.has(imageUrl)) {
-        const hex = colorCache.get(imageUrl)!;
-        const rgb = hexToRgb(hex);
-        return `${rgb.r}, ${rgb.g}, ${rgb.b}`;
-    }
-
-    return new Promise((resolve) => {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-
-        const timeoutId = setTimeout(() => {
-            resolve('255, 42, 42');
-        }, 1200);
-
-        img.onload = () => {
-            clearTimeout(timeoutId);
-            try {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d', { willReadFrequently: true });
-                if (!ctx) {
-                    resolve('255, 42, 42');
-                    return;
-                }
-
-                canvas.width = 32;
-                canvas.height = 32;
-                ctx.drawImage(img, 0, 0, 32, 32);
-
-                const data = ctx.getImageData(0, 0, 32, 32).data;
-                let rSum = 0, gSum = 0, bSum = 0, count = 0;
-
-                for (let i = 0; i < data.length; i += 4) {
-                    const r = data[i];
-                    const g = data[i + 1];
-                    const b = data[i + 2];
-                    const a = data[i + 3];
-
-                    if (a < 128) continue;
-                    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-                    if (brightness > 20 && brightness < 235) {
-                        const delta = Math.max(r, g, b) - Math.min(r, g, b);
-                        const weight = delta > 30 ? 2 : 1;
-                        rSum += r * weight;
-                        gSum += g * weight;
-                        bSum += b * weight;
-                        count += weight;
-                    }
-                }
-
-                if (count === 0) {
-                    resolve('255, 42, 42');
-                    return;
-                }
-
-                const finalR = Math.round(rSum / count);
-                const finalG = Math.round(gSum / count);
-                const finalB = Math.round(bSum / count);
-
-                const hex = rgbToHex(finalR, finalG, finalB);
-                colorCache.set(imageUrl, hex);
-                resolve(`${finalR}, ${finalG}, ${finalB}`);
-            } catch {
-                resolve('255, 42, 42');
-            }
-        };
-
-        img.onerror = () => {
-            clearTimeout(timeoutId);
-            resolve('255, 42, 42');
-        };
-
-        img.src = imageUrl;
-    });
+// Emite eventos globales desde las tarjetas de ejercicios (ej. al marcar Check en una serie o activar Tempo 3-1-1)
+export function triggerWorkoutVisualizerEvent(
+  type: 'SET_COMPLETED' | 'TEMPO_TOGGLE' | 'REST_END',
+  payload?: { active?: boolean; restSeconds?: number }
+) {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('apex:visualizer-event', { detail: { type, ...payload } }));
+  }
 }
 
 export async function extractDominantColor(
