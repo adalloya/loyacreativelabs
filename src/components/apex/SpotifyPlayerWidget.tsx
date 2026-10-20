@@ -16,9 +16,10 @@ import {
     Speaker,
     Disc,
     Sliders,
-    ExternalLink,
-    Radio
+    Radio,
+    Sparkles
 } from "lucide-react";
+import { useApexFx } from "@/hooks/useApexFx";
 import {
     isSpotifyConnected,
     initiateSpotifyLogin,
@@ -62,6 +63,8 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
     const [volume, setVolume] = useState(100);
     const [isMuted, setIsMuted] = useState(false);
     const prevVolumeRef = useRef(100);
+
+    const { isFxActive, toggleFx } = useApexFx();
 
     const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const tickerIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -217,7 +220,11 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
         : 0;
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 z-30 bg-[#000000]/95 backdrop-blur-2xl border-t border-white/[0.12] px-3 sm:px-6 py-2.5 shadow-2xl transition-all">
+        <div className={`fixed bottom-0 left-0 right-0 z-30 bg-[#000000]/95 backdrop-blur-2xl border-t transition-all ${
+            isFxActive
+                ? "border-[#10B981]/30 shadow-2xl shadow-[#10B981]/15"
+                : "border-white/[0.12] shadow-2xl"
+        } px-3 sm:px-6 py-2.5`}>
             <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 sm:gap-6 text-xs">
 
                 {/* ZONE 1 (LEFT): Track Info & Album Art */}
@@ -412,7 +419,28 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                 </div>
 
                 {/* ZONE 3 (RIGHT): Device, Volume & Rest Telemetry */}
-                <div className="flex items-center justify-end gap-3 sm:gap-4 shrink-0 min-w-0 max-w-[30%]">
+                <div className="flex items-center justify-end gap-2 sm:gap-3 shrink-0 min-w-0 max-w-[36%]">
+                    {/* Master FX Switch (WebGL Reactive Lights & Particle Wave) */}
+                    <button
+                        type="button"
+                        onClick={toggleFx}
+                        className={`h-7 px-2 sm:px-2.5 rounded-full text-[10px] font-mono font-bold flex items-center gap-1.5 transition-all border active:scale-95 shrink-0 select-none ${
+                            isFxActive
+                                ? "bg-[#10B981]/15 text-[#10B981] border-[#10B981]/40 shadow-sm shadow-[#10B981]/25 ring-1 ring-[#10B981]/30"
+                                : "bg-white/[0.04] text-zinc-400 hover:text-white border-white/10 hover:bg-white/[0.08]"
+                        }`}
+                        title={
+                            isFxActive
+                                ? "FX: ON (Luces reactivas y partículas WebGL activas. Clic para apagar y liberar 100% GPU/batería)"
+                                : "FX: OFF (Modo silencioso/batería: Contexto WebGL destruido con renderer.dispose() a 0% CPU/GPU)"
+                        }
+                        aria-label={isFxActive ? "Desactivar efectos visuales WebGL" : "Activar efectos visuales WebGL"}
+                    >
+                        <Sparkles size={11} className={isFxActive ? "text-[#10B981] animate-spin-slow" : "text-zinc-500"} />
+                        <span className="hidden xs:inline">FX:</span>
+                        <span>{isFxActive ? "ON" : "OFF"}</span>
+                    </button>
+
                     {/* Rest Countdown Timer OR Device / Volume */}
                     {restRemaining !== null ? (
                         <div className="flex items-center gap-2 sm:gap-3 bg-white/[0.08] border border-white/[0.15] px-2.5 sm:px-4 py-1.5 rounded-full shadow-lg animate-in fade-in">

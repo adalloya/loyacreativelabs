@@ -96,6 +96,7 @@ import { useVoiceLogger } from "@/hooks/useVoiceLogger";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { SpotifyPlayerWidget } from "@/components/apex/SpotifyPlayerWidget";
 import { SpotifySettingsModal } from "@/components/apex/SpotifySettingsModal";
+import { ApexAmbientVisualizer } from "@/components/apex/ApexAmbientVisualizer";
 import { isSpotifyConnected, handleSpotifyCallback } from "@/services/spotifyService";
 import { OnboardingFlow, UserApexProfile } from "@/app/onboarding/OnboardingFlow";
 
@@ -716,7 +717,10 @@ export default function ApexDashboard() {
     }
 
     return (
-        <div className="min-h-screen bg-[#000000] text-[#EAEAEA] font-sans antialiased selection:bg-[#FF2A2A]/30 selection:text-white pb-28 w-full max-w-full overflow-x-hidden">
+        <div className="min-h-screen bg-[#000000] text-[#EAEAEA] font-sans antialiased selection:bg-[#FF2A2A]/30 selection:text-white pb-28 w-full max-w-full overflow-x-hidden relative">
+            {/* Ambient WebGL Visualizer & Reactive Lighting (100% disposed if FX: OFF) */}
+            <ApexAmbientVisualizer />
+
             {/* Top Navigation & Telemetry Header */}
             <header className="sticky top-0 z-40 bg-[#000000]/80 backdrop-blur-2xl border-b border-white/[0.08] px-4 py-3">
                 <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
