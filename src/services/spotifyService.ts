@@ -57,41 +57,81 @@ export interface WorkoutPlaylist {
 
 export const CURATED_WORKOUT_PLAYLISTS: WorkoutPlaylist[] = [
     {
-        id: "techno-140",
-        name: "Peak Cadence Techno",
-        genre: "Techno / Industrial",
-        bpm: "140 BPM",
-        description: "BPM sostenido para series efectivas y máxima activación neuromuscular.",
-        spotifyUri: "spotify:playlist:37i9dQZF1DXdLEN7aqioXM",
-        webUrl: "https://open.spotify.com/playlist/37i9dQZF1DXdLEN7aqioXM",
-        accentColor: "#10B981"
-    },
-    {
-        id: "hard-rock",
-        name: "Heavy Duty Strength",
-        genre: "Heavy Metal / Hard Rock",
-        bpm: "135-150 BPM",
-        description: "Distorsión pesada y energía para series pesadas en sentadilla y banca.",
-        spotifyUri: "spotify:playlist:37i9dQZF1DXdFESNN9TzQT",
-        webUrl: "https://open.spotify.com/playlist/37i9dQZF1DXdFESNN9TzQT",
-        accentColor: "#FF2A2A"
-    },
-    {
-        id: "hiphop-pump",
-        name: "Beast Mode Hip-Hop",
+        id: "beast-mode",
+        name: "Beast Mode (Hip-Hop & Trap)",
         genre: "Trap / Dark Hip-Hop",
-        bpm: "130-145 BPM",
-        description: "Bajos profundos y concentración mental para hipertrofia con RIR 1.",
-        spotifyUri: "spotify:playlist:37i9dQZF1DX76t638V64Cr",
-        webUrl: "https://open.spotify.com/playlist/37i9dQZF1DX76t638V64Cr",
+        bpm: "135-150 BPM",
+        description: "Bajos profundos y motivación implacable para series pesadas, RIR 1 y al fallo.",
+        spotifyUri: "spotify:playlist:37i9dQZF1DX76Wlfdnj7AP",
+        webUrl: "https://open.spotify.com/playlist/37i9dQZF1DX76Wlfdnj7AP",
         accentColor: "#F59E0B"
     },
     {
+        id: "hard-techno",
+        name: "Techno Workout Fuel 2026",
+        genre: "Hard Techno / Industrial",
+        bpm: "145-155 BPM",
+        description: "BPM sostenido para mantener la cadencia motora continua en triseries y densidad metabólica.",
+        spotifyUri: "spotify:playlist:1OkopwBrJ3sGGGETXzcOub",
+        webUrl: "https://open.spotify.com/playlist/1OkopwBrJ3sGGGETXzcOub",
+        accentColor: "#10B981"
+    },
+    {
+        id: "rock-metal",
+        name: "Heavy Rock & Metal Pump",
+        genre: "Hard Rock / Heavy Metal",
+        bpm: "130-150 BPM",
+        description: "Distorsión pesada y energía para series máximas en sentadilla, peso muerto y press de banca.",
+        spotifyUri: "spotify:playlist:3WcixbNwS38mdMbp4TVNJg",
+        webUrl: "https://open.spotify.com/playlist/3WcixbNwS38mdMbp4TVNJg",
+        accentColor: "#FF2A2A"
+    },
+    {
+        id: "gym-phonk",
+        name: "Gym Phonk ⚡️ PR & Fallo",
+        genre: "Drift Phonk / Hardstyle",
+        bpm: "140-160 BPM",
+        description: "Sub-bajos demoledores y adrenalina pura para romper récords personales (PRs) en el gimnasio.",
+        spotifyUri: "spotify:playlist:3pt8bCG6sb6ZFUhK52aGW9",
+        webUrl: "https://open.spotify.com/playlist/3pt8bCG6sb6ZFUhK52aGW9",
+        accentColor: "#EC4899"
+    },
+    {
+        id: "mansion-reggaeton",
+        name: "Mansión Reggaetón Gym",
+        genre: "Reggaetón / Urbano Latino",
+        bpm: "95-105 BPM",
+        description: "Ritmo latino y perreo con bajo potente para mantener el bombeo en días de glúteo y pierna.",
+        spotifyUri: "spotify:playlist:37i9dQZF1DWZjqjZMudx9T",
+        webUrl: "https://open.spotify.com/playlist/37i9dQZF1DWZjqjZMudx9T",
+        accentColor: "#EAB308"
+    },
+    {
+        id: "edm-workout",
+        name: "EDM Workout Energy",
+        genre: "Electro / Mainstage / Bass",
+        bpm: "128-135 BPM",
+        description: "Drops de alta intensidad para circuitos HIIT, protocolos de cardio y quema glucogénica.",
+        spotifyUri: "spotify:playlist:10pkrFc3vbThnvOgNU0OJ3",
+        webUrl: "https://open.spotify.com/playlist/10pkrFc3vbThnvOgNU0OJ3",
+        accentColor: "#06B6D4"
+    },
+    {
+        id: "00s-rock",
+        name: "00s Rock Anthems",
+        genre: "Alt-Rock / Nu-Metal Classics",
+        bpm: "120-140 BPM",
+        description: "Himnos legendarios de rock alternativo para conectar mente y músculo en cada serie.",
+        spotifyUri: "spotify:playlist:37i9dQZF1DX3oM43CtKnRV",
+        webUrl: "https://open.spotify.com/playlist/37i9dQZF1DX3oM43CtKnRV",
+        accentColor: "#3B82F6"
+    },
+    {
         id: "lofi-recovery",
-        name: "Recovery & Stretch",
-        genre: "Lo-Fi Beats",
-        bpm: "80-95 BPM",
-        description: "Baja frecuencia cardíaca para pausas entre series y movilidad final.",
+        name: "Lofi Beats & Movilidad",
+        genre: "Lo-Fi Beats / Chillhop",
+        bpm: "80-90 BPM",
+        description: "Baja frecuencia cardíaca para pausas entre series pesadas, movilidad articular y estiramientos.",
         spotifyUri: "spotify:playlist:37i9dQZF1DWWQRwui0ExPn",
         webUrl: "https://open.spotify.com/playlist/37i9dQZF1DWWQRwui0ExPn",
         accentColor: "#8B5CF6"
@@ -420,11 +460,13 @@ export async function getBestAvailableDevice(): Promise<SpotifyDevice | null> {
 export function openSpotifyDeepLink(uri: string, webUrl?: string): void {
     if (typeof window === "undefined") return;
     try {
-        // Intenta abrir el deep link nativo (spotify:playlist:...)
-        window.location.href = uri;
+        const canonical = normalizeSpotifyPlaylistUri(uri);
+        const playlistId = canonical.replace("spotify:playlist:", "");
+        const targetUrl = webUrl || (playlistId ? `https://open.spotify.com/playlist/${playlistId}` : "https://open.spotify.com");
+        window.open(targetUrl, "_blank", "noopener,noreferrer");
     } catch {
         if (webUrl) {
-            window.open(webUrl, "_blank");
+            window.open(webUrl, "_blank", "noopener,noreferrer");
         }
     }
 }
@@ -589,14 +631,37 @@ export async function spotifyTransferPlayback(deviceId: string, play: boolean = 
 }
 
 /**
+ * Normaliza cualquier formato de enlace o URI de Spotify a la URI canónica (spotify:playlist:ID)
+ */
+export function normalizeSpotifyPlaylistUri(raw: string): string {
+    const trimmed = (raw || "").trim();
+    if (!trimmed) return "";
+    if (trimmed.startsWith("spotify:playlist:")) {
+        return trimmed.split("?")[0];
+    }
+    const match = trimmed.match(/playlist\/([a-zA-Z0-9]+)/);
+    if (match && match[1]) {
+        return `spotify:playlist:${match[1]}`;
+    }
+    return trimmed;
+}
+
+/**
  * Inicia una lista de reproducción específica en el reproductor activo del usuario o en el dispositivo indicado.
- * Despierta y transfiere la sesión si el dispositivo está en espera.
  */
 export async function spotifyPlayPlaylist(
     playlistUri: string,
     targetDeviceId?: string
 ): Promise<PlayPlaylistResult> {
     try {
+        const canonicalUri = normalizeSpotifyPlaylistUri(playlistUri);
+        if (!canonicalUri) {
+            return {
+                success: false,
+                error: "Enlace o URI de playlist no válido."
+            };
+        }
+
         const devices = await spotifyGetDevices();
         
         let targetDev: SpotifyDevice | undefined;
@@ -612,26 +677,24 @@ export async function spotifyPlayPlaylist(
             return {
                 success: false,
                 needsAppOpen: true,
-                error: "No se detectó ningún dispositivo con Spotify abierto. Abre Spotify en tu teléfono o computadora para iniciar."
+                error: "No se detectó ningún dispositivo con Spotify activo. Abre Spotify en tu teléfono o computadora y vuelve a presionar Reproducir."
             };
         }
 
-        // Si el dispositivo no estaba activo, transferimos la sesión primero para despertarlo
-        if (!targetDev.is_active) {
-            await spotifyTransferPlayback(targetDev.id, false);
-            await new Promise(r => setTimeout(r, 300));
-        }
-
-        // Enviamos el comando de reproducción con device_id explícito
+        // Comando oficial de Spotify para reproducir contexto completo desde el primer track (offset: 0)
         const endpoint = `/me/player/play?device_id=${encodeURIComponent(targetDev.id)}`;
-        const res = await spotifyFetch(endpoint, {
+        const playPayload = {
+            context_uri: canonicalUri,
+            offset: { position: 0 },
+            position_ms: 0
+        };
+
+        let res = await spotifyFetch(endpoint, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({
-                context_uri: playlistUri
-            })
+            body: JSON.stringify(playPayload)
         });
 
         if (res && (res.status === 204 || res.ok)) {
@@ -642,21 +705,44 @@ export async function spotifyPlayPlaylist(
             };
         }
 
-        // Fallback: transferencia directa con play: true
-        const fallbackRes = await spotifyTransferPlayback(targetDev.id, true);
-        if (fallbackRes) {
-            // Reintentar poner la playlist después de activar
-            await new Promise(r => setTimeout(r, 300));
-            await spotifyFetch(endpoint, {
+        let errorReason = "";
+        if (res) {
+            try {
+                const errData = await res.json();
+                errorReason = errData?.error?.message || "";
+            } catch {
+                // ignore
+            }
+        }
+
+        // Si Spotify reporta que se requiere Premium
+        if (errorReason.toLowerCase().includes("premium")) {
+            return {
+                success: false,
+                deviceName: targetDev.name,
+                deviceId: targetDev.id,
+                needsAppOpen: true,
+                error: "El control remoto directo de Spotify requiere cuenta Premium. Usa el botón 'Abrir en la App' para reproducir gratis directamente en tu Spotify."
+            };
+        }
+
+        // Si el dispositivo estaba en reposo o inactivo, despertarlo transfiriendo la sesión con play: true
+        const transferred = await spotifyTransferPlayback(targetDev.id, true);
+        if (transferred) {
+            await new Promise(r => setTimeout(r, 450));
+            res = await spotifyFetch(endpoint, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ context_uri: playlistUri })
+                body: JSON.stringify(playPayload)
             });
-            return {
-                success: true,
-                deviceName: targetDev.name,
-                deviceId: targetDev.id
-            };
+
+            if (res && (res.status === 204 || res.ok)) {
+                return {
+                    success: true,
+                    deviceName: targetDev.name,
+                    deviceId: targetDev.id
+                };
+            }
         }
 
         return {
@@ -664,7 +750,7 @@ export async function spotifyPlayPlaylist(
             deviceName: targetDev.name,
             deviceId: targetDev.id,
             needsAppOpen: true,
-            error: "Abre Spotify en tu dispositivo para recibir la orden de reproducción."
+            error: errorReason || "Spotify no pudo iniciar la playlist en este dispositivo. Abre la app de Spotify en tu dispositivo y pulsa 'Abrir en la App'."
         };
     } catch (err: any) {
         return {

@@ -441,9 +441,10 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
 
                                     <div className="flex items-center gap-1.5 pt-1">
                                         <button
+                                            type="button"
                                             onClick={() => handlePlayPlaylist(pl)}
                                             disabled={!connected}
-                                            className={`flex-1 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                                            className={`flex-1 h-9 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
                                                 connected
                                                     ? "bg-white/[0.08] hover:bg-white text-white hover:text-black border border-white/10"
                                                     : "bg-white/[0.03] text-zinc-600 border border-white/[0.04] cursor-not-allowed"
@@ -457,9 +458,9 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                                             type="button"
                                             onClick={() => openSpotifyDeepLink(pl.spotifyUri, pl.webUrl)}
                                             title="Abrir directamente en la app de Spotify"
-                                            className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] text-zinc-400 hover:text-white border border-white/[0.06] transition-all"
+                                            className="w-9 h-9 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] text-zinc-400 hover:text-white border border-white/[0.06] transition-all flex items-center justify-center shrink-0 active:scale-95"
                                         >
-                                            <ExternalLink size={13} />
+                                            <ExternalLink size={14} />
                                         </button>
                                     </div>
                                 </div>
@@ -479,13 +480,18 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                                     placeholder="Pega enlace o URI de playlist de Spotify..."
                                     value={customUri}
                                     onChange={(e) => setCustomUri(e.target.value)}
-                                    className="flex-1 bg-black/40 border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white placeholder:text-zinc-600 outline-none focus:border-white/30 font-mono"
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") handlePlayCustom();
+                                    }}
+                                    className="flex-1 bg-black/40 border border-white/[0.08] rounded-xl px-3 text-xs text-white placeholder:text-zinc-600 outline-none focus:border-white/30 font-mono h-9"
                                 />
                                 <button
+                                    type="button"
                                     onClick={handlePlayCustom}
-                                    className="px-3.5 py-2 bg-white text-black font-bold text-xs rounded-xl hover:bg-zinc-200 transition-all active:scale-95 shrink-0"
+                                    className="h-9 px-4 bg-white text-black font-bold text-xs rounded-xl hover:bg-zinc-200 transition-all active:scale-95 shrink-0 flex items-center justify-center gap-1.5"
                                 >
-                                    Lanzar
+                                    <Play size={12} fill="currentColor" />
+                                    <span>Lanzar</span>
                                 </button>
                             </div>
                         </div>
