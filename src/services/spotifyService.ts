@@ -436,6 +436,81 @@ export async function getCurrentPlayback(): Promise<SpotifyTrack | null> {
     }
 }
 
+export interface AudioFeatures {
+    tempo: number;
+    energy: number;
+    danceability?: number;
+    valence?: number;
+}
+
+const audioFeaturesCache = new Map<string, AudioFeatures>();
+
+/**
+ * Obtiene las características de audio (BPM y energía) de una pista desde Spotify Web API (/v1/audio-features/{trackId}).
+ * Si el endpoint devuelve 403 o restricciones de permisos por la app de Spotify, implementa un estimador
+ * heurístico inteligente basado en el título de la canción, artista o género de entrenamiento.
+ */
+export async function getTrackAudioFeatures(
+    trackId: string,
+    fallbackHint?: { name?: string; artist?: string }
+): Promise<AudioFeatures> {
+    if (!trackId) {
+        return { tempo: 135, energy: 0.85 };
+    }
+
+    if (audioFeaturesCache.has(trackId)) {
+        return audioFeaturesCache.get(trackId)!;
+    }
+
+    try {
+        const res = await spotifyFetch(`/audio-features/${trackId}`);
+        if (res && res.ok) {
+            const data = await res.json();
+            if (data && typeof data.tempo === "number" && data.tempo > 0) {
+                const feat: AudioFeatures = {
+                    tempo: Math.round(data.tempo * 10) / 10,
+                    energy: typeof data.energy === "number" ? Math.max(0.1, Math.min(1.0, data.energy)) : 0.85,
+                    danceability: data.danceability,
+                    valence: data.valence
+                };
+                audioFeaturesCache.set(trackId, feat);
+                return feat;
+            }
+        }
+    } catch (err) {
+        console.warn("Spotify audio-features endpoint error, applying heuristic estimator:", err);
+    }
+
+    // Estimador heurístico inteligente si el endpoint da 403 o no está disponible
+    const text = `${fallbackHint?.name || ""} ${fallbackHint?.artist || ""}`.toLowerCase();
+    let tempo = 135;
+    let energy = 0.82;
+
+    if (/techno|industrial|rave|hardstyle|gabber|acid/i.test(text)) {
+        tempo = 148;
+        energy = 0.95;
+    } else if (/phonk|drift|kordhell|giga|cowbell|interworld|playaphonk/i.test(text)) {
+        tempo = 142;
+        energy = 0.92;
+    } else if (/metal|rock|metallica|slipknot|rammstein|linkin|korn|avenged/i.test(text)) {
+        tempo = 134;
+        energy = 0.88;
+    } else if (/hip hop|rap|trap|beast|drake|travis|eminem|future/i.test(text)) {
+        tempo = 128;
+        energy = 0.84;
+    } else if (/reggaeton|perreo|bad bunny|feid|urbano|anuel|karol/i.test(text)) {
+        tempo = 98;
+        energy = 0.78;
+    } else if (/lofi|lo-fi|chill|recovery|sleep|ambient|meditation|piano/i.test(text)) {
+        tempo = 82;
+        energy = 0.38;
+    }
+
+    const fallbackFeat: AudioFeatures = { tempo, energy };
+    audioFeaturesCache.set(trackId, fallbackFeat);
+    return fallbackFeat;
+}
+
 export interface PlayPlaylistResult {
     success: boolean;
     deviceName?: string;

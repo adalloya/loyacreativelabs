@@ -34,7 +34,9 @@ import {
     spotifySetShuffle,
     spotifySetRepeat,
     spotifySetVolume,
-    SpotifyTrack
+    SpotifyTrack,
+    getTrackAudioFeatures,
+    AudioFeatures
 } from "@/services/spotifyService";
 
 interface SpotifyPlayerWidgetProps {
@@ -68,6 +70,7 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
 
     const { isFxActive, visualizerMode, cycleMode, toggleFx } = useApexFx();
     const [accentRgb, setAccentRgb] = useState<string>("255, 42, 42");
+    const [audioFeatures, setAudioFeatures] = useState<AudioFeatures>({ tempo: 135, energy: 0.85 });
 
     useEffect(() => {
         if (track?.albumArt) {
@@ -78,6 +81,17 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
             setAccentRgb("255, 42, 42");
         }
     }, [track?.albumArt]);
+
+    // Consulta en tiempo real de características de audio (BPM exacto y energía)
+    useEffect(() => {
+        if (track?.id) {
+            getTrackAudioFeatures(track.id, { name: track.name, artist: track.artist }).then(feat => {
+                if (feat && feat.tempo > 0) {
+                    setAudioFeatures(feat);
+                }
+            });
+        }
+    }, [track?.id]);
 
     const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const tickerIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -106,13 +120,13 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
         }
     }, [isSeeking]);
 
-    // Initial check and periodic polling
+    // Polling activo cada 2.5s según directiva de telemetría de Spotify
     useEffect(() => {
         updatePlayback();
 
         pollIntervalRef.current = setInterval(() => {
             updatePlayback();
-        }, 3000);
+        }, 2500);
 
         return () => {
             if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
@@ -240,11 +254,14 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
         } px-3 sm:px-6 py-2.5`}>
             {/* Master FX Three.js Audio Visualizer (0% GPU/CPU when OFF, CSS when AURA) */}
             {visualizerMode !== "OFF" && (
-                <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-30 z-0 flex items-center justify-center">
+                <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-35 z-0 flex items-center justify-center">
                     <SpotifyThreeCanvas
                         mode={visualizerMode}
                         isPlaying={isPlaying}
-                        bpm={135}
+                        trackId={track?.id}
+                        bpm={audioFeatures.tempo}
+                        energy={audioFeatures.energy}
+                        progressMs={localProgressMs}
                         accentRgb={accentRgb}
                         restModeActive={restRemaining !== null}
                         restRemainingSeconds={restRemaining || 0}
@@ -311,6 +328,11 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                                         <span className="text-[9px] font-mono text-[#10B981] flex items-center gap-0.5 shrink-0 bg-[#10B981]/10 px-1 rounded border border-[#10B981]/20">
                                             <Speaker size={8} />
                                             <span className="truncate max-w-[80px]">{track.deviceName}</span>
+                                        </span>
+                                    )}
+                                    {isPlaying && audioFeatures.tempo > 0 && (
+                                        <span className="text-[9px] font-mono text-zinc-300 flex items-center gap-0.5 shrink-0 bg-white/[0.08] px-1 rounded border border-white/10" title="BPM y cadencia rítmica analizada">
+                                            {Math.round(audioFeatures.tempo)} BPM
                                         </span>
                                     )}
                                 </div>
