@@ -26,14 +26,14 @@ export async function POST(req: NextRequest) {
 
         if (dietaryPreference === "keto") {
             // Keto: Máximo 30-35g carbs netos, grasas elevadas ~70-75%
-            targetCarbs = Math.min(35, Math.round((targetCalories * 0.05) / 4));
-            targetProtein = Math.round(weight * 2.0); // 2.0g/kg para no activar exceso de gluconeogénesis
-            targetFats = Math.max(20, Math.round((targetCalories - (targetProtein * 4) - (targetCarbs * 4)) / 9));
+            targetCarbs = Math.min(35, Math.max(20, Math.round((targetCalories * 0.05) / 4)));
+            targetProtein = Math.round(weight * 2.0); // 2.0g/kg para evitar exceso de gluconeogénesis
+            targetFats = Math.max(30, Math.round((targetCalories - (targetProtein * 4) - (targetCarbs * 4)) / 9));
         } else if (dietaryPreference === "low_carb") {
             // Low carb: Carbohidratos moderados ~90-100g
-            targetCarbs = Math.min(100, Math.round((targetCalories * 0.18) / 4));
+            targetCarbs = Math.min(100, Math.max(50, Math.round((targetCalories * 0.18) / 4)));
             targetProtein = Math.round(weight * 2.2);
-            targetFats = Math.max(20, Math.round((targetCalories - (targetProtein * 4) - (targetCarbs * 4)) / 9));
+            targetFats = Math.max(30, Math.round((targetCalories - (targetProtein * 4) - (targetCarbs * 4)) / 9));
         } else {
             // Estándar, vegetariana, vegana, paleo, ayuno intermitente
             targetProtein = profile.targetProteinG || Math.round(weight * 2.2);
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
 
         const dietTitle = DIET_TITLES[dietaryPreference] || "Estándar / Balanceada";
 
-        // Generador de fallback clínico según tipo de dieta (100% libre de mocks)
+        // Generador de respaldo clínico instantáneo según tipo de dieta (100% libre de mocks)
         const getSampleDayMeals = (diet: string) => {
             if (diet === "keto") {
                 return [
@@ -71,9 +71,9 @@ export async function POST(req: NextRequest) {
                         mealName: "Comida 1 (Desayuno Keto Anticatabólico)",
                         timing: "08:30 AM",
                         ingredients: [
-                            { item: "Huevos enteros pasteurizados revueltos en ghee", grams: 200 },
+                            { item: "Huevos enteros revueltos en aceite de oliva o ghee", grams: 200 },
                             { item: "Aguacate hass fresco", grams: 120 },
-                            { item: "Espinacas baby salteadas con aceite de oliva", grams: 100 }
+                            { item: "Espinacas baby salteadas", grams: 100 }
                         ],
                         macros: {
                             proteinG: Math.round(targetProtein * 0.28),
@@ -126,6 +126,66 @@ export async function POST(req: NextRequest) {
                 ];
             }
 
+            if (diet === "low_carb") {
+                return [
+                    {
+                        mealName: "Comida 1 (Desayuno Low Carb Proteico)",
+                        timing: "08:00 AM",
+                        ingredients: [
+                            { item: "Huevos enteros con claras pasteurizadas", grams: 200 },
+                            { item: "Frutos rojos frescos (frambuesas/arándanos)", grams: 80 },
+                            { item: "Aguacate hass", grams: 80 }
+                        ],
+                        macros: {
+                            proteinG: Math.round(targetProtein * 0.28),
+                            carbsG: 18,
+                            fatsG: Math.round(targetFats * 0.30)
+                        }
+                    },
+                    {
+                        mealName: "Comida 2 (Almuerzo Peri-Entreno)",
+                        timing: "01:30 PM",
+                        ingredients: [
+                            { item: "Pechuga de pollo a la plancha", grams: 220 },
+                            { item: "Camote o batata al horno", grams: 120 },
+                            { item: "Brócoli y espárragos al vapor", grams: 150 },
+                            { item: "Aceite de oliva virgen extra", grams: 10 }
+                        ],
+                        macros: {
+                            proteinG: Math.round(targetProtein * 0.36),
+                            carbsG: 35,
+                            fatsG: Math.round(targetFats * 0.30)
+                        }
+                    },
+                    {
+                        mealName: "Comida 3 (Snack Recuperación)",
+                        timing: "05:30 PM",
+                        ingredients: [
+                            { item: "Proteína Whey Isolate", grams: 35 },
+                            { item: "Nueces o almendras tostadas", grams: 25 }
+                        ],
+                        macros: {
+                            proteinG: Math.round(targetProtein * 0.16),
+                            carbsG: 6,
+                            fatsG: Math.round(targetFats * 0.20)
+                        }
+                    },
+                    {
+                        mealName: "Comida 4 (Cena Ligera Anti-Catabólica)",
+                        timing: "09:00 PM",
+                        ingredients: [
+                            { item: "Filete de pescado blanco o salmón", grams: 200 },
+                            { item: "Ensalada verde con semillas de calabaza y aceite de oliva", grams: 160 }
+                        ],
+                        macros: {
+                            proteinG: Math.round(targetProtein * 0.20),
+                            carbsG: 12,
+                            fatsG: Math.round(targetFats * 0.20)
+                        }
+                    }
+                ];
+            }
+
             if (diet === "vegetarian") {
                 return [
                     {
@@ -139,7 +199,7 @@ export async function POST(req: NextRequest) {
                         macros: {
                             proteinG: Math.round(targetProtein * 0.25),
                             carbsG: Math.round(targetCarbs * 0.28),
-                            fatsG: Math.round(targetFats * 0.3)
+                            fatsG: Math.round(targetFats * 0.30)
                         }
                     },
                     {
@@ -154,7 +214,7 @@ export async function POST(req: NextRequest) {
                         macros: {
                             proteinG: Math.round(targetProtein * 0.35),
                             carbsG: Math.round(targetCarbs * 0.42),
-                            fatsG: Math.round(targetFats * 0.3)
+                            fatsG: Math.round(targetFats * 0.30)
                         }
                     },
                     {
@@ -250,6 +310,67 @@ export async function POST(req: NextRequest) {
                 ];
             }
 
+            if (diet === "paleo") {
+                return [
+                    {
+                        mealName: "Comida 1 (Desayuno Paleolítico)",
+                        timing: "08:00 AM",
+                        ingredients: [
+                            { item: "Huevos enteros de libre pastoreo revueltos", grams: 200 },
+                            { item: "Aguacate hass fresco", grams: 100 },
+                            { item: "Frutos del bosque (moras y arándanos)", grams: 100 }
+                        ],
+                        macros: {
+                            proteinG: Math.round(targetProtein * 0.26),
+                            carbsG: Math.round(targetCarbs * 0.20),
+                            fatsG: Math.round(targetFats * 0.35)
+                        }
+                    },
+                    {
+                        mealName: "Comida 2 (Almuerzo Paleo de Caza)",
+                        timing: "01:30 PM",
+                        ingredients: [
+                            { item: "Corte de res magra o salmón salvaje", grams: 240 },
+                            { item: "Camote o batata dulce asada", grams: 180 },
+                            { item: "Espárragos y calabacines a la parrilla", grams: 160 },
+                            { item: "Aceite de oliva virgen extra", grams: 15 }
+                        ],
+                        macros: {
+                            proteinG: Math.round(targetProtein * 0.38),
+                            carbsG: Math.round(targetCarbs * 0.45),
+                            fatsG: Math.round(targetFats * 0.35)
+                        }
+                    },
+                    {
+                        mealName: "Comida 3 (Snack Ancestral)",
+                        timing: "05:30 PM",
+                        ingredients: [
+                            { item: "Cecina / jerky de res natural sin azúcares", grams: 45 },
+                            { item: "Nueces de macadamia o almendras crudas", grams: 30 }
+                        ],
+                        macros: {
+                            proteinG: Math.round(targetProtein * 0.16),
+                            carbsG: Math.round(targetCarbs * 0.10),
+                            fatsG: Math.round(targetFats * 0.15)
+                        }
+                    },
+                    {
+                        mealName: "Comida 4 (Cena Paleo Ligera)",
+                        timing: "09:00 PM",
+                        ingredients: [
+                            { item: "Pechuga de pavo o trucha a las hierbas", grams: 200 },
+                            { item: "Ensalada verde con semillas de calabaza", grams: 150 },
+                            { item: "Aceite de coco virgen o de oliva", grams: 10 }
+                        ],
+                        macros: {
+                            proteinG: Math.round(targetProtein * 0.20),
+                            carbsG: Math.round(targetCarbs * 0.25),
+                            fatsG: Math.round(targetFats * 0.15)
+                        }
+                    }
+                ];
+            }
+
             if (diet === "intermittent_fasting") {
                 return [
                     {
@@ -297,7 +418,7 @@ export async function POST(req: NextRequest) {
                 ];
             }
 
-            // Estándar (Carnes magras, pescado, huevos, arroz, avena, camote)
+            // Estándar / Balanceada
             return [
                 {
                     mealName: "Comida 1 (Desayuno Proteico)",
@@ -310,7 +431,7 @@ export async function POST(req: NextRequest) {
                     macros: {
                         proteinG: Math.round(targetProtein * 0.25),
                         carbsG: Math.round(targetCarbs * 0.28),
-                        fatsG: Math.round(targetFats * 0.3)
+                        fatsG: Math.round(targetFats * 0.30)
                     }
                 },
                 {
@@ -325,7 +446,7 @@ export async function POST(req: NextRequest) {
                     macros: {
                         proteinG: Math.round(targetProtein * 0.35),
                         carbsG: Math.round(targetCarbs * 0.42),
-                        fatsG: Math.round(targetFats * 0.3)
+                        fatsG: Math.round(targetFats * 0.30)
                     }
                 },
                 {
@@ -342,7 +463,7 @@ export async function POST(req: NextRequest) {
                     }
                 },
                 {
-                    mealName: "Comida 4 (Cena Hipocalórica Anti-Catabólica)",
+                    mealName: "Comida 4 (Cena Anti-Catabólica)",
                     timing: "09:00 PM",
                     ingredients: [
                         { item: "Filete de salmón salvaje o lomo magro", grams: 200 },
@@ -358,7 +479,10 @@ export async function POST(req: NextRequest) {
             ];
         };
 
-        const sampleDayMeals = getSampleDayMeals(dietaryPreference);
+        const fallbackMeals = getSampleDayMeals(dietaryPreference);
+        let activeMeals = fallbackMeals;
+        let clinicalSummary = `Plan nutricional clínico de 30 días bajo protocolo ${dietTitle} para ${goalDesc} con balance estricto de ${targetProtein}g de proteína (${targetCalories} kcal/día).`;
+
         const apiKey = process.env.GOOGLE_API_KEY || process.env.GOOGLE_API_KEY_BACKUP;
 
         if (apiKey) {
@@ -366,87 +490,71 @@ export async function POST(req: NextRequest) {
                 const genAI = new GoogleGenerativeAI(apiKey);
                 const model = genAI.getGenerativeModel({
                     model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
-                    systemInstruction: `Eres un Nutriólogo Clínico y Fisiólogo Deportivo de élite de APEX Hypertrophy OS.
-Genera un plan de nutrición clínica de 30 días en formato JSON puro sin bloques markdown ni explicaciones adicionales con la siguiente estructura exacta:
-{
-  "monthYear": "${new Date().toLocaleDateString("es-MX", { month: "long", year: "numeric" })}",
-  "dietaryPreference": "${dietaryPreference}",
-  "dietaryTitle": "${dietTitle}",
-  "dietaryNotes": "${dietaryNotes}",
-  "caloriesTarget": ${targetCalories},
-  "macros": { "protein": ${targetProtein}, "carbs": ${targetCarbs}, "fats": ${targetFats} },
-  "dailySupplements": [
-    { "name": "Creatina Monohidrato", "dosage": "5g", "timing": "Post-entreno diario", "clinicalReason": "Saturación de fosfocreatina intramuscular" }
-  ],
-  "monthlySummary": "Resumen clínico explicando por qué este plan cumple con el régimen ${dietTitle} y optimiza la hipertrofia.",
-  "thirtyDayPlan": [
-    {
-      "dayNumber": 1,
-      "totalCalories": ${targetCalories},
-      "meals": [
-        {
-          "mealName": "Comida 1 (Desayuno)",
-          "timing": "08:00",
-          "ingredients": [{ "item": "Huevos enteros", "grams": 180 }, { "item": "Avena", "grams": 60 }],
-          "macros": { "proteinG": 35, "carbsG": 42, "fatsG": 18 }
-        }
-      ]
-    }
-  ]
-}
-
-REGLAS ESTRICTAS DE ALIMENTACIÓN SEGÚN EL RÉGIMEN SOLICITADO:
-- Régimen activo: "${dietTitle}"
-- Si es Cetogénica (Keto): Mantén carbohidratos netos estrictamente por debajo de 35g al día. CERO arroz, pasta, avena, pan, azúcar o frutas altas en fructosa. Grasas saludables como aguacate, oliva, nueces y salmón.
-- Si es Vegetariana: CERO carnes rojas, aves ni pescados. Fuentes proteicas: huevos, yogur griego, queso cottage, tofu, tempeh, legumbres y proteína vegetal o whey.
-- Si es Vegana: CERO alimentos de origen animal (sin carne, lácteos, huevos ni miel). Fuentes proteicas: tofu, tempeh, seitán, edamames, lentejas, garbanzos y proteína de chícharo/arroz.
-- Si es Paleolítica (Paleo): CERO granos/cereales, CERO legumbres, CERO lácteos, CERO azúcares. Carnes magras, pescados salvajes, huevos, tubérculos, frutas y semillas.
-- Si es Ayuno Intermitente (16/8): Concentra todas las comidas dentro de una ventana estricta de 8 horas (ej. 12:00 PM a 08:00 PM) repartidas en 3 comidas densas.
-- Si hay notas o restricciones clínicas (${dietaryNotes ? `"${dietaryNotes}"` : "ninguna"}): Respétalas al 100% (ej. si dice sin gluten, no uses cereales con gluten; si dice sin lactosa, no uses leche/lácteos normales).`
+                    generationConfig: {
+                        temperature: 0.2,
+                        // @ts-ignore
+                        thinkingConfig: { thinkingBudget: 0 },
+                        responseMimeType: "application/json"
+                    }
                 });
 
-                const prompt = `Genera el plan mensual clínico para un atleta de ${weight} kg con objetivo de ${goalDesc}.
-Régimen nutricional requerido: ${dietTitle}.
-Restricciones o notas del atleta: ${dietaryNotes || "Ninguna"}.
-Metas exactas de macros: ${targetCalories} kcal/día, ${targetProtein}g proteína, ${targetCarbs}g carbohidratos, ${targetFats}g grasas.`;
+                const prompt = `Actúa como Nutriólogo Deportivo y Fisiólogo Clínico de APEX Hypertrophy OS.
+Genera un plan de alimentación diario clínico arquetípico en JSON estricto para un atleta con las siguientes especificaciones:
+- Peso corporal: ${weight} kg
+- Objetivo: ${goalDesc}
+- Régimen nutricional: "${dietTitle}"
+- Restricciones o notas clínicas del atleta: ${dietaryNotes ? `"${dietaryNotes}" (OBLIGATORIO CUMPLIR AL 100%)` : "Ninguna"}
+- Metas exactas de macros: ${targetCalories} kcal/día | ${targetProtein}g proteína | ${targetCarbs}g carbohidratos | ${targetFats}g grasas
 
-                const result = await model.generateContent(prompt);
+REGLAS NUTRICIONALES ESTRICTAS POR RÉGIMEN:
+- Si es Cetogénica (Keto): Carbohidratos netos estrictamente < 35g TOTAL EN EL DÍA. CERO arroz, pasta, avena, pan, azúcar o papas. Grasas saludables altas (aguacate, aceite de oliva, frutos secos, salmón).
+- Si es Baja en Carbos (Low Carb): Carbohidratos moderados (~90-100g/día), concentrados peri-entrenamiento.
+- Si es Vegetariana: CERO carnes rojas, aves ni pescado. Fuentes proteicas: huevos, yogur griego, cottage, tofu, tempeh, legumbres.
+- Si es Vegana: CERO productos de origen animal. Fuentes: tofu, tempeh, seitán, edamames, lentejas, proteína aislada de chícharo/arroz.
+- Si es Paleolítica (Paleo): CERO granos/cereales, CERO legumbres, CERO lácteos, CERO azúcares. Alimentos no procesados: carnes magras, pescados salvajes, huevos, tubérculos, semillas.
+- Si es Ayuno Intermitente (16/8): Concentra la alimentación en 3 comidas densas dentro de una ventana de 8 horas (12:00 PM a 08:00 PM).
+
+ESTRUCTURA JSON EXACTA REQUERIDA:
+{
+  "monthlySummary": "Resumen clínico explicando por qué este plan cumple con ${dietTitle} y optimiza ${goalDesc}.",
+  "meals": [
+    {
+      "mealName": "Comida 1 (Desayuno)",
+      "timing": "08:30 AM",
+      "ingredients": [
+        { "item": "Nombre del ingrediente", "grams": 180 }
+      ],
+      "macros": { "proteinG": 35, "carbsG": 20, "fatsG": 15 }
+    }
+  ]
+}`;
+
+                const geminiPromise = model.generateContent(prompt);
+                const timeoutPromise = new Promise<never>((_, reject) =>
+                    setTimeout(() => reject(new Error("Gemini request timeout (10s)")), 10000)
+                );
+
+                const result = await Promise.race([geminiPromise, timeoutPromise]);
                 const text = result.response.text();
                 const cleaned = text.replace(/```json/g, "").replace(/```/g, "").trim();
                 const parsed = JSON.parse(cleaned);
 
-                if (parsed && parsed.caloriesTarget) {
-                    const firstDayMeals = parsed.thirtyDayPlan?.[0]?.meals || parsed.weeklyTemplates?.[0]?.meals || sampleDayMeals;
-                    parsed.dietaryPreference = dietaryPreference;
-                    parsed.dietaryTitle = dietTitle;
-                    parsed.dietaryNotes = dietaryNotes;
-                    parsed.monthlySummary = parsed.monthlySummary || `Plan nutricional clínico de 30 días bajo protocolo ${dietTitle} enfocado en ${goalDesc} con balance estricto de ${parsed.macros?.protein || targetProtein}g de proteína (${parsed.caloriesTarget || targetCalories} kcal/día).`;
-                    parsed.weeklyTemplates = parsed.weeklyTemplates || [
-                        {
-                            weekNumber: 1,
-                            focus: `${dietTitle} // ${goalDesc}`,
-                            meals: firstDayMeals.map((m: any) => ({
-                                name: m.mealName || m.name,
-                                timing: m.timing || "",
-                                items: m.items || (m.ingredients?.map((i: any) => `${i.grams}g ${i.item}`).join(" + ")) || "",
-                                calories: m.calories || Math.round(((m.macros?.proteinG || 0) * 4) + ((m.macros?.carbsG || 0) * 4) + ((m.macros?.fatsG || 0) * 9)),
-                                proteinG: m.proteinG || m.macros?.proteinG || 0,
-                                ingredients: m.ingredients || []
-                            }))
-                        }
-                    ];
-                    return NextResponse.json(parsed);
+                if (parsed && Array.isArray(parsed.meals) && parsed.meals.length > 0) {
+                    activeMeals = parsed.meals;
+                    if (parsed.monthlySummary) {
+                        clinicalSummary = parsed.monthlySummary;
+                    }
                 }
-            } catch (geminiError) {
-                console.warn("[Gemini Diet API] Fallback to clinical algorithmic plan:", geminiError);
+            } catch (geminiError: any) {
+                console.warn("[Gemini Diet API] Fallback to clinical algorithmic plan:", geminiError?.message || geminiError);
             }
         }
 
-        // Algorithmic fallback
+        // Expandir a plan de 30 días con estructura compatible para visualización y lista de compras
         const thirtyDayPlan = Array.from({ length: 30 }).map((_, i) => ({
             dayNumber: i + 1,
             totalCalories: targetCalories,
-            meals: sampleDayMeals
+            meals: activeMeals
         }));
 
         const dietPlanResponse = {
@@ -454,7 +562,7 @@ Metas exactas de macros: ${targetCalories} kcal/día, ${targetProtein}g proteín
             dietaryPreference,
             dietaryTitle: dietTitle,
             dietaryNotes,
-            monthlySummary: `Plan nutricional clínico de 30 días bajo protocolo ${dietTitle} para ${goalDesc} con balance estricto de ${targetProtein}g de proteína (${targetCalories} kcal/día).`,
+            monthlySummary: clinicalSummary,
             caloriesTarget: targetCalories,
             macros: {
                 protein: targetProtein,
@@ -471,13 +579,13 @@ Metas exactas de macros: ${targetCalories} kcal/día, ${targetProtein}g proteín
                 {
                     weekNumber: 1,
                     focus: `${dietTitle} // ${goalDesc}`,
-                    meals: sampleDayMeals.map(m => ({
-                        name: m.mealName,
-                        timing: m.timing,
-                        items: m.ingredients.map(i => `${i.grams}g ${i.item}`).join(" + "),
-                        calories: Math.round((m.macros.proteinG * 4) + (m.macros.carbsG * 4) + (m.macros.fatsG * 9)),
-                        proteinG: m.macros.proteinG,
-                        ingredients: m.ingredients
+                    meals: activeMeals.map((m: any) => ({
+                        name: m.mealName || m.name || "Comida",
+                        timing: m.timing || "",
+                        items: m.items || (m.ingredients?.map((i: any) => `${i.grams}g ${i.item}`).join(" + ")) || "",
+                        calories: m.calories || Math.round(((m.macros?.proteinG || 0) * 4) + ((m.macros?.carbsG || 0) * 4) + ((m.macros?.fatsG || 0) * 9)),
+                        proteinG: m.proteinG || m.macros?.proteinG || 0,
+                        ingredients: m.ingredients || []
                     }))
                 }
             ],

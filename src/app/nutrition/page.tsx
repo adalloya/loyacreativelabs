@@ -60,13 +60,13 @@ export default function NutritionPage() {
         }),
       });
       const data = await response.json();
-      if (data) {
+      if (data && (data.thirtyDayPlan || data.weeklyTemplates || data.caloriesTarget)) {
         setDietPlan(data); // Se guarda automáticamente en localStorage
-        setIsDietPrefModalOpen(false);
       }
     } catch (error) {
       console.error('Error generando dieta:', error);
     } finally {
+      setIsDietPrefModalOpen(false);
       setLoading(false);
     }
   };

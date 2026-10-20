@@ -688,11 +688,11 @@ export default function ApexDashboard() {
             const data = await res.json();
             if (data && (data.thirtyDayPlan || data.weeklyTemplates || data.caloriesTarget)) {
                 setDietPlan(data);
-                setIsDietPrefModalOpen(false);
             }
         } catch (e) {
             console.error("Error generating diet with Gemini:", e);
         } finally {
+            setIsDietPrefModalOpen(false);
             setDietLoading(false);
         }
     };
