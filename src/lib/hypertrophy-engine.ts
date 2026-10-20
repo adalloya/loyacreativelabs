@@ -46,6 +46,10 @@ export interface ExerciseItem {
     category?: string;
     primaryMuscles?: string[];
     rawEquipment?: string;
+    blockId?: string;
+    blockTitle?: string;
+    blockRounds?: number;
+    customPrescription?: string;
 }
 
 export interface PlateBreakdown {
@@ -258,6 +262,9 @@ export interface RoutineDay {
         durationMinutes: number;
         protocol: string;
     };
+    dayName?: string;
+    carbCyclePhase?: "high_carb" | "low_carb" | "mod_carb";
+    carbCycleLabel?: string;
 }
 
 export type CardioType = "incline_treadmill" | "stairmaster" | "stationary_bike" | "none";
@@ -409,66 +416,90 @@ export function calculateCardioTelemetry(
 
 interface DaySplitRule {
     dayNumber: number;
+    dayName: string;
     title: string;
     focus: string;
     targetMuscles: string[];
     excludeDays?: number[];
     muscleSequence: string[];
+    carbCyclePhase: "high_carb" | "low_carb" | "mod_carb";
+    carbCycleLabel: string;
 }
 
 const FIVE_DAY_SPLIT_RULES: DaySplitRule[] = [
     {
         dayNumber: 1,
-        title: "Día 1: Empuje (Push)",
+        dayName: "LUNES",
+        title: "Lunes: Empuje (Push)",
         focus: "Pectoral, Deltoides Anterior/Lateral & Tríceps",
         targetMuscles: ["chest", "shoulders", "triceps"],
-        muscleSequence: ["chest", "chest", "shoulders", "triceps", "shoulders", "triceps", "chest"]
+        muscleSequence: ["chest", "chest", "shoulders", "triceps", "shoulders", "triceps", "chest"],
+        carbCyclePhase: "mod_carb",
+        carbCycleLabel: "MOD CARB // RENDIMIENTO Y FUERZA"
     },
     {
         dayNumber: 2,
-        title: "Día 2: Tracción (Pull)",
+        dayName: "MARTES",
+        title: "Martes: Tracción (Pull)",
         focus: "Dorsales, Espalda Media/Baja, Trapecios & Bíceps",
         targetMuscles: ["lats", "middle back", "lower back", "biceps", "traps"],
-        muscleSequence: ["lats", "middle back", "biceps", "traps", "lower back", "biceps", "lats"]
+        muscleSequence: ["lats", "middle back", "biceps", "traps", "lower back", "biceps", "lats"],
+        carbCyclePhase: "low_carb",
+        carbCycleLabel: "LOW CARB // OXIDACIÓN LIPÍDICA"
     },
     {
         dayNumber: 3,
-        title: "Día 3: Pierna (Quad Focus)",
+        dayName: "MIÉRCOLES",
+        title: "Miércoles: Pierna (Quad Focus)",
         focus: "Cuádriceps, Pantorrillas & Abdominales",
         targetMuscles: ["quadriceps", "calves", "abdominals"],
-        muscleSequence: ["quadriceps", "quadriceps", "calves", "abdominals", "quadriceps", "abdominals", "calves"]
+        muscleSequence: ["quadriceps", "quadriceps", "calves", "abdominals", "quadriceps", "abdominals", "calves"],
+        carbCyclePhase: "high_carb",
+        carbCycleLabel: "HIGH CARB DAY // CARGA DE GLUCÓGENO"
     },
     {
         dayNumber: 4,
-        title: "Día 4: Torso Superior (Upper / Hypertrophy)",
+        dayName: "JUEVES",
+        title: "Jueves: Torso Superior (Upper)",
         focus: "Hombros, Pectoral, Dorsales & Brazos (Sin repetición D1/D2)",
         targetMuscles: ["shoulders", "chest", "lats", "biceps", "triceps"],
         excludeDays: [1, 2],
-        muscleSequence: ["shoulders", "chest", "lats", "triceps", "biceps", "shoulders", "chest"]
+        muscleSequence: ["shoulders", "chest", "lats", "triceps", "biceps", "shoulders", "chest"],
+        carbCyclePhase: "low_carb",
+        carbCycleLabel: "LOW CARB // OXIDACIÓN LIPÍDICA"
     },
     {
         dayNumber: 5,
-        title: "Día 5: Cadena Posterior (Posterior Chain)",
-        focus: "Isquiosurales, Glúteos, Espalda Baja & Pantorrillas (Sin repetición D3)",
+        dayName: "VIERNES",
+        title: "Viernes: Pierna & Glúteo (Posterior Chain)",
+        focus: "Isquiosurales, Glúteos, Espalda Baja & Pantorrillas",
         targetMuscles: ["hamstrings", "glutes", "lower back", "calves"],
         excludeDays: [3],
-        muscleSequence: ["hamstrings", "glutes", "lower back", "calves", "hamstrings", "glutes", "calves"]
+        muscleSequence: ["hamstrings", "glutes", "lower back", "calves", "hamstrings", "glutes", "calves"],
+        carbCyclePhase: "high_carb",
+        carbCycleLabel: "HIGH CARB DAY // CARGA DE GLUCÓGENO"
     },
     {
         dayNumber: 6,
-        title: "Día 6: Brazos & Hombros (Hypertrophy Booster)",
+        dayName: "SÁBADO",
+        title: "Sábado: Brazos & Hombros (Booster)",
         focus: "Aislamiento de Bíceps, Tríceps & Deltoides Lateral",
         targetMuscles: ["biceps", "triceps", "shoulders", "forearms"],
         excludeDays: [1, 2, 4],
-        muscleSequence: ["biceps", "triceps", "shoulders", "biceps", "triceps", "shoulders", "forearms"]
+        muscleSequence: ["biceps", "triceps", "shoulders", "biceps", "triceps", "shoulders", "forearms"],
+        carbCyclePhase: "mod_carb",
+        carbCycleLabel: "MOD CARB // RENDIMIENTO Y RECUPERACIÓN"
     },
     {
         dayNumber: 7,
-        title: "Día 7: Acondicionamiento & Core (Full Body Reset)",
+        dayName: "DOMINGO",
+        title: "Domingo: Acondicionamiento & Core (Reset)",
         focus: "Core, Movilidad Articular & Resistencia Muscular",
         targetMuscles: ["abdominals", "quadriceps", "hamstrings", "chest", "lats"],
         excludeDays: [],
-        muscleSequence: ["abdominals", "quadriceps", "hamstrings", "lats", "abdominals", "chest", "calves"]
+        muscleSequence: ["abdominals", "quadriceps", "hamstrings", "lats", "abdominals", "chest", "calves"],
+        carbCyclePhase: "low_carb",
+        carbCycleLabel: "LOW CARB // RECUPERACIÓN & OXIDACIÓN"
     }
 ];
 
@@ -603,8 +634,11 @@ export function generateWeeklyProgram(
 
         days.push({
             dayNumber: rule.dayNumber,
+            dayName: rule.dayName,
             title: rule.title,
             focus: rule.focus,
+            carbCyclePhase: rule.carbCyclePhase,
+            carbCycleLabel: rule.carbCycleLabel,
             estimatedMinutes: sessionDurationMins,
             exercises: picked,
             cardio: {

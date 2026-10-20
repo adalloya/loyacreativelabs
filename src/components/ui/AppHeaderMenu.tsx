@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { Menu, X, Download, Shield, RefreshCw, Zap, Music } from 'lucide-react';
+import { Menu, X, Download, Shield, RefreshCw, Zap, Music, Sparkles, Layers, Flame } from 'lucide-react';
 import { DownloadPDFButton } from '@/components/pdf/DownloadPDFButton';
 
 export function AppHeaderMenu({ 
@@ -11,6 +11,9 @@ export function AppHeaderMenu({
   onEnvironmentChange, 
   weightUnit = 'lbs',
   onWeightUnitChange,
+  trainingMethodology = 'traditional',
+  onTrainingMethodologyChange,
+  onOpenRoutineImporter,
   onInstallClick, 
   showInstallButton,
   pdfProfile,
@@ -26,6 +29,9 @@ export function AppHeaderMenu({
   onEnvironmentChange: (mode: string) => void;
   weightUnit?: 'lbs' | 'kg';
   onWeightUnitChange?: (unit: 'lbs' | 'kg') => void;
+  trainingMethodology?: 'traditional' | 'cycled_circuits';
+  onTrainingMethodologyChange?: (methodology: 'traditional' | 'cycled_circuits') => void;
+  onOpenRoutineImporter?: () => void;
   onInstallClick: () => void;
   showInstallButton: boolean;
   pdfProfile?: any;
@@ -167,6 +173,72 @@ export function AppHeaderMenu({
                 </button>
               </div>
             </div>
+
+            {/* Metodología de Entrenamiento */}
+            {onTrainingMethodologyChange && (
+              <div className="mb-4 pb-4 border-b border-white/[0.08]">
+                <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider block mb-2 flex items-center justify-between">
+                  <span>METODOLOGÍA DE ENTRENAMIENTO</span>
+                  <span className="text-[#FF2A2A] text-[9px] uppercase font-mono font-bold">
+                    {trainingMethodology === 'cycled_circuits' ? 'CIRCUITOS & CICLADO' : 'HIPERTROFIA LINEAL'}
+                  </span>
+                </label>
+                <div className="grid grid-cols-2 gap-1 bg-black/40 p-1 rounded-2xl border border-white/[0.08]">
+                  <button
+                    type="button"
+                    onClick={() => onTrainingMethodologyChange('traditional')}
+                    className={`py-2 px-1.5 rounded-xl text-center transition-all ${
+                      trainingMethodology === 'traditional'
+                        ? 'bg-white text-black font-semibold shadow-md'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="text-xs leading-none font-bold">Lineal Tradicional</div>
+                    <div className={`text-[9px] mt-0.5 ${trainingMethodology === 'traditional' ? 'text-zinc-700' : 'text-zinc-500'}`}>
+                      Series rectas & RIR
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onTrainingMethodologyChange('cycled_circuits')}
+                    className={`py-2 px-1.5 rounded-xl text-center transition-all ${
+                      trainingMethodology === 'cycled_circuits'
+                        ? 'bg-white text-black font-semibold shadow-md'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="text-xs leading-none font-bold">Ciclado & Circuitos</div>
+                    <div className={`text-[9px] mt-0.5 ${trainingMethodology === 'cycled_circuits' ? 'text-zinc-700' : 'text-zinc-500'}`}>
+                      Bloques 3x & Ciclado Carb
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Botón de Importar Rutina en Texto Libre */}
+            {onOpenRoutineImporter && (
+              <div className="mb-4 pb-4 border-b border-white/[0.08]">
+                <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider block mb-2 flex items-center justify-between">
+                  <span>RUTINA PERSONALIZADA</span>
+                  <span className="text-[#10B981] text-[9px] font-mono">TEXT-TO-APEX</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    onOpenRoutineImporter();
+                  }}
+                  className="w-full bg-[#FF2A2A]/10 hover:bg-[#FF2A2A]/20 border border-[#FF2A2A]/30 text-white font-medium text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-between active:scale-95 group"
+                >
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#FF2A2A]" />
+                    <span className="font-bold">Importar Rutina (Texto a APEX)</span>
+                  </div>
+                  <Layers className="w-3.5 h-3.5 text-zinc-400 group-hover:text-white" />
+                </button>
+              </div>
+            )}
 
             {/* Spotify Integration Section */}
             {onOpenSpotifyModal && (

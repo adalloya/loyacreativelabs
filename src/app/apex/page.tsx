@@ -81,6 +81,7 @@ import { PwaInstallModal } from "@/components/apex/PwaInstallModal";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { DownloadPDFButton } from "@/components/pdf/DownloadPDFButton";
 import { AppHeaderMenu } from "@/components/ui/AppHeaderMenu";
+import { TextToApexRoutineModal } from "@/components/apex/TextToApexRoutineModal";
 import { ShoppingList } from "@/components/nutrition/ShoppingList";
 import { DailyMealTracker } from "@/components/nutrition/DailyMealTracker";
 import { DietPreferenceModal, DietType } from "@/components/nutrition/DietPreferenceModal";
@@ -265,8 +266,25 @@ export default function ApexDashboard() {
     const supplements = useMemo(() => calculateSupplementStack(bio.weightKg), [bio.weightKg]);
     const groceryList = useMemo(() => generateWeeklyGroceryList(bio.weightKg), [bio.weightKg]);
 
+    // Metodología de Entrenamiento: "traditional" (Hipertrofia Lineal) vs "cycled_circuits" (Ciclado & Circuitos Metabólicos)
+    const [trainingMethodology, setTrainingMethodology] = useLocalStorage<"traditional" | "cycled_circuits">(
+        "apex_training_methodology",
+        "cycled_circuits"
+    );
+
+    // Rutina semanal personalizada importada desde texto
+    const [customWeeklyRoutine, setCustomWeeklyRoutine] = useLocalStorage<RoutineDay[] | null>(
+        "apex_custom_weekly_routine",
+        null
+    );
+
+    const [isRoutineImporterOpen, setIsRoutineImporterOpen] = useState(false);
+
     // Weekly Routine & Current Day
     const weeklyProgram = useMemo(() => {
+        if (customWeeklyRoutine && customWeeklyRoutine.length > 0) {
+            return customWeeklyRoutine;
+        }
         return generateWeeklyProgram(
             profile?.trainingDaysPerWeek || 5,
             profile?.sessionDurationMins || 60,
@@ -274,9 +292,22 @@ export default function ApexDashboard() {
             environmentMode,
             EXERCISE_DATABASE
         );
-    }, [profile?.trainingDaysPerWeek, profile?.sessionDurationMins, environmentMode, catalogCount]);
+    }, [customWeeklyRoutine, profile?.trainingDaysPerWeek, profile?.sessionDurationMins, environmentMode, catalogCount]);
 
-    const [currentDayIndex, setCurrentDayIndex] = useState(0);
+    // Selección automática inicial basada en el día actual de la semana (Lunes = 0, ..., Domingo = 6)
+    const [currentDayIndex, setCurrentDayIndex] = useState(() => {
+        const jsDay = new Date().getDay();
+        const mondayFirst = jsDay === 0 ? 6 : jsDay - 1;
+        return mondayFirst;
+    });
+
+    // Auto-ajustar si la rutina tiene menos días que el índice actual
+    useEffect(() => {
+        if (weeklyProgram.length > 0 && currentDayIndex >= weeklyProgram.length) {
+            setCurrentDayIndex(0);
+        }
+    }, [weeklyProgram.length, currentDayIndex]);
+
     const currentRoutine: RoutineDay = weeklyProgram[currentDayIndex] || weeklyProgram[0];
 
     // Daily Cardio Finisher Selection & Telemetry (configurable per session at the end of each day)
@@ -693,6 +724,9 @@ export default function ApexDashboard() {
                             onEnvironmentChange={(mode) => setEnvironmentMode(mode as any)}
                             weightUnit={weightUnit}
                             onWeightUnitChange={setWeightUnit}
+                            trainingMethodology={trainingMethodology}
+                            onTrainingMethodologyChange={setTrainingMethodology}
+                            onOpenRoutineImporter={() => setIsRoutineImporterOpen(true)}
                             readiness={readiness}
                             onReadinessChange={setReadiness}
                             onInstallClick={() => setIsInstallModalOpen(true)}
@@ -748,38 +782,96 @@ export default function ApexDashboard() {
                 {activeTab === "workout" && (
                     <div className="space-y-6">
                         {/* Day Selector Bar */}
-                        <div className="flex items-center justify-between bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-5 flex-wrap gap-3 shadow-xl">
-                            <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-[11px] font-semibold text-zinc-300 px-2.5 py-0.5 rounded-full bg-white/[0.06] border border-white/[0.08] uppercase tracking-wide">
-                                        FRECUENCIA FULL-BODY
-                                    </span>
-                                    <span className="text-xs text-zinc-400 font-medium">
-                                        Tiempo objetivo: <span className="font-mono text-white">{currentRoutine.estimatedMinutes}</span> min
-                                    </span>
+                        <div className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-5 shadow-xl space-y-4">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                        <span className="text-[11px] font-semibold text-zinc-300 px-2.5 py-0.5 rounded-full bg-white/[0.06] border border-white/[0.08] uppercase tracking-wide">
+                                            {trainingMethodology === "cycled_circuits" ? "CIRCUITOS & CICLADO METABÓLICO" : "HIPERTROFIA LINEAL"}
+                                        </span>
+                                        {trainingMethodology === "cycled_circuits" && currentRoutine.carbCycleLabel && (
+                                            <span className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full border font-bold ${
+                                                currentRoutine.carbCyclePhase === "high_carb"
+                                                    ? "bg-[#10B981]/15 text-[#10B981] border-[#10B981]/30"
+                                                    : "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                                            }`}>
+                                                {currentRoutine.carbCycleLabel}
+                                            </span>
+                                        )}
+                                        <span className="text-xs text-zinc-400 font-medium">
+                                            Tiempo: <span className="font-mono text-white">{currentRoutine.estimatedMinutes}</span> min
+                                        </span>
+                                    </div>
+                                    <h2 className="text-lg sm:text-2xl font-bold text-white tracking-tight">
+                                        {currentRoutine.title}
+                                    </h2>
+                                    <p className="text-xs text-zinc-400 mt-0.5 font-normal">
+                                        {currentRoutine.focus}
+                                    </p>
                                 </div>
-                                <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
-                                    {currentRoutine.title}
-                                </h2>
-                                <p className="text-xs text-zinc-400 mt-0.5 font-normal">
-                                    {currentRoutine.focus}
-                                </p>
+
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsRoutineImporterOpen(true)}
+                                        className="flex items-center gap-1.5 text-xs font-mono font-medium text-white bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] px-3.5 py-2 rounded-2xl transition-all shadow-sm active:scale-95"
+                                    >
+                                        <Sparkles className="w-3.5 h-3.5 text-[#FF2A2A]" />
+                                        <span>Importar Rutina</span>
+                                    </button>
+
+                                    {customWeeklyRoutine && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setCustomWeeklyRoutine(null)}
+                                            className="text-[10px] font-mono text-zinc-400 hover:text-white bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] px-2.5 py-2 rounded-2xl transition-all"
+                                            title="Volver a rutina sugerida por algoritmo APEX"
+                                        >
+                                            Restablecer
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
-                            {/* Day pagination pills */}
-                            <div className="flex items-center gap-1.5 text-xs font-mono">
-                                {weeklyProgram.map((d, idx) => (
-                                    <button
-                                        key={d.dayNumber}
-                                        onClick={() => setCurrentDayIndex(idx)}
-                                        className={`w-9 h-9 rounded-full flex items-center justify-center font-semibold transition-all ${currentDayIndex === idx
-                                            ? "bg-white text-black shadow-md font-bold"
-                                            : "bg-white/[0.04] text-zinc-400 border border-white/[0.06] hover:text-white"
+                            {/* Selector horizontal de Días Reales de la Semana */}
+                            <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                                {weeklyProgram.map((d, idx) => {
+                                    const dayName = d.dayName || ["LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO", "DOMINGO"][idx] || `DÍA ${d.dayNumber}`;
+                                    const isSelected = currentDayIndex === idx;
+                                    const shortFocus = d.focus ? d.focus.split(",")[0].split("&")[0].trim() : "";
+
+                                    return (
+                                        <button
+                                            key={d.dayNumber || idx}
+                                            onClick={() => setCurrentDayIndex(idx)}
+                                            className={`flex-1 min-w-[90px] sm:min-w-[110px] py-2.5 px-3 rounded-2xl text-left transition-all relative ${
+                                                isSelected
+                                                    ? "bg-white text-black shadow-xl"
+                                                    : "bg-white/[0.03] text-zinc-400 border border-white/[0.06] hover:text-white hover:bg-white/[0.06]"
                                             }`}
-                                    >
-                                        D{d.dayNumber}
-                                    </button>
-                                ))}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <span className={`text-[11px] sm:text-xs font-mono font-bold tracking-wider ${
+                                                    isSelected ? "text-black" : "text-zinc-200"
+                                                }`}>
+                                                    {dayName}
+                                                </span>
+                                                {d.carbCyclePhase === "high_carb" && (
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${
+                                                        isSelected ? "bg-emerald-600" : "bg-[#10B981]"
+                                                    }`} />
+                                                )}
+                                            </div>
+                                            {shortFocus && (
+                                                <div className={`text-[9px] sm:text-[10px] truncate mt-0.5 ${
+                                                    isSelected ? "text-zinc-700 font-medium" : "text-zinc-500"
+                                                }`}>
+                                                    {shortFocus}
+                                                </div>
+                                            )}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
 
@@ -948,45 +1040,76 @@ export default function ApexDashboard() {
                                     weightUnit
                                 );
 
-                                return (
-                                    <div
-                                        key={`${ex.id}_${exIdx}`}
-                                        className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-2xl transition-all hover:border-white/[0.15]"
-                                    >
-                                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                                            {/* Column 1 (Left): Visor Biomecánico con conexión oficial a free-exercise-db */}
-                                            <div className="lg:col-span-5 xl:col-span-4">
-                                                <ExerciseMotionViewer
-                                                    githubId={ex.github_id || "Barbell_Bench_Press_-_Medium_Grip"}
-                                                    exerciseName={ex.name}
-                                                    activationPct={ex.activation_pct || 94}
-                                                />
-                                            </div>
+                                const isNewBlock = !!(ex.blockId && (exIdx === 0 || activeExercises[exIdx - 1]?.blockId !== ex.blockId));
 
-                                            {/* Column 2 (Right): Telemetría, Controles y Series */}
-                                            <div className="lg:col-span-7 xl:col-span-8 space-y-4">
-                                                {/* Exercise Header */}
-                                                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-3 border-b border-white/[0.06]">
-                                                    <div>
-                                                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                                                            <span className="text-[11px] font-medium bg-white/[0.06] text-zinc-300 px-2.5 py-0.5 rounded-full border border-white/[0.08]">
-                                                                {ex.anatomical_subdivision}
-                                                            </span>
-                                                            <span className="text-[11px] font-semibold bg-[#FF2A2A]/10 text-[#FF2A2A] border border-[#FF2A2A]/20 px-2.5 py-0.5 rounded-full">
-                                                                Tier {ex.hypertrophy_tier}
-                                                            </span>
-                                                            <span className="text-xs text-zinc-400 capitalize">
-                                                                • {ex.equipment}
-                                                            </span>
+                                return (
+                                    <div key={`${ex.id}_${exIdx}`} className="space-y-3">
+                                        {isNewBlock && (
+                                            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-[#10B981]/15 via-[#10B981]/5 to-transparent border border-[#10B981]/30 text-white">
+                                                <div className="flex items-center gap-2.5">
+                                                    <span className="w-2.5 h-2.5 rounded-full bg-[#10B981] animate-pulse" />
+                                                    <span className="text-xs sm:text-sm font-bold font-mono tracking-wider text-emerald-400 uppercase">
+                                                        {ex.blockTitle || `BLOQUE DE CIRCUITO • ${ex.blockRounds || 3} VUELTAS (${ex.blockRounds || 3}x)`}
+                                                    </span>
+                                                </div>
+                                                <span className="text-[10px] font-mono text-zinc-400 bg-black/40 px-2.5 py-1 rounded-full border border-white/10">
+                                                    Descanso al terminar vuelta
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        <div
+                                            className={`bg-[#121214]/90 backdrop-blur-xl border ${
+                                                ex.blockId ? "border-l-4 border-l-[#10B981] border-white/[0.08]" : "border-white/[0.08]"
+                                            } rounded-3xl p-5 sm:p-6 shadow-2xl transition-all hover:border-white/[0.15]`}
+                                        >
+                                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                                                {/* Column 1 (Left): Visor Biomecánico con conexión oficial a free-exercise-db */}
+                                                <div className="lg:col-span-5 xl:col-span-4">
+                                                    <ExerciseMotionViewer
+                                                        githubId={ex.github_id || "Barbell_Bench_Press_-_Medium_Grip"}
+                                                        exerciseName={ex.name}
+                                                        activationPct={ex.activation_pct || 94}
+                                                    />
+                                                </div>
+
+                                                {/* Column 2 (Right): Telemetría, Controles y Series */}
+                                                <div className="lg:col-span-7 xl:col-span-8 space-y-4">
+                                                    {/* Exercise Header */}
+                                                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-3 border-b border-white/[0.06]">
+                                                        <div>
+                                                            {ex.customPrescription && (
+                                                                <div className="mb-2">
+                                                                    <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold bg-[#FF2A2A]/15 text-[#FF6B6B] border border-[#FF2A2A]/30 px-3 py-1 rounded-xl shadow-sm">
+                                                                        <Sparkles className="w-3.5 h-3.5 text-[#FF2A2A]" />
+                                                                        <span>{ex.customPrescription}</span>
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                                                <span className="text-[11px] font-medium bg-white/[0.06] text-zinc-300 px-2.5 py-0.5 rounded-full border border-white/[0.08]">
+                                                                    {ex.anatomical_subdivision}
+                                                                </span>
+                                                                <span className="text-[11px] font-semibold bg-[#FF2A2A]/10 text-[#FF2A2A] border border-[#FF2A2A]/20 px-2.5 py-0.5 rounded-full">
+                                                                    Tier {ex.hypertrophy_tier}
+                                                                </span>
+                                                                {ex.blockTitle && (
+                                                                    <span className="text-[10px] font-mono text-[#10B981] bg-[#10B981]/10 px-2.5 py-0.5 rounded-full border border-[#10B981]/25 uppercase font-bold">
+                                                                        {ex.blockTitle.split("•")[0]?.trim() || "CIRCUITO"}
+                                                                    </span>
+                                                                )}
+                                                                <span className="text-xs text-zinc-400 capitalize">
+                                                                    • {ex.equipment}
+                                                                </span>
+                                                            </div>
+                                                            <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight flex items-center">
+                                                                {ex.name}
+                                                                <Tooltip text="Seleccionado por su perfil de resistencia óptimo para generar tensión mecánica en fase de estiramiento." />
+                                                            </h3>
+                                                            <p className="text-xs text-zinc-400 mt-1 leading-relaxed font-normal">
+                                                                Instrucción biomecánica: {ex.biomechanical_cue}
+                                                            </p>
                                                         </div>
-                                                        <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight flex items-center">
-                                                            {ex.name}
-                                                            <Tooltip text="Seleccionado por su perfil de resistencia óptimo para generar tensión mecánica en fase de estiramiento." />
-                                                        </h3>
-                                                        <p className="text-xs text-zinc-400 mt-1 leading-relaxed font-normal">
-                                                            Instrucción biomecánica: {ex.biomechanical_cue}
-                                                        </p>
-                                                    </div>
 
                                                     {/* Top Actions: Monochromatic Apple pills */}
                                                     <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
@@ -1239,8 +1362,9 @@ export default function ApexDashboard() {
                                             </div>
                                         </div>
                                     </div>
-                                );
-                            })}
+                                </div>
+                            );
+                        })}
                         </div>
 
                         {/* Cardio Finisher Block (Selector Diario al Final de la Sesión con Inclinación, Velocidad y Tiempo) */}
@@ -1598,6 +1722,41 @@ export default function ApexDashboard() {
                    ========================================================================= */}
                 {activeTab === "nutrition" && (
                     <div className="space-y-6">
+                        {/* Indicador de Ciclado Nutricional (Activo cuando la metodología es Ciclado & Circuitos) */}
+                        {trainingMethodology === "cycled_circuits" && (
+                            <div className={`p-4 sm:p-5 rounded-3xl border flex items-center justify-between gap-4 shadow-xl transition-all ${
+                                currentRoutine.carbCyclePhase === "high_carb"
+                                    ? "bg-gradient-to-r from-[#10B981]/15 via-[#10B981]/5 to-transparent border-[#10B981]/30"
+                                    : "bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border-amber-500/30"
+                            }`}>
+                                <div className="flex items-center gap-3.5">
+                                    <div className={`w-11 h-11 rounded-2xl flex flex-col items-center justify-center font-bold font-mono shrink-0 shadow-md ${
+                                        currentRoutine.carbCyclePhase === "high_carb"
+                                            ? "bg-[#10B981] text-black"
+                                            : "bg-amber-500 text-black"
+                                    }`}>
+                                        <span className="text-[10px] leading-none">CARB</span>
+                                        <span className="text-xs leading-none mt-0.5">{currentRoutine.carbCyclePhase === "high_carb" ? "ALTO" : "MOD/BAJO"}</span>
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="text-xs sm:text-sm font-bold text-white font-mono tracking-wide uppercase">
+                                                {currentRoutine.carbCycleLabel || (currentRoutine.carbCyclePhase === "high_carb" ? "HIGH CARB DAY // CARGA DE GLUCÓGENO" : "LOW/MOD CARB // OXIDACIÓN LIPÍDICA")}
+                                            </h4>
+                                            <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-white/[0.06] text-zinc-300 border border-white/[0.08] uppercase">
+                                                {currentRoutine.dayName || `DÍA ${currentRoutine.dayNumber}`}
+                                            </span>
+                                        </div>
+                                        <p className="text-[11px] sm:text-xs text-zinc-400 mt-1 leading-relaxed">
+                                            {currentRoutine.carbCyclePhase === "high_carb"
+                                                ? "Día de alto impacto (Pierna / Glúteo): Prioriza carbohidratos complejos para máxima síntesis de glucógeno muscular y soporte de hipertrofia."
+                                                : "Día de tren superior o torso: Mantén carbohidratos controlados para optimizar la sensibilidad a la insulina y la oxidación lipídica."}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Macro Summary Dashboard */}
                         <div className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-6 shadow-2xl">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
@@ -2109,6 +2268,17 @@ export default function ApexDashboard() {
                 initialDiet={dietPreference}
                 initialNotes={dietNotes}
                 isLoading={dietLoading}
+            />
+
+            {/* Modal de Importador Inteligente de Rutina en Texto Libre */}
+            <TextToApexRoutineModal
+                isOpen={isRoutineImporterOpen}
+                onClose={() => setIsRoutineImporterOpen(false)}
+                onApplyRoutine={(importedDays) => {
+                    setCustomWeeklyRoutine(importedDays);
+                    setCurrentDayIndex(0);
+                }}
+                catalog={EXERCISE_DATABASE}
             />
 
             {isInstallModalOpen && (
