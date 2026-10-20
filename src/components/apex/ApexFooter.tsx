@@ -3,15 +3,14 @@
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Shield, Zap, Sparkles, Download } from 'lucide-react';
 
 export function ApexFooter() {
   return (
     <footer className="mt-16 border-t border-white/[0.08] bg-[#000000] text-zinc-400 py-12 px-4 font-sans">
-      <div className="max-w-6xl mx-auto space-y-10">
+      <div className="max-w-6xl mx-auto space-y-8">
         
         {/* Main Footer Block */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-8 border-b border-white/[0.06]">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 border-b border-white/[0.06]">
           {/* Logo & Brand Identity */}
           <div className="flex items-center gap-4">
             <div className="relative w-12 h-12 rounded-2xl overflow-hidden border border-white/[0.12] bg-[#111111] shrink-0 shadow-lg shadow-red-950/20">
@@ -55,31 +54,8 @@ export function ApexFooter() {
           </div>
         </div>
 
-        {/* Technical Architectural Notes & Links */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
-          <div className="space-y-1.5">
-            <h5 className="font-mono text-white text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 text-white" />
-              PERSISTENCIA & ACCESO
-            </h5>
-            <p className="text-zinc-500 leading-relaxed font-mono text-[11px]">
-              Almacenamiento IndexedDB nativo con sincronización no bloqueante a Supabase. Compatible con instalación PWA completa en iOS y Android.
-            </p>
-          </div>
-
-          <div className="space-y-1.5">
-            <h5 className="font-mono text-white text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              NUTRICIÓN ADAPTATIVA
-            </h5>
-            <p className="text-zinc-500 leading-relaxed font-mono text-[11px]">
-              Metabolismo basal Katch-McArdle / Mifflin-St Jeor calibrado con déficit dinámico y recálculo de compensación por desvíos alimenticios con Gemini AI.
-            </p>
-          </div>
-        </div>
-
         {/* Bottom Credits & Quick Links */}
-        <div className="pt-6 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-zinc-500">
+        <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-zinc-500">
           <div>
             &copy; {new Date().getFullYear()} APEX // Una iniciativa de ingeniería de <Link href="/" className="text-zinc-300 hover:text-white transition-colors underline underline-offset-4">Loya Creative Lab</Link>.
           </div>
