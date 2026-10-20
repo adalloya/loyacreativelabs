@@ -1,6 +1,8 @@
 // src/services/spotifyTelemetry.ts
 "use client";
 
+export type VisualizerMode = 'OFF' | 'AURA' | 'WAVE' | 'ORB';
+
 // Caché en memoria de colores dominantes extraídos por URL para evitar reprocesamiento
 const colorCache = new Map<string, string>();
 
@@ -30,10 +32,85 @@ export function hexToRgb(hex: string): { r: number; g: number; b: number } {
     };
 }
 
-/**
- * Extrae el color dominante y vibrante de la portada de un álbum en Spotify usando un canvas oculto.
- * Incluye fallback seguro con validación CORS y caché instantáneo.
- */
+// Extrae el color RGB dominante de la portada del álbum de Spotify sin bloquear el hilo principal
+export async function extractAlbumAccentColor(imageUrl: string): Promise<string> {
+    if (!imageUrl || typeof window === 'undefined') return '255, 42, 42'; // Fallback Rojo APEX
+
+    if (colorCache.has(imageUrl)) {
+        const hex = colorCache.get(imageUrl)!;
+        const rgb = hexToRgb(hex);
+        return `${rgb.r}, ${rgb.g}, ${rgb.b}`;
+    }
+
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+
+        const timeoutId = setTimeout(() => {
+            resolve('255, 42, 42');
+        }, 1200);
+
+        img.onload = () => {
+            clearTimeout(timeoutId);
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                if (!ctx) {
+                    resolve('255, 42, 42');
+                    return;
+                }
+
+                canvas.width = 32;
+                canvas.height = 32;
+                ctx.drawImage(img, 0, 0, 32, 32);
+
+                const data = ctx.getImageData(0, 0, 32, 32).data;
+                let rSum = 0, gSum = 0, bSum = 0, count = 0;
+
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    const a = data[i + 3];
+
+                    if (a < 128) continue;
+                    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                    if (brightness > 20 && brightness < 235) {
+                        const delta = Math.max(r, g, b) - Math.min(r, g, b);
+                        const weight = delta > 30 ? 2 : 1;
+                        rSum += r * weight;
+                        gSum += g * weight;
+                        bSum += b * weight;
+                        count += weight;
+                    }
+                }
+
+                if (count === 0) {
+                    resolve('255, 42, 42');
+                    return;
+                }
+
+                const finalR = Math.round(rSum / count);
+                const finalG = Math.round(gSum / count);
+                const finalB = Math.round(bSum / count);
+
+                const hex = rgbToHex(finalR, finalG, finalB);
+                colorCache.set(imageUrl, hex);
+                resolve(`${finalR}, ${finalG}, ${finalB}`);
+            } catch {
+                resolve('255, 42, 42');
+            }
+        };
+
+        img.onerror = () => {
+            clearTimeout(timeoutId);
+            resolve('255, 42, 42');
+        };
+
+        img.src = imageUrl;
+    });
+}
+
 export async function extractDominantColor(
     imageUrl: string,
     fallbackHex: string = "#10B981"
