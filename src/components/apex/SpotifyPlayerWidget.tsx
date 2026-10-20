@@ -1,7 +1,7 @@
 // src/components/apex/SpotifyPlayerWidget.tsx
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React from "react";
 import {
     Music,
     Play,
@@ -14,30 +14,12 @@ import {
     Volume2,
     VolumeX,
     Speaker,
-    Disc,
     Sliders,
-    Radio,
     Sparkles
 } from "lucide-react";
 import { useApexFx } from "@/hooks/useApexFx";
-import { SpotifyThreeCanvas } from "@/components/spotify/SpotifyThreeCanvas";
-import { extractAlbumAccentColor } from "@/services/spotifyTelemetry";
-import {
-    isSpotifyConnected,
-    initiateSpotifyLogin,
-    getCurrentPlayback,
-    spotifyPlay,
-    spotifyPause,
-    spotifyNext,
-    spotifyPrevious,
-    spotifySeek,
-    spotifySetShuffle,
-    spotifySetRepeat,
-    spotifySetVolume,
-    SpotifyTrack,
-    getTrackAudioFeatures,
-    AudioFeatures
-} from "@/services/spotifyService";
+import { useSpotifyPlayback } from "@/hooks/useSpotifyPlayback";
+import { initiateSpotifyLogin } from "@/services/spotifyService";
 
 interface SpotifyPlayerWidgetProps {
     onOpenSettings: () => void;
@@ -58,217 +40,61 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
     restRemaining,
     onSkipRest
 }) => {
-    const [connected, setConnected] = useState(false);
-    const [track, setTrack] = useState<SpotifyTrack | null>(null);
-    const [isOptimisticPlaying, setIsOptimisticPlaying] = useState<boolean | null>(null);
-    const [isActionPending, setIsActionPending] = useState(false);
-    const [localProgressMs, setLocalProgressMs] = useState(0);
-    const [isSeeking, setIsSeeking] = useState(false);
-    const [volume, setVolume] = useState(100);
-    const [isMuted, setIsMuted] = useState(false);
-    const prevVolumeRef = useRef(100);
+    const {
+        connected,
+        track,
+        isPlaying,
+        bpm,
+        accentRgb,
+        progressMs,
+        isSeeking,
+        volume,
+        isMuted,
+        setIsSeeking,
+        setProgressMs,
+        togglePlay,
+        nextTrack,
+        prevTrack,
+        seekTo,
+        setVolume,
+        toggleMute,
+        toggleShuffle,
+        toggleRepeat,
+    } = useSpotifyPlayback();
 
-    const { isFxActive, visualizerMode, cycleMode, toggleFx } = useApexFx();
-    const [accentRgb, setAccentRgb] = useState<string>("255, 42, 42");
-    const [audioFeatures, setAudioFeatures] = useState<AudioFeatures>({ tempo: 135, energy: 0.85 });
+    const { isFxActive, visualizerMode, cycleMode } = useApexFx();
 
-    useEffect(() => {
-        if (track?.albumArt) {
-            extractAlbumAccentColor(track.albumArt).then(color => {
-                if (color) setAccentRgb(color);
-            });
-        } else {
-            setAccentRgb("255, 42, 42");
-        }
-    }, [track?.albumArt]);
+    const progressPct = track && track.durationMs > 0
+        ? Math.min(100, Math.max(0, (progressMs / track.durationMs) * 100))
+        : 0;
 
-    // Consulta en tiempo real de características de audio (BPM exacto y energía)
-    useEffect(() => {
-        if (track?.id) {
-            getTrackAudioFeatures(track.id, { name: track.name, artist: track.artist }).then(feat => {
-                if (feat && feat.tempo > 0) {
-                    setAudioFeatures(feat);
-                }
-            });
-        }
-    }, [track?.id]);
-
-    const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
-    const tickerIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
-    // Fetch live playback state from Spotify Web API
-    const updatePlayback = useCallback(async () => {
-        const isConn = isSpotifyConnected();
-        setConnected(isConn);
-        if (!isConn) {
-            setTrack(null);
-            return;
-        }
-
-        const current = await getCurrentPlayback();
-        if (current) {
-            setTrack(current);
-            setIsOptimisticPlaying(null);
-            if (!isSeeking) {
-                setLocalProgressMs(current.progressMs);
-            }
-            if (current.volumePercent !== undefined) {
-                setVolume(current.volumePercent);
-            }
-        } else {
-            setTrack(prev => (prev ? { ...prev, isPlaying: false } : null));
-        }
-    }, [isSeeking]);
-
-    // Polling activo cada 2.5s según directiva de telemetría de Spotify
-    useEffect(() => {
-        updatePlayback();
-
-        pollIntervalRef.current = setInterval(() => {
-            updatePlayback();
-        }, 2500);
-
-        return () => {
-            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-        };
-    }, [updatePlayback]);
-
-    const isPlaying = isOptimisticPlaying !== null ? isOptimisticPlaying : (track?.isPlaying ?? false);
-
-    // Smooth client-side ticker: updates progressMs second-by-second for real Spotify scrubber
-    useEffect(() => {
-        if (isPlaying && track && !isSeeking) {
-            tickerIntervalRef.current = setInterval(() => {
-                setLocalProgressMs(prev => {
-                    if (track.durationMs && prev >= track.durationMs) return prev;
-                    return prev + 1000;
-                });
-            }, 1000);
-        } else {
-            if (tickerIntervalRef.current) clearInterval(tickerIntervalRef.current);
-        }
-
-        return () => {
-            if (tickerIntervalRef.current) clearInterval(tickerIntervalRef.current);
-        };
-    }, [isPlaying, track, isSeeking]);
-
-    // Control Handlers
-    const handleTogglePlay = async () => {
-        if (!connected) {
-            initiateSpotifyLogin();
-            return;
-        }
-
-        setIsActionPending(true);
-        const nextState = !isPlaying;
-        setIsOptimisticPlaying(nextState);
-
-        if (nextState) {
-            await spotifyPlay(track?.deviceId);
-        } else {
-            await spotifyPause(track?.deviceId);
-        }
-
-        setTimeout(() => {
-            updatePlayback();
-            setIsActionPending(false);
-        }, 400);
-    };
-
-    const handleNext = async () => {
-        if (!connected) return;
-        setIsActionPending(true);
-        await spotifyNext(track?.deviceId);
-        setTimeout(() => {
-            updatePlayback();
-            setIsActionPending(false);
-        }, 500);
-    };
-
-    const handlePrevious = async () => {
-        if (!connected) return;
-        setIsActionPending(true);
-        await spotifyPrevious(track?.deviceId);
-        setTimeout(() => {
-            updatePlayback();
-            setIsActionPending(false);
-        }, 500);
-    };
-
-    const handleToggleShuffle = async () => {
-        if (!track) return;
-        const nextShuffle = !track.shuffleState;
-        setTrack({ ...track, shuffleState: nextShuffle });
-        await spotifySetShuffle(nextShuffle, track?.deviceId);
-    };
-
-    const handleToggleRepeat = async () => {
-        if (!track) return;
-        const currentMode = track.repeatState || "off";
-        const nextMode = currentMode === "off" ? "context" : currentMode === "context" ? "track" : "off";
-        setTrack({ ...track, repeatState: nextMode });
-        await spotifySetRepeat(nextMode, track?.deviceId);
-    };
+    const isLongTitle = Boolean(track && track.name.length > 20);
 
     const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = parseInt(e.target.value, 10);
-        setLocalProgressMs(val);
+        setProgressMs(val);
     };
 
     const handleSeekCommit = async () => {
         setIsSeeking(false);
-        await spotifySeek(localProgressMs, track?.deviceId);
+        await seekTo(progressMs);
     };
 
     const handleVolumeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = parseInt(e.target.value, 10);
-        setVolume(val);
-        setIsMuted(val === 0);
-        await spotifySetVolume(val, track?.deviceId);
+        await setVolume(val);
     };
-
-    const handleToggleMute = async () => {
-        if (isMuted) {
-            const restored = prevVolumeRef.current || 50;
-            setVolume(restored);
-            setIsMuted(false);
-            await spotifySetVolume(restored, track?.deviceId);
-        } else {
-            prevVolumeRef.current = volume;
-            setVolume(0);
-            setIsMuted(true);
-            await spotifySetVolume(0, track?.deviceId);
-        }
-    };
-
-    const progressPct = track && track.durationMs > 0
-        ? Math.min(100, Math.max(0, (localProgressMs / track.durationMs) * 100))
-        : 0;
 
     return (
-        <div className={`fixed bottom-0 left-0 right-0 z-30 bg-[#000000]/95 backdrop-blur-2xl border-t transition-all overflow-hidden ${
+        <div className={`fixed bottom-0 left-0 right-0 z-30 bg-[#000000]/95 backdrop-blur-2xl border-t transition-all ${
             isFxActive
-                ? "border-[#10B981]/30 shadow-2xl shadow-[#10B981]/15"
+                ? "shadow-2xl"
                 : "border-white/[0.12] shadow-2xl"
-        } px-3 sm:px-6 py-2.5`}>
-            {/* Master FX Three.js Audio Visualizer (0% GPU/CPU when OFF, CSS when AURA) */}
-            {visualizerMode !== "OFF" && (
-                <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-35 z-0 flex items-center justify-center">
-                    <SpotifyThreeCanvas
-                        mode={visualizerMode}
-                        isPlaying={isPlaying}
-                        trackId={track?.id}
-                        bpm={audioFeatures.tempo}
-                        energy={audioFeatures.energy}
-                        progressMs={localProgressMs}
-                        accentRgb={accentRgb}
-                        restModeActive={restRemaining !== null}
-                        restRemainingSeconds={restRemaining || 0}
-                    />
-                </div>
-            )}
-
+        } px-3 sm:px-6 py-2.5`}
+        style={{
+            borderColor: isFxActive ? `rgba(${accentRgb}, 0.35)` : undefined,
+            boxShadow: isFxActive ? `0 -10px 30px -10px rgba(${accentRgb}, 0.2)` : undefined
+        }}>
             <div className="relative z-10 max-w-7xl mx-auto flex items-center justify-between gap-3 sm:gap-6 text-xs">
 
                 {/* ZONE 1 (LEFT): Track Info & Album Art */}
@@ -293,9 +119,9 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                         </button>
                     ) : track ? (
                         <div
-                            className="flex items-center gap-2.5 min-w-0 group cursor-pointer"
+                            className="flex items-center gap-2.5 min-w-0 group cursor-pointer flex-1"
                             onClick={onOpenSettings}
-                            title="Ver detalles de reproducción y playlists"
+                            title="Haz clic para ver portada grande, controles y cola de reproducción"
                         >
                             {/* Album Artwork */}
                             <div className="relative w-9 h-9 sm:w-11 sm:h-11 rounded-xl overflow-hidden border border-white/10 bg-zinc-900 shrink-0 shadow-md">
@@ -315,12 +141,26 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                                 )}
                             </div>
 
-                            {/* Song Title & Artist */}
-                            <div className="min-w-0 flex-1">
-                                <span className="text-xs sm:text-sm font-bold text-white tracking-tight truncate block group-hover:text-[#1DB954] transition-colors">
-                                    {track.name}
-                                </span>
-                                <div className="flex items-center gap-1.5 truncate">
+                            {/* Song Title (With Horizontal Marquee if Long) & Artist */}
+                            <div className="min-w-0 flex-1 overflow-hidden">
+                                <div className="relative overflow-hidden w-full whitespace-nowrap [mask-image:linear-gradient(to_right,black_0%,black_calc(100%-10px),transparent_100%)]">
+                                    {isLongTitle ? (
+                                        <div className="animate-marquee-track flex gap-8">
+                                            <span className="text-xs sm:text-sm font-bold text-white tracking-tight group-hover:text-[#1DB954] transition-colors shrink-0">
+                                                {track.name}
+                                            </span>
+                                            <span aria-hidden="true" className="text-xs sm:text-sm font-bold text-white tracking-tight group-hover:text-[#1DB954] transition-colors shrink-0">
+                                                {track.name}
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <span className="text-xs sm:text-sm font-bold text-white tracking-tight truncate block group-hover:text-[#1DB954] transition-colors">
+                                            {track.name}
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center gap-1.5 truncate mt-0.5">
                                     <span className="text-[11px] text-zinc-400 truncate block font-normal">
                                         {track.artist}
                                     </span>
@@ -330,9 +170,9 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                                             <span className="truncate max-w-[80px]">{track.deviceName}</span>
                                         </span>
                                     )}
-                                    {isPlaying && audioFeatures.tempo > 0 && (
-                                        <span className="text-[9px] font-mono text-zinc-300 flex items-center gap-0.5 shrink-0 bg-white/[0.08] px-1 rounded border border-white/10" title="BPM y cadencia rítmica analizada">
-                                            {Math.round(audioFeatures.tempo)} BPM
+                                    {bpm > 0 && (
+                                        <span className="text-[9px] font-mono text-zinc-300 flex items-center gap-0.5 shrink-0 bg-white/[0.08] px-1 rounded border border-white/10" title="BPM en tiempo real">
+                                            {Math.round(bpm)} BPM
                                         </span>
                                     )}
                                 </div>
@@ -359,13 +199,13 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                     )}
                 </div>
 
-                {/* ZONE 2 (CENTER): Official Spotify Controls & Scrubber */}
+                {/* ZONE 2 (CENTER): Controls & Scrubber */}
                 <div className="flex flex-col items-center flex-1 max-w-xl px-2">
                     {/* Controls Row */}
                     <div className="flex items-center gap-2 sm:gap-4">
                         {/* Shuffle */}
                         <button
-                            onClick={handleToggleShuffle}
+                            onClick={toggleShuffle}
                             disabled={!connected || !track}
                             className={`p-1.5 rounded-full transition-all disabled:opacity-20 ${
                                 track?.shuffleState
@@ -379,7 +219,7 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
 
                         {/* Previous */}
                         <button
-                            onClick={handlePrevious}
+                            onClick={prevTrack}
                             disabled={!connected}
                             className="p-1.5 text-zinc-400 hover:text-white transition-all disabled:opacity-20 active:scale-95"
                             title="Pista Anterior"
@@ -389,8 +229,7 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
 
                         {/* Play / Pause Circular Official Button */}
                         <button
-                            onClick={handleTogglePlay}
-                            disabled={isActionPending}
+                            onClick={togglePlay}
                             className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all active:scale-95 shadow-lg ${
                                 isPlaying
                                     ? "bg-white text-black hover:scale-105"
@@ -407,7 +246,7 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
 
                         {/* Next */}
                         <button
-                            onClick={handleNext}
+                            onClick={nextTrack}
                             disabled={!connected}
                             className="p-1.5 text-zinc-400 hover:text-white transition-all disabled:opacity-20 active:scale-95"
                             title="Siguiente Pista"
@@ -417,7 +256,7 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
 
                         {/* Repeat */}
                         <button
-                            onClick={handleToggleRepeat}
+                            onClick={toggleRepeat}
                             disabled={!connected || !track}
                             className={`p-1.5 rounded-full transition-all disabled:opacity-20 ${
                                 track?.repeatState && track.repeatState !== "off"
@@ -430,10 +269,10 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                         </button>
                     </div>
 
-                    {/* Timeline & Scrubber Row (Official Spotify Progress Bar) */}
+                    {/* Timeline & Scrubber Row */}
                     <div className="w-full flex items-center gap-2 mt-1 hidden xs:flex">
                         <span className="text-[10px] font-mono text-zinc-400 w-8 text-right shrink-0 select-none">
-                            {formatTime(localProgressMs)}
+                            {formatTime(progressMs)}
                         </span>
 
                         <div className="relative flex-1 group/scrub flex items-center py-1">
@@ -450,7 +289,7 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                                 type="range"
                                 min={0}
                                 max={track?.durationMs || 100}
-                                value={localProgressMs}
+                                value={progressMs}
                                 onMouseDown={() => setIsSeeking(true)}
                                 onTouchStart={() => setIsSeeking(true)}
                                 onChange={handleSeekChange}
@@ -469,15 +308,20 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
 
                 {/* ZONE 3 (RIGHT): Device, Volume & Rest Telemetry */}
                 <div className="flex items-center justify-end gap-2 sm:gap-3 shrink-0 min-w-0 max-w-[36%]">
-                    {/* Master FX Switch (WebGL Reactive Lights & Particle Wave) */}
+                    {/* Master FX Switch (OFF, AURA, WAVE, ORB) */}
                     <button
                         type="button"
                         onClick={cycleMode}
                         className={`h-7 px-2 sm:px-2.5 rounded-full text-[10px] font-mono font-bold flex items-center gap-1.5 transition-all border active:scale-95 shrink-0 select-none ${
                             isFxActive
-                                ? "bg-[#10B981]/15 text-[#10B981] border-[#10B981]/40 shadow-sm shadow-[#10B981]/25 ring-1 ring-[#10B981]/30"
+                                ? "text-white shadow-sm ring-1"
                                 : "bg-white/[0.04] text-zinc-400 hover:text-white border-white/10 hover:bg-white/[0.08]"
                         }`}
+                        style={{
+                            backgroundColor: isFxActive ? `rgba(${accentRgb}, 0.2)` : undefined,
+                            borderColor: isFxActive ? `rgba(${accentRgb}, 0.6)` : undefined,
+                            boxShadow: isFxActive ? `0 0 12px rgba(${accentRgb}, 0.3)` : undefined
+                        }}
                         title={
                             isFxActive
                                 ? `FX: ${visualizerMode} (Clic para alternar: OFF, AURA, WAVE, ORB)`
@@ -485,7 +329,11 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                         }
                         aria-label="Alternar modo de efectos visuales"
                     >
-                        <Sparkles size={11} className={isFxActive ? "text-[#10B981] animate-spin-slow" : "text-zinc-500"} />
+                        <Sparkles
+                            size={11}
+                            className={isFxActive ? "animate-spin-slow" : "text-zinc-500"}
+                            style={{ color: isFxActive ? `rgb(${accentRgb})` : undefined }}
+                        />
                         <span className="hidden xs:inline">FX:</span>
                         <span>{visualizerMode}</span>
                     </button>
@@ -527,7 +375,7 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                             {connected && (
                                 <div className="hidden md:flex items-center gap-1.5 group/vol">
                                     <button
-                                        onClick={handleToggleMute}
+                                        onClick={toggleMute}
                                         className="text-zinc-400 hover:text-white transition-colors"
                                         title={isMuted ? "Desactivar silencio" : "Silenciar"}
                                     >
@@ -548,7 +396,7 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                             <button
                                 onClick={onOpenSettings}
                                 className="p-2 rounded-xl text-zinc-400 hover:text-[#1DB954] hover:bg-white/[0.08] transition-all active:scale-95"
-                                title="Playlists de Hipertrofia y Ajustes"
+                                title="Abrir Reproductor Completo & Cola"
                             >
                                 <Sliders size={15} />
                             </button>

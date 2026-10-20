@@ -511,6 +511,63 @@ export async function getTrackAudioFeatures(
     return fallbackFeat;
 }
 
+export interface SpotifyQueueItem {
+    id: string;
+    name: string;
+    artist: string;
+    album: string;
+    albumArt: string;
+    durationMs: number;
+    uri: string;
+}
+
+/**
+ * Obtiene la lista de canciones en cola de reproducción activa de Spotify (/v1/me/player/queue).
+ */
+export async function getSpotifyQueue(): Promise<SpotifyQueueItem[]> {
+    try {
+        const res = await spotifyFetch("/me/player/queue");
+        if (!res || !res.ok) return [];
+        const data = await res.json();
+        if (!data || !data.queue || !Array.isArray(data.queue)) return [];
+
+        return data.queue.slice(0, 15).map((item: any) => ({
+            id: item.id || "",
+            name: item.name || "Sin título",
+            artist: item.artists?.map((a: any) => a.name).join(", ") || "Artista",
+            album: item.album?.name || "",
+            albumArt: item.album?.images?.[0]?.url || item.album?.images?.[1]?.url || "",
+            durationMs: item.duration_ms || 0,
+            uri: item.uri || ""
+        }));
+    } catch (err) {
+        console.warn("Error fetching Spotify queue:", err);
+        return [];
+    }
+}
+
+/**
+ * Salta directamente a una pista específica por su URI.
+ */
+export async function spotifyPlayTrack(uri: string, targetDeviceId?: string): Promise<boolean> {
+    try {
+        let devId = targetDeviceId;
+        if (!devId) {
+            const dev = await getBestAvailableDevice();
+            devId = dev?.id;
+        }
+        const endpoint = devId ? `/me/player/play?device_id=${encodeURIComponent(devId)}` : "/me/player/play";
+        const res = await spotifyFetch(endpoint, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ uris: [uri] })
+        });
+        return res ? res.ok : false;
+    } catch {
+        return false;
+    }
+}
+
 export interface PlayPlaylistResult {
     success: boolean;
     deviceName?: string;

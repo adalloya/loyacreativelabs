@@ -6,6 +6,12 @@ import {
     X,
     Music,
     Play,
+    Pause,
+    SkipForward,
+    SkipBack,
+    Shuffle,
+    Repeat,
+    Repeat1,
     Check,
     LogOut,
     Sparkles,
@@ -17,27 +23,35 @@ import {
     Laptop,
     Tv,
     RefreshCw,
-    AlertCircle
+    AlertCircle,
+    ListMusic,
+    Clock
 } from "lucide-react";
 import {
-    isSpotifyConnected,
     initiateSpotifyLogin,
     disconnectSpotify,
     CURATED_WORKOUT_PLAYLISTS,
     WorkoutPlaylist,
     spotifyPlayPlaylist,
-    getCurrentPlayback,
     spotifyGetDevices,
     spotifyTransferPlayback,
     openSpotifyDeepLink,
-    SpotifyTrack,
     SpotifyDevice
 } from "@/services/spotifyService";
+import { useSpotifyPlayback } from "@/hooks/useSpotifyPlayback";
 
 interface SpotifySettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
     onStatusChange?: () => void;
+}
+
+function formatTime(ms: number): string {
+    if (!ms || isNaN(ms)) return "0:00";
+    const totalSecs = Math.floor(ms / 1000);
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
 function getDeviceIcon(type: string) {
@@ -53,27 +67,41 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
     onClose,
     onStatusChange
 }) => {
-    const [connected, setConnected] = useState(false);
+    const {
+        connected,
+        track,
+        isPlaying,
+        bpm,
+        energy,
+        accentRgb,
+        progressMs,
+        queue,
+        togglePlay,
+        nextTrack,
+        prevTrack,
+        seekTo,
+        playQueueItem,
+        toggleShuffle,
+        toggleRepeat,
+        loadQueue,
+        refreshPlayback
+    } = useSpotifyPlayback();
+
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const [isConnecting, setIsConnecting] = useState(false);
     const [playingPlaylistId, setPlayingPlaylistId] = useState<string | null>(null);
     const [customUri, setCustomUri] = useState("");
-    const [currentTrack, setCurrentTrack] = useState<SpotifyTrack | null>(null);
     const [devices, setDevices] = useState<SpotifyDevice[]>([]);
     const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
     const [isRefreshingDevices, setIsRefreshingDevices] = useState(false);
     const [fallbackPlaylist, setFallbackPlaylist] = useState<WorkoutPlaylist | null>(null);
 
-    const loadDevicesAndPlayback = async () => {
+    const loadDevices = async () => {
         setIsRefreshingDevices(true);
         try {
-            const [devs, current] = await Promise.all([
-                spotifyGetDevices(),
-                getCurrentPlayback()
-            ]);
+            const devs = await spotifyGetDevices();
             setDevices(devs);
-            setCurrentTrack(current);
             const active = devs.find(d => d.is_active);
             if (active) {
                 setSelectedDeviceId(active.id);
@@ -87,18 +115,18 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
 
     useEffect(() => {
         if (isOpen) {
-            const isConn = isSpotifyConnected();
-            setConnected(isConn);
             setErrorMsg(null);
             setSuccessMsg(null);
             setIsConnecting(false);
             setFallbackPlaylist(null);
 
-            if (isConn) {
-                loadDevicesAndPlayback();
+            if (connected) {
+                loadDevices();
+                loadQueue();
+                refreshPlayback();
             }
         }
-    }, [isOpen]);
+    }, [isOpen, connected, loadQueue, refreshPlayback]);
 
     if (!isOpen) return null;
 
@@ -115,8 +143,6 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
 
     const handleDisconnect = () => {
         disconnectSpotify();
-        setConnected(false);
-        setCurrentTrack(null);
         setDevices([]);
         if (onStatusChange) onStatusChange();
     };
@@ -129,7 +155,8 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
         if (ok) {
             setSuccessMsg("Reproducción transferida con éxito.");
             setTimeout(() => {
-                loadDevicesAndPlayback();
+                loadDevices();
+                refreshPlayback();
             }, 800);
         } else {
             setErrorMsg("Asegúrate de que Spotify esté abierto en ese dispositivo.");
@@ -146,7 +173,9 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
         if (result.success) {
             setSuccessMsg(`¡Reproduciendo "${playlist.name}" en ${result.deviceName || "tu dispositivo"}!`);
             setTimeout(() => {
-                loadDevicesAndPlayback();
+                loadDevices();
+                loadQueue();
+                refreshPlayback();
             }, 1000);
         } else {
             setFallbackPlaylist(playlist);
@@ -158,24 +187,27 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
     const handlePlayCustom = async () => {
         if (!customUri.trim()) return;
         let formatted = customUri.trim();
-        if (formatted.includes("spotify.com/playlist/")) {
-            const id = formatted.split("playlist/")[1]?.split("?")[0];
-            if (id) formatted = `spotify:playlist:${id}`;
-        }
-        setErrorMsg(null);
-        setSuccessMsg(null);
         const result = await spotifyPlayPlaylist(formatted, selectedDeviceId || undefined);
         if (result.success) {
-            setSuccessMsg(`¡Reproduciendo en ${result.deviceName || "tu dispositivo"}!`);
-            setTimeout(() => loadDevicesAndPlayback(), 1000);
+            setSuccessMsg("¡Iniciando reproducción de playlist personalizada!");
+            setCustomUri("");
+            setTimeout(() => {
+                loadDevices();
+                loadQueue();
+                refreshPlayback();
+            }, 1000);
         } else {
             setErrorMsg(result.error || "Asegúrate de tener Spotify abierto.");
         }
     };
 
+    const progressPct = track && track.durationMs > 0
+        ? Math.min(100, Math.max(0, (progressMs / track.durationMs) * 100))
+        : 0;
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-            <div className="bg-[#121214] border border-white/[0.12] rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+            <div className="bg-[#121214] border border-white/[0.12] rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
                 {/* Header */}
                 <div className="p-5 sm:p-6 border-b border-white/[0.08] flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -206,7 +238,7 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                 </div>
 
                 {/* Body (Scrollable) */}
-                <div className="p-5 sm:p-6 space-y-5 overflow-y-auto">
+                <div className="p-5 sm:p-6 space-y-6 overflow-y-auto">
                     {/* Error / Fallback Banner */}
                     {errorMsg && (
                         <div className="p-4 bg-[#FF2A2A]/10 border border-[#FF2A2A]/30 rounded-2xl space-y-2 animate-in fade-in">
@@ -231,7 +263,10 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={loadDevicesAndPlayback}
+                                        onClick={() => {
+                                            loadDevices();
+                                            refreshPlayback();
+                                        }}
                                         className="px-3 py-2 bg-white/[0.06] hover:bg-white/[0.12] text-white text-xs font-mono rounded-xl border border-white/10"
                                     >
                                         Reintentar
@@ -260,7 +295,7 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                                     Sincroniza tus Sesiones con Spotify
                                 </h4>
                                 <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto leading-relaxed">
-                                    Conéctate con tu cuenta para ver la carátula en vivo, controlar reproducción y activar cadencias de alta intensidad.
+                                    Conéctate con tu cuenta para ver la carátula en grande, controlar la reproducción y sincronizar visualizadores 3D en tiempo real.
                                 </p>
                             </div>
 
@@ -274,53 +309,229 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                             </button>
                         </div>
                     ) : (
-                        <div className="bg-[#1DB954]/5 border border-[#1DB954]/20 rounded-3xl p-4 sm:p-5 space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2.5">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-[#10B981] animate-pulse" />
-                                    <span className="text-xs font-mono font-bold text-white tracking-wide uppercase">
-                                        CUENTA VINCULADA
-                                    </span>
-                                </div>
-                                <button
-                                    onClick={handleDisconnect}
-                                    className="px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-[#FF2A2A]/20 text-zinc-400 hover:text-[#FF2A2A] border border-white/10 hover:border-[#FF2A2A]/30 text-xs font-medium transition-all flex items-center gap-1.5"
-                                >
-                                    <LogOut size={12} />
-                                    <span>Cerrar sesión</span>
-                                </button>
-                            </div>
+                        <div className="space-y-6">
+                            {/* REPRODUCTOR EXPANDIDO CON PORTADA GRANDE */}
+                            {track ? (
+                                <div className="relative bg-gradient-to-b from-white/[0.06] to-black/60 border border-white/10 rounded-3xl p-5 sm:p-6 shadow-2xl overflow-hidden">
+                                    {/* Ambient Glow matching album art */}
+                                    <div
+                                        className="absolute -top-12 left-1/2 -translate-x-1/2 w-72 h-44 rounded-full blur-3xl opacity-35 pointer-events-none transition-all duration-700"
+                                        style={{ backgroundColor: `rgb(${accentRgb})` }}
+                                    />
 
-                            {/* Active Track Status */}
-                            {currentTrack && (
-                                <div className="flex items-center gap-3 bg-black/40 p-3 rounded-2xl border border-white/[0.06]">
-                                    {currentTrack.albumArt ? (
-                                        <img
-                                            src={currentTrack.albumArt}
-                                            alt={currentTrack.name}
-                                            className="w-12 h-12 rounded-xl object-cover border border-white/10"
-                                        />
-                                    ) : (
-                                        <div className="w-12 h-12 rounded-xl bg-zinc-900 flex items-center justify-center text-[#1DB954]">
-                                            <Music size={20} />
+                                    {/* Gran Carátula del Álbum */}
+                                    <div className="relative z-10 flex flex-col items-center text-center">
+                                        <div className="relative w-48 h-48 sm:w-56 sm:h-56 rounded-3xl overflow-hidden border border-white/15 bg-zinc-900 shadow-2xl mb-4 group">
+                                            {track.albumArt ? (
+                                                <img
+                                                    src={track.albumArt}
+                                                    alt={track.album}
+                                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-[#1DB954]">
+                                                    <Music size={48} />
+                                                </div>
+                                            )}
+                                            {isPlaying && (
+                                                <div className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/20 text-[9px] font-mono text-[#10B981] flex items-center gap-1">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-ping" />
+                                                    <span>LIVE</span>
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
-                                    <div className="min-w-0 flex-1">
-                                        <span className="text-xs font-bold text-white truncate block">
-                                            {currentTrack.name}
-                                        </span>
-                                        <span className="text-[11px] text-zinc-400 truncate block">
-                                            {currentTrack.artist}
-                                        </span>
-                                        {currentTrack.deviceName && (
-                                            <span className="text-[10px] font-mono text-[#10B981] flex items-center gap-1 mt-0.5 font-bold">
-                                                <Speaker size={11} />
-                                                Reproduciendo en: {currentTrack.deviceName}
-                                            </span>
-                                        )}
+
+                                        {/* Song Title & Artist */}
+                                        <h3 className="text-lg sm:text-xl font-extrabold text-white tracking-tight line-clamp-1 max-w-full">
+                                            {track.name}
+                                        </h3>
+                                        <p className="text-xs sm:text-sm text-zinc-400 font-medium mt-0.5 line-clamp-1">
+                                            {track.artist}
+                                        </p>
+
+                                        {/* Badges de Telemetría (BPM y Dispositivo) */}
+                                        <div className="flex items-center justify-center gap-2 mt-2">
+                                            {bpm > 0 && (
+                                                <span className="text-[10px] font-mono font-bold text-[#10B981] bg-[#10B981]/15 px-2.5 py-0.5 rounded-full border border-[#10B981]/30">
+                                                    ⚡️ {Math.round(bpm)} BPM
+                                                </span>
+                                            )}
+                                            {track.deviceName && (
+                                                <span className="text-[10px] font-mono text-zinc-300 bg-white/[0.08] px-2 py-0.5 rounded-full border border-white/10 flex items-center gap-1">
+                                                    <Speaker size={10} className="text-[#1DB954]" />
+                                                    <span className="truncate max-w-[120px]">{track.deviceName}</span>
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {/* Scrubber Progress Bar */}
+                                        <div className="w-full mt-4 space-y-1">
+                                            <div className="relative w-full flex items-center group py-1">
+                                                <div className="w-full h-1.5 bg-white/[0.15] rounded-full overflow-hidden relative">
+                                                    <div
+                                                        className="h-full bg-white group-hover:bg-[#1DB954] transition-colors rounded-full"
+                                                        style={{ width: `${progressPct}%` }}
+                                                    />
+                                                </div>
+                                                <input
+                                                    type="range"
+                                                    min={0}
+                                                    max={track.durationMs || 100}
+                                                    value={progressMs}
+                                                    onChange={(e) => seekTo(parseInt(e.target.value, 10))}
+                                                    className="absolute inset-0 w-full opacity-0 cursor-pointer"
+                                                />
+                                            </div>
+                                            <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400">
+                                                <span>{formatTime(progressMs)}</span>
+                                                <span>{formatTime(track.durationMs)}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Controles de Reproducción Expandidos */}
+                                        <div className="flex items-center justify-center gap-4 sm:gap-6 mt-3">
+                                            <button
+                                                onClick={toggleShuffle}
+                                                className={`p-2 rounded-full transition-all ${
+                                                    track.shuffleState
+                                                        ? "text-[#1DB954]"
+                                                        : "text-zinc-400 hover:text-white"
+                                                }`}
+                                                title="Modo aleatorio"
+                                            >
+                                                <Shuffle size={16} />
+                                            </button>
+
+                                            <button
+                                                onClick={prevTrack}
+                                                className="p-2 text-zinc-300 hover:text-white transition-all active:scale-95"
+                                                title="Anterior"
+                                            >
+                                                <SkipBack size={22} fill="currentColor" />
+                                            </button>
+
+                                            <button
+                                                onClick={togglePlay}
+                                                className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-all"
+                                                title={isPlaying ? "Pausar" : "Reproducir"}
+                                            >
+                                                {isPlaying ? (
+                                                    <Pause size={22} fill="currentColor" />
+                                                ) : (
+                                                    <Play size={22} fill="currentColor" className="ml-0.5" />
+                                                )}
+                                            </button>
+
+                                            <button
+                                                onClick={nextTrack}
+                                                className="p-2 text-zinc-300 hover:text-white transition-all active:scale-95"
+                                                title="Siguiente"
+                                            >
+                                                <SkipForward size={22} fill="currentColor" />
+                                            </button>
+
+                                            <button
+                                                onClick={toggleRepeat}
+                                                className={`p-2 rounded-full transition-all ${
+                                                    track.repeatState && track.repeatState !== "off"
+                                                        ? "text-[#1DB954]"
+                                                        : "text-zinc-400 hover:text-white"
+                                                }`}
+                                                title={`Repetir: ${track.repeatState || "off"}`}
+                                            >
+                                                {track.repeatState === "track" ? <Repeat1 size={17} /> : <Repeat size={16} />}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
+                            ) : (
+                                <div className="p-6 text-center bg-black/40 border border-white/[0.08] rounded-3xl">
+                                    <Music size={32} className="mx-auto text-zinc-500 mb-2" />
+                                    <h4 className="text-sm font-bold text-white">Spotify Conectado</h4>
+                                    <p className="text-xs text-zinc-400 mt-1">
+                                        Abre Spotify o elige una playlist a continuación para comenzar.
+                                    </p>
+                                </div>
                             )}
+
+                            {/* SECCIÓN: CANCIONES QUE SIGUEN EN LA LISTA DE REPRODUCCIÓN (QUEUE) */}
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <ListMusic size={15} className="text-[#1DB954]" />
+                                        <span className="text-[11px] font-mono text-zinc-300 font-bold uppercase tracking-wider">
+                                            A CONTINUACIÓN EN COLA ({queue.length})
+                                        </span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={loadQueue}
+                                        className="text-[10px] font-mono text-zinc-400 hover:text-white flex items-center gap-1 transition-colors"
+                                    >
+                                        <RefreshCw size={10} />
+                                        <span>Actualizar Cola</span>
+                                    </button>
+                                </div>
+
+                                {queue.length > 0 ? (
+                                    <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+                                        {queue.map((item, idx) => (
+                                            <div
+                                                key={`${item.id}-${idx}`}
+                                                onClick={() => playQueueItem(item.uri)}
+                                                className="group p-2 sm:p-2.5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] hover:border-[#1DB954]/40 flex items-center justify-between gap-3 cursor-pointer transition-all"
+                                                title="Haz clic para saltar a esta canción"
+                                            >
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <span className="text-[10px] font-mono text-zinc-500 w-4 text-center shrink-0">
+                                                        {idx + 1}
+                                                    </span>
+                                                    <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/10 bg-zinc-900 shrink-0">
+                                                        {item.albumArt ? (
+                                                            <img
+                                                                src={item.albumArt}
+                                                                alt={item.name}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center text-zinc-600">
+                                                                <Music size={14} />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <span className="text-xs font-semibold text-white group-hover:text-[#1DB954] transition-colors truncate block">
+                                                            {item.name}
+                                                        </span>
+                                                        <span className="text-[11px] text-zinc-400 truncate block">
+                                                            {item.artist}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    <span className="text-[10px] font-mono text-zinc-500 hidden sm:inline">
+                                                        {formatTime(item.durationMs)}
+                                                    </span>
+                                                    <div className="w-7 h-7 rounded-full bg-white/[0.08] group-hover:bg-[#1DB954] text-zinc-300 group-hover:text-black flex items-center justify-center transition-all">
+                                                        <Play size={10} fill="currentColor" className="ml-0.5" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.05] text-[11px] text-zinc-400 flex items-center justify-between">
+                                        <span>No hay más canciones pendientes en la cola activa.</span>
+                                        <button
+                                            onClick={loadQueue}
+                                            className="text-xs text-[#1DB954] hover:underline font-mono"
+                                        >
+                                            Consultar Spotify
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
 
                             {/* Section: Dispositivos Detectados */}
                             <div className="pt-2 border-t border-white/[0.06] space-y-2">
@@ -330,11 +541,11 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                                     </span>
                                     <button
                                         type="button"
-                                        onClick={loadDevicesAndPlayback}
+                                        onClick={loadDevices}
                                         className="text-[10px] font-mono text-zinc-400 hover:text-white flex items-center gap-1 transition-colors"
                                     >
                                         <RefreshCw size={10} className={isRefreshingDevices ? "animate-spin" : ""} />
-                                        <span>Actualizar</span>
+                                        <span>Buscar</span>
                                     </button>
                                 </div>
 
@@ -358,30 +569,31 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                                                     <div className="flex items-center gap-2.5 min-w-0">
                                                         <Icon size={16} className={dev.is_active ? "text-[#10B981]" : "text-zinc-400"} />
                                                         <div className="min-w-0">
-                                                            <span className="text-xs font-bold block truncate text-white">
-                                                                {dev.name}
-                                                            </span>
-                                                            <span className="text-[9px] font-mono text-zinc-500 uppercase">
-                                                                {dev.type} {dev.volume_percent !== undefined ? `• ${dev.volume_percent}%` : ""}
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="text-xs font-semibold truncate block">
+                                                                    {dev.name}
+                                                                </span>
+                                                                {dev.is_active && (
+                                                                    <span className="text-[9px] font-mono bg-[#10B981] text-black font-bold px-1.5 py-0.2 rounded-full uppercase">
+                                                                        Activo
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <span className="text-[10px] font-mono text-zinc-500 capitalize">
+                                                                {dev.type.toLowerCase()} • {dev.volume_percent}% vol
                                                             </span>
                                                         </div>
                                                     </div>
 
-                                                    <div className="flex items-center gap-2 shrink-0">
-                                                        {dev.is_active ? (
-                                                            <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#10B981] text-black">
-                                                                ACTIVO
-                                                            </span>
-                                                        ) : (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleTransferDevice(dev.id)}
-                                                                className="text-[10px] font-mono font-medium px-2.5 py-1 rounded-lg bg-white/[0.08] hover:bg-white text-zinc-300 hover:text-black transition-all border border-white/10"
-                                                            >
-                                                                Reproducir aquí
-                                                            </button>
-                                                        )}
-                                                    </div>
+                                                    {!dev.is_active && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleTransferDevice(dev.id)}
+                                                            className="px-2.5 py-1 bg-white/[0.08] hover:bg-white text-white hover:text-black rounded-lg text-[10px] font-semibold border border-white/10 transition-all shrink-0 active:scale-95"
+                                                        >
+                                                            Reproducir aquí
+                                                        </button>
+                                                    )}
                                                 </div>
                                             );
                                         })}
@@ -399,11 +611,23 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                                     </div>
                                 )}
                             </div>
+
+                            {/* Cuenta Vinculada & Desconexión */}
+                            <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
+                                <span className="text-xs text-zinc-400 font-mono">CUENTA VINCULADA</span>
+                                <button
+                                    onClick={handleDisconnect}
+                                    className="px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-[#FF2A2A]/20 text-zinc-400 hover:text-[#FF2A2A] border border-white/10 hover:border-[#FF2A2A]/30 text-xs font-medium transition-all flex items-center gap-1.5"
+                                >
+                                    <LogOut size={12} />
+                                    <span>Cerrar sesión</span>
+                                </button>
+                            </div>
                         </div>
                     )}
 
-                    {/* Curated Workout Playlists */}
-                    <div className="space-y-3">
+                    {/* Playlists de Entrenamiento Curadas */}
+                    <div className="space-y-3 pt-2 border-t border-white/[0.06]">
                         <div className="flex items-center justify-between">
                             <span className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider block">
                                 PLAYLISTS DE ENTRENAMIENTO PRECONFIGURADAS
