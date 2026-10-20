@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -35,7 +35,8 @@ import {
     Trash2,
     Shuffle,
     RefreshCw,
-    Camera
+    Camera,
+    X
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 
@@ -220,6 +221,8 @@ export default function ApexDashboard() {
 
     // Hot-Swap: Voice Logger active target
     const [voiceActiveSet, setVoiceActiveSet] = useState<{ exerciseId: string; setIdx: number } | null>(null);
+    const voiceActiveSetRef = useRef<{ exerciseId: string; setIdx: number } | null>(null);
+    const [voiceSuccessToast, setVoiceSuccessToast] = useState<string | null>(null);
 
     // Profile state from localStorage
     const [profile, setProfile] = useLocalStorage<UserApexProfile | null>("apex_user_profile", null);
@@ -548,15 +551,44 @@ export default function ApexDashboard() {
     };
 
     // Voice Logger Hook
-    const { isListening: isVoiceListening, startListening: startVoiceLogging } = useVoiceLogger((result) => {
-        if (voiceActiveSet) {
-            const key = `${voiceActiveSet.exerciseId}_${voiceActiveSet.setIdx}`;
-            const recordedWeight = result.weight ?? result.weightKg;
+    const {
+        isListening: isVoiceListening,
+        transcript: voiceTranscript,
+        interimTranscript: voiceInterimTranscript,
+        errorMessage: voiceErrorMessage,
+        isSupported: isVoiceSupported,
+        startListening: startVoiceLogging,
+        stopListening: stopVoiceLogging,
+        clearError: clearVoiceError
+    } = useVoiceLogger((result) => {
+        const active = voiceActiveSetRef.current || voiceActiveSet;
+        if (active) {
+            const key = `${active.exerciseId}_${active.setIdx}`;
+            const targetEx = activeExercises.find(e => e.id === active.exerciseId);
+            const memory = exerciseMemory[active.exerciseId] || { weight: 0, reps: 0 };
+            const currentInputs = setInputs[key];
+
+            const finalWeight = (result.weight !== undefined && result.weight !== null)
+                ? result.weight
+                : (currentInputs?.weight !== undefined && currentInputs.weight !== ""
+                    ? Number(currentInputs.weight)
+                    : (memory.weight > 0 ? memory.weight : 0));
+
+            const finalReps = (result.reps !== undefined && result.reps !== null)
+                ? result.reps
+                : (currentInputs?.reps ? Number(currentInputs.reps) : (targetEx?.rep_range_min || 10));
+
             setSetInputs(prev => ({
                 ...prev,
-                [key]: { weight: recordedWeight, reps: result.reps }
+                [key]: { weight: finalWeight, reps: finalReps }
             }));
-            handleCompleteSet(voiceActiveSet.exerciseId, voiceActiveSet.setIdx, 90, recordedWeight, result.reps);
+
+            handleCompleteSet(active.exerciseId, active.setIdx, targetEx?.rest_seconds || 90, finalWeight, finalReps);
+
+            setVoiceSuccessToast(`${finalWeight} ${weightUnit} × ${finalReps} reps`);
+            setTimeout(() => setVoiceSuccessToast(null), 3500);
+
+            voiceActiveSetRef.current = null;
             setVoiceActiveSet(null);
         }
     });
@@ -1118,7 +1150,7 @@ export default function ApexDashboard() {
                                                             href={`https://www.youtube.com/results?search_query=${encodeURIComponent(ex.name + " form technique hypertrophy")}`}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-medium bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 hover:text-white border border-white/[0.08] transition-all"
+                                                            className="h-8 flex items-center justify-center gap-1.5 px-3 rounded-full text-xs font-mono font-medium bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 hover:text-white border border-white/[0.08] transition-all"
                                                             title="Ver técnica en YouTube"
                                                         >
                                                             <Play className="w-3 h-3 fill-white text-white" />
@@ -1128,6 +1160,7 @@ export default function ApexDashboard() {
 
                                                         {/* Tempo Sonar Pill */}
                                                         <button
+                                                            type="button"
                                                             onClick={() => {
                                                                 const nextState = !tempoActive[ex.id];
                                                                 setTempoActive(prev => ({ ...prev, [ex.id]: nextState }));
@@ -1137,7 +1170,7 @@ export default function ApexDashboard() {
                                                                     stopTempoLoop(ex.id);
                                                                 }
                                                             }}
-                                                            className={`px-3 py-1.5 rounded-full text-xs font-mono font-medium transition-all border ${
+                                                            className={`h-8 flex items-center justify-center gap-1.5 px-3 rounded-full text-xs font-mono font-medium transition-all border ${
                                                                 tempoActive[ex.id]
                                                                     ? "bg-[#FF2A2A] text-white border-[#FF2A2A]"
                                                                     : "bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 border-white/[0.08]"
@@ -1149,11 +1182,12 @@ export default function ApexDashboard() {
 
                                                         {/* VBT Mode */}
                                                         <button
+                                                            type="button"
                                                             onClick={() => {
                                                                 setVbtExerciseName(ex.name);
                                                                 setIsVbtModalOpen(true);
                                                             }}
-                                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 border border-white/[0.08] transition-all"
+                                                            className="h-8 flex items-center justify-center gap-1.5 px-3 rounded-full text-xs font-medium bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 border border-white/[0.08] transition-all"
                                                             title="Modo Velocidad VBT y Espejo IA"
                                                         >
                                                             <Gauge size={13} className="text-zinc-300" />
@@ -1163,8 +1197,9 @@ export default function ApexDashboard() {
                                                         {/* Discos Inline Toggle (Solo en ejercicios de barra olímpica/EZ donde aplica cargar discos) */}
                                                         {isPlateLoadedExercise(ex.equipment, ex.name) && (
                                                             <button
+                                                                type="button"
                                                                 onClick={() => setInlinePlatesExId(prev => prev === ex.id ? null : ex.id)}
-                                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                                                className={`h-8 flex items-center justify-center gap-1.5 px-3 rounded-full text-xs font-medium border transition-all ${
                                                                     inlinePlatesExId === ex.id
                                                                         ? "bg-white text-black border-white font-semibold"
                                                                         : "bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 border-white/[0.08]"
@@ -1178,8 +1213,9 @@ export default function ApexDashboard() {
 
                                                         {/* Random Instant Biomechanical Swap */}
                                                         <button
+                                                            type="button"
                                                             onClick={() => handleRandomSwapExercise(exIdx)}
-                                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 hover:text-white border border-white/[0.08] transition-all"
+                                                            className="h-8 flex items-center justify-center gap-1.5 px-3 rounded-full text-xs font-medium bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 hover:text-white border border-white/[0.08] transition-all"
                                                             title="Swap Aleatorio Biomecánico Instantáneo"
                                                         >
                                                             <Shuffle size={13} className="text-zinc-300" />
@@ -1188,11 +1224,12 @@ export default function ApexDashboard() {
 
                                                         {/* Swap Manual Selector con Buscador en los 873 */}
                                                         <button
+                                                            type="button"
                                                             onClick={() => setSwapTargetIndex(exIdx)}
-                                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white/[0.08] hover:bg-white text-white hover:text-black border border-white/20 hover:border-white transition-all shadow-sm active:scale-95"
+                                                            className="h-8 flex items-center justify-center gap-1.5 px-3 rounded-full text-xs font-semibold bg-white/[0.08] hover:bg-white text-white hover:text-black border border-white/20 hover:border-white transition-all shadow-sm active:scale-95 group"
                                                             title="Cambiar ejercicio por cualquier otro de los 873 con foto de GitHub"
                                                         >
-                                                            <RefreshCw size={12} className="text-zinc-300 group-hover:text-black shrink-0" />
+                                                            <RefreshCw size={12} className="text-zinc-300 group-hover:text-black shrink-0 transition-colors" />
                                                             <span>Cambiar Ejercicio</span>
                                                         </button>
                                                     </div>
@@ -1273,13 +1310,13 @@ export default function ApexDashboard() {
                                                             >
                                                                 {/* Set Badge & Tactile Input Controls */}
                                                                 <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
-                                                                    <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-white/[0.08] flex items-center justify-center font-bold text-white text-[11px] sm:text-xs font-mono shrink-0">
+                                                                    <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white/[0.08] flex items-center justify-center font-bold text-white text-[11px] sm:text-xs font-mono shrink-0">
                                                                         S{setIdx + 1}
                                                                     </span>
 
                                                                     <div className="flex items-center gap-1 sm:gap-1.5">
                                                                         {/* Tactile Weight Input */}
-                                                                        <div className="flex items-center gap-0.5 sm:gap-1 bg-white/[0.06] border border-white/[0.08] rounded-xl px-1.5 sm:px-2.5 py-1">
+                                                                        <div className="h-8 sm:h-9 flex items-center gap-1 bg-white/[0.06] border border-white/[0.08] rounded-xl px-2 sm:px-2.5">
                                                                             <input
                                                                                 type="number"
                                                                                 step={weightUnit === "lbs" ? "1" : "0.5"}
@@ -1297,10 +1334,10 @@ export default function ApexDashboard() {
                                                                             <span className="text-[10px] sm:text-[11px] text-zinc-400 font-mono">{weightUnit}</span>
                                                                         </div>
 
-                                                                        <span className="text-zinc-500 font-mono text-[10px] sm:text-xs">×</span>
+                                                                        <span className="text-zinc-500 font-mono text-[10px] sm:text-xs px-0.5 select-none">×</span>
 
                                                                         {/* Tactile Reps Input */}
-                                                                        <div className="flex items-center gap-0.5 sm:gap-1 bg-white/[0.06] border border-white/[0.08] rounded-xl px-1.5 sm:px-2.5 py-1">
+                                                                        <div className="h-8 sm:h-9 flex items-center gap-1 bg-white/[0.06] border border-white/[0.08] rounded-xl px-2 sm:px-2.5">
                                                                             <input
                                                                                 type="number"
                                                                                 step="1"
@@ -1328,23 +1365,34 @@ export default function ApexDashboard() {
 
                                                                     {/* Voice Dictation Button */}
                                                                     <button
+                                                                        type="button"
                                                                         onClick={() => {
-                                                                            setVoiceActiveSet({ exerciseId: ex.id, setIdx });
+                                                                            if (isVoiceListening && voiceActiveSet?.exerciseId === ex.id && voiceActiveSet?.setIdx === setIdx) {
+                                                                                stopVoiceLogging();
+                                                                                voiceActiveSetRef.current = null;
+                                                                                setVoiceActiveSet(null);
+                                                                                return;
+                                                                            }
+                                                                            const target = { exerciseId: ex.id, setIdx };
+                                                                            voiceActiveSetRef.current = target;
+                                                                            setVoiceActiveSet(target);
                                                                             startVoiceLogging();
                                                                         }}
-                                                                        className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl border transition-all ${
+                                                                        className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl border transition-all active:scale-95 shrink-0 ${
                                                                             isVoiceActive && isVoiceListening
-                                                                                ? "bg-[#FF2A2A] text-white animate-pulse border-[#FF2A2A]"
+                                                                                ? "bg-[#FF2A2A] text-white animate-pulse border-[#FF2A2A] shadow-lg shadow-red-600/30 ring-2 ring-[#FF2A2A]/50"
                                                                                 : "bg-white/[0.06] border-white/[0.08] text-zinc-300 hover:text-white hover:bg-white/[0.12]"
                                                                         }`}
                                                                         title={`Dictar serie por voz (ej. '${weightUnit === "lbs" ? "135 por 10" : "80 por 10"}')`}
+                                                                        aria-label="Dictar serie por voz"
                                                                     >
-                                                                        <Mic size={14} className={isVoiceActive && isVoiceListening ? "animate-bounce" : ""} />
+                                                                        <Mic size={15} className={isVoiceActive && isVoiceListening ? "animate-bounce" : ""} />
                                                                     </button>
 
                                                                     <button
+                                                                        type="button"
                                                                         onClick={() => handleCompleteSet(ex.id, setIdx, ex.rest_seconds)}
-                                                                        className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl font-semibold transition-all active:scale-95 ${
+                                                                        className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl font-semibold transition-all active:scale-95 shrink-0 ${
                                                                             isCompleted
                                                                                 ? "bg-[#10B981] text-black shadow-md shadow-[#10B981]/20"
                                                                                 : "bg-white hover:bg-zinc-200 text-black shadow-md shadow-white/10"
@@ -2178,6 +2226,70 @@ export default function ApexDashboard() {
                     </div>
                 )}
             </main>
+
+            {/* Floating Voice Dictation HUD (Apple / Tesla Style) */}
+            {(isVoiceListening || voiceErrorMessage || voiceSuccessToast) && (
+                <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 w-[94%] max-w-md bg-[#121214]/95 backdrop-blur-2xl border border-white/[0.15] rounded-3xl p-4 shadow-2xl text-white animate-in slide-in-from-bottom-3 duration-200">
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${
+                                voiceErrorMessage
+                                    ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                                    : voiceSuccessToast
+                                        ? "bg-[#10B981] text-black shadow-[#10B981]/25"
+                                        : "bg-[#FF2A2A] text-white shadow-red-600/30 animate-pulse"
+                            }`}>
+                                {voiceErrorMessage ? (
+                                    <AlertCircle className="w-5 h-5" />
+                                ) : voiceSuccessToast ? (
+                                    <Check className="w-5 h-5" strokeWidth={3} />
+                                ) : (
+                                    <Mic className="w-5 h-5 animate-bounce" />
+                                )}
+                            </div>
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold font-mono tracking-wider uppercase truncate">
+                                        {voiceErrorMessage
+                                            ? "AVISO DE MICRÓFONO"
+                                            : voiceSuccessToast
+                                                ? "SERIE REGISTRADA"
+                                                : "ESCUCHANDO DICTADO"}
+                                    </span>
+                                    {isVoiceListening && (
+                                        <span className="w-2 h-2 rounded-full bg-[#FF2A2A] animate-ping shrink-0" />
+                                    )}
+                                </div>
+                                <p className="text-[11px] text-zinc-300 font-mono mt-0.5 truncate">
+                                    {voiceErrorMessage
+                                        ? voiceErrorMessage
+                                        : voiceSuccessToast
+                                            ? voiceSuccessToast
+                                            : (voiceInterimTranscript || voiceTranscript)
+                                                ? `"${voiceInterimTranscript || voiceTranscript}"`
+                                                : `Di ej: "${weightUnit === "lbs" ? "135 por 10" : "80 por 10"}" o "10 reps"`}
+                                </p>
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => {
+                                stopVoiceLogging();
+                                clearVoiceError();
+                                setVoiceSuccessToast(null);
+                                voiceActiveSetRef.current = null;
+                                setVoiceActiveSet(null);
+                            }}
+                            className="w-8 h-8 rounded-full bg-white/[0.08] hover:bg-white/[0.15] border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white transition-all shrink-0 active:scale-95"
+                            title="Cerrar"
+                            aria-label="Cerrar"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Floating Tesla-Style Spotify Player & Rest Countdown Bar */}
             <SpotifyPlayerWidget

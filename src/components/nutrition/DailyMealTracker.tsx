@@ -439,11 +439,12 @@ export const DailyMealTracker: React.FC<DailyMealTrackerProps> = ({
 
                                         {/* Botón Escáner Cámara para esta categoría */}
                                         <button
+                                            type="button"
                                             onClick={() => {
                                                 setFoodScannerCategory(category.key);
                                                 setIsFoodScannerOpen(true);
                                             }}
-                                            className="px-2.5 py-1.5 bg-[#10B981]/10 hover:bg-[#10B981]/25 text-[#10B981] border border-[#10B981]/30 rounded-xl text-[11px] font-semibold transition-all flex items-center gap-1.5 active:scale-95 shadow-xs"
+                                            className="h-8 px-2.5 bg-[#10B981]/10 hover:bg-[#10B981]/25 text-[#10B981] border border-[#10B981]/30 rounded-xl text-[11px] font-semibold transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-xs"
                                             title={`Tomar foto con la cámara para ${category.title}`}
                                         >
                                             <Camera size={13} />
@@ -452,8 +453,9 @@ export const DailyMealTracker: React.FC<DailyMealTrackerProps> = ({
 
                                         {dietPlan && (
                                             <button
+                                                type="button"
                                                 onClick={() => handlePrefillFromPlan(category.key)}
-                                                className="px-2.5 py-1.5 bg-white/[0.04] hover:bg-white/[0.1] text-zinc-300 hover:text-white border border-white/[0.08] rounded-xl text-[11px] font-medium transition-all flex items-center gap-1"
+                                                className="h-8 px-2.5 bg-white/[0.04] hover:bg-white/[0.1] text-zinc-300 hover:text-white border border-white/[0.08] rounded-xl text-[11px] font-medium transition-all flex items-center justify-center gap-1 active:scale-95"
                                                 title="Cargar del plan de IA generado"
                                             >
                                                 <Sparkles size={12} className="text-zinc-400" />
@@ -462,6 +464,7 @@ export const DailyMealTracker: React.FC<DailyMealTrackerProps> = ({
                                         )}
 
                                         <button
+                                            type="button"
                                             onClick={() => {
                                                 if (isAdding) {
                                                     setActiveCategory(null);
@@ -472,7 +475,7 @@ export const DailyMealTracker: React.FC<DailyMealTrackerProps> = ({
                                                     setFoodProtein("");
                                                 }
                                             }}
-                                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all ${
+                                            className={`h-8 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-all active:scale-95 ${
                                                 isAdding
                                                     ? "bg-white/[0.1] text-white"
                                                     : "bg-white hover:bg-zinc-200 text-black shadow-xs"
@@ -568,18 +571,18 @@ export const DailyMealTracker: React.FC<DailyMealTrackerProps> = ({
                                             </div>
                                         </div>
 
-                                        <div className="flex justify-end gap-2 pt-1">
+                                        <div className="flex justify-end items-center gap-2 pt-1">
                                             <button
                                                 type="button"
                                                 onClick={() => setActiveCategory(null)}
-                                                className="px-3 py-1.5 text-zinc-400 hover:text-white text-xs"
+                                                className="h-8 px-3 text-zinc-400 hover:text-white text-xs flex items-center justify-center rounded-xl transition-colors active:scale-95"
                                             >
                                                 Cancelar
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => handleAddFood(category.key)}
-                                                className="px-4 py-1.5 bg-white text-black font-semibold text-xs rounded-xl shadow-xs hover:bg-zinc-200 transition-all"
+                                                className="h-8 px-4 bg-white text-black font-semibold text-xs rounded-xl shadow-xs hover:bg-zinc-200 transition-all flex items-center justify-center active:scale-95"
                                             >
                                                 Guardar Alimento
                                             </button>
