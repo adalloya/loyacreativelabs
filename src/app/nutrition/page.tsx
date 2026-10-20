@@ -159,23 +159,6 @@ export default function NutritionPage() {
             </div>
           </div>
 
-          {/* Stack de Suplementos Grado A */}
-          <div className="bg-[#121214]/90 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 shadow-2xl">
-            <h3 className="text-sm font-mono tracking-wider text-zinc-400 uppercase mb-4">SUPLEMENTACIÓN CLÍNICA DIARIA</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {dietPlan.dailySupplements?.map((sup, idx) => (
-                <div key={idx} className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4">
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="font-semibold text-sm">{sup.name}</span>
-                    <span className="font-mono text-xs text-zinc-400 bg-white/[0.06] px-2 py-0.5 rounded">{sup.dosage}</span>
-                  </div>
-                  <p className="text-xs text-zinc-400 mb-2">{sup.timing}</p>
-                  <p className="text-[11px] text-zinc-500 italic">{sup.clinicalReason}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
           {/* Lista de Compras Dinámica Consolidada de 30 Días */}
           <ShoppingList />
 

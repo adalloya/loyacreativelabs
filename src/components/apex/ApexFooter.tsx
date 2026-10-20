@@ -3,7 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Activity, Shield, Zap, Sparkles, Download } from 'lucide-react';
+import { Shield, Zap, Sparkles, Download } from 'lucide-react';
 
 export function ApexFooter() {
   return (
@@ -56,17 +56,7 @@ export function ApexFooter() {
         </div>
 
         {/* Technical Architectural Notes & Links */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
-          <div className="space-y-1.5">
-            <h5 className="font-mono text-white text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-              <Activity className="w-3.5 h-3.5 text-[#FF2A2A]" />
-              BIOMECÁNICA SIN MOCKS
-            </h5>
-            <p className="text-zinc-500 leading-relaxed font-mono text-[11px]">
-              Secuencias motoras de 800ms interpoladas en tiempo real desde el repositorio open source <code className="text-zinc-400">free-exercise-db</code> con vectores de fuerza SVG dinámicos.
-            </p>
-          </div>
-
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
           <div className="space-y-1.5">
             <h5 className="font-mono text-white text-[11px] uppercase tracking-wider flex items-center gap-1.5">
               <Zap className="w-3.5 h-3.5 text-white" />

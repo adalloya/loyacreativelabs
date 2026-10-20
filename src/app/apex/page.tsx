@@ -1920,31 +1920,6 @@ export default function ApexDashboard() {
                             )}
                         </div>
 
-                        {/* Clinical Supplements Stack */}
-                        <div className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-6 shadow-2xl">
-                            <div className="flex items-center gap-2 mb-4">
-                                <Shield size={18} className="text-white" />
-                                <h4 className="text-base font-bold text-white tracking-tight">
-                                    STACK DE SUPLEMENTACIÓN CLÍNICA (EVIDENCIA GRADO A)
-                                </h4>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {supplements.map((sup, idx) => (
-                                    <div key={idx} className="p-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl flex flex-col justify-between">
-                                        <div>
-                                            <h5 className="font-bold text-white text-xs mb-1 tracking-tight">{sup.name}</h5>
-                                            <p className="text-xs text-zinc-300 font-mono font-semibold mb-1">{sup.dosage}</p>
-                                            <p className="text-[11px] text-zinc-500 mb-2 font-medium">Momento: {sup.timing}</p>
-                                        </div>
-                                        <p className="text-xs text-zinc-400 leading-relaxed border-t border-white/[0.06] pt-2 mt-1">
-                                            {sup.clinicalReason}
-                                        </p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
                         {/* Lista de Compras Consolidada (solo se muestra cuando el plan ha sido generado con Gemini) */}
                         {dietPlan && (
                             <ShoppingList />
