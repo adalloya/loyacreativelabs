@@ -58,8 +58,10 @@ export const GymEquipmentScannerModal: React.FC<GymEquipmentScannerModalProps> =
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const nativeCameraInputRef = useRef<HTMLInputElement>(null);
+    const streamRef = useRef<MediaStream | null>(null);
 
-    const [stream, setStream] = useState<MediaStream | null>(null);
+    const [isCameraActive, setIsCameraActive] = useState(false);
     const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
     const [isScanning, setIsScanning] = useState(false);
@@ -68,45 +70,95 @@ export const GymEquipmentScannerModal: React.FC<GymEquipmentScannerModalProps> =
     const [recentAddedId, setRecentAddedId] = useState<string | null>(null);
     const [frameView, setFrameView] = useState<Record<string, 0 | 1>>({});
 
-    // Start camera stream
+    // Detener la cámara liberando todos los tracks de hardware
+    const stopCamera = useCallback(() => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => {
+                try {
+                    track.stop();
+                } catch (e) {
+                    console.warn("Error stopping track:", e);
+                }
+            });
+            streamRef.current = null;
+        }
+        if (videoRef.current) {
+            videoRef.current.srcObject = null;
+        }
+        setIsCameraActive(false);
+    }, []);
+
+    // Iniciar el stream de video con fallback resiliente
     const startCamera = useCallback(async (mode: "environment" | "user") => {
         setCameraError(null);
+        stopCamera();
+
+        if (typeof navigator === "undefined" || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            setCameraError("Tu navegador no soporta acceso directo a la cámara. Puedes subir o tomar una foto desde tus archivos.");
+            return;
+        }
+
         try {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
+            let newStream: MediaStream;
+            try {
+                // Intento principal con facingMode especificado
+                newStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: { ideal: mode },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                });
+            } catch (firstErr) {
+                console.warn("Fallo con facingMode ideal, reintentando con configuración genérica:", firstErr);
+                // Fallback permisivo sin restricciones estrictas
+                newStream = await navigator.mediaDevices.getUserMedia({
+                    video: true,
+                    audio: false
+                });
             }
 
-            const newStream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: { ideal: mode },
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                },
-                audio: false
-            });
+            streamRef.current = newStream;
+            setIsCameraActive(true);
 
-            setStream(newStream);
             if (videoRef.current) {
-                videoRef.current.srcObject = newStream;
+                const video = videoRef.current;
+                video.srcObject = newStream;
+                video.muted = true;
+                video.playsInline = true;
+
+                // Forzar reproducción tanto al cargar metadatos como de inmediato
+                video.onloadedmetadata = () => {
+                    video.play().catch(e => console.warn("video.play onloadedmetadata error:", e));
+                };
+                video.play().catch(() => {});
             }
         } catch (err: any) {
-            console.warn("Camera access error:", err);
-            setCameraError("No se pudo acceder a la cámara. Puedes subir una foto desde tu galería.");
+            console.error("Camera access error:", err);
+            setIsCameraActive(false);
+            if (err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError") {
+                setCameraError("Permiso de cámara denegado. Habilita el acceso en los ajustes de tu navegador o toma una foto directamente.");
+            } else if (err?.name === "NotFoundError" || err?.name === "DevicesNotFoundError") {
+                setCameraError("No se detectó ninguna cámara disponible en tu dispositivo.");
+            } else {
+                setCameraError("No se pudo iniciar el visor de cámara en este dispositivo. Puedes subir o tomar una foto con el botón inferior.");
+            }
         }
-    }, [stream]);
+    }, [stopCamera]);
 
-    // Initialize or stop camera when modal opens/closes
+    // Ciclo de vida de la cámara: se inicia solo al abrir y se detiene al cerrar o capturar
     useEffect(() => {
-        if (isOpen && !capturedImage) {
+        if (isOpen && !capturedImage && !detectionResult) {
             startCamera(facingMode);
+        } else {
+            stopCamera();
         }
 
         return () => {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-            }
+            stopCamera();
         };
-    }, [isOpen, capturedImage, facingMode, startCamera, stream]);
+    }, [isOpen, capturedImage, detectionResult, facingMode, startCamera, stopCamera]);
 
     // Handle ESC key
     useEffect(() => {
@@ -135,21 +187,21 @@ export const GymEquipmentScannerModal: React.FC<GymEquipmentScannerModalProps> =
         if (!videoRef.current || !canvasRef.current) return;
         const video = videoRef.current;
         const canvas = canvasRef.current;
-        canvas.width = video.videoWidth || 640;
-        canvas.height = video.videoHeight || 480;
+        const width = video.videoWidth || 640;
+        const height = video.videoHeight || 480;
+
+        canvas.width = width;
+        canvas.height = height;
 
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(video, 0, 0, width, height);
 
         const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
         setCapturedImage(dataUrl);
 
-        // Stop camera while analyzing
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-            setStream(null);
-        }
+        // Detener cámara mientras la IA analiza
+        stopCamera();
 
         analyzeImage(dataUrl);
     };
@@ -163,10 +215,7 @@ export const GymEquipmentScannerModal: React.FC<GymEquipmentScannerModalProps> =
         reader.onload = () => {
             const dataUrl = reader.result as string;
             setCapturedImage(dataUrl);
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                setStream(null);
-            }
+            stopCamera();
             analyzeImage(dataUrl);
         };
         reader.readAsDataURL(file);
@@ -304,13 +353,49 @@ export const GymEquipmentScannerModal: React.FC<GymEquipmentScannerModalProps> =
                                     className="w-full h-full object-cover"
                                 />
                             ) : (
-                                <video
-                                    ref={videoRef}
-                                    autoPlay
-                                    playsInline
-                                    muted
-                                    className="w-full h-full object-cover"
-                                />
+                                <>
+                                    <video
+                                        ref={videoRef}
+                                        autoPlay
+                                        playsInline
+                                        muted
+                                        onLoadedMetadata={() => {
+                                            videoRef.current?.play().catch(() => {});
+                                        }}
+                                        className={`w-full h-full object-cover transition-opacity duration-300 ${
+                                            isCameraActive ? "opacity-100" : "opacity-0"
+                                        }`}
+                                    />
+                                    {!isCameraActive && !cameraError && (
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-zinc-950 text-zinc-400">
+                                            <RefreshCw size={26} className="animate-spin text-[#FF2A2A]" />
+                                            <span className="text-xs font-mono">Iniciando visor óptico de cámara...</span>
+                                        </div>
+                                    )}
+                                    {cameraError && (
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-zinc-950/95 space-y-3 z-20">
+                                            <Camera size={36} className="text-amber-400 mx-auto" />
+                                            <p className="text-xs text-zinc-300 max-w-sm font-medium leading-relaxed">{cameraError}</p>
+                                            <div className="flex items-center gap-2 pt-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => startCamera(facingMode)}
+                                                    className="px-3.5 py-2 bg-white/[0.08] hover:bg-white/15 text-white text-xs font-semibold rounded-xl border border-white/10"
+                                                >
+                                                    Reintentar Cámara
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => nativeCameraInputRef.current?.click()}
+                                                    className="px-4 py-2 bg-[#FF2A2A] hover:bg-[#ff4444] text-white text-xs font-bold rounded-xl shadow-lg flex items-center gap-1.5"
+                                                >
+                                                    <Camera size={14} />
+                                                    <span>Tomar / Subir Foto</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
                             )}
 
                             {/* Futuristic Scanning Overlay Reticle */}
@@ -376,6 +461,14 @@ export const GymEquipmentScannerModal: React.FC<GymEquipmentScannerModalProps> =
                                     ref={fileInputRef}
                                     type="file"
                                     accept="image/*"
+                                    className="hidden"
+                                    onChange={handleFileUpload}
+                                />
+                                <input
+                                    ref={nativeCameraInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment"
                                     className="hidden"
                                     onChange={handleFileUpload}
                                 />
