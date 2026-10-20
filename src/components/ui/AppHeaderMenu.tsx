@@ -1,10 +1,11 @@
 // src/components/ui/AppHeaderMenu.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Menu, X, Download, Shield, RefreshCw, Zap, Music, Sparkles, Layers, Flame } from 'lucide-react';
+import { Menu, X, Download, Shield, RefreshCw, Zap, Music, Sparkles, Layers, Flame, Sun, Moon } from 'lucide-react';
 import { DownloadPDFButton } from '@/components/pdf/DownloadPDFButton';
+import { getInitialTheme, setSiteTheme, Theme } from '@/lib/theme';
 
 export function AppHeaderMenu({ 
   environmentMode, 
@@ -44,6 +45,24 @@ export function AppHeaderMenu({
   isSpotifyConnected?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [theme, setTheme] = useState<Theme>('dark');
+
+  useEffect(() => {
+    setTheme(getInitialTheme());
+    const handleThemeChange = (e: Event) => {
+      const customEvt = e as CustomEvent<{ theme: Theme }>;
+      if (customEvt.detail?.theme) {
+        setTheme(customEvt.detail.theme);
+      }
+    };
+    window.addEventListener('apex_theme_change', handleThemeChange);
+    return () => window.removeEventListener('apex_theme_change', handleThemeChange);
+  }, []);
+
+  const handleToggleTheme = (newTheme: Theme) => {
+    setTheme(newTheme);
+    setSiteTheme(newTheme);
+  };
 
   return (
     <div className="relative z-50">
@@ -84,6 +103,42 @@ export function AppHeaderMenu({
               <span className="text-[10px] font-mono text-zinc-500 bg-white/[0.04] px-2 py-0.5 rounded-full border border-white/[0.06]">
                 SISTEMA
               </span>
+            </div>
+
+            {/* Apariencia del Sitio: Modo Oscuro vs Modo Claro */}
+            <div className="mb-4 pb-4 border-b border-white/[0.08]">
+              <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider block mb-2 flex items-center justify-between">
+                <span>APARIENCIA DEL SITIO</span>
+                <span className="text-zinc-400 font-mono text-[9px] uppercase tracking-wider font-bold bg-white/[0.06] px-1.5 py-0.5 rounded border border-white/[0.08]">
+                  {theme === 'dark' ? '🌙 OSCURO // DEFAULT' : '☀️ MODO CLARO'}
+                </span>
+              </label>
+              <div className="grid grid-cols-2 gap-1 bg-black/40 p-1 rounded-2xl border border-white/[0.08]">
+                <button
+                  type="button"
+                  onClick={() => handleToggleTheme('dark')}
+                  className={`py-2 px-1.5 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 ${
+                    theme === 'dark'
+                      ? 'bg-white text-black font-semibold shadow-md'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <Moon className="w-3.5 h-3.5" />
+                  <span className="text-xs font-bold leading-none">Oscuro</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleToggleTheme('light')}
+                  className={`py-2 px-1.5 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 ${
+                    theme === 'light'
+                      ? 'bg-white text-black font-semibold shadow-md'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <Sun className="w-3.5 h-3.5" />
+                  <span className="text-xs font-bold leading-none">Claro</span>
+                </button>
+              </div>
             </div>
 
             {/* Exportar Blueprint PDF */}

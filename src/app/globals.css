@@ -49,3 +49,251 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+/* =========================================================================
+   LIGHT MODE ARCHITECTURE (APEX & LOYA CREATIVE LAB SITE-WIDE)
+   Clean, modern, high-contrast, WCAG-compliant design system.
+   ========================================================================= */
+
+html.light {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --primary: #0f172a;
+  --secondary: #475569;
+  --accent: #e2e8f0;
+  color-scheme: light;
+}
+
+/* 1. Root & Base Body Backgrounds */
+html.light,
+html.light body,
+html.light main,
+html.light .min-h-screen.bg-\[\#000000\],
+html.light .bg-\[\#000000\],
+html.light .bg-\[\#050505\],
+html.light .bg-black {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+/* 2. Elevated Cards, Modals & Surfaces */
+html.light .bg-\[\#121214\],
+html.light [class*="bg-[#121214]"],
+html.light .bg-\[\#111111\],
+html.light .bg-\[\#0D0D0D\],
+html.light .bg-\[\#0A0A0C\],
+html.light .bg-\[\#18181B\],
+html.light .bg-\[\#1A1A1A\],
+html.light .bg-\[\#202c33\],
+html.light .bg-\[\#252525\],
+html.light .bg-\[\#27272A\],
+html.light .bg-zinc-900,
+html.light .bg-zinc-950 {
+  background-color: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: #0f172a !important;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* 3. Secondary Wells, Pill Insets & Group Backgrounds */
+html.light [class*="bg-white/[0.0"],
+html.light [class*="bg-white/[0.1"],
+html.light [class*="bg-black/40"],
+html.light [class*="bg-black/30"],
+html.light [class*="bg-black/20"],
+html.light [class*="bg-black/10"] {
+  background-color: #f1f5f9 !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: #0f172a !important;
+}
+
+/* 4. Active Buttons & Segmented Pills (Dark Slate contrast) */
+html.light .bg-white.text-black,
+html.light button.bg-white.text-black,
+html.light a.bg-white.text-black {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px -1px rgba(15, 23, 42, 0.25) !important;
+}
+html.light .bg-white.text-black svg,
+html.light button.bg-white.text-black svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+/* Inactive button hover */
+html.light .hover\:bg-white\/\[0\.04\]:hover,
+html.light .hover\:bg-white\/\[0\.06\]:hover,
+html.light .hover\:bg-white\/\[0\.08\]:hover,
+html.light .hover\:bg-white\/\[0\.12\]:hover,
+html.light .hover\:bg-white\/20:hover {
+  background-color: #e2e8f0 !important;
+}
+
+/* 5. Typography & Readability */
+html.light h1,
+html.light h2,
+html.light h3,
+html.light h4,
+html.light h5,
+html.light h6 {
+  color: #0f172a !important;
+}
+
+html.light .text-white {
+  color: #0f172a !important;
+}
+
+html.light .text-\[\#EAEAEA\] {
+  color: #0f172a !important;
+}
+
+html.light .text-zinc-200,
+html.light .text-zinc-300,
+html.light .text-gray-200,
+html.light .text-gray-300 {
+  color: #1e293b !important;
+}
+
+html.light .text-zinc-400,
+html.light .text-gray-400 {
+  color: #475569 !important;
+}
+
+html.light .text-zinc-500,
+html.light .text-gray-500 {
+  color: #64748b !important;
+}
+
+/* 6. Preservation of Colored Badges & Buttons */
+html.light [class*="bg-[#FF2A2A]"],
+html.light [class*="bg-red-600"],
+html.light [class*="bg-red-500"],
+html.light [class*="bg-[#10B981]"],
+html.light [class*="bg-emerald-600"],
+html.light [class*="bg-emerald-500"],
+html.light [class*="bg-[#1DB954]"],
+html.light [class*="bg-blue-600"],
+html.light [class*="bg-purple-600"],
+html.light .bg-slate-900 {
+  color: #ffffff !important;
+}
+
+html.light [class*="bg-[#FF2A2A]"] .text-white,
+html.light [class*="bg-red-600"] .text-white,
+html.light [class*="bg-red-500"] .text-white,
+html.light [class*="bg-[#10B981]"] .text-white,
+html.light [class*="bg-emerald-600"] .text-white,
+html.light [class*="bg-emerald-500"] .text-white,
+html.light [class*="bg-[#1DB954]"] .text-white,
+html.light [class*="bg-blue-600"] .text-white,
+html.light [class*="bg-purple-600"] .text-white,
+html.light .bg-slate-900 .text-white,
+html.light .bg-slate-900 * {
+  color: #ffffff !important;
+}
+
+/* Badges with light tints */
+html.light .bg-\[\#FF2A2A\]\/10,
+html.light .bg-\[\#FF2A2A\]\/15 {
+  background-color: rgba(255, 42, 42, 0.1) !important;
+  color: #dc2626 !important;
+  border-color: rgba(255, 42, 42, 0.25) !important;
+}
+html.light .bg-\[\#FF2A2A\]\/10 *,
+html.light .bg-\[\#FF2A2A\]\/15 * {
+  color: #dc2626 !important;
+}
+
+html.light .bg-\[\#10B981\]\/10,
+html.light .bg-\[\#10B981\]\/15 {
+  background-color: rgba(16, 185, 129, 0.1) !important;
+  color: #059669 !important;
+  border-color: rgba(16, 185, 129, 0.25) !important;
+}
+html.light .bg-\[\#10B981\]\/10 *,
+html.light .bg-\[\#10B981\]\/15 * {
+  color: #059669 !important;
+}
+
+html.light .bg-\[\#1DB954\]\/10,
+html.light .bg-\[\#1DB954\]\/20 {
+  background-color: rgba(29, 185, 84, 0.1) !important;
+  color: #15803d !important;
+  border-color: rgba(29, 185, 84, 0.25) !important;
+}
+html.light .bg-\[\#1DB954\]\/10 *,
+html.light .bg-\[\#1DB954\]\/20 * {
+  color: #15803d !important;
+}
+
+/* 7. Modal & Dialog Overlays (Maintain Focus Contrast) */
+html.light .fixed.inset-0[class*="bg-black/"],
+html.light .fixed.inset-0.bg-black\/50,
+html.light .fixed.inset-0.bg-black\/60,
+html.light .fixed.inset-0.bg-black\/75,
+html.light .fixed.inset-0.bg-black\/80,
+html.light .fixed.inset-0.bg-black\/85 {
+  background-color: rgba(15, 23, 42, 0.6) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+/* 8. Sticky Navigations & Headers */
+html.light header,
+html.light header.sticky,
+html.light header[class*="fixed"] {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  border-bottom-color: rgba(0, 0, 0, 0.08) !important;
+  color: #0f172a !important;
+}
+
+/* 9. Floating Spotify Widget */
+html.light #apex-spotify-player,
+html.light .fixed.bottom-4[class*="backdrop-blur"] {
+  background-color: rgba(255, 255, 255, 0.96) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15) !important;
+  color: #0f172a !important;
+}
+
+/* 10. Borders & Dividers */
+html.light [class*="border-white/"],
+html.light .border-white,
+html.light .border-zinc-800,
+html.light .border-zinc-700,
+html.light .border-zinc-900 {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* 11. Form Inputs, Selects & Textareas */
+html.light input:not([type="checkbox"]):not([type="radio"]),
+html.light textarea,
+html.light select {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
+}
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* 12. Landing Page Gradient Headings & Logos */
+html.light .bg-gradient-to-b.from-white.to-gray-400 {
+  background-image: linear-gradient(to bottom, #0f172a, #475569) !important;
+}
+html.light .invert {
+  filter: none !important;
+}
+
+/* 13. Light Scrollbars */
+html.light ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+html.light ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

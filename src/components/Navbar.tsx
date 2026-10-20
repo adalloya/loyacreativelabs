@@ -6,13 +6,33 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Container } from "./ui/Container";
 import { Button } from "./ui/Button";
-import { Menu, X, Globe } from "lucide-react";
+import { Menu, X, Globe, Sun, Moon } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
+import { getInitialTheme, setSiteTheme, Theme } from "@/lib/theme";
 
 export function Navbar() {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const { t, language, toggleLanguage } = useLanguage();
+    const [theme, setTheme] = useState<Theme>("dark");
+
+    useEffect(() => {
+        setTheme(getInitialTheme());
+        const handleThemeChange = (e: Event) => {
+            const customEvt = e as CustomEvent<{ theme: Theme }>;
+            if (customEvt.detail?.theme) {
+                setTheme(customEvt.detail.theme);
+            }
+        };
+        window.addEventListener("apex_theme_change", handleThemeChange);
+        return () => window.removeEventListener("apex_theme_change", handleThemeChange);
+    }, []);
+
+    const toggleTheme = () => {
+        const nextTheme = theme === "dark" ? "light" : "dark";
+        setTheme(nextTheme);
+        setSiteTheme(nextTheme);
+    };
 
     useEffect(() => {
         const handleScroll = () => {
@@ -82,13 +102,30 @@ export function Navbar() {
                         {language}
                     </button>
 
+                    <button
+                        onClick={toggleTheme}
+                        className="p-2 rounded-xl text-gray-300 hover:text-white transition-all bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08]"
+                        title={theme === "dark" ? "Cambiar a Modo Claro" : "Cambiar a Modo Oscuro"}
+                        aria-label="Cambiar tema"
+                    >
+                        {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+                    </button>
+
                     <Button href="/start" variant="primary" className="px-6 py-2 text-sm">
                         {t.nav.start}
                     </Button>
                 </nav>
 
                 {/* Mobile Menu Toggle */}
-                <div className="flex items-center gap-4 md:hidden">
+                <div className="flex items-center gap-3 md:hidden">
+                    <button
+                        onClick={toggleTheme}
+                        className="text-white z-10 p-2 rounded-xl bg-white/[0.06] border border-white/10"
+                        title={theme === "dark" ? "Cambiar a Modo Claro" : "Cambiar a Modo Oscuro"}
+                        aria-label="Cambiar tema"
+                    >
+                        {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+                    </button>
                     <button
                         onClick={toggleLanguage}
                         className="text-white z-10 uppercase font-medium text-sm flex items-center gap-1"

@@ -72,6 +72,22 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className="dark" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var saved = localStorage.getItem('apex_theme');
+                  var theme = saved === 'light' ? 'light' : 'dark';
+                  document.documentElement.classList.remove('light', 'dark');
+                  document.documentElement.classList.add(theme);
+                } catch (e) {}
+              })();
+            `
+          }}
+        />
+      </head>
       <body className={`${outfit.variable} antialiased bg-black text-white font-sans`}>
         <script
           type="application/ld+json"
