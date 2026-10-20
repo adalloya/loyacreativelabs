@@ -63,7 +63,7 @@ export default function ApexPromo() {
                                 <h3 className="text-lg font-bold text-white">Nutrición Clínica & Planes de 30 Días con Gemini AI</h3>
                             </div>
                             <p className="text-sm text-gray-400 leading-relaxed pl-12 font-mono">
-                                Fórmulas metabólicas Katch-McArdle y Mifflin-St Jeor, déficit calórico automático, stack de suplementación clínica (Creatina, Whey, Omega-3, Magnesio) y recálculo instantáneo si comes fuera del plan.
+                                Fórmulas metabólicas Katch-McArdle y Mifflin-St Jeor, déficit calórico automático, checklist de suplementación clínica diaria y recálculo instantáneo si comes fuera del plan.
                             </p>
                         </div>
 
