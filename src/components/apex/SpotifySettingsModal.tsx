@@ -12,7 +12,12 @@ import {
     Disc,
     Radio,
     Speaker,
-    ExternalLink
+    ExternalLink,
+    Smartphone,
+    Laptop,
+    Tv,
+    RefreshCw,
+    AlertCircle
 } from "lucide-react";
 import {
     isSpotifyConnected,
@@ -22,13 +27,25 @@ import {
     WorkoutPlaylist,
     spotifyPlayPlaylist,
     getCurrentPlayback,
-    SpotifyTrack
+    spotifyGetDevices,
+    spotifyTransferPlayback,
+    openSpotifyDeepLink,
+    SpotifyTrack,
+    SpotifyDevice
 } from "@/services/spotifyService";
 
 interface SpotifySettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
     onStatusChange?: () => void;
+}
+
+function getDeviceIcon(type: string) {
+    const t = (type || "").toLowerCase();
+    if (t.includes("smartphone") || t.includes("phone")) return Smartphone;
+    if (t.includes("computer") || t.includes("laptop")) return Laptop;
+    if (t.includes("tv")) return Tv;
+    return Speaker;
 }
 
 export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
@@ -38,20 +55,47 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
 }) => {
     const [connected, setConnected] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const [isConnecting, setIsConnecting] = useState(false);
     const [playingPlaylistId, setPlayingPlaylistId] = useState<string | null>(null);
     const [customUri, setCustomUri] = useState("");
     const [currentTrack, setCurrentTrack] = useState<SpotifyTrack | null>(null);
+    const [devices, setDevices] = useState<SpotifyDevice[]>([]);
+    const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
+    const [isRefreshingDevices, setIsRefreshingDevices] = useState(false);
+    const [fallbackPlaylist, setFallbackPlaylist] = useState<WorkoutPlaylist | null>(null);
+
+    const loadDevicesAndPlayback = async () => {
+        setIsRefreshingDevices(true);
+        try {
+            const [devs, current] = await Promise.all([
+                spotifyGetDevices(),
+                getCurrentPlayback()
+            ]);
+            setDevices(devs);
+            setCurrentTrack(current);
+            const active = devs.find(d => d.is_active);
+            if (active) {
+                setSelectedDeviceId(active.id);
+            } else if (devs.length > 0 && !selectedDeviceId) {
+                setSelectedDeviceId(devs[0].id);
+            }
+        } finally {
+            setIsRefreshingDevices(false);
+        }
+    };
 
     useEffect(() => {
         if (isOpen) {
             const isConn = isSpotifyConnected();
             setConnected(isConn);
             setErrorMsg(null);
+            setSuccessMsg(null);
             setIsConnecting(false);
+            setFallbackPlaylist(null);
 
             if (isConn) {
-                getCurrentPlayback().then(track => setCurrentTrack(track));
+                loadDevicesAndPlayback();
             }
         }
     }, [isOpen]);
@@ -73,16 +117,42 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
         disconnectSpotify();
         setConnected(false);
         setCurrentTrack(null);
+        setDevices([]);
         if (onStatusChange) onStatusChange();
+    };
+
+    const handleTransferDevice = async (deviceId: string) => {
+        setErrorMsg(null);
+        setSuccessMsg(null);
+        setSelectedDeviceId(deviceId);
+        const ok = await spotifyTransferPlayback(deviceId, true);
+        if (ok) {
+            setSuccessMsg("Reproducción transferida con éxito.");
+            setTimeout(() => {
+                loadDevicesAndPlayback();
+            }, 800);
+        } else {
+            setErrorMsg("Asegúrate de que Spotify esté abierto en ese dispositivo.");
+        }
     };
 
     const handlePlayPlaylist = async (playlist: WorkoutPlaylist) => {
         setPlayingPlaylistId(playlist.id);
-        const success = await spotifyPlayPlaylist(playlist.spotifyUri);
-        if (!success) {
-            setErrorMsg("Abre Spotify en tu teléfono, computadora o auriculares para recibir la reproducción.");
+        setErrorMsg(null);
+        setSuccessMsg(null);
+        setFallbackPlaylist(null);
+
+        const result = await spotifyPlayPlaylist(playlist.spotifyUri, selectedDeviceId || undefined);
+        if (result.success) {
+            setSuccessMsg(`¡Reproduciendo "${playlist.name}" en ${result.deviceName || "tu dispositivo"}!`);
+            setTimeout(() => {
+                loadDevicesAndPlayback();
+            }, 1000);
+        } else {
+            setFallbackPlaylist(playlist);
+            setErrorMsg(result.error || "No se detectó ningún dispositivo activo de Spotify.");
         }
-        setTimeout(() => setPlayingPlaylistId(null), 1500);
+        setTimeout(() => setPlayingPlaylistId(null), 1200);
     };
 
     const handlePlayCustom = async () => {
@@ -92,15 +162,20 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
             const id = formatted.split("playlist/")[1]?.split("?")[0];
             if (id) formatted = `spotify:playlist:${id}`;
         }
-        const success = await spotifyPlayPlaylist(formatted);
-        if (!success) {
-            setErrorMsg("Asegúrate de que Spotify esté abierto y activo en algún dispositivo.");
+        setErrorMsg(null);
+        setSuccessMsg(null);
+        const result = await spotifyPlayPlaylist(formatted, selectedDeviceId || undefined);
+        if (result.success) {
+            setSuccessMsg(`¡Reproduciendo en ${result.deviceName || "tu dispositivo"}!`);
+            setTimeout(() => loadDevicesAndPlayback(), 1000);
+        } else {
+            setErrorMsg(result.error || "Asegúrate de tener Spotify abierto.");
         }
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-            <div className="bg-[#121214] border border-white/[0.12] rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="bg-[#121214] border border-white/[0.12] rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
                 {/* Header */}
                 <div className="p-5 sm:p-6 border-b border-white/[0.08] flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -131,11 +206,46 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                 </div>
 
                 {/* Body (Scrollable) */}
-                <div className="p-5 sm:p-6 space-y-6 overflow-y-auto">
-                    {/* Error Banner */}
+                <div className="p-5 sm:p-6 space-y-5 overflow-y-auto">
+                    {/* Error / Fallback Banner */}
                     {errorMsg && (
-                        <div className="p-3.5 bg-[#FF2A2A]/10 border border-[#FF2A2A]/30 rounded-2xl text-xs text-[#FF2A2A] leading-relaxed">
-                            {errorMsg}
+                        <div className="p-4 bg-[#FF2A2A]/10 border border-[#FF2A2A]/30 rounded-2xl space-y-2 animate-in fade-in">
+                            <div className="flex items-start gap-2.5 text-xs text-[#FF2A2A]">
+                                <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="font-semibold">{errorMsg}</p>
+                                    <p className="text-[11px] text-zinc-400 mt-1">
+                                        Si Spotify está en segundo plano o suspendido, ábrelo para despertar el reproductor.
+                                    </p>
+                                </div>
+                            </div>
+                            {fallbackPlaylist && (
+                                <div className="pt-2 flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => openSpotifyDeepLink(fallbackPlaylist.spotifyUri, fallbackPlaylist.webUrl)}
+                                        className="px-4 py-2 bg-[#1DB954] text-black font-bold text-xs rounded-xl shadow-lg flex items-center gap-1.5 active:scale-95"
+                                    >
+                                        <ExternalLink size={13} />
+                                        <span>Abrir en la App de Spotify</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={loadDevicesAndPlayback}
+                                        className="px-3 py-2 bg-white/[0.06] hover:bg-white/[0.12] text-white text-xs font-mono rounded-xl border border-white/10"
+                                    >
+                                        Reintentar
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Success Banner */}
+                    {successMsg && (
+                        <div className="p-3.5 bg-[#10B981]/15 border border-[#10B981]/30 rounded-2xl text-xs text-[#10B981] font-semibold flex items-center gap-2 animate-in fade-in">
+                            <Check size={16} />
+                            <span>{successMsg}</span>
                         </div>
                     )}
 
@@ -154,7 +264,6 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                                 </p>
                             </div>
 
-                            {/* Botón Oficial Directo de Login */}
                             <button
                                 onClick={handleConnect}
                                 disabled={isConnecting}
@@ -165,7 +274,7 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                             </button>
                         </div>
                     ) : (
-                        <div className="bg-[#1DB954]/5 border border-[#1DB954]/20 rounded-3xl p-5 space-y-4">
+                        <div className="bg-[#1DB954]/5 border border-[#1DB954]/20 rounded-3xl p-4 sm:p-5 space-y-4">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2.5">
                                     <span className="w-2.5 h-2.5 rounded-full bg-[#10B981] animate-pulse" />
@@ -182,7 +291,7 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                                 </button>
                             </div>
 
-                            {/* Active Device & Track Status */}
+                            {/* Active Track Status */}
                             {currentTrack && (
                                 <div className="flex items-center gap-3 bg-black/40 p-3 rounded-2xl border border-white/[0.06]">
                                     {currentTrack.albumArt ? (
@@ -204,14 +313,92 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                                             {currentTrack.artist}
                                         </span>
                                         {currentTrack.deviceName && (
-                                            <span className="text-[10px] font-mono text-[#10B981] flex items-center gap-1 mt-0.5">
-                                                <Speaker size={10} />
-                                                {currentTrack.deviceName}
+                                            <span className="text-[10px] font-mono text-[#10B981] flex items-center gap-1 mt-0.5 font-bold">
+                                                <Speaker size={11} />
+                                                Reproduciendo en: {currentTrack.deviceName}
                                             </span>
                                         )}
                                     </div>
                                 </div>
                             )}
+
+                            {/* Section: Dispositivos Detectados */}
+                            <div className="pt-2 border-t border-white/[0.06] space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider block">
+                                        DISPOSITIVOS SPOTIFY ({devices.length})
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={loadDevicesAndPlayback}
+                                        className="text-[10px] font-mono text-zinc-400 hover:text-white flex items-center gap-1 transition-colors"
+                                    >
+                                        <RefreshCw size={10} className={isRefreshingDevices ? "animate-spin" : ""} />
+                                        <span>Actualizar</span>
+                                    </button>
+                                </div>
+
+                                {devices.length > 0 ? (
+                                    <div className="space-y-1.5">
+                                        {devices.map((dev) => {
+                                            const Icon = getDeviceIcon(dev.type);
+                                            const isSelected = selectedDeviceId === dev.id || dev.is_active;
+
+                                            return (
+                                                <div
+                                                    key={dev.id}
+                                                    className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
+                                                        dev.is_active
+                                                            ? "bg-[#10B981]/15 border-[#10B981]/30 text-white"
+                                                            : isSelected
+                                                            ? "bg-white/[0.08] border-white/20 text-zinc-200"
+                                                            : "bg-black/30 border-white/[0.05] text-zinc-400 hover:bg-white/[0.04]"
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center gap-2.5 min-w-0">
+                                                        <Icon size={16} className={dev.is_active ? "text-[#10B981]" : "text-zinc-400"} />
+                                                        <div className="min-w-0">
+                                                            <span className="text-xs font-bold block truncate text-white">
+                                                                {dev.name}
+                                                            </span>
+                                                            <span className="text-[9px] font-mono text-zinc-500 uppercase">
+                                                                {dev.type} {dev.volume_percent !== undefined ? `• ${dev.volume_percent}%` : ""}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        {dev.is_active ? (
+                                                            <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#10B981] text-black">
+                                                                ACTIVO
+                                                            </span>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleTransferDevice(dev.id)}
+                                                                className="text-[10px] font-mono font-medium px-2.5 py-1 rounded-lg bg-white/[0.08] hover:bg-white text-zinc-300 hover:text-black transition-all border border-white/10"
+                                                            >
+                                                                Reproducir aquí
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <div className="p-3 rounded-xl bg-black/40 border border-white/[0.06] text-[11px] text-zinc-400 flex items-center justify-between gap-2">
+                                        <span>No se detectaron dispositivos abiertos.</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => window.open("https://open.spotify.com", "_blank")}
+                                            className="text-xs text-[#1DB954] hover:underline font-mono"
+                                        >
+                                            Abrir Web Player
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
 
@@ -252,18 +439,29 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                                         </p>
                                     </div>
 
-                                    <button
-                                        onClick={() => handlePlayPlaylist(pl)}
-                                        disabled={!connected}
-                                        className={`w-full py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
-                                            connected
-                                                ? "bg-white/[0.08] hover:bg-white text-white hover:text-black border border-white/10"
-                                                : "bg-white/[0.03] text-zinc-600 border border-white/[0.04] cursor-not-allowed"
-                                        }`}
-                                    >
-                                        <Play size={12} fill="currentColor" />
-                                        <span>{playingPlaylistId === pl.id ? "Iniciando..." : "Reproducir en Spotify"}</span>
-                                    </button>
+                                    <div className="flex items-center gap-1.5 pt-1">
+                                        <button
+                                            onClick={() => handlePlayPlaylist(pl)}
+                                            disabled={!connected}
+                                            className={`flex-1 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                                                connected
+                                                    ? "bg-white/[0.08] hover:bg-white text-white hover:text-black border border-white/10"
+                                                    : "bg-white/[0.03] text-zinc-600 border border-white/[0.04] cursor-not-allowed"
+                                            }`}
+                                        >
+                                            <Play size={12} fill="currentColor" />
+                                            <span>{playingPlaylistId === pl.id ? "Iniciando..." : "Reproducir"}</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => openSpotifyDeepLink(pl.spotifyUri, pl.webUrl)}
+                                            title="Abrir directamente en la app de Spotify"
+                                            className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] text-zinc-400 hover:text-white border border-white/[0.06] transition-all"
+                                        >
+                                            <ExternalLink size={13} />
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -278,10 +476,10 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                             <div className="flex gap-2">
                                 <input
                                     type="text"
-                                    placeholder="Pega un enlace de playlist de Spotify..."
+                                    placeholder="Pega enlace o URI de playlist de Spotify..."
                                     value={customUri}
                                     onChange={(e) => setCustomUri(e.target.value)}
-                                    className="flex-1 bg-black/40 border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white placeholder:text-zinc-600 outline-none focus:border-white/30"
+                                    className="flex-1 bg-black/40 border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white placeholder:text-zinc-600 outline-none focus:border-white/30 font-mono"
                                 />
                                 <button
                                     onClick={handlePlayCustom}

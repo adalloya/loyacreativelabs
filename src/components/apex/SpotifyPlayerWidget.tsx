@@ -135,9 +135,9 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
         setIsOptimisticPlaying(nextState);
 
         if (nextState) {
-            await spotifyPlay();
+            await spotifyPlay(track?.deviceId);
         } else {
-            await spotifyPause();
+            await spotifyPause(track?.deviceId);
         }
 
         setTimeout(() => {
@@ -149,7 +149,7 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
     const handleNext = async () => {
         if (!connected) return;
         setIsActionPending(true);
-        await spotifyNext();
+        await spotifyNext(track?.deviceId);
         setTimeout(() => {
             updatePlayback();
             setIsActionPending(false);
@@ -159,7 +159,7 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
     const handlePrevious = async () => {
         if (!connected) return;
         setIsActionPending(true);
-        await spotifyPrevious();
+        await spotifyPrevious(track?.deviceId);
         setTimeout(() => {
             updatePlayback();
             setIsActionPending(false);
@@ -170,7 +170,7 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
         if (!track) return;
         const nextShuffle = !track.shuffleState;
         setTrack({ ...track, shuffleState: nextShuffle });
-        await spotifySetShuffle(nextShuffle);
+        await spotifySetShuffle(nextShuffle, track?.deviceId);
     };
 
     const handleToggleRepeat = async () => {
@@ -178,7 +178,7 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
         const currentMode = track.repeatState || "off";
         const nextMode = currentMode === "off" ? "context" : currentMode === "context" ? "track" : "off";
         setTrack({ ...track, repeatState: nextMode });
-        await spotifySetRepeat(nextMode);
+        await spotifySetRepeat(nextMode, track?.deviceId);
     };
 
     const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,14 +188,14 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
 
     const handleSeekCommit = async () => {
         setIsSeeking(false);
-        await spotifySeek(localProgressMs);
+        await spotifySeek(localProgressMs, track?.deviceId);
     };
 
     const handleVolumeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = parseInt(e.target.value, 10);
         setVolume(val);
         setIsMuted(val === 0);
-        await spotifySetVolume(val);
+        await spotifySetVolume(val, track?.deviceId);
     };
 
     const handleToggleMute = async () => {
@@ -203,12 +203,12 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
             const restored = prevVolumeRef.current || 50;
             setVolume(restored);
             setIsMuted(false);
-            await spotifySetVolume(restored);
+            await spotifySetVolume(restored, track?.deviceId);
         } else {
             prevVolumeRef.current = volume;
             setVolume(0);
             setIsMuted(true);
-            await spotifySetVolume(0);
+            await spotifySetVolume(0, track?.deviceId);
         }
     };
 
@@ -269,9 +269,17 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                                 <span className="text-xs sm:text-sm font-bold text-white tracking-tight truncate block group-hover:text-[#1DB954] transition-colors">
                                     {track.name}
                                 </span>
-                                <span className="text-[11px] text-zinc-400 truncate block font-normal">
-                                    {track.artist}
-                                </span>
+                                <div className="flex items-center gap-1.5 truncate">
+                                    <span className="text-[11px] text-zinc-400 truncate block font-normal">
+                                        {track.artist}
+                                    </span>
+                                    {track.deviceName && (
+                                        <span className="text-[9px] font-mono text-[#10B981] flex items-center gap-0.5 shrink-0 bg-[#10B981]/10 px-1 rounded border border-[#10B981]/20">
+                                            <Speaker size={8} />
+                                            <span className="truncate max-w-[80px]">{track.deviceName}</span>
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     ) : (

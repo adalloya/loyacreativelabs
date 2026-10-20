@@ -51,6 +51,7 @@ export interface WorkoutPlaylist {
     bpm: string;
     description: string;
     spotifyUri: string;
+    webUrl: string;
     accentColor: string;
 }
 
@@ -62,6 +63,7 @@ export const CURATED_WORKOUT_PLAYLISTS: WorkoutPlaylist[] = [
         bpm: "140 BPM",
         description: "BPM sostenido para series efectivas y máxima activación neuromuscular.",
         spotifyUri: "spotify:playlist:37i9dQZF1DXdLEN7aqioXM",
+        webUrl: "https://open.spotify.com/playlist/37i9dQZF1DXdLEN7aqioXM",
         accentColor: "#10B981"
     },
     {
@@ -71,6 +73,7 @@ export const CURATED_WORKOUT_PLAYLISTS: WorkoutPlaylist[] = [
         bpm: "135-150 BPM",
         description: "Distorsión pesada y energía para series pesadas en sentadilla y banca.",
         spotifyUri: "spotify:playlist:37i9dQZF1DXdFESNN9TzQT",
+        webUrl: "https://open.spotify.com/playlist/37i9dQZF1DXdFESNN9TzQT",
         accentColor: "#FF2A2A"
     },
     {
@@ -80,6 +83,7 @@ export const CURATED_WORKOUT_PLAYLISTS: WorkoutPlaylist[] = [
         bpm: "130-145 BPM",
         description: "Bajos profundos y concentración mental para hipertrofia con RIR 1.",
         spotifyUri: "spotify:playlist:37i9dQZF1DX76t638V64Cr",
+        webUrl: "https://open.spotify.com/playlist/37i9dQZF1DX76t638V64Cr",
         accentColor: "#F59E0B"
     },
     {
@@ -89,6 +93,7 @@ export const CURATED_WORKOUT_PLAYLISTS: WorkoutPlaylist[] = [
         bpm: "80-95 BPM",
         description: "Baja frecuencia cardíaca para pausas entre series y movilidad final.",
         spotifyUri: "spotify:playlist:37i9dQZF1DWWQRwui0ExPn",
+        webUrl: "https://open.spotify.com/playlist/37i9dQZF1DWWQRwui0ExPn",
         accentColor: "#8B5CF6"
     }
 ];
@@ -391,13 +396,64 @@ export async function getCurrentPlayback(): Promise<SpotifyTrack | null> {
     }
 }
 
+export interface PlayPlaylistResult {
+    success: boolean;
+    deviceName?: string;
+    deviceId?: string;
+    error?: string;
+    needsAppOpen?: boolean;
+}
+
 /**
- * Control: Reanudar o iniciar reproducción.
+ * Obtiene el dispositivo activo o el mejor candidato disponible en Spotify.
  */
-export async function spotifyPlay(): Promise<boolean> {
+export async function getBestAvailableDevice(): Promise<SpotifyDevice | null> {
+    const devices = await spotifyGetDevices();
+    if (!devices || devices.length === 0) return null;
+    const active = devices.find(d => d.is_active);
+    return active || devices[0];
+}
+
+/**
+ * Abre directamente la app nativa de Spotify o el reproductor web como fallback infalible.
+ */
+export function openSpotifyDeepLink(uri: string, webUrl?: string): void {
+    if (typeof window === "undefined") return;
     try {
-        const res = await spotifyFetch("/me/player/play", { method: "PUT" });
-        return Boolean(res && (res.status === 204 || res.ok));
+        // Intenta abrir el deep link nativo (spotify:playlist:...)
+        window.location.href = uri;
+    } catch {
+        if (webUrl) {
+            window.open(webUrl, "_blank");
+        }
+    }
+}
+
+/**
+ * Control: Reanudar o iniciar reproducción con targeting automático de dispositivo.
+ */
+export async function spotifyPlay(targetDeviceId?: string): Promise<boolean> {
+    try {
+        let devId = targetDeviceId;
+        if (!devId) {
+            const best = await getBestAvailableDevice();
+            if (best) {
+                devId = best.id;
+                if (!best.is_active) {
+                    await spotifyTransferPlayback(best.id, true);
+                    return true;
+                }
+            }
+        }
+
+        const endpoint = devId ? `/me/player/play?device_id=${encodeURIComponent(devId)}` : "/me/player/play";
+        const res = await spotifyFetch(endpoint, { method: "PUT" });
+        if (res && (res.status === 204 || res.ok)) return true;
+
+        if (devId) {
+            return await spotifyTransferPlayback(devId, true);
+        }
+        return false;
     } catch {
         return false;
     }
@@ -406,9 +462,10 @@ export async function spotifyPlay(): Promise<boolean> {
 /**
  * Control: Pausar reproducción.
  */
-export async function spotifyPause(): Promise<boolean> {
+export async function spotifyPause(deviceId?: string): Promise<boolean> {
     try {
-        const res = await spotifyFetch("/me/player/pause", { method: "PUT" });
+        const endpoint = deviceId ? `/me/player/pause?device_id=${encodeURIComponent(deviceId)}` : "/me/player/pause";
+        const res = await spotifyFetch(endpoint, { method: "PUT" });
         return Boolean(res && (res.status === 204 || res.ok));
     } catch {
         return false;
@@ -418,9 +475,10 @@ export async function spotifyPause(): Promise<boolean> {
 /**
  * Control: Siguiente pista.
  */
-export async function spotifyNext(): Promise<boolean> {
+export async function spotifyNext(deviceId?: string): Promise<boolean> {
     try {
-        const res = await spotifyFetch("/me/player/next", { method: "POST" });
+        const endpoint = deviceId ? `/me/player/next?device_id=${encodeURIComponent(deviceId)}` : "/me/player/next";
+        const res = await spotifyFetch(endpoint, { method: "POST" });
         return Boolean(res && (res.status === 204 || res.ok));
     } catch {
         return false;
@@ -430,9 +488,10 @@ export async function spotifyNext(): Promise<boolean> {
 /**
  * Control: Pista anterior.
  */
-export async function spotifyPrevious(): Promise<boolean> {
+export async function spotifyPrevious(deviceId?: string): Promise<boolean> {
     try {
-        const res = await spotifyFetch("/me/player/previous", { method: "POST" });
+        const endpoint = deviceId ? `/me/player/previous?device_id=${encodeURIComponent(deviceId)}` : "/me/player/previous";
+        const res = await spotifyFetch(endpoint, { method: "POST" });
         return Boolean(res && (res.status === 204 || res.ok));
     } catch {
         return false;
@@ -442,9 +501,12 @@ export async function spotifyPrevious(): Promise<boolean> {
 /**
  * Control: Buscar posición en la pista (Seek en milisegundos).
  */
-export async function spotifySeek(positionMs: number): Promise<boolean> {
+export async function spotifySeek(positionMs: number, deviceId?: string): Promise<boolean> {
     try {
-        const res = await spotifyFetch(`/me/player/seek?position_ms=${Math.floor(positionMs)}`, { method: "PUT" });
+        const endpoint = deviceId
+            ? `/me/player/seek?position_ms=${Math.floor(positionMs)}&device_id=${encodeURIComponent(deviceId)}`
+            : `/me/player/seek?position_ms=${Math.floor(positionMs)}`;
+        const res = await spotifyFetch(endpoint, { method: "PUT" });
         return Boolean(res && (res.status === 204 || res.ok));
     } catch {
         return false;
@@ -454,9 +516,12 @@ export async function spotifySeek(positionMs: number): Promise<boolean> {
 /**
  * Control: Modo Aleatorio (Shuffle).
  */
-export async function spotifySetShuffle(state: boolean): Promise<boolean> {
+export async function spotifySetShuffle(state: boolean, deviceId?: string): Promise<boolean> {
     try {
-        const res = await spotifyFetch(`/me/player/shuffle?state=${state}`, { method: "PUT" });
+        const endpoint = deviceId
+            ? `/me/player/shuffle?state=${state}&device_id=${encodeURIComponent(deviceId)}`
+            : `/me/player/shuffle?state=${state}`;
+        const res = await spotifyFetch(endpoint, { method: "PUT" });
         return Boolean(res && (res.status === 204 || res.ok));
     } catch {
         return false;
@@ -466,9 +531,12 @@ export async function spotifySetShuffle(state: boolean): Promise<boolean> {
 /**
  * Control: Repetir pista o contexto (off, track, context).
  */
-export async function spotifySetRepeat(state: "off" | "track" | "context"): Promise<boolean> {
+export async function spotifySetRepeat(state: "off" | "track" | "context", deviceId?: string): Promise<boolean> {
     try {
-        const res = await spotifyFetch(`/me/player/repeat?state=${state}`, { method: "PUT" });
+        const endpoint = deviceId
+            ? `/me/player/repeat?state=${state}&device_id=${encodeURIComponent(deviceId)}`
+            : `/me/player/repeat?state=${state}`;
+        const res = await spotifyFetch(endpoint, { method: "PUT" });
         return Boolean(res && (res.status === 204 || res.ok));
     } catch {
         return false;
@@ -478,9 +546,12 @@ export async function spotifySetRepeat(state: "off" | "track" | "context"): Prom
 /**
  * Control: Volumen (0-100).
  */
-export async function spotifySetVolume(volumePercent: number): Promise<boolean> {
+export async function spotifySetVolume(volumePercent: number, deviceId?: string): Promise<boolean> {
     try {
-        const res = await spotifyFetch(`/me/player/volume?volume_percent=${Math.round(volumePercent)}`, { method: "PUT" });
+        const endpoint = deviceId
+            ? `/me/player/volume?volume_percent=${Math.round(volumePercent)}&device_id=${encodeURIComponent(deviceId)}`
+            : `/me/player/volume?volume_percent=${Math.round(volumePercent)}`;
+        const res = await spotifyFetch(endpoint, { method: "PUT" });
         return Boolean(res && (res.status === 204 || res.ok));
     } catch {
         return false;
@@ -502,7 +573,7 @@ export async function spotifyGetDevices(): Promise<SpotifyDevice[]> {
 }
 
 /**
- * Transferir reproducción a un dispositivo específico.
+ * Transferir reproducción a un dispositivo específico y activarlo.
  */
 export async function spotifyTransferPlayback(deviceId: string, play: boolean = true): Promise<boolean> {
     try {
@@ -518,11 +589,42 @@ export async function spotifyTransferPlayback(deviceId: string, play: boolean = 
 }
 
 /**
- * Inicia una lista de reproducción específica en el reproductor activo del usuario.
+ * Inicia una lista de reproducción específica en el reproductor activo del usuario o en el dispositivo indicado.
+ * Despierta y transfiere la sesión si el dispositivo está en espera.
  */
-export async function spotifyPlayPlaylist(playlistUri: string): Promise<boolean> {
+export async function spotifyPlayPlaylist(
+    playlistUri: string,
+    targetDeviceId?: string
+): Promise<PlayPlaylistResult> {
     try {
-        const res = await spotifyFetch("/me/player/play", {
+        const devices = await spotifyGetDevices();
+        
+        let targetDev: SpotifyDevice | undefined;
+        if (targetDeviceId) {
+            targetDev = devices.find(d => d.id === targetDeviceId);
+        }
+        if (!targetDev) {
+            targetDev = devices.find(d => d.is_active) || devices[0];
+        }
+
+        // Si no hay ningún dispositivo registrado en Spotify
+        if (!targetDev) {
+            return {
+                success: false,
+                needsAppOpen: true,
+                error: "No se detectó ningún dispositivo con Spotify abierto. Abre Spotify en tu teléfono o computadora para iniciar."
+            };
+        }
+
+        // Si el dispositivo no estaba activo, transferimos la sesión primero para despertarlo
+        if (!targetDev.is_active) {
+            await spotifyTransferPlayback(targetDev.id, false);
+            await new Promise(r => setTimeout(r, 300));
+        }
+
+        // Enviamos el comando de reproducción con device_id explícito
+        const endpoint = `/me/player/play?device_id=${encodeURIComponent(targetDev.id)}`;
+        const res = await spotifyFetch(endpoint, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json"
@@ -531,8 +633,44 @@ export async function spotifyPlayPlaylist(playlistUri: string): Promise<boolean>
                 context_uri: playlistUri
             })
         });
-        return Boolean(res && (res.status === 204 || res.ok));
-    } catch {
-        return false;
+
+        if (res && (res.status === 204 || res.ok)) {
+            return {
+                success: true,
+                deviceName: targetDev.name,
+                deviceId: targetDev.id
+            };
+        }
+
+        // Fallback: transferencia directa con play: true
+        const fallbackRes = await spotifyTransferPlayback(targetDev.id, true);
+        if (fallbackRes) {
+            // Reintentar poner la playlist después de activar
+            await new Promise(r => setTimeout(r, 300));
+            await spotifyFetch(endpoint, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ context_uri: playlistUri })
+            });
+            return {
+                success: true,
+                deviceName: targetDev.name,
+                deviceId: targetDev.id
+            };
+        }
+
+        return {
+            success: false,
+            deviceName: targetDev.name,
+            deviceId: targetDev.id,
+            needsAppOpen: true,
+            error: "Abre Spotify en tu dispositivo para recibir la orden de reproducción."
+        };
+    } catch (err: any) {
+        return {
+            success: false,
+            needsAppOpen: true,
+            error: err?.message || "Error al conectar con Spotify Web API."
+        };
     }
 }
