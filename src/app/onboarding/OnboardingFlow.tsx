@@ -48,7 +48,7 @@ const TELEMETRY_STEPS = [
   { label: 'Calibrando metabolismo basal (Katch-McArdle) y macros', detail: 'TDEE y ratio proteico adaptativo' },
   { label: 'Estructurando periodización y volumen semanal', detail: 'Distribución de series efectivas por grupo muscular' },
   { label: 'Indexando catálogo biomecánico (876 ejercicios respaldados)', detail: 'Mapeo offline con cinemática y vectores' },
-  { label: 'Consultando motor clínico Gemini IA y lista inteligente', detail: 'Generando blueprint de 30 días y micronutrientes' }
+  { label: 'Consultando motor clínico Gemini IA y lista inteligente', detail: 'Generando blueprint de 7 días y micronutrientes' }
 ];
 
 export function OnboardingFlow({ onComplete }: { onComplete?: (savedProfile?: UserApexProfile) => void }) {

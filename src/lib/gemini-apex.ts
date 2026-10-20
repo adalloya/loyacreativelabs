@@ -48,7 +48,7 @@ async function executeGeminiPrompt(systemPrompt: string, userPrompt: string): Pr
 }
 
 // ------------------------------------------------------------------------
-// 1. GENERADOR DE DIETA MENSUAL (30 DÍAS ESTRUCTURADOS)
+// 1. GENERADOR DE DIETA (7 DÍAS ESTRUCTURADOS)
 // ------------------------------------------------------------------------
 export async function generateMonthlyDietWithGemini(
     bio: BiometricProfile,
@@ -56,7 +56,7 @@ export async function generateMonthlyDietWithGemini(
 ): Promise<any> {
     const systemPrompt = `
 Eres un Fisiólogo del Ejercicio y Nutriólogo Clínico Deportivo de élite (estilo Renaissance Periodization / Jeff Nippard).
-Tu tarea es generar un plan de nutrición estructurado de 30 días dividido en 4 semanas para máxima retención de masa magra y recomposición corporal bajo déficit calórico.
+Tu tarea es generar un plan de nutrición estructurado de 7 días para máxima retención de masa magra y recomposición corporal bajo déficit calórico.
 Devuelve ÚNICAMENTE código JSON válido sin rodeos ni formato markdown.
 Formato JSON requerido:
 {

@@ -32,7 +32,7 @@ export function ShoppingList() {
           if (meal.ingredients && Array.isArray(meal.ingredients)) {
             meal.ingredients.forEach((ing: any) => {
               const key = ing.item.toLowerCase().trim();
-              totals[key] = (totals[key] || 0) + ((ing.grams || 0) * 4); // 4 semanas
+              totals[key] = (totals[key] || 0) + ((ing.grams || 0) * 1); // 1 semana (7 días)
             });
           } else if (meal.items) {
             const parts = meal.items.split('+');
@@ -40,11 +40,11 @@ export function ShoppingList() {
               const trimmed = p.trim();
               const match = trimmed.match(/^(\d+)\s*g?\s+(.*)$/i);
               if (match) {
-                const grams = parseInt(match[1], 10) * 28; // 28 días
+                const grams = parseInt(match[1], 10) * 7; // 7 días
                 const name = match[2].toLowerCase().trim();
                 totals[name] = (totals[name] || 0) + grams;
               } else {
-                totals[trimmed.toLowerCase()] = (totals[trimmed.toLowerCase()] || 0) + 1000;
+                totals[trimmed.toLowerCase()] = (totals[trimmed.toLowerCase()] || 0) + 500;
               }
             });
           }
@@ -73,10 +73,10 @@ export function ShoppingList() {
       <div className="flex items-center justify-between pb-4 mb-6 border-b border-white/[0.08]">
         <div>
           <span className="text-[10px] font-mono text-[#FF2A2A] uppercase tracking-wider">
-            ABASTECIMIENTO // INVENTARIO LOCAL
+            ABASTECIMIENTO // INVENTARIO LOCAL (7 DÍAS)
           </span>
           <h2 className="text-xl font-bold tracking-tight mt-0.5">
-            Lista de Compras Consolidada
+            Lista de Compras Consolidada (7 Días)
           </h2>
         </div>
         <div className="flex items-center gap-2 bg-white/[0.05] px-3 py-1.5 rounded-xl font-mono text-xs text-zinc-300">

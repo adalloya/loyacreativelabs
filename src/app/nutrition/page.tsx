@@ -96,7 +96,7 @@ export default function NutritionPage() {
           </div>
           <div>
             <span className="text-xs font-mono text-[#FF2A2A] tracking-widest uppercase block">APEX // NUTRICIÓN CLÍNICA</span>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mt-0.5">PLAN MENSUAL & SUPLEMENTACIÓN</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mt-0.5">PLAN DE 7 DÍAS & SUPLEMENTACIÓN</h1>
           </div>
         </div>
 
@@ -114,7 +114,7 @@ export default function NutritionPage() {
             disabled={loading}
             className="bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] font-semibold text-xs px-4 py-2.5 rounded-xl transition-all disabled:opacity-50"
           >
-            {loading ? 'PROCESANDO CON GEMINI...' : dietPlan ? 'REGENERAR PLAN' : 'GENERAR PLAN 30 DÍAS'}
+            {loading ? 'PROCESANDO CON GEMINI...' : dietPlan ? 'REGENERAR PLAN' : 'GENERAR PLAN 7 DÍAS'}
           </button>
         </div>
       </div>
@@ -124,14 +124,14 @@ export default function NutritionPage() {
         <div className="bg-[#121214]/90 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-12 text-center my-12 shadow-2xl">
           <h3 className="text-lg font-semibold mb-2">No hay un plan activo en este navegador</h3>
           <p className="text-xs text-zinc-400 max-w-md mx-auto mb-6 leading-relaxed">
-            Genera tu protocolo mensual basado en tu régimen nutricional (Keto, Vegetariano, Vegano, Estándar, etc.) y métricas biométricas locales. Se guardará de forma independiente en tu dispositivo.
+            Genera tu protocolo de 7 días basado en tu régimen nutricional (Keto, Vegetariano, Vegano, Estándar, etc.) y métricas biométricas locales. Se guardará de forma independiente en tu dispositivo.
           </p>
           <button
             onClick={() => setIsDietPrefModalOpen(true)}
             disabled={loading}
             className="bg-white hover:bg-zinc-200 text-black font-semibold text-xs px-6 py-3 rounded-xl transition-all shadow-lg active:scale-95"
           >
-            {loading ? 'GENERANDO...' : 'CREAR PLAN DE 30 DÍAS'}
+            {loading ? 'GENERANDO...' : 'CREAR PLAN DE 7 DÍAS'}
           </button>
         </div>
       ) : (
@@ -159,7 +159,7 @@ export default function NutritionPage() {
             </div>
           </div>
 
-          {/* Lista de Compras Dinámica Consolidada de 30 Días */}
+          {/* Lista de Compras Dinámica Consolidada de 7 Días */}
           <ShoppingList />
 
         </div>

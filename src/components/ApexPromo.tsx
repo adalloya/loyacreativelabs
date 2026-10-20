@@ -60,7 +60,7 @@ export default function ApexPromo() {
                                 <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
                                     <Sparkles size={18} />
                                 </div>
-                                <h3 className="text-lg font-bold text-white">Nutrición Clínica & Planes de 30 Días con Gemini AI</h3>
+                                <h3 className="text-lg font-bold text-white">Nutrición Clínica & Planes de 7 Días con Gemini AI</h3>
                             </div>
                             <p className="text-sm text-gray-400 leading-relaxed pl-12 font-mono">
                                 Fórmulas metabólicas Katch-McArdle y Mifflin-St Jeor, déficit calórico automático, checklist de suplementación clínica diaria y recálculo instantáneo si comes fuera del plan.

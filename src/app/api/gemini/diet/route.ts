@@ -481,7 +481,7 @@ export async function POST(req: NextRequest) {
 
         const fallbackMeals = getSampleDayMeals(dietaryPreference);
         let activeMeals = fallbackMeals;
-        let clinicalSummary = `Plan nutricional clínico de 30 días bajo protocolo ${dietTitle} para ${goalDesc} con balance estricto de ${targetProtein}g de proteína (${targetCalories} kcal/día).`;
+        let clinicalSummary = `Plan nutricional clínico de 7 días bajo protocolo ${dietTitle} para ${goalDesc} con balance estricto de ${targetProtein}g de proteína (${targetCalories} kcal/día).`;
 
         const apiKey = process.env.GOOGLE_API_KEY || process.env.GOOGLE_API_KEY_BACKUP;
 
@@ -499,7 +499,7 @@ export async function POST(req: NextRequest) {
                 });
 
                 const prompt = `Actúa como Nutriólogo Deportivo y Fisiólogo Clínico de APEX Hypertrophy OS.
-Genera un plan de alimentación diario clínico arquetípico en JSON estricto para un atleta con las siguientes especificaciones:
+Genera un plan de alimentación clínico de 7 días (día arquetípico) en JSON estricto para un atleta con las siguientes especificaciones:
 - Peso corporal: ${weight} kg
 - Objetivo: ${goalDesc}
 - Régimen nutricional: "${dietTitle}"
@@ -516,7 +516,7 @@ REGLAS NUTRICIONALES ESTRICTAS POR RÉGIMEN:
 
 ESTRUCTURA JSON EXACTA REQUERIDA:
 {
-  "monthlySummary": "Resumen clínico explicando por qué este plan cumple con ${dietTitle} y optimiza ${goalDesc}.",
+  "monthlySummary": "Resumen clínico explicando por qué este protocolo de 7 días cumple con ${dietTitle} y optimiza ${goalDesc}.",
   "meals": [
     {
       "mealName": "Comida 1 (Desayuno)",
@@ -550,8 +550,8 @@ ESTRUCTURA JSON EXACTA REQUERIDA:
             }
         }
 
-        // Expandir a plan de 30 días con estructura compatible para visualización y lista de compras
-        const thirtyDayPlan = Array.from({ length: 30 }).map((_, i) => ({
+        // Expandir a plan de 7 días con estructura compatible para visualización y lista de compras
+        const thirtyDayPlan = Array.from({ length: 7 }).map((_, i) => ({
             dayNumber: i + 1,
             totalCalories: targetCalories,
             meals: activeMeals

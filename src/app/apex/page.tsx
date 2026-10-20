@@ -1885,13 +1885,13 @@ export default function ApexDashboard() {
                             onGoToCalendar={() => setActiveTab("calendar")}
                         />
 
-                        {/* AI 30-Day Plan Generator */}
+                        {/* AI 7-Day Plan Generator */}
                         <div className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-6 shadow-2xl">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                                 <div className="flex items-center gap-2">
                                     <Calendar size={18} className="text-white" />
                                     <h4 className="text-base font-bold text-white tracking-tight">
-                                        PLAN DE DIETA MENSUAL CLÍNICA (30 DÍAS)
+                                        PLAN DE DIETA CLÍNICA (7 DÍAS)
                                     </h4>
                                 </div>
 
@@ -1939,7 +1939,7 @@ export default function ApexDashboard() {
                                                 </div>
                                             )}
                                             <p className="text-zinc-300 leading-relaxed">
-                                                {dietPlan.monthlySummary || `Plan nutricional clínico de 30 días para ${bio.fitnessGoal === "surplus" ? "Superávit Anabólico" : bio.fitnessGoal === "maintenance" ? "Mantenimiento / Recomposición" : "Déficit Calórico"} (${dietPlan.caloriesTarget || macros.targetCalories} kcal/día • ${dietPlan.macros?.protein || macros.proteinG}g de proteína).`}
+                                                {dietPlan.monthlySummary || `Plan nutricional clínico de 7 días para ${bio.fitnessGoal === "surplus" ? "Superávit Anabólico" : bio.fitnessGoal === "maintenance" ? "Mantenimiento / Recomposición" : "Déficit Calórico"} (${dietPlan.caloriesTarget || macros.targetCalories} kcal/día • ${dietPlan.macros?.protein || macros.proteinG}g de proteína).`}
                                             </p>
                                         </div>
                                         <span className="px-2.5 py-1 rounded-full bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/20 font-mono text-[10px] font-semibold shrink-0 self-start sm:self-center">
@@ -1967,7 +1967,7 @@ export default function ApexDashboard() {
                                 </div>
                             ) : (
                                 <div className="text-center py-8 border border-dashed border-white/[0.08] rounded-2xl text-xs text-zinc-500 font-normal">
-                                    Presiona "Generar con Gemini AI" para estructurar tus 30 días de alimentación exacta calculada a tus macros. Una vez generado, quedará guardado automáticamente en tu dispositivo.
+                                    Presiona "Generar con Gemini AI" para estructurar tus 7 días de alimentación exacta calculada a tus macros. Una vez generado, quedará guardado automáticamente en tu dispositivo.
                                 </div>
                             )}
                         </div>
