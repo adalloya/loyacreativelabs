@@ -18,13 +18,21 @@ import {
     ChevronDown,
     Sliders
 } from "lucide-react";
-import { calculateTodayTarget, ExerciseItem, ReadinessState, EXERCISE_DATABASE } from "@/lib/hypertrophy-engine";
+import {
+    calculateTodayTarget,
+    ExerciseItem,
+    ReadinessState,
+    EXERCISE_DATABASE,
+    CardioType,
+    DailyCardioEntry
+} from "@/lib/hypertrophy-engine";
 import { translateExerciseNameToSpanish } from "@/lib/spanish-exercise-translator";
 import { getInitialTheme, Theme } from "@/lib/theme";
 import { ApexV2BottomNav, ApexV2Tab } from "./ApexV2BottomNav";
 import { ApexV2ExerciseCard } from "./ApexV2ExerciseCard";
 import { ApexV2NutritionCalendarHub } from "./ApexV2NutritionCalendarHub";
 import { ApexV2AnatomyView } from "./ApexV2AnatomyView";
+import { ApexV2CardioFinisher } from "./ApexV2CardioFinisher";
 import { ApexV2SettingsView } from "./ApexV2SettingsView";
 import { ApexV2Footer } from "./ApexV2Footer";
 import { useApexVoiceAgent, VoiceAgentActionResult, VoiceAgentWorkoutResult } from "@/hooks/useApexVoiceAgent";
@@ -108,6 +116,8 @@ interface ApexV2ViewProps {
     setExerciseNotes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
     isPlateLoadedExercise: (equipment?: string, name?: string) => boolean;
     onAddExercise?: (ex: ExerciseItem) => void;
+    todayCardio?: DailyCardioEntry;
+    onUpdateCardio?: (typeOrUpdates: CardioType | (Partial<DailyCardioEntry> & { type?: CardioType }), minutes?: number, completed?: boolean) => void;
 }
 
 export const ApexV2View: React.FC<ApexV2ViewProps> = ({
@@ -173,7 +183,9 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
     exerciseNotes,
     setExerciseNotes,
     isPlateLoadedExercise,
-    onAddExercise
+    onAddExercise,
+    todayCardio,
+    onUpdateCardio
 }) => {
     // Current V2 active navigation destination (Entrenar, Nutrición, Anatomía, Ajustes)
     const [activeTab, setActiveTab] = useState<ApexV2Tab>("workout");
@@ -930,6 +942,17 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                     })
                                 )}
                             </div>
+
+                            {/* Cardio Finisher al final de la rutina diaria */}
+                            {todayCardio && onUpdateCardio && (
+                                <div className="mt-4 sm:mt-5">
+                                    <ApexV2CardioFinisher
+                                        todayCardio={todayCardio}
+                                        onUpdateCardio={onUpdateCardio}
+                                        isLight={isLight}
+                                    />
+                                </div>
+                            )}
                         </motion.div>
                     )}
 
