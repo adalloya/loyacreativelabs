@@ -65,6 +65,8 @@ html.light {
   --accent: #f1f5f9;
   --border: rgba(15, 23, 42, 0.08);
   color-scheme: light;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+  letter-spacing: -0.011em;
 }
 
 /* 1. Root & Base Body Backgrounds */
@@ -281,59 +283,40 @@ html.light a[class*="bg-purple-600"] * {
   color: #ffffff !important;
 }
 
-/* 7. Tinted Badges (APEX Red, Emerald, Spotify Green, Amber, Blue) */
-html.light [class*="bg-[#FF2A2A]/"],
-html.light [class*="bg-red-950/"],
-html.light [class*="bg-red-900/"] {
+/* 7. Tinted Badges (APEX Red, Emerald, Spotify Green, Amber, Blue) - Specific to Badges only, Never broad descendants */
+html.light span[class*="bg-[#FF2A2A]/"]:not([class*="selection:"]):not([class*="hover:"]),
+html.light span[class*="bg-red-950/"]:not([class*="hover:"]),
+html.light span[class*="bg-red-900/"]:not([class*="hover:"]) {
   background-color: rgba(239, 68, 68, 0.1) !important;
   color: #dc2626 !important;
   border-color: rgba(239, 68, 68, 0.25) !important;
 }
-html.light [class*="bg-[#FF2A2A]/"] *,
-html.light [class*="bg-red-950/"] *,
-html.light [class*="bg-red-900/"] * {
-  color: #dc2626 !important;
-}
 
-html.light [class*="bg-[#10B981]/"],
-html.light [class*="bg-emerald-950/"],
-html.light [class*="bg-emerald-900/"] {
+html.light span[class*="bg-[#10B981]/"]:not([class*="hover:"]),
+html.light span[class*="bg-emerald-950/"]:not([class*="hover:"]),
+html.light span[class*="bg-emerald-900/"]:not([class*="hover:"]) {
   background-color: rgba(16, 185, 129, 0.1) !important;
   color: #059669 !important;
   border-color: rgba(16, 185, 129, 0.25) !important;
 }
-html.light [class*="bg-[#10B981]/"] *,
-html.light [class*="bg-emerald-950/"] *,
-html.light [class*="bg-emerald-900/"] * {
-  color: #059669 !important;
-}
 
-html.light [class*="bg-[#1DB954]/"],
-html.light [class*="bg-[#1ed760]/"] {
+html.light span[class*="bg-[#1DB954]/"]:not([class*="hover:"]),
+html.light span[class*="bg-[#1ed760]/"]:not([class*="hover:"]) {
   background-color: rgba(29, 185, 84, 0.1) !important;
   color: #15803d !important;
   border-color: rgba(29, 185, 84, 0.25) !important;
 }
-html.light [class*="bg-[#1DB954]/"] *,
-html.light [class*="bg-[#1ed760]/"] * {
-  color: #15803d !important;
-}
 
-html.light [class*="bg-[#F59E0B]/"],
-html.light [class*="bg-amber-950/"],
-html.light [class*="bg-yellow-950/"] {
+html.light span[class*="bg-[#F59E0B]/"]:not([class*="hover:"]),
+html.light span[class*="bg-amber-950/"]:not([class*="hover:"]),
+html.light span[class*="bg-yellow-950/"]:not([class*="hover:"]) {
   background-color: rgba(245, 158, 11, 0.1) !important;
   color: #b45309 !important;
   border-color: rgba(245, 158, 11, 0.25) !important;
 }
-html.light [class*="bg-[#F59E0B]/"] *,
-html.light [class*="bg-amber-950/"] *,
-html.light [class*="bg-yellow-950/"] * {
-  color: #b45309 !important;
-}
 
-html.light [class*="bg-blue-950/"],
-html.light [class*="bg-[#0284C7]/"] {
+html.light span[class*="bg-blue-950/"],
+html.light span[class*="bg-[#0284C7]/"] {
   background-color: rgba(2, 132, 199, 0.1) !important;
   color: #0284c7 !important;
   border-color: rgba(2, 132, 199, 0.25) !important;

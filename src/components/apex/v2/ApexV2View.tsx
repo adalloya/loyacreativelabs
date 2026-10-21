@@ -172,7 +172,7 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
     const isLight = theme === "light";
 
     return (
-        <div className={`min-h-screen font-sans antialiased selection:bg-[#FF2A2A]/30 selection:text-white pb-32 w-full max-w-full overflow-x-hidden relative transition-colors duration-200 ${
+        <div className={`min-h-screen font-sans antialiased selection:bg-slate-900 selection:text-white dark:selection:bg-white dark:selection:text-slate-900 pb-32 w-full max-w-full overflow-x-hidden relative transition-colors duration-200 ${
             isLight ? "bg-[#f8fafc] text-slate-900" : "bg-[#0c0e14] text-[#EAEAEA]"
         }`}>
             
@@ -296,54 +296,113 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                             transition={{ duration: 0.2 }}
                             className="space-y-4"
                         >
-                            {/* Selector de Días de la Semana Horizontal (Píldoras) */}
-                            <div className="backdrop-blur-2xl bg-zinc-950/75 border border-white/10 rounded-2xl p-2 shadow-lg overflow-x-auto scrollbar-none">
-                                <div className="flex items-center gap-1.5 min-w-max">
-                                    {weeklyProgram.map((day, idx) => {
-                                        const isSelected = idx === activeDayIndex;
+                            {/* Selector de Días de la Semana: Ancla Central Dinámica (Cero Scroll Horizontal) */}
+                            <div className={`backdrop-blur-2xl rounded-2xl p-2 sm:p-2.5 shadow-md border transition-all ${
+                                isLight ? "bg-white/80 border-slate-200/80 shadow-slate-900/[0.04]" : "bg-zinc-950/75 border-white/10 shadow-lg"
+                            }`}>
+                                <div className="w-full flex items-center justify-between sm:justify-center sm:gap-2 px-0.5">
+                                    {(() => {
+                                        const total = weeklyProgram.length;
+                                        if (total === 0) return null;
 
-                                        return (
-                                            <button
-                                                key={day.dayNumber || idx}
-                                                type="button"
-                                                onClick={() => handleDaySelect(idx)}
-                                                className={`px-3 py-1.5 rounded-xl text-xs font-mono transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 ${
-                                                    isSelected
-                                                        ? "bg-white text-black font-bold shadow-md"
-                                                        : "bg-white/[0.03] text-zinc-400 hover:text-white hover:bg-white/[0.08]"
-                                                }`}
-                                            >
-                                                <span>Día {day.dayNumber}</span>
-                                                <span className={`text-[10px] ${isSelected ? "text-zinc-600 font-sans" : "text-zinc-500"}`}>
-                                                    • {day.title?.split(" ")[0] || "Hipertrofia"}
-                                                </span>
-                                            </button>
-                                        );
-                                    })}
+                                        const leftCount = Math.floor((total - 1) / 2);
+                                        const rightCount = total - 1 - leftCount;
+
+                                        const orderedIndices: number[] = [];
+                                        for (let offset = -leftCount; offset <= rightCount; offset++) {
+                                            const idx = (activeDayIndex + offset + total * 10) % total;
+                                            orderedIndices.push(idx);
+                                        }
+
+                                        const defaultNames = ["LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO", "DOMINGO"];
+
+                                        return orderedIndices.map((idx) => {
+                                            const day = weeklyProgram[idx] || {};
+                                            const isCenter = idx === activeDayIndex;
+                                            const dayName = day.dayName || defaultNames[idx] || `DÍA ${day.dayNumber || idx + 1}`;
+                                            const firstLetter = dayName.charAt(0).toUpperCase();
+                                            const shortFocus = day.focus ? day.focus.split(",")[0].split("&")[0].trim() : (day.title?.split(" ")[0] || "Hipertrofia");
+
+                                            if (isCenter) {
+                                                return (
+                                                    <motion.div
+                                                        key={`center-${day.dayNumber || idx}`}
+                                                        layout
+                                                        className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-sans transition-all flex items-center gap-1.5 sm:gap-2 shrink-0 select-none ${
+                                                            isLight
+                                                                ? "bg-slate-900 text-white shadow-md shadow-slate-900/20"
+                                                                : "bg-white text-zinc-950 shadow-lg shadow-white/10"
+                                                        }`}
+                                                    >
+                                                        <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[11px] shrink-0 ${
+                                                            isLight ? "bg-white/20 text-white" : "bg-black/15 text-zinc-950"
+                                                        }`}>
+                                                            {firstLetter}
+                                                        </span>
+                                                        <span className="font-bold text-xs uppercase tracking-tight whitespace-nowrap">
+                                                            {dayName}
+                                                        </span>
+                                                        <span className={`text-[10px] hidden xs:inline max-w-[80px] sm:max-w-none truncate ${
+                                                            isLight ? "text-slate-300 font-normal" : "text-zinc-600 font-medium"
+                                                        }`}>
+                                                            • {shortFocus}
+                                                        </span>
+                                                    </motion.div>
+                                                );
+                                            }
+
+                                            return (
+                                                <button
+                                                    key={`day-dot-${day.dayNumber || idx}`}
+                                                    type="button"
+                                                    onClick={() => handleDaySelect(idx)}
+                                                    title={`Ver ${dayName} (${shortFocus})`}
+                                                    className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 cursor-pointer transition-all active:scale-90 relative ${
+                                                        isLight
+                                                            ? "bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-950 border border-slate-200/90 shadow-xs"
+                                                            : "bg-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.14] border border-white/10"
+                                                    }`}
+                                                >
+                                                    <span>{firstLetter}</span>
+                                                    {day.carbCyclePhase === "high_carb" && (
+                                                        <span className="absolute bottom-1 w-1 h-1 rounded-full bg-emerald-500" />
+                                                    )}
+                                                </button>
+                                            );
+                                        });
+                                    })()}
                                 </div>
                             </div>
 
                             {/* Resumen de la Sesión de Hoy & Disposición Biomecánica */}
-                            <div className="backdrop-blur-2xl bg-zinc-950/75 border border-white/10 rounded-3xl p-4 sm:p-5 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className={`backdrop-blur-2xl border rounded-3xl p-4 sm:p-5 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${
+                                isLight ? "bg-white/85 border-slate-200/90 text-slate-900 shadow-slate-950/[0.04]" : "bg-zinc-950/75 border-white/10 text-white shadow-xl"
+                            }`}>
                                 <div>
                                     <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold uppercase">
+                                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold uppercase border ${
+                                            isLight
+                                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                        }`}>
                                             {currentRoutine?.dayName || `SESIÓN ${activeDayIndex + 1}`}
                                         </span>
-                                        <span className="text-[10px] font-mono text-zinc-400">
+                                        <span className={`text-[10px] font-mono ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
                                             {activeExercises.length} ejercicios
                                         </span>
                                     </div>
-                                    <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                                    <h2 className={`text-base sm:text-lg font-bold tracking-tight ${isLight ? "text-slate-950" : "text-white"}`}>
                                         {currentRoutine?.title || "Rutina Activa"}
                                     </h2>
-                                    <p className="text-xs text-zinc-400 mt-0.5">
+                                    <p className={`text-xs mt-0.5 ${isLight ? "text-slate-600 font-normal" : "text-zinc-400"}`}>
                                         {currentRoutine?.focus || "Hipertrofia Miofibrilar & Tensión Mecánica"}
                                     </p>
                                 </div>
 
                                 {/* Selector Rápido de Readiness / Fatiga */}
-                                <div className="flex items-center gap-1 self-start sm:self-auto bg-black/50 border border-white/10 rounded-2xl p-1">
+                                <div className={`flex items-center gap-1 self-start sm:self-auto rounded-2xl p-1 border ${
+                                    isLight ? "bg-slate-100 border-slate-200" : "bg-black/50 border-white/10"
+                                }`}>
                                     {(["optimal", "normal", "fatigued"] as ReadinessState[]).map((r) => {
                                         const isSel = readiness === r;
                                         const labels = {
@@ -360,11 +419,11 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                                 className={`px-2.5 py-1 rounded-xl text-[10px] font-mono uppercase font-bold transition-all cursor-pointer ${
                                                     isSel
                                                         ? r === "optimal"
-                                                            ? "bg-emerald-500 text-black shadow-sm"
+                                                            ? (isLight ? "bg-emerald-600 text-white shadow-xs" : "bg-emerald-500 text-black shadow-sm")
                                                             : r === "normal"
-                                                            ? "bg-amber-500 text-black shadow-sm"
+                                                            ? (isLight ? "bg-amber-500 text-white shadow-xs" : "bg-amber-500 text-black shadow-sm")
                                                             : "bg-red-500 text-white shadow-sm"
-                                                        : "text-zinc-500 hover:text-zinc-300"
+                                                        : (isLight ? "text-slate-500 hover:text-slate-900" : "text-zinc-500 hover:text-zinc-300")
                                                 }`}
                                             >
                                                 {labels[r]}
@@ -427,6 +486,7 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                             isPlateLoaded={isPlateLoadedExercise(ex.equipment, ex.name)}
                                             notes={exerciseNotes[ex.id] || ""}
                                             onSaveNotes={(n) => setExerciseNotes((prev) => ({ ...prev, [ex.id]: n }))}
+                                            isLight={isLight}
                                         />
                                     );
                                 })}

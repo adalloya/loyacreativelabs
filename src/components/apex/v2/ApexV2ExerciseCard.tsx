@@ -1,7 +1,7 @@
 // src/components/apex/v2/ApexV2ExerciseCard.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
     Check,
     MoreVertical,
@@ -45,6 +45,7 @@ interface ApexV2ExerciseCardProps {
     isPlateLoaded: boolean;
     notes?: string;
     onSaveNotes?: (notes: string) => void;
+    isLight?: boolean;
 }
 
 export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
@@ -66,11 +67,33 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
     onOpenPlateModal,
     isPlateLoaded,
     notes = "",
-    onSaveNotes
+    onSaveNotes,
+    isLight: isLightProp
 }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [localNotes, setLocalNotes] = useState(notes);
     const [showIndividualSets, setShowIndividualSets] = useState(false);
+    const [isLightState, setIsLightState] = useState<boolean>(() => {
+        if (typeof window !== "undefined") {
+            return document.documentElement.classList.contains("light");
+        }
+        return false;
+    });
+
+    useEffect(() => {
+        const handleThemeChange = (e: Event) => {
+            const customEvt = e as CustomEvent<{ theme: string }>;
+            if (customEvt.detail?.theme) {
+                setIsLightState(customEvt.detail.theme === "light");
+            } else if (typeof document !== "undefined") {
+                setIsLightState(document.documentElement.classList.contains("light"));
+            }
+        };
+        window.addEventListener("apex_theme_change", handleThemeChange);
+        return () => window.removeEventListener("apex_theme_change", handleThemeChange);
+    }, []);
+
+    const isLight = isLightProp ?? isLightState;
 
     // Entrada condensada unificada: Series × Peso × Reps
     const [seriesCount, setSeriesCount] = useState<number>(exercise.default_sets || 3);
@@ -116,29 +139,41 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
         <div className="space-y-2.5">
             {/* Cabecera de Circuito (Si aplica) */}
             {isNewBlock && (
-                <div className="flex items-center justify-between p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-emerald-500/5 to-transparent border border-emerald-500/30 text-white">
+                <div className={`flex items-center justify-between p-2.5 sm:p-3 rounded-2xl border ${
+                    isLight
+                        ? "bg-emerald-50 border-emerald-200 text-emerald-950"
+                        : "bg-gradient-to-r from-emerald-500/15 via-emerald-500/5 to-transparent border-emerald-500/30 text-white"
+                }`}>
                     <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                        <span className="text-xs font-bold font-mono tracking-wider text-emerald-400 uppercase">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className={`text-xs font-bold font-mono tracking-wider uppercase ${isLight ? "text-emerald-800" : "text-emerald-400"}`}>
                             {exercise.blockTitle || `CIRCUITO // ${exercise.blockRounds || 3} VUELTAS`}
                         </span>
                     </div>
-                    <span className="text-[10px] font-mono text-zinc-400 bg-black/40 px-2.5 py-0.5 rounded-full border border-white/10">
+                    <span className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full border ${
+                        isLight ? "bg-white text-slate-600 border-slate-200" : "text-zinc-400 bg-black/40 border-white/10"
+                    }`}>
                         Descanso al final de vuelta
                     </span>
                 </div>
             )}
 
             {/* Tarjeta Principal "Zero-Scroll" con Glassmorphism */}
-            <div className={`backdrop-blur-2xl bg-zinc-900/70 border ${
-                exercise.blockId ? "border-l-4 border-l-emerald-500 border-white/10" : "border-white/10"
-            } rounded-3xl overflow-hidden shadow-2xl transition-all`}>
+            <div className={`backdrop-blur-2xl border rounded-3xl overflow-hidden transition-all ${
+                isLight
+                    ? "bg-white/85 border-slate-200/90 shadow-sm shadow-slate-900/[0.04] text-slate-900"
+                    : "bg-zinc-900/70 border-white/10 shadow-2xl text-white"
+            } ${exercise.blockId ? "border-l-4 border-l-emerald-500" : ""}`}>
                 
                 {/* 1. Cabecera con Animación del Ejercicio Visible en Vivo */}
-                <div className="p-3.5 sm:p-4 pb-3 border-b border-white/[0.06] bg-gradient-to-b from-white/[0.04] to-transparent">
+                <div className={`p-3.5 sm:p-4 pb-3 border-b ${
+                    isLight ? "border-slate-200/80 bg-slate-50/50" : "border-white/[0.06] bg-gradient-to-b from-white/[0.04] to-transparent"
+                }`}>
                     <div className="flex items-center gap-3">
                         {/* Animación del Ejercicio en Bucle (800ms) para Identificación Inmediata */}
-                        <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border border-white/15 bg-black shrink-0 shadow-md">
+                        <div className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border shrink-0 shadow-sm ${
+                            isLight ? "border-slate-200 bg-slate-100" : "border-white/15 bg-black"
+                        }`}>
                             <ExerciseMotionViewer
                                 githubId={exercise.github_id || exercise.name}
                                 exerciseName={exercise.name}
@@ -149,22 +184,30 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                         {/* Título, Insignias y Biomecánica */}
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                                <span className="text-[9px] sm:text-[10px] font-mono font-bold bg-[#FF2A2A]/15 text-[#FF6B6B] border border-[#FF2A2A]/30 px-2 py-0.5 rounded-full uppercase">
+                                <span className={`text-[9px] sm:text-[10px] font-mono font-bold px-2 py-0.5 rounded-full uppercase border ${
+                                    isLight ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-rose-500/15 text-rose-400 border-rose-500/30"
+                                }`}>
                                     TIER {exercise.hypertrophy_tier || "S"}
                                 </span>
-                                <span className="text-[9px] sm:text-[10px] font-medium bg-white/[0.06] text-zinc-300 px-2 py-0.5 rounded-full border border-white/[0.08]">
+                                <span className={`text-[9px] sm:text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                                    isLight ? "bg-slate-100 text-slate-700 border-slate-200" : "bg-white/[0.06] text-zinc-300 border-white/[0.08]"
+                                }`}>
                                     {exercise.anatomical_subdivision}
                                 </span>
-                                <span className="text-[10px] text-zinc-400 capitalize hidden xs:inline">
+                                <span className={`text-[10px] capitalize hidden xs:inline ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
                                     • {exercise.equipment}
                                 </span>
                             </div>
 
-                            <h3 className="text-sm sm:text-base font-bold text-white tracking-tight truncate leading-tight">
+                            <h3 className={`text-sm sm:text-base font-bold tracking-tight truncate leading-tight ${
+                                isLight ? "text-slate-950 font-sans" : "text-white"
+                            }`}>
                                 {exercise.name}
                             </h3>
 
-                            <p className="text-[10px] sm:text-[11px] text-zinc-400 mt-0.5 truncate leading-tight font-normal">
+                            <p className={`text-[10px] sm:text-[11px] mt-0.5 truncate leading-tight font-normal ${
+                                isLight ? "text-slate-600" : "text-zinc-400"
+                            }`}>
                                 {exercise.biomechanical_cue}
                             </p>
                         </div>
@@ -173,7 +216,11 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                         <button
                             type="button"
                             onClick={() => setIsMenuOpen(true)}
-                            className="w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.14] text-zinc-300 hover:text-white border border-white/10 flex items-center justify-center transition-all cursor-pointer active:scale-90 shrink-0"
+                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 shrink-0 border ${
+                                isLight
+                                    ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200"
+                                    : "bg-white/[0.06] hover:bg-white/[0.14] text-zinc-300 hover:text-white border-white/10"
+                            }`}
                             title="Opciones avanzadas del ejercicio"
                             aria-label="Más opciones"
                         >
@@ -183,28 +230,30 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                 </div>
 
                 {/* 2. Barra Horizontal de Métricas Condensadas de un Vistazo */}
-                <div className="px-4 py-2 bg-black/40 border-b border-white/[0.04] grid grid-cols-4 gap-1 text-center font-mono">
-                    <div className="px-1 border-r border-white/[0.06]">
-                        <span className="text-[9px] text-zinc-500 uppercase block font-sans">Último</span>
-                        <span className="text-xs font-semibold text-zinc-300 truncate block">
+                <div className={`px-4 py-2 border-b grid grid-cols-4 gap-1 text-center font-mono ${
+                    isLight ? "bg-slate-50/90 border-slate-200/80" : "bg-black/40 border-white/[0.04]"
+                }`}>
+                    <div className={`px-1 border-r ${isLight ? "border-slate-200" : "border-white/[0.06]"}`}>
+                        <span className={`text-[9px] uppercase block font-sans ${isLight ? "text-slate-500 font-medium" : "text-zinc-500"}`}>Último</span>
+                        <span className={`text-xs font-semibold truncate block ${isLight ? "text-slate-800" : "text-zinc-300"}`}>
                             {memory.reps > 0 ? `${memory.weight}${weightUnit}×${memory.reps}` : `0×0`}
                         </span>
                     </div>
-                    <div className="px-1 border-r border-white/[0.06]">
-                        <span className="text-[9px] text-emerald-400/80 uppercase block font-sans">Meta Hoy</span>
-                        <span className="text-xs font-bold text-white truncate block">
+                    <div className={`px-1 border-r ${isLight ? "border-slate-200" : "border-white/[0.06]"}`}>
+                        <span className={`text-[9px] uppercase block font-sans ${isLight ? "text-emerald-700 font-semibold" : "text-emerald-400/80"}`}>Meta Hoy</span>
+                        <span className={`text-xs font-bold truncate block ${isLight ? "text-slate-950 font-bold" : "text-white"}`}>
                             {target.suggestedReps > 0 ? `${target.suggestedWeight}${weightUnit}×${target.suggestedReps}` : `${exercise.rep_range_min}-${exercise.rep_range_max}`}
                         </span>
                     </div>
-                    <div className="px-1 border-r border-white/[0.06]">
-                        <span className="text-[9px] text-zinc-500 uppercase block font-sans">1RM</span>
-                        <span className="text-xs font-semibold text-zinc-300 truncate block">
+                    <div className={`px-1 border-r ${isLight ? "border-slate-200" : "border-white/[0.06]"}`}>
+                        <span className={`text-[9px] uppercase block font-sans ${isLight ? "text-slate-500 font-medium" : "text-zinc-500"}`}>1RM</span>
+                        <span className={`text-xs font-semibold truncate block ${isLight ? "text-slate-800" : "text-zinc-300"}`}>
                             {target.estimated1RM > 0 ? `${target.estimated1RM}${weightUnit}` : `—`}
                         </span>
                     </div>
                     <div className="px-1">
-                        <span className="text-[9px] text-zinc-500 uppercase block font-sans">RIR</span>
-                        <span className="text-xs font-semibold text-white truncate block">
+                        <span className={`text-[9px] uppercase block font-sans ${isLight ? "text-slate-500 font-medium" : "text-zinc-500"}`}>RIR</span>
+                        <span className={`text-xs font-semibold truncate block ${isLight ? "text-slate-900" : "text-white"}`}>
                             {target.targetRir}
                         </span>
                     </div>
@@ -214,27 +263,37 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                 <div className="p-3 sm:p-3.5 space-y-2">
                     <div className={`flex items-center justify-between p-2 sm:p-2.5 rounded-2xl border transition-all gap-2 ${
                         isAllCompleted
-                            ? "bg-emerald-500/10 border-emerald-500/30 text-white"
-                            : "bg-white/[0.03] border-white/[0.06] text-zinc-300"
+                            ? (isLight ? "bg-emerald-50 border-emerald-300 text-emerald-950" : "bg-emerald-500/10 border-emerald-500/30 text-white")
+                            : (isLight ? "bg-slate-50 border-slate-200/90 text-slate-800" : "bg-white/[0.03] border-white/[0.06] text-zinc-300")
                     }`}>
                         {/* Selector de número de series hechas */}
-                        <div className="flex items-center gap-1 bg-black/50 border border-white/10 rounded-xl p-1 shrink-0">
+                        <div className={`flex items-center gap-1 rounded-xl p-1 shrink-0 border ${
+                            isLight ? "bg-white border-slate-200 shadow-xs" : "bg-black/50 border-white/10"
+                        }`}>
                             <button
                                 type="button"
                                 onClick={() => setSeriesCount((prev) => Math.max(1, prev - 1))}
-                                className="w-6 h-6 rounded-lg bg-white/10 hover:bg-white/20 active:scale-90 text-white flex items-center justify-center font-bold text-xs cursor-pointer select-none"
+                                className={`w-6 h-6 rounded-lg active:scale-90 flex items-center justify-center font-bold text-xs cursor-pointer select-none ${
+                                    isLight ? "bg-slate-100 hover:bg-slate-200 text-slate-800" : "bg-white/10 hover:bg-white/20 text-white"
+                                }`}
                                 title="Menos series"
                             >
                                 -
                             </button>
                             <div className="px-1.5 text-center min-w-[36px]">
-                                <span className="text-xs font-mono font-bold text-white block leading-none">{seriesCount}</span>
-                                <span className="text-[8px] font-mono text-zinc-400 block uppercase mt-0.5 leading-none">sets</span>
+                                <span className={`text-xs font-mono font-bold block leading-none ${isLight ? "text-slate-900" : "text-white"}`}>
+                                    {seriesCount}
+                                </span>
+                                <span className={`text-[8px] font-mono block uppercase mt-0.5 leading-none ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
+                                    sets
+                                </span>
                             </div>
                             <button
                                 type="button"
                                 onClick={() => setSeriesCount((prev) => prev + 1)}
-                                className="w-6 h-6 rounded-lg bg-white/10 hover:bg-white/20 active:scale-90 text-white flex items-center justify-center font-bold text-xs cursor-pointer select-none"
+                                className={`w-6 h-6 rounded-lg active:scale-90 flex items-center justify-center font-bold text-xs cursor-pointer select-none ${
+                                    isLight ? "bg-slate-100 hover:bg-slate-200 text-slate-800" : "bg-white/10 hover:bg-white/20 text-white"
+                                }`}
                                 title="Más series"
                             >
                                 +
@@ -257,14 +316,20 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                                         }
                                     }}
                                     placeholder="0"
-                                    className="w-full h-9 bg-black/60 border border-white/10 rounded-xl text-center text-xs sm:text-sm font-mono font-bold text-white focus:outline-none focus:border-white/40 transition-colors pr-6"
+                                    className={`w-full h-9 rounded-xl text-center text-xs sm:text-sm font-mono font-bold focus:outline-none transition-colors pr-6 border ${
+                                        isLight
+                                            ? "bg-white border-slate-200 text-slate-900 focus:border-slate-400 placeholder:text-slate-400"
+                                            : "bg-black/60 border-white/10 text-white focus:border-white/40 placeholder:text-zinc-600"
+                                    }`}
                                 />
-                                <span className="absolute right-1.5 top-2.5 text-[9px] font-mono text-zinc-500 pointer-events-none uppercase">
+                                <span className={`absolute right-1.5 top-2.5 text-[9px] font-mono pointer-events-none uppercase ${
+                                    isLight ? "text-slate-500" : "text-zinc-500"
+                                }`}>
                                     {weightUnit}
                                 </span>
                             </div>
 
-                            <span className="text-zinc-600 font-mono text-xs">×</span>
+                            <span className={`font-mono text-xs ${isLight ? "text-slate-400" : "text-zinc-600"}`}>×</span>
 
                             {/* Input Reps */}
                             <div className="relative flex-1">
@@ -280,9 +345,15 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                                         }
                                     }}
                                     placeholder="0"
-                                    className="w-full h-9 bg-black/60 border border-white/10 rounded-xl text-center text-xs sm:text-sm font-mono font-bold text-white focus:outline-none focus:border-white/40 transition-colors pr-6"
+                                    className={`w-full h-9 rounded-xl text-center text-xs sm:text-sm font-mono font-bold focus:outline-none transition-colors pr-6 border ${
+                                        isLight
+                                            ? "bg-white border-slate-200 text-slate-900 focus:border-slate-400 placeholder:text-slate-400"
+                                            : "bg-black/60 border-white/10 text-white focus:border-white/40 placeholder:text-zinc-600"
+                                    }`}
                                 />
-                                <span className="absolute right-1.5 top-2.5 text-[9px] font-mono text-zinc-500 pointer-events-none">
+                                <span className={`absolute right-1.5 top-2.5 text-[9px] font-mono pointer-events-none uppercase ${
+                                    isLight ? "text-slate-500" : "text-zinc-500"
+                                }`}>
                                     reps
                                 </span>
                             </div>
@@ -294,7 +365,9 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                             onClick={handleToggleAllSets}
                             className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all shrink-0 active:scale-90 cursor-pointer ${
                                 isAllCompleted
-                                    ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20"
+                                    ? (isLight ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25" : "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20")
+                                    : isLight
+                                    ? "bg-slate-200 hover:bg-slate-300 text-slate-700 border border-slate-300"
                                     : "bg-white/10 hover:bg-white/20 text-zinc-400 hover:text-white border border-white/10"
                             }`}
                             title={isAllCompleted ? "Series completadas (clic para deshacer)" : `Marcar las ${seriesCount} series completadas`}
@@ -305,14 +378,16 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                     </div>
 
                     {/* Estado de completado & Enlace para desglosar por serie */}
-                    <div className="flex items-center justify-between px-1 text-[10px] font-mono text-zinc-500">
-                        <span className={completedCount > 0 ? "text-emerald-400 font-semibold" : ""}>
+                    <div className="flex items-center justify-between px-1 text-[10px] font-mono">
+                        <span className={completedCount > 0 ? (isLight ? "text-emerald-700 font-semibold" : "text-emerald-400 font-semibold") : (isLight ? "text-slate-500" : "text-zinc-500")}>
                             {completedCount > 0 ? `✓ ${completedCount}/${seriesCount} series completadas` : `${seriesCount} series programadas`}
                         </span>
                         <button
                             type="button"
                             onClick={() => setShowIndividualSets(!showIndividualSets)}
-                            className="text-zinc-400 hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
+                            className={`flex items-center gap-1 transition-colors cursor-pointer ${
+                                isLight ? "text-slate-600 hover:text-slate-900" : "text-zinc-400 hover:text-white"
+                            }`}
                         >
                             <span>{showIndividualSets ? "Ocultar desglose" : "Desglosar por serie"}</span>
                             <ChevronDown className={`w-3 h-3 transition-transform ${showIndividualSets ? "rotate-180" : ""}`} />
@@ -321,7 +396,7 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
 
                     {/* Desglose individual (Solo si el usuario desea drop sets o pesos distintos) */}
                     {showIndividualSets && (
-                        <div className="space-y-1.5 pt-2 border-t border-white/[0.04] animate-in fade-in">
+                        <div className={`space-y-1.5 pt-2 border-t animate-in fade-in ${isLight ? "border-slate-200" : "border-white/[0.04]"}`}>
                             {Array.from({ length: seriesCount }).map((_, sIdx) => {
                                 const key = `${exercise.id}_${sIdx}`;
                                 const isCompleted = Boolean(completedSets[key]);
@@ -334,30 +409,42 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                                     <div
                                         key={sIdx}
                                         className={`flex items-center justify-between p-1.5 px-2.5 rounded-xl border text-xs gap-2 ${
-                                            isCompleted ? "bg-emerald-500/10 border-emerald-500/30 text-white" : "bg-black/30 border-white/5 text-zinc-300"
+                                            isCompleted
+                                                ? (isLight ? "bg-emerald-50 border-emerald-300 text-emerald-950" : "bg-emerald-500/10 border-emerald-500/30 text-white")
+                                                : (isLight ? "bg-slate-100/80 border-slate-200 text-slate-800" : "bg-black/30 border-white/5 text-zinc-300")
                                         }`}
                                     >
-                                        <span className="font-mono font-bold text-[11px] text-zinc-400">S{sIdx + 1}</span>
+                                        <span className={`font-mono font-bold text-[11px] ${isLight ? "text-slate-600" : "text-zinc-400"}`}>S{sIdx + 1}</span>
                                         <div className="flex items-center gap-2 flex-1 justify-center max-w-[180px]">
                                             <input
                                                 type="number"
                                                 value={currentInput.weight ?? ""}
                                                 onChange={(e) => onSetInputChange(key, "weight", e.target.value)}
-                                                className="w-14 h-7 bg-black/60 border border-white/10 rounded-lg text-center text-xs font-mono font-bold text-white focus:outline-none"
+                                                className={`w-14 h-7 rounded-lg text-center text-xs font-mono font-bold focus:outline-none border ${
+                                                    isLight
+                                                        ? "bg-white border-slate-300 text-slate-900 focus:border-slate-500"
+                                                        : "bg-black/60 border-white/10 text-white focus:border-white/40"
+                                                }`}
                                             />
-                                            <span className="text-zinc-600 font-mono text-[10px]">×</span>
+                                            <span className={`font-mono text-[10px] ${isLight ? "text-slate-400" : "text-zinc-600"}`}>×</span>
                                             <input
                                                 type="number"
                                                 value={currentInput.reps ?? ""}
                                                 onChange={(e) => onSetInputChange(key, "reps", e.target.value)}
-                                                className="w-14 h-7 bg-black/60 border border-white/10 rounded-lg text-center text-xs font-mono font-bold text-white focus:outline-none"
+                                                className={`w-14 h-7 rounded-lg text-center text-xs font-mono font-bold focus:outline-none border ${
+                                                    isLight
+                                                        ? "bg-white border-slate-300 text-slate-900 focus:border-slate-500"
+                                                        : "bg-black/60 border-white/10 text-white focus:border-white/40"
+                                                }`}
                                             />
                                         </div>
                                         <button
                                             type="button"
                                             onClick={() => onCompleteSet(exercise, sIdx, Number(currentInput.weight), Number(currentInput.reps))}
                                             className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
-                                                isCompleted ? "bg-emerald-500 text-black" : "bg-white/10 text-zinc-400"
+                                                isCompleted
+                                                    ? (isLight ? "bg-emerald-600 text-white" : "bg-emerald-500 text-black")
+                                                    : (isLight ? "bg-slate-200 text-slate-600 hover:bg-slate-300" : "bg-white/10 text-zinc-400 hover:bg-white/20")
                                             }`}
                                         >
                                             <Check className="w-3.5 h-3.5" />
@@ -375,20 +462,24 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
             <Drawer.Root open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                 <Drawer.Portal>
                     <Drawer.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 transition-opacity" />
-                    <Drawer.Content className="bg-zinc-950/95 backdrop-blur-2xl border-t border-white/15 flex flex-col rounded-t-[32px] fixed bottom-0 left-0 right-0 max-h-[85vh] z-50 p-5 pb-8 text-white max-w-lg mx-auto shadow-2xl">
-                        <Drawer.Handle className="mx-auto w-12 h-1.5 rounded-full bg-zinc-700 mb-4" />
+                    <Drawer.Content className={`backdrop-blur-2xl border-t flex flex-col rounded-t-[32px] fixed bottom-0 left-0 right-0 max-h-[85vh] z-50 p-5 pb-8 max-w-lg mx-auto shadow-2xl ${
+                        isLight ? "bg-white/95 border-slate-200 text-slate-900" : "bg-zinc-950/95 border-white/15 text-white"
+                    }`}>
+                        <Drawer.Handle className={`mx-auto w-12 h-1.5 rounded-full mb-4 ${isLight ? "bg-slate-300" : "bg-zinc-700"}`} />
                         
-                        <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
+                        <div className={`flex items-center justify-between pb-3 border-b mb-4 ${isLight ? "border-slate-200" : "border-white/10"}`}>
                             <div>
-                                <h4 className="text-sm font-bold text-white uppercase tracking-tight">
+                                <h4 className={`text-sm font-bold uppercase tracking-tight ${isLight ? "text-slate-950" : "text-white"}`}>
                                     {exercise.name}
                                 </h4>
-                                <p className="text-xs text-zinc-400 font-mono">Herramientas & Opciones</p>
+                                <p className={`text-xs font-mono ${isLight ? "text-slate-500" : "text-zinc-400"}`}>Herramientas & Opciones</p>
                             </div>
                             <button
                                 type="button"
                                 onClick={() => setIsMenuOpen(false)}
-                                className="w-7 h-7 rounded-full bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center cursor-pointer"
+                                className={`w-7 h-7 rounded-full flex items-center justify-center cursor-pointer transition-colors ${
+                                    isLight ? "bg-slate-100 hover:bg-slate-200 text-slate-700" : "bg-white/10 hover:bg-white/20 text-zinc-400 hover:text-white"
+                                }`}
                             >
                                 <X className="w-4 h-4" />
                             </button>
@@ -401,12 +492,14 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                                 href={`https://www.youtube.com/results?search_query=${encodeURIComponent(exercise.name + " form technique hypertrophy")}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="p-3 rounded-2xl bg-white/[0.04] hover:bg-white/[0.1] border border-white/10 flex items-center gap-2.5 transition-colors cursor-pointer"
+                                className={`p-3 rounded-2xl border flex items-center gap-2.5 transition-colors cursor-pointer ${
+                                    isLight ? "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800" : "bg-white/[0.04] hover:bg-white/[0.1] border-white/10 text-zinc-300"
+                                }`}
                             >
-                                <Play className="w-4 h-4 fill-white text-white shrink-0" />
+                                <Play className={`w-4 h-4 shrink-0 ${isLight ? "fill-slate-900 text-slate-900" : "fill-white text-white"}`} />
                                 <div className="text-left min-w-0">
-                                    <div className="font-semibold text-white">YouTube</div>
-                                    <div className="text-[10px] text-zinc-400 font-sans">Ver técnica</div>
+                                    <div className={`font-semibold ${isLight ? "text-slate-900" : "text-white"}`}>YouTube</div>
+                                    <div className={`text-[10px] font-sans ${isLight ? "text-slate-500" : "text-zinc-400"}`}>Ver técnica</div>
                                 </div>
                             </a>
 
@@ -419,14 +512,16 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                                 }}
                                 className={`p-3 rounded-2xl border flex items-center gap-2.5 transition-colors cursor-pointer ${
                                     tempoActive
-                                        ? "bg-[#FF2A2A]/20 border-[#FF2A2A] text-white"
+                                        ? "bg-rose-500/15 border-rose-500 text-rose-600 dark:text-white"
+                                        : isLight
+                                        ? "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800"
                                         : "bg-white/[0.04] hover:bg-white/[0.1] border-white/10 text-zinc-300"
                                 }`}
                             >
-                                <Activity className={`w-4 h-4 shrink-0 ${tempoActive ? "text-[#FF2A2A] animate-pulse" : ""}`} />
+                                <Activity className={`w-4 h-4 shrink-0 ${tempoActive ? "text-rose-500 animate-pulse" : (isLight ? "text-slate-700" : "text-zinc-300")}`} />
                                 <div className="text-left min-w-0">
-                                    <div className="font-semibold text-white">Tempo 3-1-1</div>
-                                    <div className="text-[10px] text-zinc-400 font-sans">{tempoActive ? "Activado" : "Sonar"}</div>
+                                    <div className={`font-semibold ${isLight ? "text-slate-900" : "text-white"}`}>Tempo 3-1-1</div>
+                                    <div className={`text-[10px] font-sans ${isLight ? "text-slate-500" : "text-zinc-400"}`}>{tempoActive ? "Activado" : "Sonar"}</div>
                                 </div>
                             </button>
 
@@ -437,12 +532,14 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                                     onOpenVbt();
                                     setIsMenuOpen(false);
                                 }}
-                                className="p-3 rounded-2xl bg-white/[0.04] hover:bg-white/[0.1] border border-white/10 flex items-center gap-2.5 transition-colors cursor-pointer"
+                                className={`p-3 rounded-2xl border flex items-center gap-2.5 transition-colors cursor-pointer ${
+                                    isLight ? "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800" : "bg-white/[0.04] hover:bg-white/[0.1] border-white/10 text-zinc-300"
+                                }`}
                             >
-                                <Gauge className="w-4 h-4 text-zinc-300 shrink-0" />
+                                <Gauge className={`w-4 h-4 shrink-0 ${isLight ? "text-slate-700" : "text-zinc-300"}`} />
                                 <div className="text-left min-w-0">
-                                    <div className="font-semibold text-white">Cámara VBT</div>
-                                    <div className="text-[10px] text-zinc-400 font-sans">Velocidad IA</div>
+                                    <div className={`font-semibold ${isLight ? "text-slate-900" : "text-white"}`}>Cámara VBT</div>
+                                    <div className={`text-[10px] font-sans ${isLight ? "text-slate-500" : "text-zinc-400"}`}>Velocidad IA</div>
                                 </div>
                             </button>
 
@@ -453,12 +550,14 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                                     onRandomSwap();
                                     setIsMenuOpen(false);
                                 }}
-                                className="p-3 rounded-2xl bg-white/[0.04] hover:bg-white/[0.1] border border-white/10 flex items-center gap-2.5 transition-colors cursor-pointer"
+                                className={`p-3 rounded-2xl border flex items-center gap-2.5 transition-colors cursor-pointer ${
+                                    isLight ? "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800" : "bg-white/[0.04] hover:bg-white/[0.1] border-white/10 text-zinc-300"
+                                }`}
                             >
-                                <Shuffle className="w-4 h-4 text-zinc-300 shrink-0" />
+                                <Shuffle className={`w-4 h-4 shrink-0 ${isLight ? "text-slate-700" : "text-zinc-300"}`} />
                                 <div className="text-left min-w-0">
-                                    <div className="font-semibold text-white">Swap Random</div>
-                                    <div className="text-[10px] text-zinc-400 font-sans">Mismo músculo</div>
+                                    <div className={`font-semibold ${isLight ? "text-slate-900" : "text-white"}`}>Swap Random</div>
+                                    <div className={`text-[10px] font-sans ${isLight ? "text-slate-500" : "text-zinc-400"}`}>Mismo músculo</div>
                                 </div>
                             </button>
 
@@ -469,16 +568,20 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                                     onOpenSwapModal();
                                     setIsMenuOpen(false);
                                 }}
-                                className="col-span-2 p-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-between transition-colors cursor-pointer"
+                                className={`col-span-2 p-3 rounded-2xl border flex items-center justify-between transition-colors cursor-pointer ${
+                                    isLight
+                                        ? "bg-slate-900 text-white border-slate-900 shadow-sm"
+                                        : "bg-white/10 hover:bg-white/20 border-white/20 text-white"
+                                }`}
                             >
                                 <div className="flex items-center gap-2.5">
-                                    <RefreshCw className="w-4 h-4 text-white shrink-0" />
+                                    <RefreshCw className="w-4 h-4 shrink-0" />
                                     <div className="text-left">
-                                        <div className="font-semibold text-white">Cambiar Ejercicio</div>
-                                        <div className="text-[10px] text-zinc-400 font-sans">Buscador en los 873 ejercicios del catálogo</div>
+                                        <div className="font-semibold">Cambiar Ejercicio</div>
+                                        <div className={`text-[10px] font-sans ${isLight ? "text-slate-300" : "text-zinc-400"}`}>Buscador en los 873 ejercicios del catálogo</div>
                                     </div>
                                 </div>
-                                <span className="text-xs text-zinc-400 font-sans">873+ →</span>
+                                <span className={`text-xs font-sans ${isLight ? "text-slate-300" : "text-zinc-400"}`}>873+ →</span>
                             </button>
 
                             {/* Desglose de Discos (si aplica) */}
@@ -489,26 +592,28 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                                         onOpenPlateModal(Number(unifiedWeight) || target.suggestedWeight);
                                         setIsMenuOpen(false);
                                     }}
-                                    className="col-span-2 p-3 rounded-2xl bg-white/[0.04] hover:bg-white/[0.1] border border-white/10 flex items-center justify-between transition-colors cursor-pointer"
+                                    className={`col-span-2 p-3 rounded-2xl border flex items-center justify-between transition-colors cursor-pointer ${
+                                        isLight ? "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800" : "bg-white/[0.04] hover:bg-white/[0.1] border-white/10 text-zinc-300"
+                                    }`}
                                 >
                                     <div className="flex items-center gap-2.5">
-                                        <Disc className="w-4 h-4 text-zinc-300 shrink-0" />
+                                        <Disc className={`w-4 h-4 shrink-0 ${isLight ? "text-slate-700" : "text-zinc-300"}`} />
                                         <div className="text-left">
-                                            <div className="font-semibold text-white">Desglose de Discos Olímpicos</div>
-                                            <div className="text-[10px] text-zinc-400 font-mono">
+                                            <div className={`font-semibold ${isLight ? "text-slate-900" : "text-white"}`}>Desglose de Discos Olímpicos</div>
+                                            <div className={`text-[10px] font-mono ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
                                                 {formatPlatesSummary(Number(unifiedWeight) || target.suggestedWeight, weightUnit === "lbs" ? 45 : 20, weightUnit)}
                                             </div>
                                         </div>
                                     </div>
-                                    <span className="text-xs text-zinc-400 font-sans">Ver →</span>
+                                    <span className={`text-xs font-sans ${isLight ? "text-slate-500" : "text-zinc-400"}`}>Ver →</span>
                                 </button>
                             )}
                         </div>
 
                         {/* Notas Privadas del Ejercicio */}
                         {onSaveNotes && (
-                            <div className="mt-4 pt-3 border-t border-white/10">
-                                <label className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
+                            <div className={`mt-4 pt-3 border-t ${isLight ? "border-slate-200" : "border-white/10"}`}>
+                                <label className={`text-[11px] font-mono uppercase tracking-wider block mb-1.5 flex items-center gap-1.5 ${isLight ? "text-slate-600" : "text-zinc-400"}`}>
                                     <FileText className="w-3.5 h-3.5" />
                                     <span>Notas Privadas</span>
                                 </label>
@@ -520,7 +625,11 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                                     }}
                                     placeholder="Ajustes de banca, sensación articular, peso objetivo..."
                                     rows={2}
-                                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30 resize-none font-sans"
+                                    className={`w-full border rounded-xl p-2.5 text-xs focus:outline-none resize-none font-sans transition-colors ${
+                                        isLight
+                                            ? "bg-slate-50 border-slate-200 text-slate-900 focus:border-slate-400 placeholder:text-slate-400"
+                                            : "bg-black/60 border-white/10 text-white placeholder-zinc-500 focus:border-white/30"
+                                    }`}
                                 />
                             </div>
                         )}
