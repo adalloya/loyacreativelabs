@@ -243,11 +243,109 @@ export function useApexVoiceAgent({
                 return;
             }
 
-            if (lower === "play" || lower === "reproducir" || lower.includes("pon música") || lower.includes("reanuda la música")) {
+            // 4. Reggaetón / Urbano Latino
+            if (lower.includes("reggaeton") || lower.includes("reggaetón") || lower.includes("perreo")) {
                 const action: VoiceAgentActionResult = {
                     intent: "MUSIC_CONTROL",
                     targetTab: currentTabRef.current,
-                    summary: "Spotify: Reproduciendo",
+                    summary: "Spotify: Mansión Reggaetón Gym",
+                    music: {
+                        action: "play_bpm",
+                        bpmCategory: "mid",
+                        query: "mansion-reggaeton"
+                    },
+                    rawTranscript: clean
+                };
+                onActionResultRef.current(action);
+                showToast("✓ Spotify: Mansión Reggaetón Gym activado");
+                setIsProcessing(false);
+                return;
+            }
+
+            // 5. Rock / Metal / Beast Mode
+            if (lower.includes("rock") || lower.includes("metal")) {
+                const action: VoiceAgentActionResult = {
+                    intent: "MUSIC_CONTROL",
+                    targetTab: currentTabRef.current,
+                    summary: "Spotify: Heavy Rock & Metal Pump",
+                    music: {
+                        action: "play_bpm",
+                        bpmCategory: "high",
+                        query: "rock-metal"
+                    },
+                    rawTranscript: clean
+                };
+                onActionResultRef.current(action);
+                showToast("✓ Spotify: Heavy Rock & Metal activado");
+                setIsProcessing(false);
+                return;
+            }
+
+            if (lower.includes("trap") || lower.includes("hip hop") || lower.includes("beast mode")) {
+                const action: VoiceAgentActionResult = {
+                    intent: "MUSIC_CONTROL",
+                    targetTab: currentTabRef.current,
+                    summary: "Spotify: Beast Mode (Hip-Hop & Trap)",
+                    music: {
+                        action: "play_bpm",
+                        bpmCategory: "high",
+                        query: "beast-mode"
+                    },
+                    rawTranscript: clean
+                };
+                onActionResultRef.current(action);
+                showToast("✓ Spotify: Beast Mode activado");
+                setIsProcessing(false);
+                return;
+            }
+
+            // 6. Solicitud general de Música / Lista de Entrenamiento
+            if (
+                lower.includes("pon música") ||
+                lower.includes("pon musica") ||
+                lower.includes("pon la música") ||
+                lower.includes("pon la musica") ||
+                lower.includes("reproduce música") ||
+                lower.includes("reproduce musica") ||
+                lower.includes("pon una lista") ||
+                lower.includes("pon la lista") ||
+                lower.includes("reproduce la lista") ||
+                lower.includes("reproducir la lista") ||
+                lower.includes("pon playlist") ||
+                lower.includes("música para entrenar") ||
+                lower.includes("musica para entrenar") ||
+                lower.includes("música para el gym") ||
+                lower.includes("musica para el gym") ||
+                lower === "música" ||
+                lower === "musica" ||
+                lower === "ponme música" ||
+                lower === "ponme musica" ||
+                lower === "quiero música" ||
+                lower === "quiero musica"
+            ) {
+                const action: VoiceAgentActionResult = {
+                    intent: "MUSIC_CONTROL",
+                    targetTab: currentTabRef.current,
+                    summary: "Spotify: Reproduciendo Gym Phonk ⚡️",
+                    music: {
+                        action: "play_bpm",
+                        bpmCategory: "high",
+                        query: "gym-phonk"
+                    },
+                    rawTranscript: clean
+                };
+                onActionResultRef.current(action);
+                showToast("✓ Spotify: Reproduciendo Playlist Gym Phonk ⚡️");
+                setIsProcessing(false);
+                return;
+            }
+
+            // 7. Reanudar / Play directo de lo que estaba pausado
+            if (lower === "play" || lower === "reproducir" || lower.includes("reanuda") || lower.includes("continúa la música") || lower.includes("continua la musica")) {
+                const action: VoiceAgentActionResult = {
+                    intent: "MUSIC_CONTROL",
+                    targetTab: currentTabRef.current,
+                    summary: "Spotify: Reanudando reproducción",
                     music: { action: "play" },
                     rawTranscript: clean
                 };

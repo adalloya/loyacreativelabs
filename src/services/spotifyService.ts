@@ -1012,14 +1012,24 @@ export async function spotifyPlay(targetDeviceId?: string, trackUri?: string): P
 
         if (genRes && (genRes.status === 204 || genRes.ok)) return true;
 
-        // Solo como último recurso si no hay pista conocida en memoria
-        if (!devId && !trackUri) {
-            openSpotifyDeepLink("spotify:");
-            return true;
+        // Si no hay reproducción previa que reanudar, reproducir automáticamente la playlist de entrenamiento principal
+        if (!trackUri) {
+            const curated = CURATED_WORKOUT_PLAYLISTS.find(p => p.id === "gym-phonk") || CURATED_WORKOUT_PLAYLISTS[0];
+            if (curated) {
+                const playRes = await spotifyPlayPlaylist(curated.spotifyUri, devId, curated.webUrl);
+                return playRes.success;
+            }
         }
 
-        return false;
+        // Como último recurso abrir Spotify
+        openSpotifyDeepLink("spotify:");
+        return true;
     } catch {
+        const curated = CURATED_WORKOUT_PLAYLISTS.find(p => p.id === "gym-phonk") || CURATED_WORKOUT_PLAYLISTS[0];
+        if (curated) {
+            openSpotifyDeepLink(curated.spotifyUri, curated.webUrl);
+            return true;
+        }
         return false;
     }
 }
@@ -1174,7 +1184,8 @@ export function normalizeSpotifyPlaylistUri(raw: string): string {
  */
 export async function spotifyPlayPlaylist(
     playlistUri: string,
-    targetDeviceId?: string
+    targetDeviceId?: string,
+    fallbackWebUrl?: string
 ): Promise<PlayPlaylistResult> {
     try {
         const trimmed = (playlistUri || "").trim();
@@ -1201,20 +1212,13 @@ export async function spotifyPlayPlaylist(
             targetDev = devices.find(d => d.is_active) || devices[0];
         }
 
-        // Si no hay ningún dispositivo registrado en Spotify
+        // Si no hay ningún dispositivo registrado en Spotify Connect, abrimos inmediatamente en la app / web de Spotify
         if (!targetDev) {
-            if (isIOSDevice()) {
-                openSpotifyDeepLink(canonicalUri);
-                return {
-                    success: true,
-                    deviceName: "Spotify en tu iPhone",
-                    needsAppOpen: false
-                };
-            }
+            openSpotifyDeepLink(canonicalUri, fallbackWebUrl);
             return {
-                success: false,
-                needsAppOpen: true,
-                error: "No se detectó ningún dispositivo con Spotify activo. Abre Spotify en tu teléfono o computadora y vuelve a presionar Reproducir."
+                success: true,
+                deviceName: "Spotify (App / Web)",
+                needsAppOpen: false
             };
         }
 
@@ -1242,27 +1246,6 @@ export async function spotifyPlayPlaylist(
             };
         }
 
-        let errorReason = "";
-        if (res) {
-            try {
-                const errData = await res.json();
-                errorReason = errData?.error?.message || "";
-            } catch {
-                // ignore
-            }
-        }
-
-        // Si Spotify reporta que se requiere Premium
-        if (errorReason.toLowerCase().includes("premium")) {
-            return {
-                success: false,
-                deviceName: targetDev.name,
-                deviceId: targetDev.id,
-                needsAppOpen: true,
-                error: "El control remoto directo de Spotify requiere cuenta Premium. Usa el botón 'Abrir en la App' para reproducir gratis directamente en tu Spotify."
-            };
-        }
-
         // Si el dispositivo estaba en reposo o inactivo, despertarlo transfiriendo la sesión con play: true
         const transferred = await spotifyTransferPlayback(targetDev.id, true);
         if (transferred) {
@@ -1282,18 +1265,19 @@ export async function spotifyPlayPlaylist(
             }
         }
 
+        // Fallback garantizado: si Spotify Web API rechaza (ej. cuenta Free o error), abrimos en app / web
+        openSpotifyDeepLink(canonicalUri, fallbackWebUrl);
         return {
-            success: false,
+            success: true,
             deviceName: targetDev.name,
             deviceId: targetDev.id,
-            needsAppOpen: true,
-            error: errorReason || "Spotify no pudo iniciar la playlist en este dispositivo. Abre la app de Spotify en tu dispositivo y pulsa 'Abrir en la App'."
+            needsAppOpen: false
         };
     } catch (err: any) {
+        openSpotifyDeepLink(playlistUri, fallbackWebUrl);
         return {
-            success: false,
-            needsAppOpen: true,
-            error: err?.message || "Error al conectar con Spotify Web API."
+            success: true,
+            needsAppOpen: false
         };
     }
 }
@@ -1309,12 +1293,10 @@ export async function spotifyPlayCuratedPlaylist(
         p => p.id === playlistId || p.name.toLowerCase().includes(playlistId.toLowerCase())
     );
     if (!playlist) {
-        return {
-            success: false,
-            error: `Playlist '${playlistId}' no encontrada.`
-        };
+        const defaultPl = CURATED_WORKOUT_PLAYLISTS.find(p => p.id === "gym-phonk") || CURATED_WORKOUT_PLAYLISTS[0];
+        return await spotifyPlayPlaylist(defaultPl.spotifyUri, targetDeviceId, defaultPl.webUrl);
     }
-    return await spotifyPlayPlaylist(playlist.spotifyUri, targetDeviceId);
+    return await spotifyPlayPlaylist(playlist.spotifyUri, targetDeviceId, playlist.webUrl);
 }
 
 /**

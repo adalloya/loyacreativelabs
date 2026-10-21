@@ -103,14 +103,17 @@ CATEGORÍAS DE INTENCIÓN POSIBLES:
    - targetTab: "workout" | "nutrition" | "anatomy" | "settings"
 
 6. "MUSIC_CONTROL":
-   El usuario pide controlar Spotify, cambiar tempo/BPM, o buscar artistas/canciones.
+   El usuario pide reproducir música, controlar Spotify, cambiar tempo/BPM, o buscar artistas/canciones/playlists.
    Ejemplos:
-   - "pon música más calmada escoge playlist con bpm bajo" -> action: "play_bpm", bpmCategory: "low", query: "lofi-recovery"
+   - "pon música" / "reproduce música" / "pon una lista" / "pon la lista" / "música para entrenar" / "música" -> action: "play_bpm", bpmCategory: "high", query: "gym-phonk" (IMPORTANTE: en una app de gimnasio, si pide música o una lista, debe iniciar una playlist de entrenamiento como gym-phonk).
+   - "pon música más calmada escoge playlist con bpm bajo" / "música tranquila" -> action: "play_bpm", bpmCategory: "low", query: "lofi-recovery"
    - "música calmada" / "bpm bajo" / "música tranquila" -> action: "play_bpm", bpmCategory: "low", query: "lofi-recovery"
-   - "quiero más intensidad sube a otro bpm" -> action: "play_bpm", bpmCategory: "high", query: "gym-phonk"
-   - "más intensidad" / "sube bpm" / "sube a otro bpm" / "música para PR" -> action: "play_bpm", bpmCategory: "high", query: "gym-phonk"
+   - "quiero más intensidad sube a otro bpm" / "más intensidad" / "sube bpm" -> action: "play_bpm", bpmCategory: "high", query: "gym-phonk"
+   - "reggaeton" / "perreo" -> action: "play_bpm", bpmCategory: "mid", query: "mansion-reggaeton"
+   - "rock" / "metal" -> action: "play_bpm", bpmCategory: "high", query: "rock-metal"
    - "quiero bad bunny" / "pon bad bunny" / "badbunny" -> action: "search_play", query: "Bad Bunny"
-   - "pon música" / "play" -> action: "play"
+   - "reproduce [canción o artista]" -> action: "search_play", query: "[canción o artista]"
+   - "reanuda" / "play" / "sigue la música" -> action: "play"
    - "pausa la música" / "pausar" -> action: "pause"
    - "siguiente canción" / "siguiente" -> action: "next"
    - "canción anterior" / "anterior" -> action: "previous"

@@ -405,19 +405,24 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
         } else if (action.intent === "MUSIC_CONTROL" && action.music) {
             const m = action.music;
             if (m.action === "play_bpm") {
-                if (m.bpmCategory === "low") {
-                    spotifyPlayCuratedPlaylist("lofi-recovery");
-                } else if (m.bpmCategory === "high") {
-                    spotifyPlayCuratedPlaylist("gym-phonk");
-                } else {
-                    spotifyPlayCuratedPlaylist(m.query || "edm-workout");
-                }
+                const targetPlaylist = m.query || (
+                    m.bpmCategory === "low"
+                        ? "lofi-recovery"
+                        : m.bpmCategory === "mid"
+                            ? "mansion-reggaeton"
+                            : "gym-phonk"
+                );
+                spotifyPlayCuratedPlaylist(targetPlaylist);
             } else if (m.action === "search_play" && m.query) {
                 spotifySearchAndPlay(m.query);
             } else if (m.action === "pause") {
                 spotifyPause();
             } else if (m.action === "play") {
-                spotifyPlay();
+                spotifyPlay().then((res) => {
+                    if (!res) {
+                        spotifyPlayCuratedPlaylist("gym-phonk");
+                    }
+                });
             } else if (m.action === "next") {
                 spotifyNext();
             } else if (m.action === "previous") {
