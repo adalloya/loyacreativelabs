@@ -102,6 +102,7 @@ import { OnboardingFlow, UserApexProfile } from "@/app/onboarding/OnboardingFlow
 import { ApexOnboardingModal } from "@/components/apex/ApexOnboardingModal";
 import { ApexFeedbackModal } from "@/components/apex/ApexFeedbackModal";
 import { getInitialUxVersion, setUxVersion, UxVersion } from "@/lib/uxVersion";
+import { ApexV2View } from "@/components/apex/v2/ApexV2View";
 
 /**
  * Determina si un ejercicio requiere cálculo de discos para barra olímpica / EZ.
@@ -256,6 +257,7 @@ export default function ApexDashboard() {
 
     // Tactile editable inputs per set: { [exId_setIdx]: { weight: number | string, reps: number | string } }
     const [setInputs, setSetInputs] = useState<Record<string, { weight: number | string; reps: number | string }>>({});
+    const [exerciseNotes, setExerciseNotes] = useLocalStorage<Record<string, string>>("apex_exercise_notes", {});
 
     // Reset Exercise Data confirmation modal state
     const [isResetExerciseModalOpen, setIsResetExerciseModalOpen] = useState(false);
@@ -757,36 +759,186 @@ export default function ApexDashboard() {
         );
     }
 
+    const handleSetInputChange = (key: string, field: "weight" | "reps", value: any) => {
+        setSetInputs(prev => {
+            const current = prev[key] || { weight: "", reps: "" };
+            let parsed = value;
+            if (value !== "") {
+                parsed = field === "weight" ? (parseFloat(value) || 0) : (parseInt(value, 10) || 0);
+            }
+            return {
+                ...prev,
+                [key]: {
+                    ...current,
+                    [field]: parsed
+                }
+            };
+        });
+    };
+
+    // Si la versión activa es la nueva V2 (Next-Level Liquid Glass), renderizamos la nueva arquitectura modular
+    if (uxVersion === "v2") {
+        return (
+            <>
+                <ApexAmbientVisualizer />
+                <ApexV2View
+                    profile={profile}
+                    timeGreeting={timeGreeting}
+                    todayFormattedDate={todayFormattedDate}
+                    isScreenLocked={isScreenLocked}
+                    environmentMode={environmentMode}
+                    setEnvironmentMode={(mode) => setEnvironmentMode(mode as any)}
+                    weightUnit={weightUnit}
+                    setWeightUnit={setWeightUnit}
+                    trainingMethodology={trainingMethodology}
+                    setTrainingMethodology={setTrainingMethodology}
+                    readiness={readiness}
+                    setReadiness={setReadiness}
+                    weeklyProgram={weeklyProgram}
+                    currentRoutine={currentRoutine}
+                    activeDayIndex={currentDayIndex}
+                    handleDaySelect={(idx) => setCurrentDayIndex(idx)}
+                    activeExercises={activeExercises}
+                    exerciseMemory={exerciseMemory}
+                    completedSets={completedSets}
+                    setInputs={setInputs}
+                    handleSetInputChange={handleSetInputChange}
+                    handleCompleteSet={handleCompleteSet}
+                    tempoActive={tempoActive}
+                    setTempoActive={setTempoActive}
+                    startTempoLoop={startTempoLoop}
+                    stopTempoLoop={stopTempoLoop}
+                    handleRandomSwapExercise={handleRandomSwapExercise}
+                    setSwapTargetIndex={setSwapTargetIndex}
+                    setPlateModalWeight={setPlateModalWeight}
+                    setIsPlateModalOpen={setIsPlateModalOpen}
+                    setVbtExerciseName={setVbtExerciseName}
+                    setIsVbtModalOpen={setIsVbtModalOpen}
+                    setIsScannerOpen={setIsScannerOpen}
+                    setIsExerciseLibraryOpen={setIsExerciseLibraryOpen}
+                    setIsRoutineImporterOpen={setIsRoutineImporterOpen}
+                    setIsDietPrefModalOpen={setIsDietPrefModalOpen}
+                    setIsInstallModalOpen={setIsInstallModalOpen}
+                    setIsSpotifyModalOpen={setIsSpotifyModalOpen}
+                    isSpotifyLinked={isSpotifyLinked}
+                    setIsOnboardingModalOpen={setIsOnboardingModalOpen}
+                    setIsFeedbackModalOpen={setIsFeedbackModalOpen}
+                    pdfProfile={pdfProfile}
+                    pdfDiet={pdfDiet}
+                    macros={macros}
+                    supplements={supplements}
+                    allNutritionLogs={allNutritionLogs}
+                    handleSaveNutritionLog={handleSaveNutritionLog}
+                    activeNutritionDate={activeNutritionDate}
+                    setActiveNutritionDate={setActiveNutritionDate}
+                    dietPlan={dietPlan}
+                    groceryList={groceryList}
+                    restRemaining={restRemaining}
+                    handleSkipRest={() => setRestRemaining(null)}
+                    selectedMuscle={selectedMuscle}
+                    setSelectedMuscle={setSelectedMuscle}
+                    activeMusclesToday={activeMusclesToday}
+                    catalogCount={catalogCount}
+                    onSwitchToStable={() => {
+                        setUxVersion("stable");
+                        setUxVersionState("stable");
+                    }}
+                    exerciseNotes={exerciseNotes}
+                    setExerciseNotes={setExerciseNotes}
+                    isPlateLoadedExercise={isPlateLoadedExercise}
+                />
+
+                {/* Modales y Drawers Compartidos */}
+                <MuscleTargetDrawer
+                    selectedMuscle={selectedMuscle}
+                    onClose={() => setSelectedMuscle(null)}
+                    onInjectExercise={handleInjectExercise}
+                    onToggleSpecialization={m => setSpecializedMuscle(prev => prev === m ? null : m)}
+                    specializedMuscle={specializedMuscle}
+                />
+
+                {isPlateModalOpen && (
+                    <PlateCalculatorModal
+                        initialWeight={plateModalWeight > 0 ? plateModalWeight : (weightUnit === "lbs" ? 135 : 80)}
+                        unit={weightUnit}
+                        onClose={() => setIsPlateModalOpen(false)}
+                    />
+                )}
+
+                <ExerciseLibraryModal
+                    isOpen={isExerciseLibraryOpen}
+                    onClose={() => setIsExerciseLibraryOpen(false)}
+                    onAddExercise={handleAddExerciseToSession}
+                    activeExerciseIds={activeExercises.map(e => e.id)}
+                />
+
+                <GymEquipmentScannerModal
+                    isOpen={isScannerOpen}
+                    onClose={() => setIsScannerOpen(false)}
+                    onAddExerciseToSession={handleAddExerciseToSession}
+                    activeExerciseIds={activeExercises.map(e => e.id)}
+                />
+
+                <SpotifySettingsModal
+                    isOpen={isSpotifyModalOpen}
+                    onClose={() => setIsSpotifyModalOpen(false)}
+                    onStatusChange={() => setIsSpotifyLinked(isSpotifyConnected())}
+                />
+
+                <ExerciseSwapModal
+                    isOpen={swapTargetIndex !== null}
+                    onClose={() => setSwapTargetIndex(null)}
+                    currentExercise={swapTargetIndex !== null ? activeExercises[swapTargetIndex] : null}
+                    onSelectSwap={handleSelectSwapReplacement}
+                    activeExerciseIds={activeExercises.map(e => e.id)}
+                />
+
+                <DietPreferenceModal
+                    isOpen={isDietPrefModalOpen}
+                    onClose={() => setIsDietPrefModalOpen(false)}
+                    onConfirm={(selectedDiet, notes) => handleGenerateAiDiet(selectedDiet, notes)}
+                    initialDiet={dietPreference}
+                    initialNotes={dietNotes}
+                    isLoading={dietLoading}
+                />
+
+                <TextToApexRoutineModal
+                    isOpen={isRoutineImporterOpen}
+                    onClose={() => setIsRoutineImporterOpen(false)}
+                    onApplyRoutine={(importedDays) => {
+                        setCustomWeeklyRoutine(importedDays);
+                        setCurrentDayIndex(0);
+                    }}
+                    catalog={EXERCISE_DATABASE}
+                />
+
+                {isInstallModalOpen && (
+                    <PwaInstallModal onClose={() => setIsInstallModalOpen(false)} />
+                )}
+
+                <MirrorMuscleOverlay
+                    isOpen={isVbtModalOpen}
+                    onClose={() => setIsVbtModalOpen(false)}
+                    activeExerciseName={vbtExerciseName}
+                />
+
+                <ApexOnboardingModal
+                    isOpen={isOnboardingModalOpen}
+                    onClose={() => setIsOnboardingModalOpen(false)}
+                />
+
+                <ApexFeedbackModal
+                    isOpen={isFeedbackModalOpen}
+                    onClose={() => setIsFeedbackModalOpen(false)}
+                />
+            </>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-[#000000] text-[#EAEAEA] font-sans antialiased selection:bg-[#FF2A2A]/30 selection:text-white pb-28 w-full max-w-full overflow-x-hidden relative">
             {/* Ambient WebGL Visualizer & Reactive Lighting (100% disposed if FX: OFF) */}
             <ApexAmbientVisualizer />
-
-            {/* V2 Beta Status Banner */}
-            {uxVersion === 'v2' && (
-                <div className="bg-gradient-to-r from-violet-950/90 via-indigo-950/90 to-purple-950/90 border-b border-violet-500/40 px-4 py-2 text-xs flex items-center justify-between text-violet-200 z-50 relative backdrop-blur-md shadow-lg shadow-violet-950/30">
-                    <div className="max-w-6xl mx-auto w-full flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2">
-                            <span className="px-1.5 py-0.5 rounded bg-violet-500/30 text-violet-200 font-mono font-bold text-[10px] border border-violet-400/40 tracking-wider">
-                                V2 BETA
-                            </span>
-                            <span className="text-[11px] sm:text-xs text-violet-100">
-                                Estás previsualizando la <strong>Nueva Versión UX (v2)</strong>. La versión estable para tus usuarios no ha sido alterada.
-                            </span>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setUxVersion('stable');
-                                setUxVersionState('stable');
-                            }}
-                            className="text-[11px] font-mono text-violet-300 hover:text-white underline shrink-0 cursor-pointer transition-colors"
-                        >
-                            Regresar a v1 Estable
-                        </button>
-                    </div>
-                </div>
-            )}
 
             {/* Top Navigation & Telemetry Header */}
             <header className="sticky top-0 z-40 bg-[#000000]/80 backdrop-blur-2xl border-b border-white/[0.08] px-4 py-3">

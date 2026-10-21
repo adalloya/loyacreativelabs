@@ -28,7 +28,8 @@
     "react-markdown": "^10.1.0",
     "tailwind-merge": "^3.4.0",
     "three": "^0.186.1",
-    "tone": "^15.1.22"
+    "tone": "^15.1.22",
+    "vaul": "^1.1.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
