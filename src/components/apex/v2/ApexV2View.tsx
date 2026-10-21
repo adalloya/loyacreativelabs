@@ -1,7 +1,7 @@
 // src/components/apex/v2/ApexV2View.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { calculateTodayTarget, ExerciseItem, ReadinessState } from "@/lib/hypertrophy-engine";
 import { AppHeaderMenu } from "@/components/ui/AppHeaderMenu";
+import { getInitialTheme, Theme } from "@/lib/theme";
 import { ApexV2BottomNav, ApexV2Tab } from "./ApexV2BottomNav";
 import { ApexV2ExerciseCard } from "./ApexV2ExerciseCard";
 import { ApexV2NutritionCalendarHub } from "./ApexV2NutritionCalendarHub";
@@ -154,25 +155,52 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
 }) => {
     // Current V2 active navigation destination (Entrenar, Nutrición, Anatomía, Ajustes)
     const [activeTab, setActiveTab] = useState<ApexV2Tab>("workout");
+    const [theme, setTheme] = useState<Theme>("dark");
+
+    useEffect(() => {
+        setTheme(getInitialTheme());
+        const handleThemeChange = (e: Event) => {
+            const customEvt = e as CustomEvent<{ theme: Theme }>;
+            if (customEvt.detail?.theme) {
+                setTheme(customEvt.detail.theme);
+            }
+        };
+        window.addEventListener("apex_theme_change", handleThemeChange);
+        return () => window.removeEventListener("apex_theme_change", handleThemeChange);
+    }, []);
+
+    const isLight = theme === "light";
 
     return (
-        <div className="min-h-screen bg-black text-[#EAEAEA] font-sans antialiased selection:bg-[#FF2A2A]/30 selection:text-white pb-32 w-full max-w-full overflow-x-hidden relative">
+        <div className={`min-h-screen font-sans antialiased selection:bg-[#FF2A2A]/30 selection:text-white pb-32 w-full max-w-full overflow-x-hidden relative transition-colors duration-200 ${
+            isLight ? "bg-[#f8fafc] text-slate-900" : "bg-[#0c0e14] text-[#EAEAEA]"
+        }`}>
             
             {/* V2 Beta Status Bar (Sutil) */}
-            <div className="bg-gradient-to-r from-violet-950/80 via-indigo-950/80 to-purple-950/80 border-b border-violet-500/30 px-4 py-1.5 text-xs flex items-center justify-between text-violet-200 z-50 relative backdrop-blur-md">
+            <div className={`border-b px-4 py-1.5 text-xs flex items-center justify-between z-50 relative backdrop-blur-md transition-colors ${
+                isLight
+                    ? "bg-violet-100/80 border-violet-200 text-violet-900"
+                    : "bg-gradient-to-r from-violet-950/80 via-indigo-950/80 to-purple-950/80 border-violet-500/30 text-violet-200"
+            }`}>
                 <div className="max-w-4xl mx-auto w-full flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                        <span className="px-1.5 py-0.5 rounded bg-violet-500/30 text-violet-200 font-mono font-bold text-[9px] border border-violet-400/40 tracking-wider">
+                        <span className={`px-1.5 py-0.5 rounded font-mono font-bold text-[9px] border tracking-wider ${
+                            isLight
+                                ? "bg-violet-200/80 text-violet-900 border-violet-300"
+                                : "bg-violet-500/30 text-violet-200 border-violet-400/40"
+                        }`}>
                             V2 LIQUID GLASS
                         </span>
-                        <span className="text-[11px] text-violet-100 hidden xs:inline sm:inline">
+                        <span className={`text-[11px] hidden xs:inline sm:inline ${isLight ? "text-violet-800" : "text-violet-100"}`}>
                             Nueva experiencia táctil. Tu versión estable sigue intacta.
                         </span>
                     </div>
                     <button
                         type="button"
                         onClick={onSwitchToStable}
-                        className="text-[10px] font-mono text-violet-300 hover:text-white underline shrink-0 cursor-pointer transition-colors"
+                        className={`text-[10px] font-mono underline shrink-0 cursor-pointer transition-colors ${
+                            isLight ? "text-violet-700 hover:text-violet-950" : "text-violet-300 hover:text-white"
+                        }`}
                     >
                         Volver a v1 Estable
                     </button>
@@ -180,11 +208,15 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
             </div>
 
             {/* Top Minimalist Header */}
-            <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-2xl border-b border-white/[0.08] px-4 py-3">
+            <header className={`sticky top-0 z-40 backdrop-blur-2xl border-b px-4 py-3 transition-colors ${
+                isLight ? "bg-white/80 border-slate-200/80 text-slate-900" : "bg-[#0c0e14]/80 border-white/[0.08] text-white"
+            }`}>
                 <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
                     {/* Brand & Greeting */}
                     <div className="flex items-center gap-2.5">
-                        <div className="relative w-8 h-8 rounded-xl overflow-hidden border border-white/15 bg-zinc-900 shrink-0">
+                        <div className={`relative w-8 h-8 rounded-xl overflow-hidden border shrink-0 ${
+                            isLight ? "border-slate-300 bg-slate-100" : "border-white/15 bg-zinc-900"
+                        }`}>
                             <Image
                                 src="/apex-logo.png"
                                 alt="APEX"
@@ -195,10 +227,14 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                             />
                         </div>
                         <div>
-                            <h1 className="text-sm sm:text-base font-bold tracking-tight text-white uppercase leading-none">
+                            <h1 className={`text-sm sm:text-base font-bold tracking-tight uppercase leading-none ${
+                                isLight ? "text-slate-950" : "text-white"
+                            }`}>
                                 {timeGreeting}, {profile?.firstName}
                             </h1>
-                            <p className="text-[11px] text-zinc-400 mt-0.5 capitalize font-normal">
+                            <p className={`text-[11px] mt-0.5 capitalize font-normal ${
+                                isLight ? "text-slate-500" : "text-zinc-400"
+                            }`}>
                                 {todayFormattedDate}
                             </p>
                         </div>
@@ -364,9 +400,9 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                             completedSets={completedSets}
                                             setInputs={setInputs}
                                             onSetInputChange={handleSetInputChange}
-                                            onCompleteSet={(item, sIdx) => {
+                                            onCompleteSet={(item, sIdx, customW, customR) => {
                                                 const restSecs = item.rest_seconds || (trainingMethodology === "cycled_circuits" ? 45 : 90);
-                                                handleCompleteSet(item.id, sIdx, restSecs);
+                                                handleCompleteSet(item.id, sIdx, restSecs, customW, customR);
                                             }}
                                             tempoActive={Boolean(tempoActive[ex.id])}
                                             onToggleTempo={() => {

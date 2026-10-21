@@ -1,4 +1,3 @@
-// src/components/apex/v2/ApexV2BottomNav.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -15,6 +14,7 @@ import {
     X
 } from "lucide-react";
 import { useSpotifyPlayback } from "@/hooks/useSpotifyPlayback";
+import { getInitialTheme, Theme } from "@/lib/theme";
 
 export type ApexV2Tab = "workout" | "nutrition" | "anatomy" | "settings";
 
@@ -41,10 +41,25 @@ export const ApexV2BottomNav: React.FC<ApexV2BottomNavProps> = ({
     } = useSpotifyPlayback();
 
     const [imageError, setImageError] = useState(false);
+    const [theme, setTheme] = useState<Theme>("dark");
+
+    useEffect(() => {
+        setTheme(getInitialTheme());
+        const handleThemeChange = (e: Event) => {
+            const customEvt = e as CustomEvent<{ theme: Theme }>;
+            if (customEvt.detail?.theme) {
+                setTheme(customEvt.detail.theme);
+            }
+        };
+        window.addEventListener("apex_theme_change", handleThemeChange);
+        return () => window.removeEventListener("apex_theme_change", handleThemeChange);
+    }, []);
 
     useEffect(() => {
         setImageError(false);
     }, [track?.albumArt]);
+
+    const isLight = theme === "light";
 
     const navItems: { id: ApexV2Tab; label: string; icon: React.ElementType }[] = [
         { id: "workout", label: "Entrenar", icon: Dumbbell },
@@ -81,14 +96,22 @@ export const ApexV2BottomNav: React.FC<ApexV2BottomNavProps> = ({
             )}
 
             {/* Cápsula Flotante Única "Liquid Glass" */}
-            <div className="pointer-events-auto w-full backdrop-blur-2xl bg-zinc-950/80 border border-white/10 rounded-full shadow-2xl p-1.5 sm:p-2 flex items-center justify-between gap-1.5 sm:gap-2">
+            <div className={`pointer-events-auto w-full backdrop-blur-2xl rounded-full shadow-2xl p-1.5 sm:p-2 flex items-center justify-between gap-1.5 sm:gap-2 border transition-all ${
+                isLight
+                    ? "bg-white/90 border-slate-200/90 text-slate-900 shadow-slate-900/10"
+                    : "bg-zinc-950/85 border-white/10 text-white shadow-2xl"
+            }`}>
                 
                 {/* Extremo Izquierdo: Mini-Widget de Spotify */}
-                <div className="flex items-center gap-2 pl-1 pr-2 border-r border-white/10 shrink-0 max-w-[125px] sm:max-w-[155px]">
+                <div className={`flex items-center gap-2 pl-1 pr-2 border-r shrink-0 max-w-[125px] sm:max-w-[155px] ${
+                    isLight ? "border-slate-200" : "border-white/10"
+                }`}>
                     <button
                         type="button"
                         onClick={onOpenSpotifyModal}
-                        className="relative w-8 h-8 rounded-full overflow-hidden bg-zinc-900 border border-white/15 flex items-center justify-center shrink-0 group active:scale-95 transition-transform cursor-pointer"
+                        className={`relative w-8 h-8 rounded-full overflow-hidden border flex items-center justify-center shrink-0 group active:scale-95 transition-transform cursor-pointer ${
+                            isLight ? "bg-slate-100 border-slate-300" : "bg-zinc-900 border-white/15"
+                        }`}
                         title={track ? `${track.name} - ${track.artist}` : "Abrir Spotify"}
                     >
                         {track?.albumArt && !imageError ? (
@@ -112,10 +135,10 @@ export const ApexV2BottomNav: React.FC<ApexV2BottomNavProps> = ({
                         onClick={onOpenSpotifyModal}
                         className="cursor-pointer min-w-0 text-left overflow-hidden hidden xs:block sm:block"
                     >
-                        <p className="text-[11px] font-bold text-white truncate leading-tight">
+                        <p className={`text-[11px] font-bold truncate leading-tight ${isLight ? "text-slate-900" : "text-white"}`}>
                             {track ? track.name : "Spotify"}
                         </p>
-                        <p className="text-[9px] text-zinc-400 truncate leading-tight font-mono">
+                        <p className={`text-[9px] truncate leading-tight font-mono ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
                             {track ? track.artist : (connected ? "En pausa" : "Conectar")}
                         </p>
                     </div>
@@ -127,14 +150,18 @@ export const ApexV2BottomNav: React.FC<ApexV2BottomNavProps> = ({
                             e.stopPropagation();
                             togglePlay();
                         }}
-                        className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 active:scale-90 flex items-center justify-center text-white transition-all shrink-0 cursor-pointer"
+                        className={`w-7 h-7 rounded-full active:scale-90 flex items-center justify-center transition-all shrink-0 cursor-pointer ${
+                            isLight
+                                ? "bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-200"
+                                : "bg-white/10 hover:bg-white/20 text-white border border-white/10"
+                        }`}
                         title={isPlaying ? "Pausar música" : "Reproducir música"}
                         aria-label={isPlaying ? "Pausar" : "Reproducir"}
                     >
                         {isPlaying ? (
-                            <Pause className="w-3 h-3 fill-white" />
+                            <Pause className={`w-3 h-3 ${isLight ? "fill-slate-900" : "fill-white"}`} />
                         ) : (
-                            <Play className="w-3 h-3 fill-white ml-0.5" />
+                            <Play className={`w-3 h-3 ml-0.5 ${isLight ? "fill-slate-900" : "fill-white"}`} />
                         )}
                     </button>
                 </div>
@@ -151,7 +178,9 @@ export const ApexV2BottomNav: React.FC<ApexV2BottomNavProps> = ({
                                 type="button"
                                 onClick={() => onTabChange(item.id)}
                                 className={`relative flex flex-col items-center justify-center py-1.5 px-2.5 sm:px-3 rounded-full transition-all cursor-pointer group select-none active:scale-95 ${
-                                    isActive ? "text-white" : "text-zinc-400 hover:text-zinc-200"
+                                    isActive
+                                        ? isLight ? "text-slate-950 font-bold" : "text-white font-bold"
+                                        : isLight ? "text-slate-500 hover:text-slate-900" : "text-zinc-400 hover:text-zinc-200"
                                 }`}
                                 aria-label={item.label}
                             >
@@ -159,11 +188,25 @@ export const ApexV2BottomNav: React.FC<ApexV2BottomNavProps> = ({
                                     <motion.div
                                         layoutId="v2ActiveTabPill"
                                         transition={{ type: "spring", stiffness: 450, damping: 35 }}
-                                        className="absolute inset-0 bg-white/15 border border-white/20 rounded-full shadow-inner"
+                                        className={`absolute inset-0 rounded-full ${
+                                            isLight
+                                                ? "bg-slate-900/10 border border-slate-900/15 shadow-xs"
+                                                : "bg-white/15 border border-white/20 shadow-inner"
+                                        }`}
                                     />
                                 )}
-                                <Icon className={`w-4 h-4 sm:w-4.5 sm:h-4.5 relative z-10 transition-transform ${isActive ? "scale-110 text-white" : "group-hover:scale-105"}`} />
-                                <span className={`text-[9px] sm:text-[10px] font-medium tracking-tight relative z-10 mt-0.5 leading-none ${isActive ? "font-bold text-white" : "text-zinc-400"}`}>
+                                <Icon className={`w-4 h-4 sm:w-4.5 sm:h-4.5 relative z-10 transition-transform ${
+                                    isActive ? "scale-110" : "group-hover:scale-105"
+                                } ${
+                                    isActive
+                                        ? isLight ? "text-slate-950" : "text-white"
+                                        : isLight ? "text-slate-500" : "text-zinc-400"
+                                }`} />
+                                <span className={`text-[9px] sm:text-[10px] tracking-tight relative z-10 mt-0.5 leading-none ${
+                                    isActive
+                                        ? isLight ? "font-bold text-slate-950" : "font-bold text-white"
+                                        : isLight ? "text-slate-500" : "text-zinc-400"
+                                }`}>
                                     {item.label}
                                 </span>
                             </button>
