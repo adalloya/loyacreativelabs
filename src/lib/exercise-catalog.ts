@@ -11,6 +11,7 @@ import {
   getExerciseImageUrl
 } from "@/data/exerciseDatabase";
 import spanishInstructionsData from "@/data/spanish-instructions.json";
+import { translateExerciseNameToSpanish } from "./spanish-exercise-translator";
 import {
   ExerciseItem,
   MuscleGroup,
@@ -69,7 +70,7 @@ export function convertRawToExerciseItem(item: FreeExerciseItem): ExerciseItem {
 
   return {
     id: item.id,
-    name: item.name,
+    name: translateExerciseNameToSpanish(item.name),
     primary_muscle: primaryMuscle as MuscleGroup,
     anatomical_subdivision: item.category
       ? `${item.category.toUpperCase()} • ${item.primaryMuscles?.join(", ") || ""}`

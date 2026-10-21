@@ -102,16 +102,34 @@ CATEGORÍAS DE INTENCIÓN POSIBLES:
    Campos a extraer:
    - targetTab: "workout" | "nutrition" | "anatomy" | "settings"
 
+6. "MUSIC_CONTROL":
+   El usuario pide controlar Spotify, cambiar tempo/BPM, o buscar artistas/canciones.
+   Ejemplos:
+   - "pon música más calmada escoge playlist con bpm bajo" -> action: "play_bpm", bpmCategory: "low", query: "lofi-recovery"
+   - "música calmada" / "bpm bajo" / "música tranquila" -> action: "play_bpm", bpmCategory: "low", query: "lofi-recovery"
+   - "quiero más intensidad sube a otro bpm" -> action: "play_bpm", bpmCategory: "high", query: "gym-phonk"
+   - "más intensidad" / "sube bpm" / "sube a otro bpm" / "música para PR" -> action: "play_bpm", bpmCategory: "high", query: "gym-phonk"
+   - "quiero bad bunny" / "pon bad bunny" / "badbunny" -> action: "search_play", query: "Bad Bunny"
+   - "pon música" / "play" -> action: "play"
+   - "pausa la música" / "pausar" -> action: "pause"
+   - "siguiente canción" / "siguiente" -> action: "next"
+   - "canción anterior" / "anterior" -> action: "previous"
+   Campos a extraer:
+   - action: "play" | "pause" | "next" | "previous" | "play_bpm" | "search_play"
+   - bpmCategory: "low" | "mid" | "high" | null
+   - query: string | null (nombre del artista, canción o playlist)
+
 REGLA DE CONMUTACIÓN DE SECCIONES (CROSS-TAB SWITCHING):
 - Si el usuario actualmente está en la sección de ejercicio/gimnasio ("workout") pero dictó comida/nutrición ("comí 3 huevos"), targetTab DEBE ser "nutrition".
 - Si el usuario está en "nutrition" pero dictó series/peso ("hice 80kg en sentadilla"), targetTab DEBE ser "workout".
 - Si el usuario está en cualquier lugar y pide buscar ejercicios ("busca mancuernas"), targetTab DEBE ser "anatomy".
+- Para "MUSIC_CONTROL", targetTab se mantiene en la sección actual del usuario (no navega innecesariamente).
 
 Devuelve SIEMPRE ÚNICAMENTE JSON con este esquema exacto:
 {
-  "intent": "LOG_WORKOUT" | "LOG_NUTRITION" | "LOG_DIET_PLAN" | "SEARCH_EXERCISE" | "NAVIGATE" | "UNKNOWN",
+  "intent": "LOG_WORKOUT" | "LOG_NUTRITION" | "LOG_DIET_PLAN" | "SEARCH_EXERCISE" | "NAVIGATE" | "MUSIC_CONTROL" | "UNKNOWN",
   "targetTab": "workout" | "nutrition" | "anatomy" | "settings",
-  "summary": "Resumen ultracorto y claro de 4 a 8 palabras para el anuncio (ej: 'Press de banca: 80 kg × 10 reps')",
+  "summary": "Resumen ultracorto y claro de 4 a 8 palabras para el anuncio (ej: 'Press de banca: 80 kg × 10 reps' o 'Spotify: Reproduciendo Bad Bunny')",
   "workout": {
     "exerciseName": string | null,
     "sets": number,
@@ -133,6 +151,11 @@ Devuelve SIEMPRE ÚNICAMENTE JSON con este esquema exacto:
   },
   "search": {
     "query": string
+  },
+  "music": {
+    "action": "play" | "pause" | "next" | "previous" | "play_bpm" | "search_play",
+    "bpmCategory": "low" | "mid" | "high" | null,
+    "query": string | null
   }
 }
 `;

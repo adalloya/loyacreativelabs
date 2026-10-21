@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { ExerciseItem, formatPlatesSummary } from "@/lib/hypertrophy-engine";
 import { ExerciseMotionViewer } from "@/components/apex/ExerciseMotionViewer";
+import { translateExerciseNameToSpanish } from "@/lib/spanish-exercise-translator";
 import { Drawer } from "vaul";
 
 interface ApexV2ExerciseCardProps {
@@ -99,6 +100,7 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
     }, []);
 
     const isLight = isLightProp ?? isLightState;
+    const displayName = translateExerciseNameToSpanish(exercise.name);
 
     // Entrada condensada unificada: Series × Peso × Reps
     const [seriesCount, setSeriesCount] = useState<number>(exercise.default_sets || 3);
@@ -269,7 +271,7 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                                 <h3 className={`text-sm sm:text-base font-bold tracking-tight truncate leading-tight ${
                                     isLight ? "text-slate-950 font-sans" : "text-white"
                                 }`}>
-                                    {exercise.name}
+                                    {displayName}
                                 </h3>
 
                                 <p className={`text-[10px] sm:text-[11px] mt-0.5 truncate leading-tight font-normal ${
@@ -559,7 +561,7 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                         <div className={`flex items-center justify-between pb-3 border-b mb-4 ${isLight ? "border-slate-200" : "border-white/10"}`}>
                             <div>
                                 <h4 className={`text-sm font-bold uppercase tracking-tight ${isLight ? "text-slate-950" : "text-white"}`}>
-                                    {exercise.name}
+                                    {displayName}
                                 </h4>
                                 <p className={`text-xs font-mono ${isLight ? "text-slate-500" : "text-zinc-400"}`}>Herramientas & Opciones</p>
                             </div>

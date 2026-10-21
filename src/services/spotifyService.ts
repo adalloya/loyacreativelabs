@@ -1297,3 +1297,105 @@ export async function spotifyPlayPlaylist(
         };
     }
 }
+
+/**
+ * Reproduce una playlist curada de entrenamiento por su ID (ej. 'lofi-recovery', 'gym-phonk', 'mansion-reggaeton').
+ */
+export async function spotifyPlayCuratedPlaylist(
+    playlistId: string,
+    targetDeviceId?: string
+): Promise<PlayPlaylistResult> {
+    const playlist = CURATED_WORKOUT_PLAYLISTS.find(
+        p => p.id === playlistId || p.name.toLowerCase().includes(playlistId.toLowerCase())
+    );
+    if (!playlist) {
+        return {
+            success: false,
+            error: `Playlist '${playlistId}' no encontrada.`
+        };
+    }
+    return await spotifyPlayPlaylist(playlist.spotifyUri, targetDeviceId);
+}
+
+/**
+ * Busca canciones o artistas en Spotify y los reproduce directamente en el dispositivo activo.
+ * Si no hay reproductor activo o Spotify API no está disponible, realiza fallback abriendo deep link.
+ */
+export async function spotifySearchAndPlay(
+    query: string,
+    targetDeviceId?: string
+): Promise<{ success: boolean; title?: string; error?: string; openedExternally?: boolean }> {
+    const trimmed = (query || "").trim();
+    if (!trimmed) {
+        return { success: false, error: "Consulta de búsqueda vacía." };
+    }
+
+    try {
+        const token = await getValidAccessToken();
+        if (token) {
+            // 1. Consultar Spotify Search API
+            const searchEndpoint = `/search?q=${encodeURIComponent(trimmed)}&type=track,artist,playlist&limit=5`;
+            const res = await spotifyFetch(searchEndpoint);
+            if (res && res.ok) {
+                const data = await res.json();
+                
+                const artistMatch = data.artists?.items?.[0];
+                const trackMatch = data.tracks?.items?.[0];
+                const playlistMatch = data.playlists?.items?.[0];
+
+                if (artistMatch && (trimmed.toLowerCase().includes(artistMatch.name.toLowerCase()) || artistMatch.name.toLowerCase().includes(trimmed.toLowerCase()))) {
+                    if (trackMatch) {
+                        const playRes = await spotifyPlayTrack(trackMatch.uri, targetDeviceId);
+                        if (playRes.success) {
+                            return {
+                                success: true,
+                                title: `${trackMatch.name} - ${trackMatch.artists?.[0]?.name || artistMatch.name}`
+                            };
+                        }
+                    } else if (artistMatch.uri) {
+                        const playRes = await spotifyPlayPlaylist(artistMatch.uri, targetDeviceId);
+                        if (playRes.success) {
+                            return { success: true, title: `Éxitos de ${artistMatch.name}` };
+                        }
+                    }
+                }
+
+                if (trackMatch) {
+                    const playRes = await spotifyPlayTrack(trackMatch.uri, targetDeviceId);
+                    if (playRes.success) {
+                        return {
+                            success: true,
+                            title: `${trackMatch.name} - ${trackMatch.artists?.[0]?.name || "Artista"}`
+                        };
+                    }
+                }
+
+                if (playlistMatch) {
+                    const playRes = await spotifyPlayPlaylist(playlistMatch.uri, targetDeviceId);
+                    if (playRes.success) {
+                        return { success: true, title: playlistMatch.name };
+                    }
+                }
+            }
+        }
+
+        const deepLink = `spotify:search:${encodeURIComponent(trimmed)}`;
+        const webUrl = `https://open.spotify.com/search/${encodeURIComponent(trimmed)}`;
+        openSpotifyDeepLink(deepLink, webUrl);
+        return {
+            success: true,
+            title: trimmed,
+            openedExternally: true
+        };
+    } catch (err: any) {
+        const deepLink = `spotify:search:${encodeURIComponent(trimmed)}`;
+        const webUrl = `https://open.spotify.com/search/${encodeURIComponent(trimmed)}`;
+        openSpotifyDeepLink(deepLink, webUrl);
+        return {
+            success: true,
+            title: trimmed,
+            openedExternally: true
+        };
+    }
+}
+

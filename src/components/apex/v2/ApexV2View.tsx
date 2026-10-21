@@ -19,6 +19,7 @@ import {
     Sliders
 } from "lucide-react";
 import { calculateTodayTarget, ExerciseItem, ReadinessState, EXERCISE_DATABASE } from "@/lib/hypertrophy-engine";
+import { translateExerciseNameToSpanish } from "@/lib/spanish-exercise-translator";
 import { getInitialTheme, Theme } from "@/lib/theme";
 import { ApexV2BottomNav, ApexV2Tab } from "./ApexV2BottomNav";
 import { ApexV2ExerciseCard } from "./ApexV2ExerciseCard";
@@ -34,6 +35,14 @@ import {
     FoodItem,
     getLocalDateString
 } from "@/lib/nutrition-tracker";
+import {
+    spotifyPlay,
+    spotifyPause,
+    spotifyNext,
+    spotifyPrevious,
+    spotifyPlayCuratedPlaylist,
+    spotifySearchAndPlay
+} from "@/services/spotifyService";
 
 interface ApexV2ViewProps {
     profile: any;
@@ -393,6 +402,27 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
             setIsExerciseLibraryOpen(true);
         } else if (action.intent === "NAVIGATE" && action.targetTab) {
             setActiveTab(action.targetTab);
+        } else if (action.intent === "MUSIC_CONTROL" && action.music) {
+            const m = action.music;
+            if (m.action === "play_bpm") {
+                if (m.bpmCategory === "low") {
+                    spotifyPlayCuratedPlaylist("lofi-recovery");
+                } else if (m.bpmCategory === "high") {
+                    spotifyPlayCuratedPlaylist("gym-phonk");
+                } else {
+                    spotifyPlayCuratedPlaylist(m.query || "edm-workout");
+                }
+            } else if (m.action === "search_play" && m.query) {
+                spotifySearchAndPlay(m.query);
+            } else if (m.action === "pause") {
+                spotifyPause();
+            } else if (m.action === "play") {
+                spotifyPlay();
+            } else if (m.action === "next") {
+                spotifyNext();
+            } else if (m.action === "previous") {
+                spotifyPrevious();
+            }
         }
     }, [
         activeTab,
@@ -411,6 +441,8 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
     const {
         isListening: isVoiceListening,
         isProcessing: isVoiceProcessing,
+        transcript: voiceTranscript,
+        interimTranscript: voiceInterimTranscript,
         toastMessage: voiceToastMessage,
         showPromoTooltip: showVoicePromoTooltip,
         setShowPromoTooltip: setShowVoicePromoTooltip,
@@ -736,7 +768,7 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                                         ? "bg-white/80 hover:bg-white border-slate-200/90 shadow-xs hover:shadow-sm"
                                                         : "bg-zinc-950/45 hover:bg-white/[0.06] border-white/[0.08] hover:border-white/20 backdrop-blur-xl"
                                                 }`}
-                                                title={`Toca para abrir ${ex.name} en grande`}
+                                                title={`Toca para abrir ${translateExerciseNameToSpanish(ex.name)} en grande`}
                                             >
                                                 {/* Izquierda: Número + Nombre + Músculo */}
                                                 <div className="flex items-center gap-2.5 min-w-0">
@@ -754,7 +786,7 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                                                 ? (isLight ? "text-slate-400 line-through" : "text-zinc-500 line-through")
                                                                 : (isLight ? "text-slate-900 group-hover:text-emerald-700" : "text-white group-hover:text-emerald-400")
                                                         }`}>
-                                                            {ex.name}
+                                                            {translateExerciseNameToSpanish(ex.name)}
                                                         </h4>
                                                         <p className={`text-[10px] truncate leading-tight ${
                                                             isLight ? "text-slate-500" : "text-zinc-400"
@@ -892,6 +924,8 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                 onSkipRest={handleSkipRest}
                 isVoiceListening={isVoiceListening}
                 isVoiceProcessing={isVoiceProcessing}
+                voiceLiveTranscript={voiceTranscript}
+                voiceInterimTranscript={voiceInterimTranscript}
                 onVoicePointerDown={handleVoicePointerDown}
                 onVoicePointerUp={handleVoicePointerUp}
                 onVoicePointerCancel={handleVoicePointerCancel}

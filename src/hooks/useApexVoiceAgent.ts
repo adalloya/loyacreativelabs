@@ -24,12 +24,17 @@ export interface VoiceAgentNutritionResult {
 }
 
 export interface VoiceAgentActionResult {
-    intent: "LOG_WORKOUT" | "LOG_NUTRITION" | "LOG_DIET_PLAN" | "SEARCH_EXERCISE" | "NAVIGATE" | "UNKNOWN";
+    intent: "LOG_WORKOUT" | "LOG_NUTRITION" | "LOG_DIET_PLAN" | "SEARCH_EXERCISE" | "NAVIGATE" | "MUSIC_CONTROL" | "UNKNOWN";
     targetTab?: ApexV2Tab;
     summary: string;
     workout?: VoiceAgentWorkoutResult;
     nutrition?: VoiceAgentNutritionResult;
     search?: { query: string };
+    music?: {
+        action: "play" | "pause" | "next" | "previous" | "play_bpm" | "search_play";
+        bpmCategory?: "low" | "mid" | "high" | null;
+        query?: string | null;
+    };
     rawTranscript: string;
 }
 
@@ -115,6 +120,124 @@ export function useApexVoiceAgent({
             return;
         }
 
+        // --- Fast-path local: Música y Control de Spotify ---
+        // 1. Bad Bunny / Artistas populares
+        if (lower.includes("bad bunny") || lower.includes("badbunny")) {
+            const action: VoiceAgentActionResult = {
+                intent: "MUSIC_CONTROL",
+                targetTab: currentTabRef.current,
+                summary: "Spotify: Reproduciendo Bad Bunny",
+                music: {
+                    action: "search_play",
+                    query: "Bad Bunny"
+                },
+                rawTranscript: clean
+            };
+            onActionResultRef.current(action);
+            showToast("✓ Spotify: Reproduciendo Bad Bunny");
+            setIsProcessing(false);
+            return;
+        }
+
+        // 2. Música más calmada / BPM bajo / Lofi recovery
+        if (
+            lower.includes("calmada") ||
+            lower.includes("tranquila") ||
+            lower.includes("bpm bajo") ||
+            lower.includes("baja intensidad") ||
+            lower.includes("relajante") ||
+            lower.includes("recuperacion") ||
+            lower.includes("recuperación")
+        ) {
+            const action: VoiceAgentActionResult = {
+                intent: "MUSIC_CONTROL",
+                targetTab: currentTabRef.current,
+                summary: "Spotify: Playlist calmada (80-90 BPM)",
+                music: {
+                    action: "play_bpm",
+                    bpmCategory: "low",
+                    query: "lofi-recovery"
+                },
+                rawTranscript: clean
+            };
+            onActionResultRef.current(action);
+            showToast("✓ Spotify: Playlist calmada activada (80-90 BPM)");
+            setIsProcessing(false);
+            return;
+        }
+
+        // 3. Más intensidad / Sube BPM / Phonk / Hard Techno
+        if (
+            lower.includes("más intensidad") ||
+            lower.includes("mas intensidad") ||
+            lower.includes("sube bpm") ||
+            lower.includes("sube a otro bpm") ||
+            lower.includes("aumenta bpm") ||
+            lower.includes("bpm alto") ||
+            lower.includes("sube la intensidad") ||
+            lower.includes("phonk") ||
+            lower.includes("hard techno")
+        ) {
+            const action: VoiceAgentActionResult = {
+                intent: "MUSIC_CONTROL",
+                targetTab: currentTabRef.current,
+                summary: "Spotify: Máxima intensidad (140-160 BPM)",
+                music: {
+                    action: "play_bpm",
+                    bpmCategory: "high",
+                    query: "gym-phonk"
+                },
+                rawTranscript: clean
+            };
+            onActionResultRef.current(action);
+            showToast("✓ Spotify: Modo Máxima Intensidad activado (140-160 BPM)");
+            setIsProcessing(false);
+            return;
+        }
+
+        // 4. Pausa / Play directo
+        if (lower === "pausa" || lower === "pausar" || lower.includes("pausa la música") || lower.includes("pausar música")) {
+            const action: VoiceAgentActionResult = {
+                intent: "MUSIC_CONTROL",
+                targetTab: currentTabRef.current,
+                summary: "Spotify: Música pausada",
+                music: { action: "pause" },
+                rawTranscript: clean
+            };
+            onActionResultRef.current(action);
+            showToast("✓ Spotify: Pausa");
+            setIsProcessing(false);
+            return;
+        }
+
+        if (lower === "play" || lower === "reproducir" || lower.includes("pon música") || lower.includes("reanuda la música")) {
+            const action: VoiceAgentActionResult = {
+                intent: "MUSIC_CONTROL",
+                targetTab: currentTabRef.current,
+                summary: "Spotify: Reproduciendo",
+                music: { action: "play" },
+                rawTranscript: clean
+            };
+            onActionResultRef.current(action);
+            showToast("✓ Spotify: Reproduciendo");
+            setIsProcessing(false);
+            return;
+        }
+
+        if (lower.includes("siguiente canción") || lower.includes("siguiente pista") || lower === "siguiente") {
+            const action: VoiceAgentActionResult = {
+                intent: "MUSIC_CONTROL",
+                targetTab: currentTabRef.current,
+                summary: "Spotify: Siguiente pista",
+                music: { action: "next" },
+                rawTranscript: clean
+            };
+            onActionResultRef.current(action);
+            showToast("✓ Spotify: Siguiente pista");
+            setIsProcessing(false);
+            return;
+        }
+
         try {
             const res = await fetch("/api/apex/voice-agent", {
                 method: "POST",
@@ -138,6 +261,7 @@ export function useApexVoiceAgent({
                 workout: data.workout,
                 nutrition: data.nutrition,
                 search: data.search,
+                music: data.music,
                 rawTranscript: clean
             };
 

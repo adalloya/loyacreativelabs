@@ -61,6 +61,7 @@ import {
     getActiveExerciseCatalog,
     purgeOutdatedExerciseCache
 } from "@/lib/exercise-catalog";
+import { translateExerciseNameToSpanish } from "@/lib/spanish-exercise-translator";
 
 import {
     BiometricProfile,
@@ -332,7 +333,13 @@ export default function ApexDashboard() {
     // Weekly Routine & Current Day
     const weeklyProgram = useMemo(() => {
         if (customWeeklyRoutine && customWeeklyRoutine.length > 0) {
-            return customWeeklyRoutine;
+            return customWeeklyRoutine.map(day => ({
+                ...day,
+                exercises: (day.exercises || []).map(ex => ({
+                    ...ex,
+                    name: translateExerciseNameToSpanish(ex.name)
+                }))
+            }));
         }
         return generateWeeklyProgram(
             profile?.trainingDaysPerWeek || 5,
@@ -445,7 +452,11 @@ export default function ApexDashboard() {
     }, [currentRoutine]);
 
     const handleAddExerciseToSession = (exercise: ExerciseItem) => {
-        setActiveExercises(prev => [...prev, exercise]);
+        const translated: ExerciseItem = {
+            ...exercise,
+            name: translateExerciseNameToSpanish(exercise.name)
+        };
+        setActiveExercises(prev => [...prev, translated]);
     };
 
     // Completed sets tracker: { [exerciseId_setIndex]: boolean }

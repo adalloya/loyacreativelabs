@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
     Dumbbell,
     Utensils,
@@ -40,6 +40,8 @@ interface ApexV2BottomNavProps {
     showPromoTooltip?: boolean;
     onDismissPromoTooltip?: () => void;
     toastMessage?: string | null;
+    voiceLiveTranscript?: string;
+    voiceInterimTranscript?: string;
 }
 
 export const ApexV2BottomNav: React.FC<ApexV2BottomNavProps> = ({
@@ -57,7 +59,9 @@ export const ApexV2BottomNav: React.FC<ApexV2BottomNavProps> = ({
     contextualTooltipText,
     showPromoTooltip = false,
     onDismissPromoTooltip,
-    toastMessage
+    toastMessage,
+    voiceLiveTranscript = "",
+    voiceInterimTranscript = ""
 }) => {
     const {
         connected,
@@ -136,6 +140,84 @@ export const ApexV2BottomNav: React.FC<ApexV2BottomNavProps> = ({
                     )}
                 </motion.div>
             )}
+
+            {/* Ventana Ampliada de Detección de Audio en Vivo (Push-to-Talk) */}
+            <AnimatePresence>
+                {isVoiceListening && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 18, scale: 0.94 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 12, scale: 0.94 }}
+                        transition={{ type: "spring", stiffness: 420, damping: 28 }}
+                        className={`pointer-events-auto mb-3 mx-auto w-full max-w-lg rounded-3xl p-4 sm:p-5 border-2 shadow-2xl backdrop-blur-2xl select-none transition-all ${
+                            isLight
+                                ? "bg-white/95 border-rose-500/70 text-slate-900 shadow-[0_20px_50px_rgba(244,63,94,0.22)]"
+                                : "bg-zinc-950/95 border-rose-500/80 text-white shadow-[0_25px_60px_rgba(244,63,94,0.35)]"
+                        }`}
+                    >
+                        {/* Cabecera: Indicador de Grabación + Ondas Sonoras Ecualizadoras */}
+                        <div className="flex items-center justify-between pb-2 border-b border-black/10 dark:border-white/10">
+                            <div className="flex items-center gap-2">
+                                <span className="relative flex h-3 w-3">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-600"></span>
+                                </span>
+                                <span className="text-[11px] font-mono font-bold tracking-wider text-rose-500 uppercase">
+                                    Escuchando en vivo...
+                                </span>
+                            </div>
+
+                            {/* Ondas Sonoras Dinámicas */}
+                            <div className="flex items-center gap-1 h-5">
+                                {[50, 90, 60, 100, 75, 40].map((h, i) => (
+                                    <span
+                                        key={i}
+                                        className="w-1 bg-gradient-to-t from-rose-600 to-rose-400 rounded-full animate-pulse"
+                                        style={{
+                                            height: `${10 + (h * 0.12)}px`,
+                                            animationDuration: `${0.45 + (i * 0.12)}s`,
+                                            animationDelay: `${i * 0.07}s`
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Área de Transcripción Ampliada en Tiempo Real */}
+                        <div className="my-3 min-h-[64px] max-h-[140px] overflow-y-auto px-3.5 py-3 rounded-2xl bg-black/[0.04] dark:bg-white/[0.05] border border-black/10 dark:border-white/10 flex items-center">
+                            {(voiceLiveTranscript || voiceInterimTranscript) ? (
+                                <p className={`text-base sm:text-lg font-semibold leading-relaxed tracking-tight ${
+                                    isLight ? "text-slate-900" : "text-white"
+                                }`}>
+                                    {voiceLiveTranscript && <span>{voiceLiveTranscript} </span>}
+                                    {voiceInterimTranscript && (
+                                        <span className="text-rose-500 underline decoration-rose-500/50 underline-offset-4">
+                                            {voiceInterimTranscript}
+                                        </span>
+                                    )}
+                                    <span className="inline-block w-2 h-4.5 ml-1 bg-rose-500 animate-pulse rounded-full align-middle" />
+                                </p>
+                            ) : (
+                                <p className={`text-sm sm:text-base font-medium italic ${
+                                    isLight ? "text-slate-400" : "text-zinc-500"
+                                }`}>
+                                    Habla con naturalidad... dicta tu ejercicio, repeticiones, comida o pide música en Spotify.
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Pie de Ayuda y Confirmación */}
+                        <div className="flex items-center justify-between text-[11px] font-medium pt-0.5">
+                            <span className="flex items-center gap-1.5 text-rose-500 font-semibold">
+                                <span>🗣️</span> Puedes corregir o repetir en el mismo audio
+                            </span>
+                            <span className={isLight ? "text-slate-600 font-medium" : "text-zinc-400 font-medium"}>
+                                Suelta el botón para enviar
+                            </span>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Bandeja de Vidrio Flotante "Liquid Glass Tray" */}
             <div className={`pointer-events-auto w-full relative overflow-visible backdrop-blur-3xl rounded-full p-1.5 sm:p-2 flex items-center transition-all duration-300 ${
@@ -272,8 +354,8 @@ export const ApexV2BottomNav: React.FC<ApexV2BottomNavProps> = ({
 
                     {/* 2. Centro Absoluto: Botón Circular Micrófono AI con Hold-to-Talk y Tooltip Dinámico */}
                     <div className="relative shrink-0 flex items-center justify-center mx-1">
-                        {/* Tooltip Contextual Dinámico (Promocional o en vivo mientras escucha/procesa) */}
-                        {(showPromoTooltip || isVoiceListening || isVoiceProcessing) && contextualTooltipText && (
+                        {/* Tooltip Contextual Dinámico (Promocional o mientras procesa) */}
+                        {!isVoiceListening && (showPromoTooltip || isVoiceProcessing) && contextualTooltipText && (
                             <motion.div
                                 initial={{ opacity: 0, y: 8, scale: 0.92 }}
                                 animate={{ opacity: 1, y: 0, scale: 1 }}

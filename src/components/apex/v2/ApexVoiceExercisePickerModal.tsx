@@ -4,6 +4,7 @@
 import React from "react";
 import { X, Dumbbell, Plus, Check, Sparkles } from "lucide-react";
 import { ExerciseItem } from "@/lib/hypertrophy-engine";
+import { translateExerciseNameToSpanish } from "@/lib/spanish-exercise-translator";
 import { MUSCLE_PALETTE } from "@/components/apex/AnatomyVisualizer";
 import { getExerciseImageUrl } from "@/data/exerciseDatabase";
 
@@ -102,7 +103,7 @@ export const ApexVoiceExercisePickerModal: React.FC<ApexVoiceExercisePickerModal
 
                                         <div className="min-w-0">
                                             <p className={`text-xs font-bold truncate ${isLight ? "text-slate-900" : "text-white"}`}>
-                                                {ex.name}
+                                                {translateExerciseNameToSpanish(ex.name)}
                                             </p>
                                             <div className="flex items-center gap-1.5 mt-0.5">
                                                 <span
