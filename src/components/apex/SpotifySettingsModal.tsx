@@ -311,6 +311,7 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                     ) : (
                         <div className="space-y-6">
                             {/* REPRODUCTOR EXPANDIDO CON PORTADA GRANDE */}
+                            {/* REPRODUCTOR EXPANDIDO CON PORTADA GRANDE */}
                             {track ? (
                                 <div className="relative bg-gradient-to-b from-white/[0.06] to-black/60 border border-white/10 rounded-3xl p-5 sm:p-6 shadow-2xl overflow-hidden">
                                     {/* Ambient Glow matching album art */}
@@ -333,12 +334,16 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                                                     <Music size={48} />
                                                 </div>
                                             )}
-                                            {isPlaying && (
+                                            {isPlaying ? (
                                                 <div className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/20 text-[9px] font-mono text-[#10B981] flex items-center gap-1">
                                                     <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-ping" />
                                                     <span>LIVE</span>
                                                 </div>
-                                            )}
+                                            ) : track.isRecentlyPlayed ? (
+                                                <div className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-amber-400/30 text-[9px] font-mono text-amber-400 flex items-center gap-1">
+                                                    <span>REPOSO</span>
+                                                </div>
+                                            ) : null}
                                         </div>
 
                                         {/* Song Title & Artist */}
@@ -350,19 +355,40 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                                         </p>
 
                                         {/* Badges de Telemetría (BPM y Dispositivo) */}
-                                        <div className="flex items-center justify-center gap-2 mt-2">
+                                        <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
                                             {bpm > 0 && (
                                                 <span className="text-[10px] font-mono font-bold text-[#10B981] bg-[#10B981]/15 px-2.5 py-0.5 rounded-full border border-[#10B981]/30">
                                                     ⚡️ {Math.round(bpm)} BPM
                                                 </span>
                                             )}
-                                            {track.deviceName && (
+                                            {track.deviceName ? (
                                                 <span className="text-[10px] font-mono text-zinc-300 bg-white/[0.08] px-2 py-0.5 rounded-full border border-white/10 flex items-center gap-1">
                                                     <Speaker size={10} className="text-[#1DB954]" />
                                                     <span className="truncate max-w-[120px]">{track.deviceName}</span>
                                                 </span>
+                                            ) : (
+                                                <span className="text-[10px] font-mono text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
+                                                    Esperando Audio en Dispositivo
+                                                </span>
+                                            )}
+                                            {track.isRecentlyPlayed && (
+                                                <span className="text-[10px] font-mono text-zinc-400 bg-white/[0.05] px-2 py-0.5 rounded-full border border-white/10">
+                                                    Última Pista
+                                                </span>
                                             )}
                                         </div>
+
+                                        {/* Botón directo de despertar en la App para iPhone / Dispositivos en reposo */}
+                                        {!isPlaying && (
+                                            <button
+                                                type="button"
+                                                onClick={() => openSpotifyDeepLink(track.uri || "spotify:")}
+                                                className="mt-3 px-3.5 py-1.5 bg-[#1DB954] hover:bg-[#1ed760] text-black font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-lg active:scale-95 transition-all"
+                                            >
+                                                <Play size={12} fill="currentColor" />
+                                                <span>Abrir en App de Spotify</span>
+                                            </button>
+                                        )}
 
                                         {/* Scrubber Progress Bar */}
                                         <div className="w-full mt-4 space-y-1">
@@ -445,12 +471,26 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                                     </div>
                                 </div>
                             ) : (
-                                <div className="p-6 text-center bg-black/40 border border-white/[0.08] rounded-3xl">
-                                    <Music size={32} className="mx-auto text-zinc-500 mb-2" />
-                                    <h4 className="text-sm font-bold text-white">Spotify Conectado</h4>
-                                    <p className="text-xs text-zinc-400 mt-1">
-                                        Abre Spotify o elige una playlist a continuación para comenzar.
-                                    </p>
+                                <div className="p-6 text-center bg-gradient-to-b from-white/[0.04] to-black/50 border border-white/10 rounded-3xl space-y-4 shadow-xl">
+                                    <div className="w-16 h-16 mx-auto rounded-2xl bg-[#1DB954]/20 border border-[#1DB954]/40 flex items-center justify-center text-[#1DB954]">
+                                        <Music size={32} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-base font-bold text-white">Spotify Conectado</h4>
+                                        <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
+                                            Tu cuenta está vinculada. En iPhone (iOS), abre tu app de Spotify y dale Play a cualquier canción o elige una playlist abajo.
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center justify-center gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => openSpotifyDeepLink("spotify:")}
+                                            className="px-4 py-2 bg-[#1DB954] hover:bg-[#1ed760] text-black font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-lg active:scale-95 transition-all"
+                                        >
+                                            <Play size={14} fill="currentColor" />
+                                            <span>Abrir App de Spotify</span>
+                                        </button>
+                                    </div>
                                 </div>
                             )}
 
@@ -599,15 +639,21 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                                         })}
                                     </div>
                                 ) : (
-                                    <div className="p-3 rounded-xl bg-black/40 border border-white/[0.06] text-[11px] text-zinc-400 flex items-center justify-between gap-2">
-                                        <span>No se detectaron dispositivos abiertos.</span>
-                                        <button
-                                            type="button"
-                                            onClick={() => window.open("https://open.spotify.com", "_blank")}
-                                            className="text-xs text-[#1DB954] hover:underline font-mono"
-                                        >
-                                            Abrir Web Player
-                                        </button>
+                                    <div className="p-3.5 rounded-2xl bg-black/40 border border-white/[0.08] text-xs text-zinc-400 space-y-2.5">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="font-medium text-white text-xs">Sin dispositivo activo detectado</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => openSpotifyDeepLink("spotify:")}
+                                                className="px-3 py-1.5 bg-[#1DB954] hover:bg-[#1ed760] text-black font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md active:scale-95 transition-all shrink-0"
+                                            >
+                                                <Smartphone size={13} />
+                                                <span>Despertar Spotify</span>
+                                            </button>
+                                        </div>
+                                        <p className="text-[11px] text-zinc-500 leading-relaxed">
+                                            En iPhone (Safari / Chrome), iOS suspende Spotify en segundo plano. Abre tu app de Spotify y dale Play a cualquier canción para que aparezca aquí tu iPhone.
+                                        </p>
                                     </div>
                                 )}
                             </div>

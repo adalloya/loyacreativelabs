@@ -90,15 +90,15 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
             isFxActive
                 ? "shadow-2xl"
                 : "border-white/[0.12] shadow-2xl"
-        } px-3 sm:px-6 py-2.5`}
+        } px-3 sm:px-6 pt-2 pb-[max(0.625rem,env(safe-area-inset-bottom))]`}
         style={{
             borderColor: isFxActive ? `rgba(${accentRgb}, 0.35)` : undefined,
             boxShadow: isFxActive ? `0 -10px 30px -10px rgba(${accentRgb}, 0.2)` : undefined
         }}>
-            <div className="relative z-10 max-w-7xl mx-auto flex items-center justify-between gap-3 sm:gap-6 text-xs">
+            <div className="relative z-10 max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-6 text-xs">
 
                 {/* ZONE 1 (LEFT): Track Info & Album Art */}
-                <div className="flex items-center gap-3 min-w-0 flex-1 max-w-[45%] sm:max-w-[28%]">
+                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1 max-w-[42%] sm:max-w-[28%]">
                     {!connected ? (
                         <button
                             onClick={() => initiateSpotifyLogin()}
@@ -110,16 +110,16 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                             </div>
                             <div className="min-w-0">
                                 <span className="text-xs sm:text-sm font-bold text-white tracking-tight group-hover:text-[#1DB954] transition-colors truncate block">
-                                    Conectar con Spotify
+                                    Conectar Spotify
                                 </span>
                                 <span className="text-[10px] text-zinc-400 font-mono tracking-wider truncate block">
-                                    Sincronizar Ritmo // BPM
+                                    Sincronizar BPM
                                 </span>
                             </div>
                         </button>
                     ) : track ? (
                         <div
-                            className="flex items-center gap-2.5 min-w-0 group cursor-pointer flex-1"
+                            className="flex items-center gap-2 sm:gap-2.5 min-w-0 group cursor-pointer flex-1"
                             onClick={onOpenSettings}
                             title="Haz clic para ver portada grande, controles y cola de reproducción"
                         >
@@ -136,9 +136,11 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                                         <Music size={18} />
                                     </div>
                                 )}
-                                {isPlaying && (
+                                {isPlaying ? (
                                     <div className="absolute bottom-1 right-1 w-2 h-2 rounded-full bg-[#1DB954] border border-black animate-pulse" />
-                                )}
+                                ) : track.isRecentlyPlayed ? (
+                                    <div className="absolute bottom-1 right-1 w-2 h-2 rounded-full bg-amber-400 border border-black" title="En reposo" />
+                                ) : null}
                             </div>
 
                             {/* Song Title (With Horizontal Marquee if Long) & Artist */}
@@ -165,13 +167,13 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                                         {track.artist}
                                     </span>
                                     {track.deviceName && (
-                                        <span className="text-[9px] font-mono text-[#10B981] flex items-center gap-0.5 shrink-0 bg-[#10B981]/10 px-1 rounded border border-[#10B981]/20">
+                                        <span className="text-[9px] font-mono text-[#10B981] hidden xs:flex items-center gap-0.5 shrink-0 bg-[#10B981]/10 px-1 rounded border border-[#10B981]/20">
                                             <Speaker size={8} />
-                                            <span className="truncate max-w-[80px]">{track.deviceName}</span>
+                                            <span className="truncate max-w-[70px]">{track.deviceName}</span>
                                         </span>
                                     )}
                                     {bpm > 0 && (
-                                        <span className="text-[9px] font-mono text-zinc-300 flex items-center gap-0.5 shrink-0 bg-white/[0.08] px-1 rounded border border-white/10" title="BPM en tiempo real">
+                                        <span className="text-[9px] font-mono text-zinc-300 hidden sm:flex items-center gap-0.5 shrink-0 bg-white/[0.08] px-1 rounded border border-white/10" title="BPM en tiempo real">
                                             {Math.round(bpm)} BPM
                                         </span>
                                     )}
@@ -181,8 +183,8 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                     ) : (
                         <div
                             onClick={onOpenSettings}
-                            className="flex items-center gap-2.5 cursor-pointer text-left min-w-0"
-                            title="Spotify conectado sin sesión activa"
+                            className="flex items-center gap-2 cursor-pointer text-left min-w-0"
+                            title="Spotify conectado sin sesión activa. Toca para abrir"
                         >
                             <div className="w-8 h-8 rounded-full bg-[#1DB954]/20 border border-[#1DB954]/40 flex items-center justify-center text-[#1DB954] shrink-0">
                                 <Music size={16} />
@@ -191,8 +193,8 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                                 <span className="text-xs font-semibold text-white truncate block">
                                     Spotify Conectado
                                 </span>
-                                <span className="text-[10px] text-zinc-400 font-mono truncate block">
-                                    Abre Spotify en tu dispositivo
+                                <span className="text-[10px] text-[#1DB954] font-mono truncate block">
+                                    Tocar para reproducir
                                 </span>
                             </div>
                         </div>
@@ -200,14 +202,14 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                 </div>
 
                 {/* ZONE 2 (CENTER): Controls & Scrubber */}
-                <div className="flex flex-col items-center flex-1 max-w-xl px-2">
+                <div className="flex flex-col items-center flex-1 max-w-xl px-1 sm:px-2">
                     {/* Controls Row */}
                     <div className="flex items-center gap-2 sm:gap-4">
-                        {/* Shuffle */}
+                        {/* Shuffle (Visible on sm screens and up to prevent squishing on iPhone) */}
                         <button
                             onClick={toggleShuffle}
                             disabled={!connected || !track}
-                            className={`p-1.5 rounded-full transition-all disabled:opacity-20 ${
+                            className={`p-1.5 rounded-full transition-all disabled:opacity-20 hidden sm:inline-flex ${
                                 track?.shuffleState
                                     ? "text-[#1DB954] hover:text-[#1ed760]"
                                     : "text-zinc-400 hover:text-white"
@@ -254,11 +256,11 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                             <SkipForward size={17} />
                         </button>
 
-                        {/* Repeat */}
+                        {/* Repeat (Visible on sm screens and up to prevent squishing on iPhone) */}
                         <button
                             onClick={toggleRepeat}
                             disabled={!connected || !track}
-                            className={`p-1.5 rounded-full transition-all disabled:opacity-20 ${
+                            className={`p-1.5 rounded-full transition-all disabled:opacity-20 hidden sm:inline-flex ${
                                 track?.repeatState && track.repeatState !== "off"
                                     ? "text-[#1DB954] hover:text-[#1ed760]"
                                     : "text-zinc-400 hover:text-white"

@@ -16,6 +16,8 @@ import {
     spotifySetRepeat,
     spotifySetVolume,
     spotifyPlayTrack,
+    openSpotifyDeepLink,
+    isIOSDevice,
     SpotifyTrack,
     SpotifyQueueItem,
     AudioFeatures
@@ -158,7 +160,7 @@ export function useSpotifyPlayback() {
         };
     }, [isSeeking]);
 
-    // Polling activo cada 2.5s
+    // Polling activo cada 2.5s y reactivación instantánea al cambiar de pestaña / volver de la app de Spotify
     useEffect(() => {
         updatePlayback();
         loadQueue();
@@ -167,8 +169,28 @@ export function useSpotifyPlayback() {
             updatePlayback();
         }, 2500);
 
+        const handleVisibilityOrFocus = () => {
+            if (typeof document !== "undefined" && document.visibilityState === "visible") {
+                updatePlayback();
+                loadQueue();
+            }
+        };
+
+        if (typeof document !== "undefined") {
+            document.addEventListener("visibilitychange", handleVisibilityOrFocus);
+        }
+        if (typeof window !== "undefined") {
+            window.addEventListener("focus", handleVisibilityOrFocus);
+        }
+
         return () => {
             if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+            if (typeof document !== "undefined") {
+                document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
+            }
+            if (typeof window !== "undefined") {
+                window.removeEventListener("focus", handleVisibilityOrFocus);
+            }
         };
     }, [updatePlayback, loadQueue]);
 
@@ -198,11 +220,15 @@ export function useSpotifyPlayback() {
         setIsPlaying(next);
         broadcastState({ isPlaying: next });
         if (next) {
-            await spotifyPlay(track?.deviceId);
+            const played = await spotifyPlay(track?.deviceId, track?.uri);
+            if (!played) {
+                // Fallback directo para iOS si no hay sesión Web API activa
+                openSpotifyDeepLink(track?.uri || "spotify:");
+            }
         } else {
             await spotifyPause(track?.deviceId);
         }
-        setTimeout(updatePlayback, 400);
+        setTimeout(updatePlayback, 500);
     };
 
     const nextTrack = async () => {

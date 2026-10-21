@@ -201,6 +201,15 @@ export default function ApexDashboard() {
                 setIsSpotifyLinked(true);
             }
         });
+
+        const handleSpotifyConn = () => {
+            setIsSpotifyLinked(true);
+        };
+
+        window.addEventListener("apex:spotify-connected", handleSpotifyConn);
+        return () => {
+            window.removeEventListener("apex:spotify-connected", handleSpotifyConn);
+        };
     }, []);
 
     // Hot-Swap: VBT Velocity Modal State
