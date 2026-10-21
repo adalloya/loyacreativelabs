@@ -67,7 +67,8 @@ import {
     calculateMetabolism,
     calculateSupplementStack,
     generateWeeklyGroceryList,
-    MEASUREMENT_PROTOCOL
+    MEASUREMENT_PROTOCOL,
+    SupplementDose
 } from "@/lib/nutrition-logistics";
 
 import { useGymHardware } from "@/hooks/useGymHardware";
@@ -310,7 +311,8 @@ export default function ApexDashboard() {
 
     // Calculated Metabolism
     const macros = useMemo(() => calculateMetabolism(bio), [bio]);
-    const supplements = useMemo(() => calculateSupplementStack(bio.weightKg), [bio.weightKg]);
+    const defaultSupplements = useMemo(() => calculateSupplementStack(bio.weightKg), [bio.weightKg]);
+    const [supplements, setSupplements] = useLocalStorage<SupplementDose[]>("apex_user_supplements_list", defaultSupplements);
     const groceryList = useMemo(() => generateWeeklyGroceryList(bio.weightKg), [bio.weightKg]);
 
     // Metodología de Entrenamiento: "traditional" (Hipertrofia Lineal) vs "cycled_circuits" (Ciclado & Circuitos Metabólicos)
@@ -827,6 +829,7 @@ export default function ApexDashboard() {
                     pdfDiet={pdfDiet}
                     macros={macros}
                     supplements={supplements}
+                    setSupplements={setSupplements}
                     allNutritionLogs={allNutritionLogs}
                     handleSaveNutritionLog={handleSaveNutritionLog}
                     activeNutritionDate={activeNutritionDate}

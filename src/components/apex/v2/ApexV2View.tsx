@@ -72,6 +72,7 @@ interface ApexV2ViewProps {
     pdfDiet: any;
     macros: any;
     supplements: any[];
+    setSupplements?: (sups: any[]) => void;
     allNutritionLogs: any;
     handleSaveNutritionLog: (date: string, log: any) => void;
     activeNutritionDate: string;
@@ -136,6 +137,7 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
     pdfDiet,
     macros,
     supplements,
+    setSupplements,
     allNutritionLogs,
     handleSaveNutritionLog,
     activeNutritionDate,
@@ -536,6 +538,7 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                 targetCarbsG={macros.carbsG}
                                 targetFatsG={macros.fatsG}
                                 supplements={supplements}
+                                onUpdateSupplements={setSupplements}
                                 allNutritionLogs={allNutritionLogs}
                                 onSaveNutritionLog={handleSaveNutritionLog}
                                 activeDate={activeNutritionDate}

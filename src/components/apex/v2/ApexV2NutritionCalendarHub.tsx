@@ -42,6 +42,7 @@ interface ApexV2NutritionCalendarHubProps {
     targetCarbsG?: number;
     targetFatsG?: number;
     supplements: SupplementDose[];
+    onUpdateSupplements?: (sups: SupplementDose[]) => void;
     allNutritionLogs: Record<string, DailyNutritionLog>;
     onSaveNutritionLog: (date: string, log: DailyNutritionLog) => void;
     activeDate: string;
@@ -58,6 +59,7 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
     targetCarbsG = 250,
     targetFatsG = 65,
     supplements,
+    onUpdateSupplements,
     allNutritionLogs,
     onSaveNutritionLog,
     activeDate,
@@ -217,20 +219,67 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
         onSaveNutritionLog(activeDate, updated);
     };
 
-    // Generate 7-day carousel days centered on activeDate
-    const carouselDays = useMemo(() => {
+    // Form state for adding custom supplement or medication
+    const [isAddingSupplement, setIsAddingSupplement] = useState(false);
+    const [newSupName, setNewSupName] = useState("");
+    const [newSupDosage, setNewSupDosage] = useState("");
+    const [newSupTiming, setNewSupTiming] = useState("");
+
+    const handleSaveNewSupplement = () => {
+        if (!newSupName.trim()) return;
+        const newSup: SupplementDose = {
+            name: newSupName.trim(),
+            dosage: newSupDosage.trim() || "1 dosis",
+            timing: newSupTiming.trim() || "Diario",
+            clinicalReason: "Personalizado"
+        };
+        const updated = [...supplements, newSup];
+        if (onUpdateSupplements) {
+            onUpdateSupplements(updated);
+        }
+        setNewSupName("");
+        setNewSupDosage("");
+        setNewSupTiming("");
+        setIsAddingSupplement(false);
+    };
+
+    const handleDeleteSupplement = (e: React.MouseEvent, supName: string) => {
+        e.stopPropagation();
+        if (onUpdateSupplements) {
+            const updated = supplements.filter((s) => s.name !== supName);
+            onUpdateSupplements(updated);
+        }
+    };
+
+    // Selector de 7 días centrado dinámicamente en activeDate (Idéntico a Gimnasio, Cero Scroll)
+    const weekSelectorDays = useMemo(() => {
         const curr = new Date(activeDate + "T12:00:00");
         const days = [];
-        for (let i = -3; i <= 3; i++) {
+        for (let offset = -3; offset <= 3; offset++) {
             const d = new Date(curr);
-            d.setDate(d.getDate() + i);
+            d.setDate(d.getDate() + offset);
             const iso = d.toISOString().split("T")[0];
-            const dayName = d.toLocaleDateString("es-MX", { weekday: "short" });
+            const dayName = d.toLocaleDateString("es-MX", { weekday: "long" }).toUpperCase();
+            const shortDay = d.toLocaleDateString("es-MX", { weekday: "short" }).toUpperCase();
             const dayNum = d.getDate();
-            days.push({ iso, dayName, dayNum, isToday: iso === todayStr });
+            const monthShort = d.toLocaleDateString("es-MX", { month: "short" }).toUpperCase();
+            const isCenter = offset === 0;
+            const isToday = iso === todayStr;
+            const hasMeals = !!allNutritionLogs[iso];
+            days.push({
+                iso,
+                dayName,
+                shortDay,
+                dayNum,
+                monthShort,
+                isCenter,
+                isToday,
+                hasMeals,
+                firstLetter: dayName.charAt(0)
+            });
         }
         return days;
-    }, [activeDate, todayStr]);
+    }, [activeDate, todayStr, allNutritionLogs]);
 
     const caloriePct = targetCalories > 0 ? Math.min(100, Math.round((nutritionTotals.totalCalories / targetCalories) * 100)) : 0;
 
@@ -287,7 +336,63 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                 </div>
             </div>
 
-            {/* 2. Suplementación Prioritaria (En la parte superior con contador X/5) */}
+            {/* 2. Selector de Días de la Semana: Ancla Central Dinámica (Idéntico a Gimnasio, Cero Scroll) */}
+            <div className={`backdrop-blur-2xl rounded-2xl p-2 sm:p-2.5 shadow-md border transition-all ${
+                isLight ? "bg-white/80 border-slate-200/80 shadow-slate-900/[0.04]" : "bg-zinc-950/75 border-white/10 shadow-lg"
+            }`}>
+                <div className="w-full flex items-center justify-between sm:justify-center sm:gap-2 px-0.5">
+                    {weekSelectorDays.map((d) => {
+                        if (d.isCenter) {
+                            return (
+                                <motion.div
+                                    key={`center-${d.iso}`}
+                                    layout
+                                    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-sans transition-all flex items-center gap-1.5 sm:gap-2 shrink-0 select-none ${
+                                        isLight
+                                            ? "bg-slate-900 text-white shadow-md shadow-slate-900/20"
+                                            : "bg-white text-zinc-950 shadow-lg shadow-white/10"
+                                    }`}
+                                >
+                                    <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[11px] shrink-0 ${
+                                        isLight ? "bg-white/20 text-white" : "bg-black/15 text-zinc-950"
+                                    }`}>
+                                        {d.firstLetter}
+                                    </span>
+                                    <span className="font-bold text-xs uppercase tracking-tight whitespace-nowrap">
+                                        {d.dayName}
+                                    </span>
+                                    <span className={`text-[10px] hidden xs:inline max-w-[80px] sm:max-w-none truncate ${
+                                        isLight ? "text-slate-300 font-normal" : "text-zinc-600 font-medium"
+                                    }`}>
+                                        • {d.dayNum} {d.monthShort}
+                                    </span>
+                                </motion.div>
+                            );
+                        }
+
+                        return (
+                            <button
+                                key={`dot-${d.iso}`}
+                                type="button"
+                                onClick={() => onSelectDate(d.iso)}
+                                title={`Ver ${d.dayName} (${d.dayNum} ${d.monthShort})`}
+                                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 cursor-pointer transition-all active:scale-90 relative ${
+                                    isLight
+                                        ? "bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-950 border border-slate-200/90 shadow-xs"
+                                        : "bg-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.14] border border-white/10"
+                                }`}
+                            >
+                                <span>{d.firstLetter}</span>
+                                {d.isToday && (
+                                    <span className="absolute bottom-1 w-1 h-1 rounded-full bg-emerald-500" />
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* 3. Suplementación & Medicamentos (Con opción de agregar y eliminar) */}
             <div className={`backdrop-blur-2xl rounded-3xl p-4 shadow-xl border transition-colors ${
                 isLight ? "bg-white/85 border-slate-200/90 text-slate-900 shadow-slate-950/[0.04]" : "bg-zinc-950/75 border-white/10 text-white shadow-xl"
             }`}>
@@ -299,90 +404,150 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                         <h4 className={`text-xs font-bold uppercase tracking-wider font-mono ${
                             isLight ? "text-slate-900" : "text-white"
                         }`}>
-                            Suplementación Diaria
+                            Suplementación & Medicamentos
                         </h4>
                     </div>
-                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
-                        isLight
-                            ? "bg-slate-100 border-slate-200 text-slate-600"
-                            : "bg-white/[0.06] border-white/10 text-zinc-300"
+                    <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
+                            isLight
+                                ? "bg-slate-100 border-slate-200 text-slate-600"
+                                : "bg-white/[0.06] border-white/10 text-zinc-300"
+                        }`}>
+                            <strong className={isLight ? "text-slate-900 font-bold" : "text-white"}>{supplementsTakenCount}</strong> / {supplementsCount} Tomados
+                        </span>
+                        {onUpdateSupplements && (
+                            <button
+                                type="button"
+                                onClick={() => setIsAddingSupplement(!isAddingSupplement)}
+                                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1 transition-all active:scale-95 cursor-pointer border ${
+                                    isAddingSupplement
+                                        ? (isLight ? "bg-slate-200 text-slate-800 border-slate-300" : "bg-white/20 text-white border-white/30")
+                                        : (isLight ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300" : "bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border-emerald-500/30")
+                                }`}
+                                title="Añadir nuevo suplemento o medicamento"
+                            >
+                                {isAddingSupplement ? <X className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                                <span>{isAddingSupplement ? "Cerrar" : "Agregar"}</span>
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Formulario Inline para Añadir Suplemento / Medicamento */}
+                {isAddingSupplement && (
+                    <div className={`mb-3 p-3 rounded-2xl border transition-all ${
+                        isLight ? "bg-slate-100/90 border-slate-200" : "bg-white/[0.04] border-white/10"
                     }`}>
-                        <strong className={isLight ? "text-slate-900 font-bold" : "text-white"}>{supplementsTakenCount}</strong> / {supplementsCount} Tomados
-                    </span>
-                </div>
-
-                {/* Checklist horizontal táctil ultrarrápido */}
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-                    {supplements.map((sup, idx) => {
-                        const isTaken = !!currentLog.supplementsTaken?.[sup.name];
-
-                        return (
-                            <button
-                                key={idx}
-                                type="button"
-                                onClick={() => handleToggleSupplement(sup.name)}
-                                className={`px-3 py-2 rounded-2xl border text-left shrink-0 transition-all flex items-center gap-2 cursor-pointer active:scale-95 ${
-                                    isTaken
-                                        ? (isLight ? "bg-emerald-50 border-emerald-300 text-emerald-950 shadow-xs" : "bg-emerald-500/15 border-emerald-500/40 text-white")
-                                        : (isLight ? "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700" : "bg-white/[0.03] border-white/10 text-zinc-400 hover:text-white")
+                        <p className={`text-[11px] font-semibold mb-2 ${isLight ? "text-slate-700" : "text-zinc-300"}`}>
+                            Registrar Suplemento o Medicamento:
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <input
+                                type="text"
+                                placeholder="Nombre (ej. Creatina, Omega 3, Metformina)"
+                                value={newSupName}
+                                onChange={(e) => setNewSupName(e.target.value)}
+                                className={`px-2.5 py-1.5 rounded-xl text-xs border outline-none transition-all ${
+                                    isLight
+                                        ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-emerald-500"
+                                        : "bg-black/60 border-white/15 text-white placeholder:text-zinc-500 focus:border-emerald-500"
                                 }`}
-                            >
-                                <div className={`w-4 h-4 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                                    isTaken
-                                        ? "bg-emerald-500 text-black"
-                                        : (isLight ? "border border-slate-300 bg-white" : "border border-zinc-600 bg-black/40")
-                                }`}>
-                                    {isTaken ? <Check className="w-3 h-3 stroke-[3]" /> : null}
-                                </div>
-                                <div className="leading-tight">
-                                    <div className="text-xs font-bold whitespace-nowrap">{sup.name}</div>
-                                    <div className={`text-[9px] font-mono ${isLight ? "text-slate-500" : "text-zinc-400"}`}>{sup.dosage}</div>
-                                </div>
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
-
-            {/* 3. Carrusel Superior de Calendario (7 Días) */}
-            <div className={`backdrop-blur-2xl rounded-3xl p-3 shadow-xl border transition-colors ${
-                isLight ? "bg-white/85 border-slate-200/90 text-slate-900 shadow-slate-950/[0.04]" : "bg-zinc-950/75 border-white/10 text-white shadow-xl"
-            }`}>
-                <div className="flex items-center justify-between gap-1">
-                    {carouselDays.map((d) => {
-                        const isSelected = d.iso === activeDate;
-                        const hasMeals = !!allNutritionLogs[d.iso];
-
-                        return (
-                            <button
-                                key={d.iso}
-                                type="button"
-                                onClick={() => onSelectDate(d.iso)}
-                                className={`flex-1 py-2 px-1 rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer active:scale-95 ${
-                                    isSelected
-                                        ? (isLight ? "bg-slate-900 text-white font-bold shadow-md" : "bg-white text-black font-bold shadow-lg")
-                                        : (isLight ? "hover:bg-slate-100 text-slate-600 hover:text-slate-950" : "hover:bg-white/5 text-zinc-400 hover:text-zinc-200")
+                            />
+                            <input
+                                type="text"
+                                placeholder="Dosis (ej. 5g, 500mg, 1 cap)"
+                                value={newSupDosage}
+                                onChange={(e) => setNewSupDosage(e.target.value)}
+                                className={`px-2.5 py-1.5 rounded-xl text-xs border outline-none transition-all ${
+                                    isLight
+                                        ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-emerald-500"
+                                        : "bg-black/60 border-white/15 text-white placeholder:text-zinc-500 focus:border-emerald-500"
                                 }`}
-                            >
-                                <span className={`text-[10px] uppercase font-mono ${isSelected ? (isLight ? "text-slate-200" : "text-black") : (isLight ? "text-slate-400" : "text-zinc-500")}`}>
-                                    {d.dayName}
-                                </span>
-                                <span className={`text-sm sm:text-base font-bold font-mono mt-0.5 ${isSelected ? (isLight ? "text-white" : "text-black") : (isLight ? "text-slate-900" : "text-white")}`}>
-                                    {d.dayNum}
-                                </span>
-                                {/* Dot indicator */}
-                                <div className="flex items-center gap-0.5 mt-1">
-                                    {d.isToday && (
-                                        <span className={`w-1 h-1 rounded-full ${isSelected ? (isLight ? "bg-white" : "bg-black") : "bg-emerald-500"}`} />
-                                    )}
-                                    {hasMeals && (
-                                        <span className={`w-1 h-1 rounded-full ${isSelected ? (isLight ? "bg-slate-400" : "bg-black") : (isLight ? "bg-slate-400" : "bg-zinc-500")}`} />
+                            />
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="Horario (ej. Mañana, Pre-entreno)"
+                                    value={newSupTiming}
+                                    onChange={(e) => setNewSupTiming(e.target.value)}
+                                    className={`flex-1 px-2.5 py-1.5 rounded-xl text-xs border outline-none transition-all ${
+                                        isLight
+                                            ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-emerald-500"
+                                            : "bg-black/60 border-white/15 text-white placeholder:text-zinc-500 focus:border-emerald-500"
+                                    }`}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleSaveNewSupplement}
+                                    disabled={!newSupName.trim()}
+                                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                                        newSupName.trim()
+                                            ? "bg-emerald-500 hover:bg-emerald-400 text-black active:scale-95 shadow-sm"
+                                            : "opacity-40 bg-zinc-700 text-zinc-400 cursor-not-allowed"
+                                    }`}
+                                >
+                                    Guardar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Lista de Suplementos / Medicamentos */}
+                {supplements.length === 0 ? (
+                    <div className={`p-4 text-center rounded-2xl border text-xs ${
+                        isLight ? "bg-slate-50 border-slate-200 text-slate-500" : "bg-white/[0.02] border-white/5 text-zinc-500"
+                    }`}>
+                        No hay suplementos o medicamentos registrados. Toca <strong>Agregar</strong> para registrar uno.
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                        {supplements.map((sup, idx) => {
+                            const isTaken = !!currentLog.supplementsTaken?.[sup.name];
+
+                            return (
+                                <div
+                                    key={`${sup.name}_${idx}`}
+                                    onClick={() => handleToggleSupplement(sup.name)}
+                                    className={`px-3 py-2 rounded-2xl border text-left shrink-0 transition-all flex items-center justify-between gap-2.5 cursor-pointer active:scale-95 ${
+                                        isTaken
+                                            ? (isLight ? "bg-emerald-50 border-emerald-300 text-emerald-950 shadow-xs" : "bg-emerald-500/15 border-emerald-500/40 text-white")
+                                            : (isLight ? "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700" : "bg-white/[0.03] border-white/10 text-zinc-400 hover:text-white")
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <div className={`w-4 h-4 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                                            isTaken
+                                                ? "bg-emerald-500 text-black"
+                                                : (isLight ? "border border-slate-300 bg-white" : "border border-zinc-600 bg-black/40")
+                                        }`}>
+                                            {isTaken ? <Check className="w-3 h-3 stroke-[3]" /> : null}
+                                        </div>
+                                        <div className="leading-tight min-w-0">
+                                            <div className="text-xs font-bold whitespace-nowrap truncate max-w-[130px] sm:max-w-none">{sup.name}</div>
+                                            <div className={`text-[9px] font-mono truncate max-w-[130px] sm:max-w-none ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
+                                                {sup.dosage} {sup.timing && sup.timing !== "Diario" ? `• ${sup.timing}` : ""}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {onUpdateSupplements && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => handleDeleteSupplement(e, sup.name)}
+                                            className={`p-1 -mr-1 rounded-lg transition-colors cursor-pointer ${
+                                                isLight ? "text-slate-400 hover:text-rose-600 hover:bg-rose-50" : "text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10"
+                                            }`}
+                                            title={`Eliminar ${sup.name}`}
+                                        >
+                                            <Trash2 className="w-3 h-3" />
+                                        </button>
                                     )}
                                 </div>
-                            </button>
-                        );
-                    })}
-                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
 
             {/* 4. Tarjeta Fusa: Segmented Switcher entre Resumen Nutricional y Resumen de Entrenamiento */}
