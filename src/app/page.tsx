@@ -8,6 +8,7 @@ import { Contact } from "@/components/Contact";
 import { Footer } from "@/components/Footer";
 import ChatbotPromo from "@/components/ChatbotPromo";
 import ApexPromo from "@/components/ApexPromo";
+import ArcoMaestroPromo from "@/components/ArcoMaestroPromo";
 import Providers from "./providers";
 
 export default function Home() {
@@ -22,6 +23,7 @@ export default function Home() {
         </div>
         <ChatbotPromo />
         <ApexPromo />
+        <ArcoMaestroPromo />
         <Portfolio />
         <Services />
         <Contact />

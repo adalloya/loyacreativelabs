@@ -1,0 +1,17 @@
+{
+  "name": "Arco Maestro - AI Welding",
+  "short_name": "Arco Maestro",
+  "description": "Plataforma inteligente de herrería residencial, cotizador, academia y escáner IA",
+  "start_url": "/arco-maestro",
+  "display": "standalone",
+  "background_color": "#07080A",
+  "theme_color": "#EAB308",
+  "icons": [
+    {
+      "src": "/logo-arco-maestro.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
