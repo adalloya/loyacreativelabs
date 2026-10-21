@@ -8,7 +8,7 @@ import { SpotifyThreeCanvas } from "@/components/spotify/SpotifyThreeCanvas";
 
 export const ApexAmbientVisualizer: React.FC = () => {
     const { isFxActive, visualizerMode } = useApexFx();
-    const { isPlaying, bpm, energy, accentRgb, progressMs } = useSpotifyPlayback();
+    const { isPlaying, track, bpm, energy, accentRgb, progressMs } = useSpotifyPlayback();
 
     // Si FX está apagado, liberar todo (0% CPU / 0% GPU)
     if (!isFxActive || visualizerMode === "OFF") {
@@ -24,6 +24,10 @@ export const ApexAmbientVisualizer: React.FC = () => {
             <SpotifyThreeCanvas
                 mode={visualizerMode}
                 isPlaying={isPlaying}
+                trackId={track?.id}
+                trackName={track?.name}
+                artistName={track?.artist}
+                albumArt={track?.albumArt}
                 bpm={bpm}
                 energy={energy}
                 progressMs={progressMs}

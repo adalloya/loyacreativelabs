@@ -8,7 +8,7 @@ const STORAGE_KEY_ENABLED = "apex_fx_enabled";
 const STORAGE_KEY_MODE = "apex_fx_mode";
 const EVENT_NAME = "apex:fx-change";
 
-const MODES: VisualizerMode[] = ["OFF", "AURA", "WAVE", "ORB", "TUNNEL", "VORTEX", "SPECTRUM"];
+const MODES: VisualizerMode[] = ["CANVAS", "ORB", "WAVE", "AURA", "TUNNEL", "VORTEX", "SPECTRUM", "OFF"];
 
 export function useApexFx() {
     const [visualizerMode, setVisualizerModeState] = useState<VisualizerMode>("OFF");
@@ -23,7 +23,7 @@ export function useApexFx() {
         if (storedMode && MODES.includes(storedMode)) {
             setVisualizerModeState(storedMode);
         } else if (storedEnabled === "true") {
-            setVisualizerModeState("WAVE");
+            setVisualizerModeState("CANVAS");
         } else {
             setVisualizerModeState("OFF");
         }
@@ -101,7 +101,11 @@ export function useApexFx() {
     }, []);
 
     const setFx = useCallback((value: boolean) => {
-        setVisualizerMode(value ? "WAVE" : "OFF");
+        setVisualizerMode(value ? "CANVAS" : "OFF");
+    }, [setVisualizerMode]);
+
+    const turnOffFx = useCallback(() => {
+        setVisualizerMode("OFF");
     }, [setVisualizerMode]);
 
     return {
@@ -109,6 +113,7 @@ export function useApexFx() {
         visualizerMode,
         toggleFx,
         cycleMode,
+        turnOffFx,
         setVisualizerMode,
         setFx
     };

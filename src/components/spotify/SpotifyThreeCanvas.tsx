@@ -8,6 +8,10 @@ export interface SpotifyThreeCanvasProps {
   mode: VisualizerMode;
   isPlaying: boolean;
   trackId?: string;
+  trackName?: string;
+  artistName?: string;
+  albumArt?: string;
+  customCanvasUrl?: string;
   bpm?: number;
   energy?: number;
   progressMs?: number;
@@ -23,6 +27,10 @@ export function SpotifyThreeCanvas({
   mode,
   isPlaying,
   trackId = '',
+  trackName = '',
+  artistName = '',
+  albumArt = '',
+  customCanvasUrl,
   bpm = 135,
   energy = 0.85,
   progressMs = 0,
@@ -34,8 +42,12 @@ export function SpotifyThreeCanvas({
   className = '',
 }: SpotifyThreeCanvasProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
+  const liquidLayer1Ref = useRef<HTMLDivElement | null>(null);
+  const liquidLayer2Ref = useRef<HTMLDivElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   // Referencias mutables para reactividad inmediata sin necesidad de reinstanciar WebGL
+  const albumArtRef = useRef(albumArt);
   const isPlayingRef = useRef(isPlaying);
   const bpmRef = useRef(bpm);
   const energyRef = useRef(energy);
@@ -45,6 +57,7 @@ export function SpotifyThreeCanvas({
   const burstTriggerRef = useRef(burstTrigger);
   const accentRgbRef = useRef(accentRgb);
 
+  albumArtRef.current = albumArt;
   isPlayingRef.current = isPlaying;
   bpmRef.current = bpm;
   energyRef.current = energy;
@@ -65,7 +78,9 @@ export function SpotifyThreeCanvas({
     const camera = new THREE.PerspectiveCamera(55, width / height, 0.1, 100);
 
     // Ajuste de cámara según el modo seleccionado
-    if (mode === 'ORB') {
+    if (mode === 'CANVAS') {
+      camera.position.set(0, 0, 3.2);
+    } else if (mode === 'ORB') {
       camera.position.set(0, 0, 3.2);
     } else if (mode === 'AURA') {
       camera.position.set(0, 0, 3.8);
@@ -243,6 +258,85 @@ export function SpotifyThreeCanvas({
         spectrumBars.push(barMesh);
       }
 
+    } else if (mode === 'CANVAS') {
+      // MODO CANVAS: Holograma 3D con relieve reactivo a BPM sobre la portada en alta resolución
+      mainGeometry = new THREE.PlaneGeometry(2.35, 2.35, 64, 64);
+      originalPositions = Float32Array.from(mainGeometry.attributes.position.array);
+
+      const artUrl = albumArtRef.current;
+      if (artUrl) {
+        const loader = new THREE.TextureLoader();
+        loader.setCrossOrigin('anonymous');
+        loader.load(
+          artUrl,
+          (tex) => {
+            tex.colorSpace = THREE.SRGBColorSpace;
+            tex.minFilter = THREE.LinearFilter;
+            tex.magFilter = THREE.LinearFilter;
+            tex.generateMipmaps = false;
+
+            const canvasMat = new THREE.MeshStandardMaterial({
+              map: tex,
+              roughness: 0.28,
+              metalness: 0.16,
+              side: THREE.DoubleSide,
+            });
+
+            const mesh = new THREE.Mesh(mainGeometry!, canvasMat);
+            meshGroup.add(mesh);
+          },
+          undefined,
+          () => {
+            const fallbackMat = new THREE.MeshBasicMaterial({
+              color: primaryColor,
+              wireframe: true,
+              transparent: true,
+              opacity: 0.65,
+            });
+            meshGroup.add(new THREE.Mesh(mainGeometry!, fallbackMat));
+          }
+        );
+      } else {
+        const fallbackMat = new THREE.MeshBasicMaterial({
+          color: primaryColor,
+          wireframe: true,
+          transparent: true,
+          opacity: 0.65,
+        });
+        meshGroup.add(new THREE.Mesh(mainGeometry, fallbackMat));
+      }
+
+      // Iluminación cinemática reactiva
+      const ambientLight = new THREE.AmbientLight(0xffffff, 1.15);
+      scene.add(ambientLight);
+
+      const canvasPointLight = new THREE.PointLight(primaryColor, 3.2, 7.5);
+      canvasPointLight.position.set(0, 1.4, 2.0);
+      scene.add(canvasPointLight);
+
+      // Partículas orbitales estelares de acento
+      const stardustCount = 140;
+      extraPointsGeom = new THREE.BufferGeometry();
+      const stardustPos = new Float32Array(stardustCount * 3);
+      for (let i = 0; i < stardustCount; i++) {
+        const theta = Math.random() * Math.PI * 2;
+        const rad = 1.35 + Math.random() * 1.5;
+        stardustPos[i * 3] = Math.cos(theta) * rad;
+        stardustPos[i * 3 + 1] = (Math.random() - 0.5) * 2.2;
+        stardustPos[i * 3 + 2] = Math.sin(theta) * rad * 0.4;
+      }
+      extraPointsGeom.setAttribute('position', new THREE.BufferAttribute(stardustPos, 3));
+      extraPointsPositions = Float32Array.from(stardustPos);
+
+      const stardustMat = new THREE.PointsMaterial({
+        color: 0xffffff,
+        size: 0.034,
+        transparent: true,
+        opacity: 0.8,
+        blending: THREE.AdditiveBlending,
+      });
+      meshGroup.add(new THREE.Points(extraPointsGeom, stardustMat));
+
     } else {
       // MODO WAVE: Terreno de ondas estilo consola Tesla
       mainGeometry = new THREE.PlaneGeometry(7.2, 2.3, 44, 16);
@@ -320,11 +414,77 @@ export function SpotifyThreeCanvas({
       const isGlitch = isHighBpm && Math.random() < 0.045 * currentEnergy;
       const jitter = isGlitch ? (Math.random() - 0.5) * 0.12 : 0;
 
-      // ==========================================
-      // ANIMACIÓN ESPECÍFICA SEGÚN MODO
-      // ==========================================
+      if (mode === 'CANVAS') {
+        // ------------------------------------------
+        // MODO CANVAS: Holograma 3D + Relieve Reactivo
+        // ------------------------------------------
+        // A. Fondo Líquido Multicapa: rotación y zoom pulse sincronizado matemáticamente con beatPulse
+        const beatScale = 1.0 + beatPulse * 0.12;
+        const rot1 = (time * 8) % 360;
+        const rot2 = (-time * 6) % 360;
+        if (liquidLayer1Ref.current) {
+          liquidLayer1Ref.current.style.transform = `rotate(${rot1}deg) scale(${beatScale * 1.15})`;
+        }
+        if (liquidLayer2Ref.current) {
+          liquidLayer2Ref.current.style.transform = `rotate(${rot2}deg) scale(${beatScale * 1.25})`;
+        }
+        if (videoRef.current) {
+          const targetRate = Math.max(0.6, Math.min(2.0, validBpm / 128));
+          videoRef.current.playbackRate = targetRate;
+        }
 
-      if (mode === 'AURA') {
+        // B. Ondulación reactiva de la malla 3D en eje Z
+        if (mainGeometry && originalPositions) {
+          const posAttr = mainGeometry.attributes.position as THREE.BufferAttribute;
+          const posArray = posAttr.array as Float32Array;
+          const count = originalPositions.length / 3;
+
+          const freq = isHighBpm ? 3.8 : isMidBpm ? 2.8 : 2.0;
+          const amp = isHighBpm ? 0.20 : isMidBpm ? 0.14 : 0.08;
+          const kick = beatPulse * (isHighBpm ? 0.28 : isMidBpm ? 0.18 : 0.10);
+
+          for (let i = 0; i < count; i++) {
+            const idx = i * 3;
+            const x0 = originalPositions[idx];
+            const y0 = originalPositions[idx + 1];
+            const dist = Math.sqrt(x0 * x0 + y0 * y0);
+
+            const ripple = Math.sin(dist * freq - time * 3.8) * (amp * currentEnergy);
+            const beatPush = Math.cos(dist * 2.2) * kick;
+            const microJitter = isHighBpm ? Math.sin(x0 * 9.0 + time * 12.0) * 0.035 * beatPulse : 0;
+
+            posArray[idx + 2] = ripple + beatPush + microJitter + jitter + (burstWave * 0.3);
+          }
+          posAttr.needsUpdate = true;
+          mainGeometry.computeVertexNormals();
+        }
+
+        // C. Inclinación 3D Parallax suave
+        meshGroup.rotation.x = Math.sin(time * 0.6) * 0.08;
+        meshGroup.rotation.y = Math.cos(time * 0.7) * 0.10;
+        meshGroup.rotation.z = Math.sin(time * 0.3) * 0.02;
+
+        // D. Zoom pulse de la geometría en el centro
+        const meshScale = 1.0 + beatPulse * 0.06;
+        meshGroup.scale.set(meshScale, meshScale, meshScale);
+
+        // E. Partículas orbitales
+        if (extraPointsGeom && extraPointsPositions) {
+          const posAttr = extraPointsGeom.attributes.position as THREE.BufferAttribute;
+          const posArray = posAttr.array as Float32Array;
+          const count = extraPointsPositions.length / 3;
+          for (let i = 0; i < count; i++) {
+            const idx = i * 3;
+            const x = extraPointsPositions[idx];
+            const z = extraPointsPositions[idx + 2];
+            const angle = time * 0.4 + i;
+            const rad = Math.sqrt(x * x + z * z);
+            posArray[idx] = Math.cos(angle) * rad;
+            posArray[idx + 2] = Math.sin(angle) * rad * 0.6;
+          }
+          posAttr.needsUpdate = true;
+        }
+      } else if (mode === 'AURA') {
         // ------------------------------------------
         // MODO AURA: Cortinas de Aurora Boreal
         // ------------------------------------------
@@ -645,7 +805,7 @@ export function SpotifyThreeCanvas({
       }
       container.innerHTML = '';
     };
-  }, [mode]);
+  }, [mode, albumArt]);
 
   // Si burstTrigger cambia por prop, disparar ráfaga
   useEffect(() => {
@@ -661,14 +821,64 @@ export function SpotifyThreeCanvas({
     return null;
   }
 
-  // MODOS 3D ACTIVOS (AURA, WAVE, ORB, TUNNEL, VORTEX, SPECTRUM):
-  // Contenedor interactivo para WebGL Canvas de Three.js
+  const resolvedVideoUrl = customCanvasUrl || (
+    /techno|rave|industrial/i.test(`${trackName} ${artistName}`)
+      ? "https://assets.mixkit.co/videos/preview/mixkit-abstract-laser-lights-background-31728-large.mp4"
+      : /phonk|drift|cowbell/i.test(`${trackName} ${artistName}`)
+      ? "https://assets.mixkit.co/videos/preview/mixkit-hypnotic-smoke-in-the-dark-42442-large.mp4"
+      : undefined
+  );
+
+  // MODOS ACTIVOS (CANVAS, ORB, WAVE, AURA, TUNNEL, VORTEX, SPECTRUM):
   return (
     <div
-      ref={mountRef}
       className={`relative w-full h-full overflow-hidden pointer-events-none select-none flex items-center justify-center ${className}`}
       aria-hidden="true"
-    />
+    >
+      {/* 1. Fondo Líquido Multicapa (CSS + WebGL): solo activo en modo CANVAS cuando hay carátula */}
+      {mode === 'CANVAS' && albumArt && (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {/* Capa Líquida 1: Rotación lenta horaria + Zoom Beat */}
+          <div
+            ref={liquidLayer1Ref}
+            className="absolute -inset-[40%] bg-center bg-cover transition-transform duration-75 will-change-transform opacity-75"
+            style={{
+              backgroundImage: `url(${albumArt})`,
+              filter: 'blur(28px) saturate(1.8) contrast(1.2)',
+            }}
+          />
+          {/* Capa Líquida 2: Rotación lenta antihoraria + Contraste y saturación */}
+          <div
+            ref={liquidLayer2Ref}
+            className="absolute -inset-[40%] bg-center bg-cover mix-blend-screen transition-transform duration-75 will-change-transform opacity-55"
+            style={{
+              backgroundImage: `url(${albumArt})`,
+              filter: 'blur(36px) saturate(2.0) contrast(1.3)',
+            }}
+          />
+          {/* Capa 3: Video Atmosférico / Custom MP4 opcional sincronizado con BPM */}
+          {resolvedVideoUrl && (
+            <video
+              ref={videoRef}
+              src={resolvedVideoUrl}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover opacity-45 mix-blend-screen pointer-events-none"
+            />
+          )}
+          {/* Viñeta sutil cinemática con sombra oscura en bordes */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/70 pointer-events-none" />
+        </div>
+      )}
+
+      {/* 2. WebGL Canvas Mount (Three.js 3D Viewport) */}
+      <div
+        ref={mountRef}
+        className="relative z-10 w-full h-full flex items-center justify-center pointer-events-none"
+      />
+    </div>
   );
 }
 
