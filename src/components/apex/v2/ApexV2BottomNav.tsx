@@ -64,7 +64,7 @@ export const ApexV2BottomNav: React.FC<ApexV2BottomNavProps> = ({
     const navItems: { id: ApexV2Tab; label: string; icon: React.ElementType }[] = [
         { id: "workout", label: "Entrenar", icon: Dumbbell },
         { id: "nutrition", label: "Nutrición", icon: Utensils },
-        { id: "anatomy", label: "Anatomía", icon: Layers },
+        { id: "anatomy", label: "Ejercicios", icon: Layers },
         { id: "settings", label: "Ajustes", icon: Sliders }
     ];
 

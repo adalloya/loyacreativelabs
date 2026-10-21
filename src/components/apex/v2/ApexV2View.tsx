@@ -273,6 +273,7 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                             isSpotifyConnected={isSpotifyLinked}
                             onOpenOnboarding={() => setIsOnboardingModalOpen(true)}
                             onOpenFeedback={() => setIsFeedbackModalOpen(true)}
+                            onOpenDietPlanModal={() => setIsDietPrefModalOpen(true)}
                             uxVersion="v2"
                             onUxVersionChange={(v) => {
                                 if (v === "stable") onSwitchToStable();
@@ -374,64 +375,90 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                 </div>
                             </div>
 
-                            {/* Resumen de la Sesión de Hoy & Disposición Biomecánica */}
-                            <div className={`backdrop-blur-2xl border rounded-3xl p-4 sm:p-5 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${
-                                isLight ? "bg-white/85 border-slate-200/90 text-slate-900 shadow-slate-950/[0.04]" : "bg-zinc-950/75 border-white/10 text-white shadow-xl"
-                            }`}>
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold uppercase border ${
-                                            isLight
-                                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                                : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
-                                        }`}>
-                                            {currentRoutine?.dayName || `SESIÓN ${activeDayIndex + 1}`}
-                                        </span>
-                                        <span className={`text-[10px] font-mono ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
-                                            {activeExercises.length} ejercicios
-                                        </span>
-                                    </div>
-                                    <h2 className={`text-base sm:text-lg font-bold tracking-tight ${isLight ? "text-slate-950" : "text-white"}`}>
-                                        {currentRoutine?.title || "Rutina Activa"}
-                                    </h2>
-                                    <p className={`text-xs mt-0.5 ${isLight ? "text-slate-600 font-normal" : "text-zinc-400"}`}>
-                                        {currentRoutine?.focus || "Hipertrofia Miofibrilar & Tensión Mecánica"}
-                                    </p>
-                                </div>
+                            {/* Encabezado de Sesión Centrado (Fuera de Contenedor, Cero Repetición de Día) */}
+                            {(() => {
+                                const rawTitle = currentRoutine?.title || "Rutina Activa";
+                                let cleanTitle = rawTitle;
+                                if (rawTitle.includes(":")) {
+                                    cleanTitle = rawTitle.split(":").slice(1).join(":").trim();
+                                } else {
+                                    const dayNames = ["lunes", "martes", "miércoles", "miercoles", "jueves", "viernes", "sábado", "sabado", "domingo"];
+                                    const lower = rawTitle.toLowerCase();
+                                    for (const d of dayNames) {
+                                        if (lower.startsWith(d)) {
+                                            cleanTitle = rawTitle.slice(d.length).replace(/^[\s:\-–—]+/, "").trim();
+                                            break;
+                                        }
+                                    }
+                                }
 
-                                {/* Selector Rápido de Readiness / Fatiga */}
-                                <div className={`flex items-center gap-1 self-start sm:self-auto rounded-2xl p-1 border ${
-                                    isLight ? "bg-slate-100 border-slate-200" : "bg-black/50 border-white/10"
-                                }`}>
-                                    {(["optimal", "normal", "fatigued"] as ReadinessState[]).map((r) => {
-                                        const isSel = readiness === r;
-                                        const labels = {
-                                            optimal: "Óptimo",
-                                            normal: "Normal",
-                                            fatigued: "Fatigado"
-                                        };
+                                return (
+                                    <div className="py-2.5 text-center space-y-2">
+                                        <div>
+                                            <h2 className={`text-base sm:text-xl font-bold tracking-tight uppercase ${
+                                                isLight ? "text-slate-950" : "text-white"
+                                            }`}>
+                                                {cleanTitle || "Entrenamiento de Hoy"}
+                                            </h2>
+                                            <p className={`text-xs mt-0.5 ${
+                                                isLight ? "text-slate-600 font-normal" : "text-zinc-400"
+                                            }`}>
+                                                {currentRoutine?.focus || "Hipertrofia Miofibrilar & Tensión Mecánica"} • {activeExercises.length} ejercicios
+                                            </p>
+                                        </div>
 
-                                        return (
+                                        {/* Selector Rápido de Readiness / Fatiga & Acceso a Dieta Gemini (Centrados) */}
+                                        <div className="flex items-center justify-center gap-2 pt-0.5 flex-wrap">
+                                            <div className={`inline-flex items-center gap-1 rounded-2xl p-1 border ${
+                                                isLight ? "bg-slate-100 border-slate-200" : "bg-black/50 border-white/10"
+                                            }`}>
+                                                {(["optimal", "normal", "fatigued"] as ReadinessState[]).map((r) => {
+                                                    const isSel = readiness === r;
+                                                    const labels = {
+                                                        optimal: "Óptimo",
+                                                        normal: "Normal",
+                                                        fatigued: "Fatigado"
+                                                    };
+
+                                                    return (
+                                                        <button
+                                                            key={r}
+                                                            type="button"
+                                                            onClick={() => setReadiness(r)}
+                                                            className={`px-3 py-1 rounded-xl text-[10px] font-mono uppercase font-bold transition-all cursor-pointer ${
+                                                                isSel
+                                                                    ? r === "optimal"
+                                                                        ? (isLight ? "bg-emerald-600 text-white shadow-xs" : "bg-emerald-500 text-black shadow-sm")
+                                                                        : r === "normal"
+                                                                        ? (isLight ? "bg-amber-500 text-white shadow-xs" : "bg-amber-500 text-black shadow-sm")
+                                                                        : "bg-red-500 text-white shadow-sm"
+                                                                    : (isLight ? "text-slate-600 hover:text-slate-900" : "text-zinc-500 hover:text-zinc-300")
+                                                            }`}
+                                                        >
+                                                            {labels[r]}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+
+                                            {/* Acceso Rápido Directo a Dieta Gemini AI */}
                                             <button
-                                                key={r}
                                                 type="button"
-                                                onClick={() => setReadiness(r)}
-                                                className={`px-2.5 py-1 rounded-xl text-[10px] font-mono uppercase font-bold transition-all cursor-pointer ${
-                                                    isSel
-                                                        ? r === "optimal"
-                                                            ? (isLight ? "bg-emerald-600 text-white shadow-xs" : "bg-emerald-500 text-black shadow-sm")
-                                                            : r === "normal"
-                                                            ? (isLight ? "bg-amber-500 text-white shadow-xs" : "bg-amber-500 text-black shadow-sm")
-                                                            : "bg-red-500 text-white shadow-sm"
-                                                        : (isLight ? "text-slate-500 hover:text-slate-900" : "text-zinc-500 hover:text-zinc-300")
+                                                onClick={() => setIsDietPrefModalOpen(true)}
+                                                className={`px-3 py-1.5 rounded-2xl text-[11px] font-semibold border flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer ${
+                                                    isLight
+                                                        ? "bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-900 shadow-xs"
+                                                        : "bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 text-emerald-300"
                                                 }`}
+                                                title="Crear o personalizar dieta con Gemini AI"
                                             >
-                                                {labels[r]}
+                                                <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+                                                <span>Dieta Gemini</span>
                                             </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
 
                             {/* Lista de Tarjetas de Ejercicio Cero Scroll */}
                             <div className="space-y-3">

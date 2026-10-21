@@ -998,6 +998,7 @@ export default function ApexDashboard() {
                             isSpotifyConnected={isSpotifyLinked}
                             onOpenOnboarding={() => setIsOnboardingModalOpen(true)}
                             onOpenFeedback={() => setIsFeedbackModalOpen(true)}
+                            onOpenDietPlanModal={() => setIsDietPrefModalOpen(true)}
                             uxVersion={uxVersion}
                             onUxVersionChange={setUxVersionState}
                         />

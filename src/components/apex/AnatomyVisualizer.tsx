@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { MuscleGroup } from "@/lib/hypertrophy-engine";
+import { getInitialTheme, Theme } from "@/lib/theme";
 import type { IExerciseData, IMuscleStats, Muscle } from "react-body-highlighter";
 
 // Importación dinámica del componente oficial Model de react-body-highlighter
@@ -92,6 +93,20 @@ export function AnatomyVisualizer({
     onSelectMuscle
 }: AnatomyVisualizerProps) {
     const [view, setView] = useState<"anterior" | "posterior">("anterior");
+    const [theme, setTheme] = useState<Theme>(getInitialTheme);
+
+    useEffect(() => {
+        const handleThemeChange = (e: Event) => {
+            const customEvt = e as CustomEvent<{ theme: Theme }>;
+            if (customEvt.detail?.theme) {
+                setTheme(customEvt.detail.theme);
+            }
+        };
+        window.addEventListener("apex_theme_change", handleThemeChange);
+        return () => window.removeEventListener("apex_theme_change", handleThemeChange);
+    }, []);
+
+    const isLight = theme === "light";
 
     // Construye los polígonos anatómicos asignando a cada grupo su color único mediante frequency
     const modelData: IExerciseData[] = useMemo(() => {
@@ -114,36 +129,46 @@ export function AnatomyVisualizer({
     };
 
     return (
-        <div className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col items-center select-none w-full">
+        <div className={`backdrop-blur-xl rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col items-center select-none w-full border transition-colors ${
+            isLight ? "bg-white/90 border-slate-200/90 text-slate-900 shadow-slate-900/5" : "bg-[#121214]/90 border-white/[0.08] text-white"
+        }`}>
             {/* Cabecera y Selector de Perspectiva */}
-            <div className="w-full flex justify-between items-center mb-4 pb-3 border-b border-white/[0.06]">
+            <div className={`w-full flex justify-between items-center mb-4 pb-3 border-b ${
+                isLight ? "border-slate-200" : "border-white/[0.06]"
+            }`}>
                 <div>
-                    <h3 className="text-sm font-semibold text-white tracking-tight">
+                    <h3 className={`text-sm font-semibold tracking-tight ${
+                        isLight ? "text-slate-950" : "text-white"
+                    }`}>
                         MAPA ANATÓMICO MULTICOLOR
                     </h3>
-                    <p className="text-[11px] text-zinc-400 mt-0.5">
+                    <p className={`text-[11px] mt-0.5 ${
+                        isLight ? "text-slate-500" : "text-zinc-400"
+                    }`}>
                         Cada grupo tiene su color biomecánico. Toca para ver ejercicios.
                     </p>
                 </div>
 
                 {/* Switcher Anterior / Posterior estilo Apple */}
-                <div className="flex items-center gap-1 bg-white/[0.04] p-1 rounded-full border border-white/[0.06] shrink-0">
+                <div className={`flex items-center gap-1 p-1 rounded-full border shrink-0 ${
+                    isLight ? "bg-slate-100 border-slate-200" : "bg-white/[0.04] border-white/[0.06]"
+                }`}>
                     <button
                         onClick={() => setView("anterior")}
-                        className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
                             view === "anterior"
-                                ? "bg-white text-black shadow-md font-semibold"
-                                : "text-zinc-400 hover:text-white"
+                                ? (isLight ? "bg-white text-slate-950 shadow-sm font-bold" : "bg-white text-black shadow-md font-semibold")
+                                : (isLight ? "text-slate-600 hover:text-slate-950" : "text-zinc-400 hover:text-white")
                         }`}
                     >
                         Anterior
                     </button>
                     <button
                         onClick={() => setView("posterior")}
-                        className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
                             view === "posterior"
-                                ? "bg-white text-black shadow-md font-semibold"
-                                : "text-zinc-400 hover:text-white"
+                                ? (isLight ? "bg-white text-slate-950 shadow-sm font-bold" : "bg-white text-black shadow-md font-semibold")
+                                : (isLight ? "text-slate-600 hover:text-slate-950" : "text-zinc-400 hover:text-white")
                         }`}
                     >
                         Posterior
@@ -156,17 +181,21 @@ export function AnatomyVisualizer({
                 <Model
                     data={modelData}
                     type={view}
-                    bodyColor="#1B1C20"
+                    bodyColor={isLight ? "#cbd5e1" : "#1B1C20"}
                     highlightedColors={HIGHLIGHTED_COLORS}
                     onClick={handleMuscleClick}
                     style={{ width: "100%", height: "100%", margin: "0 auto", cursor: "pointer" }}
-                    svgStyle={{ filter: "drop-shadow(0 0 15px rgba(0,0,0,0.8))" }}
+                    svgStyle={{ filter: isLight ? "drop-shadow(0 4px 10px rgba(0,0,0,0.06))" : "drop-shadow(0 0 15px rgba(0,0,0,0.8))" }}
                 />
             </div>
 
             {/* Leyenda Biomecánica Multicolor */}
-            <div className="w-full mt-4 pt-3 border-t border-white/[0.06] space-y-2">
-                <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider block">
+            <div className={`w-full mt-4 pt-3 border-t space-y-2 ${
+                isLight ? "border-slate-200" : "border-white/[0.06]"
+            }`}>
+                <span className={`text-[10px] font-mono uppercase tracking-wider block ${
+                    isLight ? "text-slate-500" : "text-zinc-500"
+                }`}>
                     CÓDIGO CROMÁTICO BIOMECÁNICO:
                 </span>
                 <div className="flex flex-wrap gap-1.5">
@@ -177,10 +206,10 @@ export function AnatomyVisualizer({
                             <button
                                 key={mg}
                                 onClick={() => onSelectMuscle(mg)}
-                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium transition-all border ${
+                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium transition-all border cursor-pointer ${
                                     isSelected
-                                        ? "bg-white text-black border-white shadow-sm font-bold"
-                                        : "bg-white/[0.03] text-zinc-300 border-white/[0.06] hover:bg-white/[0.08]"
+                                        ? (isLight ? "bg-slate-900 text-white border-slate-900 shadow-sm font-bold" : "bg-white text-black border-white shadow-sm font-bold")
+                                        : (isLight ? "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200" : "bg-white/[0.03] text-zinc-300 border-white/[0.06] hover:bg-white/[0.08]")
                                 }`}
                             >
                                 <span 
