@@ -185,25 +185,35 @@ export const ApexV2BottomNav: React.FC<ApexV2BottomNavProps> = ({
 
                         {/* Área de Transcripción Ampliada en Tiempo Real */}
                         <div className="my-3 min-h-[64px] max-h-[140px] overflow-y-auto px-3.5 py-3 rounded-2xl bg-black/[0.04] dark:bg-white/[0.05] border border-black/10 dark:border-white/10 flex items-center">
-                            {(voiceLiveTranscript || voiceInterimTranscript) ? (
-                                <p className={`text-base sm:text-lg font-semibold leading-relaxed tracking-tight ${
-                                    isLight ? "text-slate-900" : "text-white"
-                                }`}>
-                                    {voiceLiveTranscript && <span>{voiceLiveTranscript} </span>}
-                                    {voiceInterimTranscript && (
-                                        <span className="text-rose-500 underline decoration-rose-500/50 underline-offset-4">
-                                            {voiceInterimTranscript}
-                                        </span>
-                                    )}
-                                    <span className="inline-block w-2 h-4.5 ml-1 bg-rose-500 animate-pulse rounded-full align-middle" />
-                                </p>
-                            ) : (
-                                <p className={`text-sm sm:text-base font-medium italic ${
-                                    isLight ? "text-slate-400" : "text-zinc-500"
-                                }`}>
-                                    Habla con naturalidad... dicta tu ejercicio, repeticiones, comida o pide música en Spotify.
-                                </p>
-                            )}
+                            {(() => {
+                                const cleanLive = voiceLiveTranscript?.trim() || "";
+                                const cleanInterim = voiceInterimTranscript?.trim() || "";
+                                const showInterim = cleanInterim && !cleanLive.toLowerCase().endsWith(cleanInterim.toLowerCase());
+
+                                if (cleanLive || cleanInterim) {
+                                    return (
+                                        <p className={`text-base sm:text-lg font-semibold leading-relaxed tracking-tight ${
+                                            isLight ? "text-slate-900" : "text-white"
+                                        }`}>
+                                            {cleanLive && <span>{cleanLive} </span>}
+                                            {showInterim && (
+                                                <span className="text-rose-500 underline decoration-rose-500/50 underline-offset-4">
+                                                    {cleanInterim}
+                                                </span>
+                                            )}
+                                            <span className="inline-block w-2 h-4.5 ml-1 bg-rose-500 animate-pulse rounded-full align-middle" />
+                                        </p>
+                                    );
+                                }
+
+                                return (
+                                    <p className={`text-sm sm:text-base font-medium italic ${
+                                        isLight ? "text-slate-400" : "text-zinc-500"
+                                    }`}>
+                                        Habla con naturalidad... dicta tu ejercicio, repeticiones, comida o pide música en Spotify.
+                                    </p>
+                                );
+                            })()}
                         </div>
 
                         {/* Pie de Ayuda y Confirmación */}

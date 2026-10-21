@@ -437,6 +437,114 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
         setIsExerciseLibraryOpen
     ]);
 
+    // Procesador de múltiples órdenes recibidas en un solo dictado de audio
+    const handleBatchVoiceActions = React.useCallback((actions: VoiceAgentActionResult[]) => {
+        if (!actions || actions.length === 0) return;
+
+        // Determinar pestaña principal según el contenido prioritario
+        const hasWorkout = actions.some(a => a.intent === "LOG_WORKOUT");
+        const hasNutrition = actions.some(a => a.intent === "LOG_NUTRITION" || a.intent === "LOG_DIET_PLAN");
+        const hasSearch = actions.some(a => a.intent === "SEARCH_EXERCISE");
+
+        if (hasWorkout) {
+            setActiveTab("workout");
+        } else if (hasNutrition) {
+            setActiveTab("nutrition");
+        } else if (hasSearch) {
+            setActiveTab("anatomy");
+        }
+
+        // 1. Procesar todas las acciones de Nutrición combinadas en una sola mutación
+        const nutritionActions = actions.filter(a => a.intent === "LOG_NUTRITION");
+        const dietActions = actions.filter(a => a.intent === "LOG_DIET_PLAN");
+
+        if (nutritionActions.length > 0 || dietActions.length > 0) {
+            const dateStr = activeNutritionDate || getLocalDateString();
+            const currentLog: DailyNutritionLog = allNutritionLogs[dateStr]
+                ? JSON.parse(JSON.stringify(allNutritionLogs[dateStr]))
+                : createEmptyDailyNutritionLog(dateStr);
+
+            if (dietActions.length > 0) {
+                const templateMeals = (dietPlan?.thirtyDayPlan?.[0]?.meals) || (dietPlan?.weeklyTemplates?.[0]?.meals);
+                if (templateMeals && Array.isArray(templateMeals) && templateMeals.length > 0) {
+                    const catKeys: Array<"breakfast" | "snack1" | "lunch" | "snack2" | "dinner"> = [
+                        "breakfast", "snack1", "lunch", "snack2", "dinner"
+                    ];
+                    templateMeals.forEach((m: any, idx: number) => {
+                        const cat = catKeys[idx % catKeys.length];
+                        currentLog.meals[cat].push({
+                            id: "diet_meal_" + Date.now() + "_" + idx,
+                            name: m.name + (m.items ? `: ${m.items}` : ""),
+                            calories: Number(m.calories) || 400,
+                            proteinG: Number(m.proteinG) || 30,
+                            time: idx === 0 ? "08:30" : idx === 1 ? "11:30" : idx === 2 ? "14:30" : idx === 3 ? "17:30" : "20:30"
+                        });
+                    });
+                } else {
+                    const targetCal = macros?.targetCalories || 2200;
+                    const targetProt = macros?.proteinG || 160;
+                    currentLog.meals.breakfast.push({
+                        id: "diet_bf_" + Date.now(),
+                        name: "Desayuno estructurado (Huevos + Avena con proteína)",
+                        calories: Math.round(targetCal * 0.28),
+                        proteinG: Math.round(targetProt * 0.28),
+                        time: "08:30"
+                    });
+                    currentLog.meals.lunch.push({
+                        id: "diet_lu_" + Date.now(),
+                        name: "Almuerzo Anabólico (Pechuga de pollo + Arroz + Aguacate)",
+                        calories: Math.round(targetCal * 0.38),
+                        proteinG: Math.round(targetProt * 0.38),
+                        time: "14:00"
+                    });
+                    currentLog.meals.dinner.push({
+                        id: "diet_dn_" + Date.now(),
+                        name: "Cena Regenerativa (Pescado o Lomo + Papa + Ensalada)",
+                        calories: Math.round(targetCal * 0.34),
+                        proteinG: Math.round(targetProt * 0.34),
+                        time: "20:30"
+                    });
+                }
+            }
+
+            nutritionActions.forEach(action => {
+                const nutData = action.nutrition;
+                if (nutData && nutData.foods && nutData.foods.length > 0) {
+                    const cat = nutData.mealCategory || "lunch";
+                    if (!currentLog.meals[cat]) {
+                        currentLog.meals[cat] = [];
+                    }
+                    nutData.foods.forEach(f => {
+                        currentLog.meals[cat].push({
+                            id: "food_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+                            name: f.name,
+                            calories: Math.round(f.calories || 0),
+                            proteinG: Math.round(f.proteinG || 0),
+                            carbsG: Math.round(f.carbsG || 0),
+                            fatsG: Math.round(f.fatsG || 0),
+                            time: new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })
+                        });
+                    });
+                }
+            });
+
+            handleSaveNutritionLog(dateStr, currentLog);
+        }
+
+        // 2. Procesar las demás acciones individuales (ejercicios, música, búsqueda, navegación)
+        const otherActions = actions.filter(a => a.intent !== "LOG_NUTRITION" && a.intent !== "LOG_DIET_PLAN");
+        otherActions.forEach(action => {
+            handleVoiceActionResult(action);
+        });
+    }, [
+        activeNutritionDate,
+        allNutritionLogs,
+        dietPlan,
+        handleSaveNutritionLog,
+        handleVoiceActionResult,
+        macros
+    ]);
+
     // Instancia del Hook del Asistente de Voz APEX
     const {
         isListening: isVoiceListening,
@@ -453,7 +561,8 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
     } = useApexVoiceAgent({
         currentTab: activeTab,
         activeExerciseNames: activeExercises.map(e => e.name),
-        onActionResult: handleVoiceActionResult
+        onActionResult: handleVoiceActionResult,
+        onBatchActions: handleBatchVoiceActions
     });
 
     return (

@@ -119,46 +119,83 @@ CATEGORÍAS DE INTENCIÓN POSIBLES:
    - bpmCategory: "low" | "mid" | "high" | null
    - query: string | null (nombre del artista, canción o playlist)
 
+REGLAS DE MÚLTIPLES ÓRDENES (COMPOUND MULTI-ACTIONS):
+- El usuario puede dictar UNA o MÚLTIPLES órdenes en la misma grabación.
+- Ejemplos de órdenes múltiples:
+  * "Press de banca 4 de 10 con 80 kilos y después remo con barra 3 de 12 con 60 kilos" -> 2 acciones LOG_WORKOUT.
+  * "Press inclinado 12 reps con 50 libras y pon más intensidad sube el bpm" -> 1 LOG_WORKOUT y 1 MUSIC_CONTROL.
+  * "10 reps con 80 kilos y de almuerzo comí 200 gramos de pollo con arroz" -> 1 LOG_WORKOUT y 1 LOG_NUTRITION.
+  * "Comí lo de la dieta y pon a Bad Bunny" -> 1 LOG_DIET_PLAN y 1 MUSIC_CONTROL.
+- Si el usuario dictó varias cosas, DEBES generar un elemento separado en el arreglo "actions" para CADA orden identificada. NUNCA descartes una orden para quedarte solo con la primera.
+
 REGLA DE CONMUTACIÓN DE SECCIONES (CROSS-TAB SWITCHING):
-- Si el usuario actualmente está en la sección de ejercicio/gimnasio ("workout") pero dictó comida/nutrición ("comí 3 huevos"), targetTab DEBE ser "nutrition".
-- Si el usuario está en "nutrition" pero dictó series/peso ("hice 80kg en sentadilla"), targetTab DEBE ser "workout".
-- Si el usuario está en cualquier lugar y pide buscar ejercicios ("busca mancuernas"), targetTab DEBE ser "anatomy".
-- Para "MUSIC_CONTROL", targetTab se mantiene en la sección actual del usuario (no navega innecesariamente).
+- Si el usuario actualmente está en "workout" pero dictó comida, esa acción debe tener targetTab "nutrition".
+- Si el usuario está en "nutrition" pero dictó series/peso, esa acción debe tener targetTab "workout".
+- Si el usuario pide buscar ejercicios, esa acción debe tener targetTab "anatomy".
+- Para "MUSIC_CONTROL", targetTab se mantiene en la sección actual del usuario.
 
 Devuelve SIEMPRE ÚNICAMENTE JSON con este esquema exacto:
 {
-  "intent": "LOG_WORKOUT" | "LOG_NUTRITION" | "LOG_DIET_PLAN" | "SEARCH_EXERCISE" | "NAVIGATE" | "MUSIC_CONTROL" | "UNKNOWN",
-  "targetTab": "workout" | "nutrition" | "anatomy" | "settings",
-  "summary": "Resumen ultracorto y claro de 4 a 8 palabras para el anuncio (ej: 'Press de banca: 80 kg × 10 reps' o 'Spotify: Reproduciendo Bad Bunny')",
-  "workout": {
-    "exerciseName": string | null,
-    "sets": number,
-    "reps": number | null,
-    "weight": number | null,
-    "weightUnit": "kg" | "lbs" | null
-  },
-  "nutrition": {
-    "mealCategory": "breakfast" | "lunch" | "dinner" | "snack1" | "snack2",
-    "foods": [
-      {
-        "name": string,
-        "calories": number,
-        "proteinG": number,
-        "carbsG": number,
-        "fatsG": number
+  "actions": [
+    {
+      "intent": "LOG_WORKOUT" | "LOG_NUTRITION" | "LOG_DIET_PLAN" | "SEARCH_EXERCISE" | "NAVIGATE" | "MUSIC_CONTROL",
+      "targetTab": "workout" | "nutrition" | "anatomy" | "settings",
+      "summary": "Resumen ultracorto y claro de esta orden (ej: 'Press de banca: 80 kg × 10 reps')",
+      "workout": {
+        "exerciseName": string | null,
+        "sets": number,
+        "reps": number | null,
+        "weight": number | null,
+        "weightUnit": "kg" | "lbs" | null
+      },
+      "nutrition": {
+        "mealCategory": "breakfast" | "lunch" | "dinner" | "snack1" | "snack2",
+        "foods": [
+          {
+            "name": string,
+            "calories": number,
+            "proteinG": number,
+            "carbsG": number,
+            "fatsG": number
+          }
+        ]
+      },
+      "search": {
+        "query": string
+      },
+      "music": {
+        "action": "play" | "pause" | "next" | "previous" | "play_bpm" | "search_play",
+        "bpmCategory": "low" | "mid" | "high" | null,
+        "query": string | null
       }
-    ]
-  },
-  "search": {
-    "query": string
-  },
-  "music": {
-    "action": "play" | "pause" | "next" | "previous" | "play_bpm" | "search_play",
-    "bpmCategory": "low" | "mid" | "high" | null,
-    "query": string | null
-  }
+    }
+  ],
+  "overallSummary": "Resumen conciso de 5 a 10 palabras que reúne todo lo ordenado (ej: 'Press de banca (80kg × 10) + Playlist BPM bajo')"
 }
 `;
+
+function normalizeIntent(raw: string): "LOG_WORKOUT" | "LOG_NUTRITION" | "LOG_DIET_PLAN" | "SEARCH_EXERCISE" | "NAVIGATE" | "MUSIC_CONTROL" | "UNKNOWN" {
+    const s = String(raw || "").toUpperCase();
+    if (s.includes("MUSIC") || s.includes("SPOTIFY") || s.includes("BPM") || s.includes("PLAYLIST") || s.includes("SONG")) {
+        return "MUSIC_CONTROL";
+    }
+    if (s.includes("DIET") || s.includes("PLAN")) {
+        return "LOG_DIET_PLAN";
+    }
+    if (s.includes("WORKOUT") || s.includes("TRAIN") || s.includes("EXERCISE_LOG") || s.includes("SET") || s.includes("REP")) {
+        return "LOG_WORKOUT";
+    }
+    if (s.includes("NUTRITION") || s.includes("MEAL") || s.includes("FOOD")) {
+        return "LOG_NUTRITION";
+    }
+    if (s.includes("SEARCH")) {
+        return "SEARCH_EXERCISE";
+    }
+    if (s.includes("NAVIGATE")) {
+        return "NAVIGATE";
+    }
+    return "UNKNOWN";
+}
 
 export async function POST(req: NextRequest) {
     try {
@@ -182,48 +219,75 @@ Ejercicios actualmente en la rutina de hoy: ${JSON.stringify(activeExerciseNames
         const cleanJson = rawJson.replace(/```json/g, "").replace(/```/g, "").trim();
         const parsed = JSON.parse(cleanJson);
 
-        // Normalización ultra-robusta de intención
-        let rawIntent = String(parsed.intent || "UNKNOWN").toUpperCase();
-        let normalizedIntent: "LOG_WORKOUT" | "LOG_NUTRITION" | "LOG_DIET_PLAN" | "SEARCH_EXERCISE" | "NAVIGATE" | "UNKNOWN" = "UNKNOWN";
-
-        if (rawIntent.includes("DIET") || rawIntent.includes("PLAN")) {
-            normalizedIntent = "LOG_DIET_PLAN";
-        } else if (rawIntent.includes("WORKOUT") || rawIntent.includes("TRAIN") || rawIntent.includes("EXERCISE_LOG")) {
-            normalizedIntent = "LOG_WORKOUT";
-        } else if (rawIntent.includes("NUTRITION") || rawIntent.includes("MEAL") || rawIntent.includes("FOOD")) {
-            normalizedIntent = "LOG_NUTRITION";
-        } else if (rawIntent.includes("SEARCH")) {
-            normalizedIntent = "SEARCH_EXERCISE";
-        } else if (rawIntent.includes("NAVIGATE")) {
-            normalizedIntent = "NAVIGATE";
+        // Si Gemini devolvió un array "actions" directo o un objeto con "intent"
+        let rawActions: any[] = [];
+        if (Array.isArray(parsed.actions) && parsed.actions.length > 0) {
+            rawActions = parsed.actions;
+        } else if (parsed.intent) {
+            rawActions = [parsed];
+        } else if (Array.isArray(parsed) && parsed.length > 0) {
+            rawActions = parsed;
         }
 
-        parsed.intent = normalizedIntent;
+        // Normalizar cada acción
+        const normalizedActions = rawActions.map((act) => {
+            const intent = normalizeIntent(act.intent);
+            let targetTab = act.targetTab || currentTab;
 
-        // Si es búsqueda o ejercicios, asegurar que la pestaña destino sea anatomy
-        if (normalizedIntent === "SEARCH_EXERCISE") {
-            parsed.targetTab = "anatomy";
-        }
+            if (intent === "SEARCH_EXERCISE") {
+                targetTab = "anatomy";
+            } else if (intent === "LOG_WORKOUT" && targetTab !== "workout") {
+                targetTab = "workout";
+            } else if ((intent === "LOG_NUTRITION" || intent === "LOG_DIET_PLAN") && targetTab !== "nutrition") {
+                targetTab = "nutrition";
+            }
 
-        // Si es nutrición pero Gemini devolvió foodName en vez de foods array
-        if (parsed.nutrition && (!parsed.nutrition.foods || !Array.isArray(parsed.nutrition.foods))) {
-            const singleName = parsed.nutrition.foodName || parsed.nutrition.name || "Alimento registrado";
-            parsed.nutrition.foods = [
-                {
-                    name: singleName,
-                    calories: parsed.nutrition.calories || 350,
-                    proteinG: parsed.nutrition.proteinG || 25,
-                    carbsG: parsed.nutrition.carbsG || 30,
-                    fatsG: parsed.nutrition.fatsG || 12
-                }
-            ];
-        }
+            // Normalización de nutrition foods
+            if (act.nutrition && (!act.nutrition.foods || !Array.isArray(act.nutrition.foods))) {
+                const singleName = act.nutrition.foodName || act.nutrition.name || "Alimento registrado";
+                act.nutrition.foods = [
+                    {
+                        name: singleName,
+                        calories: act.nutrition.calories || 350,
+                        proteinG: act.nutrition.proteinG || 25,
+                        carbsG: act.nutrition.carbsG || 30,
+                        fatsG: act.nutrition.fatsG || 12
+                    }
+                ];
+            }
 
-        return NextResponse.json(parsed);
+            return {
+                intent,
+                targetTab,
+                summary: act.summary || "Comando procesado",
+                workout: act.workout,
+                nutrition: act.nutrition,
+                search: act.search,
+                music: act.music
+            };
+        });
+
+        const overallSummary = parsed.overallSummary || 
+            normalizedActions.map(a => a.summary).filter(Boolean).join(" • ") || 
+            "Comando procesado";
+
+        return NextResponse.json({
+            actions: normalizedActions,
+            overallSummary,
+            // Retrocompatibilidad con consumidores que esperan el primer intent en la raíz
+            intent: normalizedActions[0]?.intent || "UNKNOWN",
+            targetTab: normalizedActions[0]?.targetTab || currentTab,
+            summary: overallSummary,
+            workout: normalizedActions[0]?.workout,
+            nutrition: normalizedActions[0]?.nutrition,
+            search: normalizedActions[0]?.search,
+            music: normalizedActions[0]?.music
+        });
     } catch (error: any) {
         console.error("[VoiceAgent API Error]:", error);
         return NextResponse.json(
             {
+                actions: [],
                 intent: "UNKNOWN",
                 error: error?.message || "Error procesando el comando de voz"
             },
