@@ -37,7 +37,8 @@ import {
     spotifyTransferPlayback,
     openSpotifyDeepLink,
     isIOSDevice,
-    SpotifyDevice
+    SpotifyDevice,
+    SpotifyQueueItem
 } from "@/services/spotifyService";
 import { useSpotifyPlayback } from "@/hooks/useSpotifyPlayback";
 
@@ -92,6 +93,7 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const [isConnecting, setIsConnecting] = useState(false);
     const [playingPlaylistId, setPlayingPlaylistId] = useState<string | null>(null);
+    const [playingSongUri, setPlayingSongUri] = useState<string | null>(null);
     const [customUri, setCustomUri] = useState("");
     const [devices, setDevices] = useState<SpotifyDevice[]>([]);
     const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
@@ -207,7 +209,7 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
         let formatted = customUri.trim();
         const result = await spotifyPlayPlaylist(formatted, selectedDeviceId || undefined);
         if (result.success) {
-            setSuccessMsg("¡Iniciando reproducción de playlist personalizada!");
+            setSuccessMsg("¡Iniciando reproducción solicitada!");
             setCustomUri("");
             setTimeout(() => {
                 loadDevices();
@@ -216,6 +218,30 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
             }, 1000);
         } else {
             setErrorMsg(result.error || "Asegúrate de tener Spotify abierto.");
+        }
+    };
+
+    const handlePlayQueueItem = async (item: SpotifyQueueItem) => {
+        setPlayingSongUri(item.uri);
+        setErrorMsg(null);
+        setSuccessMsg(null);
+
+        try {
+            const result = await playQueueItem(item.uri, selectedDeviceId || undefined);
+            if (result.success) {
+                setSuccessMsg(`¡Reproduciendo "${item.name}" en ${result.deviceName || "tu dispositivo"}!`);
+                setTimeout(() => {
+                    loadDevices();
+                    loadQueue();
+                    refreshPlayback();
+                }, 1000);
+            } else {
+                setErrorMsg(result.error || `No se pudo reproducir "${item.name}". Abre Spotify y reintenta.`);
+            }
+        } catch (err: any) {
+            setErrorMsg(err?.message || "Error al solicitar reproducción de la pista.");
+        } finally {
+            setTimeout(() => setPlayingSongUri(null), 1200);
         }
     };
 
@@ -577,9 +603,9 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                                         {queue.map((item, idx) => (
                                             <div
                                                 key={`${item.id}-${idx}`}
-                                                onClick={() => playQueueItem(item.uri)}
-                                                className="group p-2 sm:p-2.5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] hover:border-[#1DB954]/40 flex items-center justify-between gap-3 cursor-pointer transition-all"
-                                                title="Haz clic para saltar a esta canción"
+                                                onClick={() => handlePlayQueueItem(item)}
+                                                className="group p-2 sm:p-2.5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] hover:border-[#1DB954]/40 flex items-center justify-between gap-3 cursor-pointer transition-all active:scale-[0.99]"
+                                                title={`Haz clic para reproducir "${item.name}"`}
                                             >
                                                 <div className="flex items-center gap-3 min-w-0">
                                                     <span className="text-[10px] font-mono text-zinc-500 w-4 text-center shrink-0">
@@ -612,8 +638,16 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                                                     <span className="text-[10px] font-mono text-zinc-500 hidden sm:inline">
                                                         {formatTime(item.durationMs)}
                                                     </span>
-                                                    <div className="w-7 h-7 rounded-full bg-white/[0.08] group-hover:bg-[#1DB954] text-zinc-300 group-hover:text-black flex items-center justify-center transition-all">
-                                                        <Play size={10} fill="currentColor" className="ml-0.5" />
+                                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
+                                                        playingSongUri === item.uri
+                                                            ? "bg-[#1DB954] text-black shadow-md shadow-[#1DB954]/30"
+                                                            : "bg-white/[0.08] group-hover:bg-[#1DB954] text-zinc-300 group-hover:text-black"
+                                                    }`}>
+                                                        {playingSongUri === item.uri ? (
+                                                            <RefreshCw size={11} className="animate-spin text-black" />
+                                                        ) : (
+                                                            <Play size={10} fill="currentColor" className="ml-0.5" />
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -801,12 +835,12 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                     {connected && (
                         <div className="p-3.5 bg-white/[0.02] border border-white/[0.06] rounded-2xl space-y-2">
                             <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wide block">
-                                O REPRODUCIR CUALQUIER OTRA PLAYLIST
+                                O REPRODUCIR CUALQUIER PLAYLIST O CANCIÓN ESPECÍFICA
                             </span>
                             <div className="flex gap-2">
                                 <input
                                     type="text"
-                                    placeholder="Pega enlace o URI de playlist de Spotify..."
+                                    placeholder="Pega enlace de playlist o canción de Spotify..."
                                     value={customUri}
                                     onChange={(e) => setCustomUri(e.target.value)}
                                     onKeyDown={(e) => {

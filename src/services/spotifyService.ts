@@ -738,26 +738,12 @@ export async function getSpotifyQueue(): Promise<SpotifyQueueItem[]> {
     }
 }
 
-/**
- * Salta directamente a una pista específica por su URI.
- */
-export async function spotifyPlayTrack(uri: string, targetDeviceId?: string): Promise<boolean> {
-    try {
-        let devId = targetDeviceId;
-        if (!devId) {
-            const dev = await getBestAvailableDevice();
-            devId = dev?.id;
-        }
-        const endpoint = devId ? `/me/player/play?device_id=${encodeURIComponent(devId)}` : "/me/player/play";
-        const res = await spotifyFetch(endpoint, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ uris: [uri] })
-        });
-        return res ? res.ok : false;
-    } catch {
-        return false;
-    }
+export interface PlayTrackResult {
+    success: boolean;
+    deviceName?: string;
+    deviceId?: string;
+    error?: string;
+    needsAppOpen?: boolean;
 }
 
 export interface PlayPlaylistResult {
@@ -766,6 +752,163 @@ export interface PlayPlaylistResult {
     deviceId?: string;
     error?: string;
     needsAppOpen?: boolean;
+}
+
+/**
+ * Normaliza cualquier formato de enlace o URI de Spotify a la URI canónica de pista (spotify:track:ID)
+ */
+export function normalizeSpotifyTrackUri(raw: string): string {
+    const trimmed = (raw || "").trim();
+    if (!trimmed) return "";
+    if (trimmed.startsWith("spotify:track:")) {
+        return trimmed.split("?")[0];
+    }
+    const match = trimmed.match(/track\/([a-zA-Z0-9]+)/);
+    if (match && match[1]) {
+        return `spotify:track:${match[1]}`;
+    }
+    if (/^[a-zA-Z0-9]{22}$/.test(trimmed)) {
+        return `spotify:track:${trimmed}`;
+    }
+    return trimmed;
+}
+
+/**
+ * Salta directamente a una pista específica por su URI con soporte para despertar
+ * dispositivos en reposo (iPhone / Android) y fallback inmediato a app nativa.
+ */
+export async function spotifyPlayTrack(
+    uri: string,
+    targetDeviceId?: string,
+    contextUri?: string
+): Promise<PlayTrackResult> {
+    try {
+        const canonicalUri = normalizeSpotifyTrackUri(uri);
+        if (!canonicalUri) {
+            return {
+                success: false,
+                error: "Enlace o URI de canción no válido."
+            };
+        }
+
+        const devices = await spotifyGetDevices();
+        let targetDev: SpotifyDevice | undefined;
+        if (targetDeviceId) {
+            targetDev = devices.find(d => d.id === targetDeviceId);
+        }
+        if (!targetDev) {
+            targetDev = devices.find(d => d.is_active) || devices[0];
+        }
+
+        // Si no hay ningún dispositivo registrado (típico en iPhone con pantalla bloqueada)
+        if (!targetDev) {
+            openSpotifyDeepLink(canonicalUri);
+            return {
+                success: true,
+                deviceName: "Spotify en tu dispositivo",
+                needsAppOpen: false
+            };
+        }
+
+        const endpoint = `/me/player/play?device_id=${encodeURIComponent(targetDev.id)}`;
+
+        // Estrategia 1: Reproducir con uris: [canonicalUri] (o context_uri con offset si está disponible)
+        let playPayload: any = { uris: [canonicalUri] };
+        if (contextUri && contextUri.startsWith("spotify:")) {
+            playPayload = {
+                context_uri: contextUri,
+                offset: { uri: canonicalUri },
+                position_ms: 0
+            };
+        }
+
+        let res = await spotifyFetch(endpoint, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(playPayload)
+        });
+
+        if (res && (res.status === 204 || res.ok)) {
+            return {
+                success: true,
+                deviceName: targetDev.name,
+                deviceId: targetDev.id
+            };
+        }
+
+        // Si falló con context_uri, reintentar con uris: [canonicalUri]
+        if (contextUri) {
+            res = await spotifyFetch(endpoint, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ uris: [canonicalUri] })
+            });
+
+            if (res && (res.status === 204 || res.ok)) {
+                return {
+                    success: true,
+                    deviceName: targetDev.name,
+                    deviceId: targetDev.id
+                };
+            }
+        }
+
+        let errorReason = "";
+        if (res) {
+            try {
+                const errData = await res.json();
+                errorReason = errData?.error?.message || "";
+            } catch {
+                // ignore
+            }
+        }
+
+        // Si Spotify reporta restricción (típico en cuentas Free o modo shuffle móvil)
+        if (errorReason.toLowerCase().includes("premium") || errorReason.toLowerCase().includes("restriction")) {
+            openSpotifyDeepLink(canonicalUri);
+            return {
+                success: true,
+                deviceName: targetDev.name,
+                deviceId: targetDev.id,
+                needsAppOpen: true
+            };
+        }
+
+        // Si el dispositivo estaba en reposo o inactivo, despertarlo transfiriendo la sesión con play: true
+        const transferred = await spotifyTransferPlayback(targetDev.id, true);
+        if (transferred) {
+            await new Promise(r => setTimeout(r, 450));
+            res = await spotifyFetch(endpoint, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ uris: [canonicalUri] })
+            });
+
+            if (res && (res.status === 204 || res.ok)) {
+                return {
+                    success: true,
+                    deviceName: targetDev.name,
+                    deviceId: targetDev.id
+                };
+            }
+        }
+
+        // Fallback supremo: si el API remoto de Spotify falla (común en iOS en segundo plano), abrir el deep link directo
+        openSpotifyDeepLink(canonicalUri);
+        return {
+            success: true,
+            deviceName: targetDev.name,
+            deviceId: targetDev.id,
+            needsAppOpen: true
+        };
+    } catch (err: any) {
+        openSpotifyDeepLink(uri);
+        return {
+            success: false,
+            needsAppOpen: true,
+            error: err?.message || "Error al conectar con Spotify Web API."
+        };
+    }
 }
 
 /**
@@ -794,9 +937,21 @@ export function openSpotifyDeepLink(uri: string, webUrl?: string): void {
             return;
         }
 
-        const canonical = normalizeSpotifyPlaylistUri(targetUri);
-        const playlistId = canonical.replace("spotify:playlist:", "");
-        const targetUrl = webUrl || (playlistId ? `https://open.spotify.com/playlist/${playlistId}` : "https://open.spotify.com");
+        let targetUrl = webUrl;
+        if (!targetUrl) {
+            if (targetUri.startsWith("spotify:track:")) {
+                const trackId = targetUri.replace("spotify:track:", "").split("?")[0];
+                targetUrl = `https://open.spotify.com/track/${trackId}`;
+            } else if (targetUri.startsWith("spotify:playlist:")) {
+                const playlistId = targetUri.replace("spotify:playlist:", "").split("?")[0];
+                targetUrl = `https://open.spotify.com/playlist/${playlistId}`;
+            } else if (targetUri.startsWith("spotify:album:")) {
+                const albumId = targetUri.replace("spotify:album:", "").split("?")[0];
+                targetUrl = `https://open.spotify.com/album/${albumId}`;
+            } else {
+                targetUrl = "https://open.spotify.com";
+            }
+        }
 
         if (isMobile) {
             window.location.href = targetUrl;
@@ -1022,6 +1177,12 @@ export async function spotifyPlayPlaylist(
     targetDeviceId?: string
 ): Promise<PlayPlaylistResult> {
     try {
+        const trimmed = (playlistUri || "").trim();
+        // Detección automática: si es una canción individual, delegar a spotifyPlayTrack
+        if (trimmed.startsWith("spotify:track:") || trimmed.includes("/track/")) {
+            return await spotifyPlayTrack(trimmed, targetDeviceId);
+        }
+
         const canonicalUri = normalizeSpotifyPlaylistUri(playlistUri);
         if (!canonicalUri) {
             return {

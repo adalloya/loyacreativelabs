@@ -21,7 +21,8 @@ import {
     isIOSDevice,
     SpotifyTrack,
     SpotifyQueueItem,
-    AudioFeatures
+    AudioFeatures,
+    PlayTrackResult
 } from "@/services/spotifyService";
 import { extractAlbumAccentColor } from "@/services/spotifyTelemetry";
 
@@ -287,12 +288,13 @@ export function useSpotifyPlayback() {
         await spotifySeek(posMs, track?.deviceId);
     };
 
-    const playQueueItem = async (uri: string) => {
-        await spotifyPlayTrack(uri, track?.deviceId);
+    const playQueueItem = async (uri: string, deviceId?: string): Promise<PlayTrackResult> => {
+        const res = await spotifyPlayTrack(uri, deviceId || track?.deviceId);
         setTimeout(() => {
             updatePlayback();
             loadQueue();
         }, 600);
+        return res;
     };
 
     const setVolume = async (val: number) => {
