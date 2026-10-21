@@ -17,14 +17,11 @@ import {
     Sliders,
     Sparkles,
     RefreshCw,
-    EyeOff,
-    Maximize2,
-    Minimize2
+    EyeOff
 } from "lucide-react";
 import { useApexFx } from "@/hooks/useApexFx";
 import { useSpotifyPlayback } from "@/hooks/useSpotifyPlayback";
 import { initiateSpotifyLogin } from "@/services/spotifyService";
-import { SpotifyThreeCanvas } from "@/components/spotify/SpotifyThreeCanvas";
 
 interface SpotifyPlayerWidgetProps {
     onOpenSettings: () => void;
@@ -80,21 +77,6 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
 
     const { isFxActive, visualizerMode, cycleMode, turnOffFx } = useApexFx();
 
-    const [isCockpitExpanded, setIsCockpitExpanded] = useState<boolean>(() => {
-        if (typeof window === "undefined") return false;
-        return localStorage.getItem("apex_player_cockpit_expanded") === "true";
-    });
-
-    const toggleCockpit = () => {
-        setIsCockpitExpanded(prev => {
-            const next = !prev;
-            if (typeof window !== "undefined") {
-                localStorage.setItem("apex_player_cockpit_expanded", String(next));
-            }
-            return next;
-        });
-    };
-
     const progressPct = track && track.durationMs > 0
         ? Math.min(100, Math.max(0, (progressMs / track.durationMs) * 100))
         : 0;
@@ -126,59 +108,6 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
             borderColor: isFxActive ? `rgba(${accentRgb}, 0.35)` : undefined,
             boxShadow: isFxActive ? `0 -10px 30px -10px rgba(${accentRgb}, 0.2)` : undefined
         }}>
-            {/* APEX MOTION CANVAS COCKPIT VIEW (CANVAS / THREE.JS VISUALIZER) */}
-            {isFxActive && (
-                <div
-                    className={`relative w-full max-w-7xl mx-auto overflow-hidden transition-all duration-500 ease-out border border-white/[0.08] mb-2 rounded-2xl bg-black/60 shadow-2xl ${
-                        isCockpitExpanded ? "h-56 sm:h-64" : "h-28"
-                    }`}
-                >
-                    <SpotifyThreeCanvas
-                        mode={visualizerMode}
-                        isPlaying={isPlaying}
-                        trackId={track?.id}
-                        trackName={track?.name}
-                        artistName={track?.artist}
-                        albumArt={track?.albumArt}
-                        bpm={bpm}
-                        energy={energy}
-                        progressMs={progressMs}
-                        accentRgb={accentRgb}
-                        className="w-full h-full"
-                    />
-
-                    {/* Cockpit Canopy Quick Controls */}
-                    <div className="absolute top-2.5 right-3 z-20 flex items-center gap-1.5 pointer-events-auto">
-                        <button
-                            type="button"
-                            onClick={toggleCockpit}
-                            className="px-2.5 py-1 rounded-full bg-black/60 hover:bg-black/85 backdrop-blur-md border border-white/20 text-white font-mono text-[9px] sm:text-[10px] font-bold flex items-center gap-1.5 shadow-lg active:scale-95 transition-all"
-                            title={isCockpitExpanded ? "Reducir a vista compacta" : "Expandir a vista Cabina inmersiva"}
-                        >
-                            {isCockpitExpanded ? (
-                                <>
-                                    <Minimize2 size={11} className="text-[#10B981]" />
-                                    <span>COMPACTO</span>
-                                </>
-                            ) : (
-                                <>
-                                    <Maximize2 size={11} className="text-[#10B981]" />
-                                    <span>CABINA</span>
-                                </>
-                            )}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={turnOffFx}
-                            className="p-1.5 rounded-full bg-black/60 hover:bg-[#FF2A2A]/20 hover:text-[#FF2A2A] hover:border-[#FF2A2A]/40 backdrop-blur-md border border-white/20 text-zinc-400 shadow-lg active:scale-95 transition-all"
-                            title="Apagar efectos visuales (Desmontar Canvas)"
-                        >
-                            <EyeOff size={11} />
-                        </button>
-                    </div>
-                </div>
-            )}
-
             <div className="relative z-10 max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-6 text-xs">
 
                 {/* ZONE 1 (LEFT): Track Info & Album Art */}
