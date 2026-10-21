@@ -14,6 +14,8 @@ import {
     Shield,
     RotateCcw,
     ChevronRight,
+    ChevronLeft,
+    ChevronDown,
     Sliders
 } from "lucide-react";
 import { calculateTodayTarget, ExerciseItem, ReadinessState } from "@/lib/hypertrophy-engine";
@@ -157,6 +159,12 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
     // Current V2 active navigation destination (Entrenar, Nutrición, Anatomía, Ajustes)
     const [activeTab, setActiveTab] = useState<ApexV2Tab>("workout");
     const [theme, setTheme] = useState<Theme>("dark");
+    const [selectedExerciseIndex, setSelectedExerciseIndex] = useState<number>(0);
+
+    // Resetear al primer ejercicio al cambiar de día
+    useEffect(() => {
+        setSelectedExerciseIndex(0);
+    }, [activeDayIndex]);
 
     useEffect(() => {
         setTheme(getInitialTheme());
@@ -353,63 +361,199 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                 );
                             })()}
 
-                            {/* Lista de Tarjetas de Ejercicio Cero Scroll */}
-                            <div className="space-y-3">
-                                {activeExercises.map((ex, exIdx) => {
-                                    const memory = exerciseMemory[ex.id] || { weight: 0, reps: 0 };
-                                    const target = calculateTodayTarget(
-                                        memory.weight,
-                                        memory.reps,
-                                        ex.rep_range_min,
-                                        ex.rep_range_max,
-                                        readiness,
-                                        weightUnit
-                                    );
-                                    const isNewBlock = !!(ex.blockId && (exIdx === 0 || activeExercises[exIdx - 1]?.blockId !== ex.blockId));
+                            {/* Lista de Ejercicios en Modo Pestañas / Retiradas Cero Scroll */}
+                            <div className="space-y-2">
+                                {activeExercises.length === 0 ? (
+                                    <div className={`p-8 text-center rounded-3xl border ${
+                                        isLight ? "bg-white/80 border-slate-200 text-slate-500" : "bg-black/30 border-white/10 text-zinc-400"
+                                    }`}>
+                                        <Dumbbell className="w-8 h-8 mx-auto mb-2 opacity-40 text-rose-500" />
+                                        <p className="text-xs font-semibold">No hay ejercicios asignados para esta sesión.</p>
+                                    </div>
+                                ) : (
+                                    activeExercises.map((ex, exIdx) => {
+                                        const isSelected = selectedExerciseIndex === exIdx;
+                                        const totalSets = (ex as any).target_sets || ex.default_sets || 3;
+                                        const completedCount = Array.from({ length: totalSets }).filter(
+                                            (_, sIdx) => completedSets[`${ex.id}_${sIdx}`]
+                                        ).length;
+                                        const isAllDone = completedCount >= totalSets && totalSets > 0;
 
-                                    return (
-                                        <ApexV2ExerciseCard
-                                            key={`${ex.id}_${exIdx}`}
-                                            exercise={ex}
-                                            exerciseIndex={exIdx}
-                                            isNewBlock={isNewBlock}
-                                            memory={memory}
-                                            target={target}
-                                            weightUnit={weightUnit}
-                                            completedSets={completedSets}
-                                            setInputs={setInputs}
-                                            onSetInputChange={handleSetInputChange}
-                                            onCompleteSet={(item, sIdx, customW, customR) => {
-                                                const restSecs = item.rest_seconds || (trainingMethodology === "cycled_circuits" ? 45 : 90);
-                                                handleCompleteSet(item.id, sIdx, restSecs, customW, customR);
-                                            }}
-                                            tempoActive={Boolean(tempoActive[ex.id])}
-                                            onToggleTempo={() => {
-                                                const nextState = !tempoActive[ex.id];
-                                                setTempoActive((prev) => ({ ...prev, [ex.id]: nextState }));
-                                                if (nextState) {
-                                                    startTempoLoop(ex.id);
-                                                } else {
-                                                    stopTempoLoop(ex.id);
-                                                }
-                                            }}
-                                            onOpenVbt={() => {
-                                                setVbtExerciseName(ex.name);
-                                                setIsVbtModalOpen(true);
-                                            }}
-                                            onRandomSwap={() => handleRandomSwapExercise(exIdx)}
-                                            onOpenSwapModal={() => setSwapTargetIndex(exIdx)}
-                                            onOpenPlateModal={(w) => {
-                                                setPlateModalWeight(w);
-                                                setIsPlateModalOpen(true);
-                                            }}
-                                            isPlateLoaded={isPlateLoadedExercise(ex.equipment, ex.name)}
-                                            notes={exerciseNotes[ex.id] || ""}
-                                            onSaveNotes={(n) => setExerciseNotes((prev) => ({ ...prev, [ex.id]: n }))}
-                                            isLight={isLight}
-                                        />
-                                    );
-                                })}
+                                        // Si está seleccionado, se muestra en grande
+                                        if (isSelected) {
+                                            const memory = exerciseMemory[ex.id] || { weight: 0, reps: 0 };
+                                            const target = calculateTodayTarget(
+                                                memory.weight,
+                                                memory.reps,
+                                                ex.rep_range_min,
+                                                ex.rep_range_max,
+                                                readiness,
+                                                weightUnit
+                                            );
+                                            const isNewBlock = !!(ex.blockId && (exIdx === 0 || activeExercises[exIdx - 1]?.blockId !== ex.blockId));
+
+                                            return (
+                                                <motion.div
+                                                    key={`${ex.id}_${exIdx}_active`}
+                                                    layout
+                                                    initial={{ opacity: 0, y: 8 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, y: -8 }}
+                                                    transition={{ duration: 0.2 }}
+                                                    className="space-y-2 pt-1"
+                                                >
+                                                    {/* Barra Superior de Navegación entre Pestañas de Ejercicio */}
+                                                    <div className="flex items-center justify-between px-2 text-xs">
+                                                        <button
+                                                            type="button"
+                                                            disabled={exIdx === 0}
+                                                            onClick={() => setSelectedExerciseIndex(Math.max(0, exIdx - 1))}
+                                                            className={`flex items-center gap-1 font-semibold text-[11px] transition-all cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed ${
+                                                                isLight ? "text-slate-700 hover:text-slate-950" : "text-zinc-300 hover:text-white"
+                                                            }`}
+                                                        >
+                                                            <ChevronLeft className="w-3.5 h-3.5" />
+                                                            <span>Anterior</span>
+                                                        </button>
+
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${
+                                                                isLight ? "text-slate-600" : "text-zinc-400"
+                                                            }`}>
+                                                                EJERCICIO {exIdx + 1} DE {activeExercises.length}
+                                                            </span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setSelectedExerciseIndex(-1)}
+                                                                className={`text-[10px] font-mono px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
+                                                                    isLight
+                                                                        ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"
+                                                                        : "bg-white/[0.08] hover:bg-white/[0.14] text-zinc-300 border-white/10"
+                                                                }`}
+                                                                title="Plegar este ejercicio para ver todos retirados"
+                                                            >
+                                                                Plegar
+                                                            </button>
+                                                        </div>
+
+                                                        <button
+                                                            type="button"
+                                                            disabled={exIdx === activeExercises.length - 1}
+                                                            onClick={() => setSelectedExerciseIndex(Math.min(activeExercises.length - 1, exIdx + 1))}
+                                                            className={`flex items-center gap-1 font-semibold text-[11px] transition-all cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed ${
+                                                                isLight ? "text-slate-700 hover:text-slate-950" : "text-zinc-300 hover:text-white"
+                                                            }`}
+                                                        >
+                                                            <span>Siguiente</span>
+                                                            <ChevronRight className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </div>
+
+                                                    {/* Tarjeta de Ejercicio Expandida en Grande */}
+                                                    <ApexV2ExerciseCard
+                                                        exercise={ex}
+                                                        exerciseIndex={exIdx}
+                                                        isNewBlock={isNewBlock}
+                                                        memory={memory}
+                                                        target={target}
+                                                        weightUnit={weightUnit}
+                                                        completedSets={completedSets}
+                                                        setInputs={setInputs}
+                                                        onSetInputChange={handleSetInputChange}
+                                                        onCompleteSet={(item, sIdx, customW, customR) => {
+                                                            const restSecs = item.rest_seconds || (trainingMethodology === "cycled_circuits" ? 45 : 90);
+                                                            handleCompleteSet(item.id, sIdx, restSecs, customW, customR);
+                                                        }}
+                                                        tempoActive={Boolean(tempoActive[ex.id])}
+                                                        onToggleTempo={() => {
+                                                            const nextState = !tempoActive[ex.id];
+                                                            setTempoActive((prev) => ({ ...prev, [ex.id]: nextState }));
+                                                            if (nextState) {
+                                                                startTempoLoop(ex.id);
+                                                            } else {
+                                                                stopTempoLoop(ex.id);
+                                                            }
+                                                        }}
+                                                        onOpenVbt={() => {
+                                                            setVbtExerciseName(ex.name);
+                                                            setIsVbtModalOpen(true);
+                                                        }}
+                                                        onRandomSwap={() => handleRandomSwapExercise(exIdx)}
+                                                        onOpenSwapModal={() => setSwapTargetIndex(exIdx)}
+                                                        onOpenPlateModal={(w) => {
+                                                            setPlateModalWeight(w);
+                                                            setIsPlateModalOpen(true);
+                                                        }}
+                                                        isPlateLoaded={isPlateLoadedExercise(ex.equipment, ex.name)}
+                                                        notes={exerciseNotes[ex.id] || ""}
+                                                        onSaveNotes={(n) => setExerciseNotes((prev) => ({ ...prev, [ex.id]: n }))}
+                                                        isLight={isLight}
+                                                    />
+                                                </motion.div>
+                                            );
+                                        }
+
+                                        // Si no está seleccionado, se ve "retirado" como pestaña compacta
+                                        return (
+                                            <motion.div
+                                                key={`${ex.id}_${exIdx}_collapsed`}
+                                                layout
+                                                initial={{ opacity: 0, y: 4 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: -4 }}
+                                                onClick={() => setSelectedExerciseIndex(exIdx)}
+                                                className={`w-full p-2.5 sm:p-3 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-3 cursor-pointer group active:scale-[0.99] select-none ${
+                                                    isLight
+                                                        ? "bg-white/80 hover:bg-white border-slate-200/90 shadow-xs hover:shadow-sm"
+                                                        : "bg-zinc-950/45 hover:bg-white/[0.06] border-white/[0.08] hover:border-white/20 backdrop-blur-xl"
+                                                }`}
+                                                title={`Toca para abrir ${ex.name} en grande`}
+                                            >
+                                                {/* Izquierda: Número + Nombre + Músculo */}
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-mono font-bold text-[11px] shrink-0 border ${
+                                                        isAllDone
+                                                            ? (isLight ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30")
+                                                            : (isLight ? "bg-slate-100 text-slate-600 border-slate-200" : "bg-white/[0.06] text-zinc-400 border-white/10")
+                                                    }`}>
+                                                        {isAllDone ? "✓" : exIdx + 1}
+                                                    </span>
+
+                                                    <div className="min-w-0">
+                                                        <h4 className={`text-xs sm:text-sm font-bold tracking-tight truncate ${
+                                                            isAllDone
+                                                                ? (isLight ? "text-slate-400 line-through" : "text-zinc-500 line-through")
+                                                                : (isLight ? "text-slate-900 group-hover:text-emerald-700" : "text-white group-hover:text-emerald-400")
+                                                        }`}>
+                                                            {ex.name}
+                                                        </h4>
+                                                        <p className={`text-[10px] truncate leading-tight ${
+                                                            isLight ? "text-slate-500" : "text-zinc-400"
+                                                        }`}>
+                                                            {ex.anatomical_subdivision} • Tier {ex.hypertrophy_tier || "S"} • {ex.equipment}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Derecha: Badge de Progreso + Chevron */}
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border font-semibold ${
+                                                        isAllDone
+                                                            ? (isLight ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30")
+                                                            : completedCount > 0
+                                                            ? (isLight ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-amber-400/15 text-amber-400 border-amber-400/30")
+                                                            : (isLight ? "bg-slate-100 text-slate-600 border-slate-200" : "bg-white/[0.04] text-zinc-400 border-white/10")
+                                                    }`}>
+                                                        {isAllDone ? `✓ ${completedCount}/${totalSets}` : `${completedCount}/${totalSets} sets`}
+                                                    </span>
+                                                    <ChevronDown className={`w-3.5 h-3.5 transition-transform group-hover:translate-y-0.5 ${
+                                                        isLight ? "text-slate-400 group-hover:text-slate-800" : "text-zinc-500 group-hover:text-white"
+                                                    }`} />
+                                                </div>
+                                            </motion.div>
+                                        );
+                                    })
+                                )}
                             </div>
                         </motion.div>
                     )}
