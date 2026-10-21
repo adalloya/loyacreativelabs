@@ -327,7 +327,7 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                                             type="button"
                                                             onClick={() => setReadiness(r)}
                                                             className={`px-3 py-1 rounded-xl text-[10px] font-mono uppercase font-bold transition-all cursor-pointer ${
-                                                                isSel
+                                                                 isSel
                                                                     ? r === "optimal"
                                                                         ? (isLight ? "bg-emerald-600 text-white shadow-xs" : "bg-emerald-500 text-black shadow-sm")
                                                                         : r === "normal"
@@ -341,21 +341,6 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                                     );
                                                 })}
                                             </div>
-
-                                            {/* Acceso Rápido Directo a Dieta Gemini AI */}
-                                            <button
-                                                type="button"
-                                                onClick={() => setIsDietPrefModalOpen(true)}
-                                                className={`px-3 py-1.5 rounded-2xl text-[11px] font-semibold border flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer ${
-                                                    isLight
-                                                        ? "bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-900 shadow-xs"
-                                                        : "bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 text-emerald-300"
-                                                }`}
-                                                title="Crear o personalizar dieta con Gemini AI"
-                                            >
-                                                <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
-                                                <span>Dieta Gemini</span>
-                                            </button>
                                         </div>
                                     </div>
                                 );

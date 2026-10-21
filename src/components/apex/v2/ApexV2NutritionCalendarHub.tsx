@@ -15,6 +15,7 @@ import {
     Plus,
     Trash2,
     ShoppingCart,
+    ClipboardList,
     Sparkles,
     Activity,
     Layers,
@@ -302,36 +303,36 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                 </div>
 
                 <div className="flex items-center gap-2">
-                    {/* Botón Dieta Gemini AI */}
+                    {/* Botón Dieta Gemini AI (Solo Icono) */}
                     {onOpenDietPlanModal && (
                         <button
                             type="button"
                             onClick={onOpenDietPlanModal}
-                            className={`px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs border ${
+                            className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-xs border ${
                                 isLight
-                                    ? "bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-950"
-                                    : "bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/35 text-emerald-300"
+                                    ? "bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-700"
+                                    : "bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/35 text-emerald-400"
                             }`}
                             title="Personalizar o generar dieta con Gemini AI"
+                            aria-label="Dieta Gemini AI"
                         >
-                            <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
-                            <span>Dieta Gemini</span>
+                            <Sparkles className="w-4 h-4" />
                         </button>
                     )}
 
-                    {/* Botón Aislado de Plan Semanal & Lista de Compras */}
+                    {/* Botón Aislado de Plan Semanal & Lista de Compras (Solo Icono: Cuadrito con Líneas) */}
                     <button
                         type="button"
                         onClick={() => setIsWeeklyPlanDrawerOpen(true)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs border ${
+                        className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-xs border ${
                             isLight
-                                ? "bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800"
-                                : "bg-white/10 hover:bg-white/20 border-white/15 text-white"
+                                ? "bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-700 hover:text-slate-900"
+                                : "bg-white/10 hover:bg-white/20 border-white/15 text-zinc-300 hover:text-white"
                         }`}
-                        title="Ver plan de 7 días y lista de compras consolidada"
+                        title="Ver plan semanal y lista de compras consolidada"
+                        aria-label="Plan Semanal y Lista de Compras"
                     >
-                        <ShoppingCart className="w-3.5 h-3.5 text-emerald-500" />
-                        <span>Plan Semanal</span>
+                        <ClipboardList className="w-4 h-4" />
                     </button>
                 </div>
             </div>
@@ -866,7 +867,7 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                                 <h4 className={`text-sm font-bold uppercase tracking-tight flex items-center gap-2 ${
                                     isLight ? "text-slate-950" : "text-white"
                                 }`}>
-                                    <ShoppingCart className="w-4 h-4 text-emerald-500" />
+                                    <ClipboardList className="w-4 h-4 text-emerald-500" />
                                     <span>Plan Semanal & Compras</span>
                                 </h4>
                                 <p className={`text-xs font-mono ${isLight ? "text-slate-500" : "text-zinc-400"}`}>Consolidado Clínico de 7 Días</p>
