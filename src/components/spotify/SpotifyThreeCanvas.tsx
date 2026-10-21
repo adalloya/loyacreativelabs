@@ -54,8 +54,8 @@ export function SpotifyThreeCanvas({
   accentRgbRef.current = accentRgb;
 
   useEffect(() => {
-    // Si está en OFF o solo AURA, no instanciar WebGL (0% uso de GPU)
-    if (mode === 'OFF' || mode === 'AURA' || !mountRef.current) return;
+    // Si está en OFF, no instanciar WebGL (0% uso de GPU/CPU)
+    if (mode === 'OFF' || !mountRef.current) return;
 
     const container = mountRef.current;
     const width = container.clientWidth || 320;
@@ -63,7 +63,24 @@ export function SpotifyThreeCanvas({
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(55, width / height, 0.1, 100);
-    camera.position.z = mode === 'ORB' ? 3.2 : 4.2;
+
+    // Ajuste de cámara según el modo seleccionado
+    if (mode === 'ORB') {
+      camera.position.set(0, 0, 3.2);
+    } else if (mode === 'AURA') {
+      camera.position.set(0, 0, 3.8);
+    } else if (mode === 'TUNNEL') {
+      camera.position.set(0, 0, 4.4);
+    } else if (mode === 'VORTEX') {
+      camera.position.set(0, 1.8, 3.8);
+      camera.lookAt(0, 0, 0);
+    } else if (mode === 'SPECTRUM') {
+      camera.position.set(0, 0.5, 4.4);
+      camera.lookAt(0, 0, 0);
+    } else {
+      // WAVE
+      camera.position.set(0, 0, 4.2);
+    }
 
     const renderer = new THREE.WebGLRenderer({
       alpha: true,
@@ -90,37 +107,150 @@ export function SpotifyThreeCanvas({
     const meshGroup = new THREE.Group();
     scene.add(meshGroup);
 
-    let geometry: THREE.BufferGeometry;
-    let originalPositions: Float32Array;
-
+    // Materiales reactivos principales
     const wireMat = new THREE.MeshBasicMaterial({
       color: primaryColor,
       wireframe: true,
       transparent: true,
-      opacity: mode === 'ORB' ? 0.38 : 0.48,
+      opacity: mode === 'AURA' ? 0.45 : mode === 'ORB' ? 0.38 : 0.48,
+      blending: mode === 'AURA' || mode === 'TUNNEL' || mode === 'VORTEX' ? THREE.AdditiveBlending : THREE.NormalBlending,
     });
 
     const pointsMat = new THREE.PointsMaterial({
       color: 0xffffff,
-      size: mode === 'ORB' ? 0.035 : 0.03,
+      size: mode === 'AURA' ? 0.038 : mode === 'ORB' ? 0.035 : 0.03,
       transparent: true,
       opacity: 0.85,
+      blending: THREE.AdditiveBlending,
     });
 
-    if (mode === 'ORB') {
-      geometry = new THREE.IcosahedronGeometry(1.15, 3);
-      originalPositions = Float32Array.from(geometry.attributes.position.array);
+    // Variables de geometrías según el modo
+    let mainGeometry: THREE.BufferGeometry | null = null;
+    let originalPositions: Float32Array | null = null;
 
-      meshGroup.add(new THREE.Mesh(geometry, wireMat));
-      meshGroup.add(new THREE.Points(geometry, pointsMat));
+    // Elementos auxiliares para modos específicos
+    let extraPointsGeom: THREE.BufferGeometry | null = null;
+    let extraPointsPositions: Float32Array | null = null;
+    let spectrumBars: THREE.Mesh[] = [];
+
+    // ==========================================
+    // INICIALIZACIÓN DE GEOMETRÍAS POR MODO
+    // ==========================================
+    if (mode === 'AURA') {
+      // MODO AURA: Cortinas de luz polar / aurora boreal ondulante
+      mainGeometry = new THREE.PlaneGeometry(9.0, 4.2, 56, 24);
+      mainGeometry.rotateX(-0.25);
+      originalPositions = Float32Array.from(mainGeometry.attributes.position.array);
+
+      meshGroup.add(new THREE.Mesh(mainGeometry, wireMat));
+      meshGroup.add(new THREE.Points(mainGeometry, pointsMat));
+
+      // Polvo estelar cósmico flotante
+      const starCount = 200;
+      extraPointsGeom = new THREE.BufferGeometry();
+      const starPos = new Float32Array(starCount * 3);
+      for (let i = 0; i < starCount; i++) {
+        starPos[i * 3] = (Math.random() - 0.5) * 8.5;
+        starPos[i * 3 + 1] = (Math.random() - 0.5) * 4.5;
+        starPos[i * 3 + 2] = (Math.random() - 0.5) * 3.5;
+      }
+      extraPointsGeom.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+      extraPointsPositions = Float32Array.from(starPos);
+
+      const starMat = new THREE.PointsMaterial({
+        color: 0xffffff,
+        size: 0.032,
+        transparent: true,
+        opacity: 0.75,
+        blending: THREE.AdditiveBlending,
+      });
+      meshGroup.add(new THREE.Points(extraPointsGeom, starMat));
+
+    } else if (mode === 'ORB') {
+      // MODO ORB: Icosaedro geodésico supermasivo
+      mainGeometry = new THREE.IcosahedronGeometry(1.15, 3);
+      originalPositions = Float32Array.from(mainGeometry.attributes.position.array);
+
+      meshGroup.add(new THREE.Mesh(mainGeometry, wireMat));
+      meshGroup.add(new THREE.Points(mainGeometry, pointsMat));
+
+    } else if (mode === 'TUNNEL') {
+      // MODO TUNNEL: Túnel hiperespacial cyberpunk warp speed
+      mainGeometry = new THREE.CylinderGeometry(1.7, 1.7, 18, 16, 40, true);
+      mainGeometry.rotateX(Math.PI / 2);
+      originalPositions = Float32Array.from(mainGeometry.attributes.position.array);
+
+      meshGroup.add(new THREE.Mesh(mainGeometry, wireMat));
+      meshGroup.add(new THREE.Points(mainGeometry, pointsMat));
+
+      // Estrellas en warp speed hacia la cámara
+      const warpCount = 240;
+      extraPointsGeom = new THREE.BufferGeometry();
+      const warpPos = new Float32Array(warpCount * 3);
+      for (let i = 0; i < warpCount; i++) {
+        warpPos[i * 3] = (Math.random() - 0.5) * 3.2;
+        warpPos[i * 3 + 1] = (Math.random() - 0.5) * 3.2;
+        warpPos[i * 3 + 2] = Math.random() * -16;
+      }
+      extraPointsGeom.setAttribute('position', new THREE.BufferAttribute(warpPos, 3));
+      extraPointsPositions = Float32Array.from(warpPos);
+
+      const warpMat = new THREE.PointsMaterial({
+        color: 0xffffff,
+        size: 0.036,
+        transparent: true,
+        opacity: 0.9,
+        blending: THREE.AdditiveBlending,
+      });
+      meshGroup.add(new THREE.Points(extraPointsGeom, warpMat));
+
+    } else if (mode === 'VORTEX') {
+      // MODO VORTEX: Disco de acreción galáctico en espiral
+      const particleCount = 1400;
+      mainGeometry = new THREE.BufferGeometry();
+      const vortexPos = new Float32Array(particleCount * 3);
+
+      for (let i = 0; i < particleCount; i++) {
+        const arm = i % 3;
+        const r = Math.pow(Math.random(), 0.65) * 3.4 + 0.35;
+        const armOffset = arm * ((Math.PI * 2) / 3);
+        const theta = armOffset + r * 1.6 + (Math.random() - 0.5) * 0.32;
+
+        vortexPos[i * 3] = Math.cos(theta) * r;
+        vortexPos[i * 3 + 1] = (Math.random() - 0.5) * 0.18;
+        vortexPos[i * 3 + 2] = Math.sin(theta) * r;
+      }
+
+      mainGeometry.setAttribute('position', new THREE.BufferAttribute(vortexPos, 3));
+      originalPositions = Float32Array.from(vortexPos);
+
+      // Núcleo de singularidad gravitacional central
+      const singularityGeom = new THREE.TorusGeometry(0.38, 0.05, 8, 32);
+      singularityGeom.rotateX(Math.PI / 2);
+      meshGroup.add(new THREE.Mesh(singularityGeom, wireMat));
+      meshGroup.add(new THREE.Points(mainGeometry, pointsMat));
+
+    } else if (mode === 'SPECTRUM') {
+      // MODO SPECTRUM: Ecualizador holográfico 3D de 28 columnas neon
+      const barCount = 28;
+      const barGeom = new THREE.BoxGeometry(0.18, 1.0, 0.18);
+
+      for (let i = 0; i < barCount; i++) {
+        const barMesh = new THREE.Mesh(barGeom, wireMat);
+        const xPos = (i - (barCount - 1) / 2) * 0.25;
+        barMesh.position.set(xPos, 0, 0);
+        meshGroup.add(barMesh);
+        spectrumBars.push(barMesh);
+      }
+
     } else {
-      // MODO WAVE (Terreno de ondas limpio estilo consola Tesla)
-      geometry = new THREE.PlaneGeometry(7, 2.2, 42, 14);
-      geometry.rotateX(-Math.PI / 3.4);
-      originalPositions = Float32Array.from(geometry.attributes.position.array);
+      // MODO WAVE: Terreno de ondas estilo consola Tesla
+      mainGeometry = new THREE.PlaneGeometry(7.2, 2.3, 44, 16);
+      mainGeometry.rotateX(-Math.PI / 3.4);
+      originalPositions = Float32Array.from(mainGeometry.attributes.position.array);
 
-      meshGroup.add(new THREE.Mesh(geometry, wireMat));
-      meshGroup.add(new THREE.Points(geometry, pointsMat));
+      meshGroup.add(new THREE.Mesh(mainGeometry, wireMat));
+      meshGroup.add(new THREE.Points(mainGeometry, pointsMat));
     }
 
     // Estado reactivo dinámico de ráfaga y eventos APEX
@@ -183,33 +313,86 @@ export function SpotifyThreeCanvas({
       const isMidBpm = validBpm >= 110 && validBpm <= 140; // Rock / Hip Hop
       const isLowBpm = validBpm < 110 || restActiveVal; // Lofi / Descanso
 
-      const posAttr = geometry.attributes.position as THREE.BufferAttribute;
-      const posArray = posAttr.array as Float32Array;
-      const count = originalPositions.length / 3;
-
       // Ráfaga global por series completadas
       const burstWave = burstIntensity * 0.45;
 
-      // 3. ANIMACIONES DIFERENCIADAS BASADAS EN EL RANGO DE BPM
+      // Efecto glitch en picos de alta velocidad
+      const isGlitch = isHighBpm && Math.random() < 0.045 * currentEnergy;
+      const jitter = isGlitch ? (Math.random() - 0.5) * 0.12 : 0;
 
-      if (isHighBpm && !restActiveVal) {
-        // ==========================================
-        // RANGO ALTO (> 140 BPM - TECHNO / PHONK)
-        // ==========================================
-        // Rotación angular acelerada
-        const rotSpeed = activePlayback ? 0.022 * (validBpm / 140) : 0.005;
-        meshGroup.rotation.y += rotSpeed;
-        meshGroup.rotation.x += rotSpeed * 0.55;
+      // ==========================================
+      // ANIMACIÓN ESPECÍFICA SEGÚN MODO
+      // ==========================================
 
-        // Efecto glitch y micro-jitter estroboscópico sutil
-        const isGlitch = Math.random() < 0.045 * currentEnergy;
-        const jitter = isGlitch ? (Math.random() - 0.5) * 0.12 : 0;
-        pointsMat.size = 0.038 + (isGlitch ? 0.018 : 0) + beatPulse * 0.015;
-        pointsMat.opacity = isGlitch ? 1.0 : (0.75 + beatPulse * 0.25);
-        meshGroup.scale.set(1.0 + jitter * 0.4, 1.0 + jitter * 0.4, 1.0 + jitter * 0.4);
+      if (mode === 'AURA') {
+        // ------------------------------------------
+        // MODO AURA: Cortinas de Aurora Boreal
+        // ------------------------------------------
+        if (mainGeometry && originalPositions) {
+          const posAttr = mainGeometry.attributes.position as THREE.BufferAttribute;
+          const posArray = posAttr.array as Float32Array;
+          const count = originalPositions.length / 3;
 
-        if (mode === 'ORB') {
-          // Vértices vibran con alta frecuencia y picos afilados
+          const waveSpeed = activePlayback ? time * (validBpm / 110) : time * 0.5;
+          const amplitude = isHighBpm ? 0.38 : isMidBpm ? 0.28 : 0.18;
+
+          for (let i = 0; i < count; i++) {
+            const idx = i * 3;
+            const x0 = originalPositions[idx];
+            const y0 = originalPositions[idx + 1];
+            const z0 = originalPositions[idx + 2];
+
+            // Ondulaciones armónicas fluidas de seda polar
+            const w1 = Math.sin(x0 * 1.3 + waveSpeed * 2.2) * (amplitude * currentEnergy);
+            const w2 = Math.cos(y0 * 1.8 + waveSpeed * 1.6) * (0.16 * currentEnergy);
+            const w3 = Math.sin(x0 * 2.6 - waveSpeed * 3.1) * (0.08 * currentEnergy);
+            const pulseDisplace = beatPulse * 0.22 * Math.sin(x0 * 1.5 + waveSpeed);
+
+            posArray[idx + 2] = z0 + w1 + w2 + w3 + pulseDisplace + burstWave + jitter;
+          }
+          posAttr.needsUpdate = true;
+        }
+
+        // Suave balanceo etéreo del telón de luz
+        meshGroup.rotation.y = Math.sin(time * 0.6) * 0.14;
+        meshGroup.rotation.z = Math.cos(time * 0.4) * 0.04;
+
+        // Movimiento de polvo estelar cósmico
+        if (extraPointsGeom && extraPointsPositions) {
+          const pAttr = extraPointsGeom.attributes.position as THREE.BufferAttribute;
+          const pArray = pAttr.array as Float32Array;
+          const pCount = extraPointsPositions.length / 3;
+
+          for (let i = 0; i < pCount; i++) {
+            const idx = i * 3;
+            pArray[idx + 1] += 0.005 * (validBpm / 120);
+            if (pArray[idx + 1] > 2.5) {
+              pArray[idx + 1] = -2.5;
+            }
+            pArray[idx] = extraPointsPositions[idx] + Math.sin(time + i) * 0.08;
+          }
+          pAttr.needsUpdate = true;
+        }
+
+      } else if (mode === 'ORB') {
+        // ------------------------------------------
+        // MODO ORB: Icosaedro Geodésico
+        // ------------------------------------------
+        if (mainGeometry && originalPositions) {
+          const posAttr = mainGeometry.attributes.position as THREE.BufferAttribute;
+          const posArray = posAttr.array as Float32Array;
+          const count = originalPositions.length / 3;
+
+          const rotSpeed = activePlayback
+            ? (isHighBpm ? 0.022 * (validBpm / 140) : isMidBpm ? 0.010 * (validBpm / 125) : 0.004)
+            : 0.002;
+
+          meshGroup.rotation.y += rotSpeed;
+          meshGroup.rotation.x += rotSpeed * 0.55;
+
+          const scaleFactor = 1.0 + (beatPulse * 0.22 * currentEnergy) + jitter * 0.3;
+          meshGroup.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
           for (let i = 0; i < count; i++) {
             const idx = i * 3;
             const x0 = originalPositions[idx];
@@ -221,135 +404,184 @@ export function SpotifyThreeCanvas({
             const ny = y0 / len;
             const nz = z0 / len;
 
-            const spike = Math.pow(Math.abs(Math.sin(time * 7.0 + x0 * 3.2 + y0 * 3.2)), 2.6) * (0.32 * currentEnergy);
-            const microVib = Math.sin(time * 38.0 + i * 3.2) * (0.035 * currentEnergy);
-            const disp = spike + beatPulse * 0.32 * currentEnergy + microVib + jitter + burstWave;
+            let disp = 0;
+            if (isHighBpm) {
+              const spike = Math.pow(Math.abs(Math.sin(time * 7.0 + x0 * 3.2 + y0 * 3.2)), 2.6) * (0.32 * currentEnergy);
+              const microVib = Math.sin(time * 38.0 + i * 3.2) * (0.035 * currentEnergy);
+              disp = spike + beatPulse * 0.32 * currentEnergy + microVib + jitter + burstWave;
+            } else if (isMidBpm) {
+              const wave = Math.sin(time * 3.0 + x0 * 1.8 + y0 * 1.8) * Math.cos(time * 2.0 + z0 * 2.0);
+              disp = (wave * 0.18 * currentEnergy) + (beatPulse * 0.32 * currentEnergy) + burstWave;
+            } else {
+              const swell = Math.sin(time * 1.5 + x0 * 1.0) * Math.cos(time * 1.2 + y0 * 1.0) * (0.11 * currentEnergy);
+              disp = swell + burstWave * 0.4;
+            }
 
             posArray[idx] = x0 + nx * disp;
             posArray[idx + 1] = y0 + ny * disp;
             posArray[idx + 2] = z0 + nz * disp;
           }
-        } else {
-          // Malla WAVE con picos agudos y agresivos
-          for (let i = 0; i < count; i++) {
-            const idx = i * 3;
-            const x0 = originalPositions[idx];
-            const y0 = originalPositions[idx + 1];
-            const z0 = originalPositions[idx + 2];
-
-            const s1 = Math.sin(x0 * 2.2 + time * 5.8);
-            const wave1 = Math.sign(s1) * Math.pow(Math.abs(s1), 2.4) * (0.42 * currentEnergy);
-            const wave2 = Math.cos(y0 * 2.8 + time * 4.2) * (0.24 * currentEnergy);
-            const microVib = Math.sin(time * 32.0 + x0 * 8.0) * (0.04 * currentEnergy);
-            const peakKick = beatPulse * 0.38 * Math.sin(x0 * 3.0 + time * 7.5);
-
-            posArray[idx + 2] = z0 + wave1 + wave2 + peakKick + microVib + jitter + burstWave;
-          }
-          meshGroup.rotation.z = Math.sin(time * 1.4) * 0.045 + jitter * 0.2;
+          posAttr.needsUpdate = true;
         }
 
-      } else if (isMidBpm && !restActiveVal) {
-        // ==========================================
-        // RANGO MEDIO (110 - 140 BPM - ROCK / HIP HOP)
-        // ==========================================
-        // Pulso pesado, profundo y expansivo rítmicamente (simula sub-bajo o bombo firme)
-        const rotSpeed = activePlayback ? 0.010 * (validBpm / 125) : 0.003;
-        meshGroup.rotation.y += rotSpeed;
-        meshGroup.rotation.x += rotSpeed * 0.4;
+      } else if (mode === 'TUNNEL') {
+        // ------------------------------------------
+        // MODO TUNNEL: Túnel Hiperespacial Warp Speed
+        // ------------------------------------------
+        if (mainGeometry && originalPositions) {
+          const posAttr = mainGeometry.attributes.position as THREE.BufferAttribute;
+          const posArray = posAttr.array as Float32Array;
+          const count = originalPositions.length / 3;
 
-        // Expansión rítmica de bajo
-        const bassScale = 1.0 + (beatPulse * 0.20 * currentEnergy) + (burstIntensity * 0.15);
-        meshGroup.scale.set(bassScale, bassScale, bassScale);
-        pointsMat.size = 0.034;
-        pointsMat.opacity = 0.65 + beatPulse * 0.25;
+          const tunnelSpin = activePlayback ? 0.008 * (validBpm / 120) : 0.002;
+          meshGroup.rotation.z += tunnelSpin;
 
-        if (mode === 'ORB') {
-          // Deformación volumétrica profunda y expansiva
           for (let i = 0; i < count; i++) {
             const idx = i * 3;
             const x0 = originalPositions[idx];
             const y0 = originalPositions[idx + 1];
             const z0 = originalPositions[idx + 2];
 
-            const len = Math.sqrt(x0 * x0 + y0 * y0 + z0 * z0) || 1;
-            const nx = x0 / len;
-            const ny = y0 / len;
-            const nz = z0 / len;
+            const rad = Math.sqrt(x0 * x0 + y0 * y0) || 1;
+            const nx = x0 / rad;
+            const ny = y0 / rad;
 
-            const wave = Math.sin(time * 3.0 + x0 * 1.8 + y0 * 1.8) * Math.cos(time * 2.0 + z0 * 2.0);
-            const disp = (wave * 0.18 * currentEnergy) + (beatPulse * 0.32 * currentEnergy) + burstWave;
+            // Ondas de choque que viajan por el túnel
+            const shockwave = Math.sin(z0 * 1.8 - time * 6.5) * (0.18 * currentEnergy);
+            const expand = (shockwave + beatPulse * 0.28 * currentEnergy + burstWave);
 
-            posArray[idx] = x0 + nx * disp;
-            posArray[idx + 1] = y0 + ny * disp;
-            posArray[idx + 2] = z0 + nz * disp;
+            posArray[idx] = x0 + nx * expand;
+            posArray[idx + 1] = y0 + ny * expand;
+            posArray[idx + 2] = z0;
           }
-        } else {
-          // Ondas de sub-bajo continuas y firmes
-          for (let i = 0; i < count; i++) {
-            const idx = i * 3;
-            const x0 = originalPositions[idx];
-            const y0 = originalPositions[idx + 1];
-            const z0 = originalPositions[idx + 2];
-
-            const wave1 = Math.sin(x0 * 1.5 + time * 3.2) * (0.34 * currentEnergy);
-            const wave2 = Math.cos(y0 * 1.9 + time * 2.2) * (0.20 * currentEnergy);
-            const bassKick = beatPulse * 0.36 * Math.cos(x0 * 1.5);
-
-            posArray[idx + 2] = z0 + wave1 + wave2 + bassKick + burstWave;
-          }
-          meshGroup.rotation.z = Math.sin(time * 0.7) * 0.035;
+          posAttr.needsUpdate = true;
         }
+
+        // Estrellas volando hacia adelante en el eje Z
+        if (extraPointsGeom) {
+          const pAttr = extraPointsGeom.attributes.position as THREE.BufferAttribute;
+          const pArray = pAttr.array as Float32Array;
+          const pCount = pArray.length / 3;
+          const warpSpeed = activePlayback ? 0.12 * (validBpm / 120) : 0.03;
+
+          for (let i = 0; i < pCount; i++) {
+            const zIdx = i * 3 + 2;
+            pArray[zIdx] += warpSpeed + (beatPulse * 0.08);
+            if (pArray[zIdx] > 4.5) {
+              pArray[zIdx] = -16.0;
+            }
+          }
+          pAttr.needsUpdate = true;
+        }
+
+      } else if (mode === 'VORTEX') {
+        // ------------------------------------------
+        // MODO VORTEX: Disco de Acreción Galáctico
+        // ------------------------------------------
+        if (mainGeometry && originalPositions) {
+          const posAttr = mainGeometry.attributes.position as THREE.BufferAttribute;
+          const posArray = posAttr.array as Float32Array;
+          const count = originalPositions.length / 3;
+
+          const spinFactor = activePlayback ? 0.015 * (validBpm / 120) : 0.004;
+          meshGroup.rotation.y += spinFactor;
+          meshGroup.rotation.x = -Math.PI / 3.2 + Math.sin(time * 0.5) * 0.05;
+
+          const pulseRadius = 1.0 + (beatPulse * 0.24 * currentEnergy) + burstWave;
+
+          for (let i = 0; i < count; i++) {
+            const idx = i * 3;
+            const x0 = originalPositions[idx];
+            const y0 = originalPositions[idx + 1];
+            const z0 = originalPositions[idx + 2];
+
+            const r = Math.sqrt(x0 * x0 + z0 * z0) || 1;
+            // Ondas gravitacionales que oscilan en el plano vertical
+            const rippleZ = Math.sin(r * 3.5 - time * 5.2) * (0.22 * currentEnergy);
+
+            posArray[idx] = x0 * pulseRadius;
+            posArray[idx + 1] = y0 + rippleZ;
+            posArray[idx + 2] = z0 * pulseRadius;
+          }
+          posAttr.needsUpdate = true;
+        }
+
+      } else if (mode === 'SPECTRUM') {
+        // ------------------------------------------
+        // MODO SPECTRUM: Ecualizador Holográfico 3D
+        // ------------------------------------------
+        const barCount = spectrumBars.length;
+        const baseSpeed = activePlayback ? time * (validBpm / 120) * 3.5 : time * 1.2;
+
+        for (let i = 0; i < barCount; i++) {
+          const bar = spectrumBars[i];
+          const freqHarmonic = Math.sin(i * 0.52 + baseSpeed) * Math.cos(i * 0.28 + baseSpeed * 0.7);
+          const beatContribution = (i % 3 === 0 ? beatPulse * 0.9 : beatPulse * 0.3) * currentEnergy;
+          const targetHeight = Math.max(0.15, Math.abs(freqHarmonic) * 1.8 * currentEnergy + beatContribution + burstWave);
+
+          bar.scale.y = targetHeight;
+          bar.position.y = targetHeight / 2 - 0.4;
+        }
+
+        meshGroup.rotation.y = Math.sin(time * 0.4) * 0.12;
 
       } else {
-        // ==========================================
-        // RANGO BAJO (< 110 BPM - LOFI / DESCANSO)
-        // ==========================================
-        // Ondas fluidas, suaves, lentas y armónicas para bajar pulsaciones
-        const rotSpeed = activePlayback ? 0.004 : 0.001;
-        meshGroup.rotation.y += rotSpeed;
-        meshGroup.rotation.x = Math.sin(time * 0.5) * 0.035;
-        meshGroup.scale.set(1.0, 1.0, 1.0);
-        pointsMat.size = 0.028;
-        pointsMat.opacity = 0.45 + Math.sin(time * 1.6) * 0.15;
+        // ------------------------------------------
+        // MODO WAVE: Terreno de Ondas Tesla
+        // ------------------------------------------
+        if (mainGeometry && originalPositions) {
+          const posAttr = mainGeometry.attributes.position as THREE.BufferAttribute;
+          const posArray = posAttr.array as Float32Array;
+          const count = originalPositions.length / 3;
 
-        if (mode === 'ORB') {
-          // Respiración suave y armónica
-          for (let i = 0; i < count; i++) {
-            const idx = i * 3;
-            const x0 = originalPositions[idx];
-            const y0 = originalPositions[idx + 1];
-            const z0 = originalPositions[idx + 2];
+          if (isHighBpm) {
+            for (let i = 0; i < count; i++) {
+              const idx = i * 3;
+              const x0 = originalPositions[idx];
+              const y0 = originalPositions[idx + 1];
+              const z0 = originalPositions[idx + 2];
 
-            const len = Math.sqrt(x0 * x0 + y0 * y0 + z0 * z0) || 1;
-            const nx = x0 / len;
-            const ny = y0 / len;
-            const nz = z0 / len;
+              const s1 = Math.sin(x0 * 2.2 + time * 5.8);
+              const wave1 = Math.sign(s1) * Math.pow(Math.abs(s1), 2.4) * (0.42 * currentEnergy);
+              const wave2 = Math.cos(y0 * 2.8 + time * 4.2) * (0.24 * currentEnergy);
+              const microVib = Math.sin(time * 32.0 + x0 * 8.0) * (0.04 * currentEnergy);
+              const peakKick = beatPulse * 0.38 * Math.sin(x0 * 3.0 + time * 7.5);
 
-            const swell = Math.sin(time * 1.5 + x0 * 1.0) * Math.cos(time * 1.2 + y0 * 1.0) * (0.11 * currentEnergy);
-            const disp = swell + burstWave * 0.4;
+              posArray[idx + 2] = z0 + wave1 + wave2 + peakKick + microVib + jitter + burstWave;
+            }
+            meshGroup.rotation.z = Math.sin(time * 1.4) * 0.045 + jitter * 0.2;
+          } else if (isMidBpm) {
+            for (let i = 0; i < count; i++) {
+              const idx = i * 3;
+              const x0 = originalPositions[idx];
+              const y0 = originalPositions[idx + 1];
+              const z0 = originalPositions[idx + 2];
 
-            posArray[idx] = x0 + nx * disp;
-            posArray[idx + 1] = y0 + ny * disp;
-            posArray[idx + 2] = z0 + nz * disp;
+              const wave1 = Math.sin(x0 * 1.5 + time * 3.2) * (0.34 * currentEnergy);
+              const wave2 = Math.cos(y0 * 1.9 + time * 2.2) * (0.20 * currentEnergy);
+              const bassKick = beatPulse * 0.36 * Math.cos(x0 * 1.5);
+
+              posArray[idx + 2] = z0 + wave1 + wave2 + bassKick + burstWave;
+            }
+            meshGroup.rotation.z = Math.sin(time * 0.7) * 0.035;
+          } else {
+            for (let i = 0; i < count; i++) {
+              const idx = i * 3;
+              const x0 = originalPositions[idx];
+              const y0 = originalPositions[idx + 1];
+              const z0 = originalPositions[idx + 2];
+
+              const wave1 = Math.sin(x0 * 1.0 + time * 1.3) * (0.16 * currentEnergy);
+              const wave2 = Math.cos(y0 * 1.2 + time * 0.9) * (0.10 * currentEnergy);
+
+              posArray[idx + 2] = z0 + wave1 + wave2 + (burstWave * 0.4);
+            }
+            meshGroup.rotation.z = Math.sin(time * 0.3) * 0.02;
           }
-        } else {
-          // Ondas fluidas y relajantes tipo oleaje nocturno
-          for (let i = 0; i < count; i++) {
-            const idx = i * 3;
-            const x0 = originalPositions[idx];
-            const y0 = originalPositions[idx + 1];
-            const z0 = originalPositions[idx + 2];
-
-            const wave1 = Math.sin(x0 * 1.0 + time * 1.3) * (0.16 * currentEnergy);
-            const wave2 = Math.cos(y0 * 1.2 + time * 0.9) * (0.10 * currentEnergy);
-
-            posArray[idx + 2] = z0 + wave1 + wave2 + (burstWave * 0.4);
-          }
-          meshGroup.rotation.z = Math.sin(time * 0.3) * 0.02;
+          posAttr.needsUpdate = true;
         }
       }
 
-      posAttr.needsUpdate = true;
       renderer.render(scene, camera);
     };
 
@@ -386,7 +618,8 @@ export function SpotifyThreeCanvas({
 
       cancelAnimationFrame(animationFrameId);
 
-      geometry.dispose();
+      if (mainGeometry) mainGeometry.dispose();
+      if (extraPointsGeom) extraPointsGeom.dispose();
       wireMat.dispose();
       pointsMat.dispose();
 
@@ -423,40 +656,13 @@ export function SpotifyThreeCanvas({
     }
   }, [burstTrigger]);
 
-  // 1. MODO OFF: Sin WebGL, sin canvas, 0% CPU y GPU
+  // MODO OFF: Sin WebGL, sin canvas, 0% CPU y GPU
   if (mode === 'OFF') {
     return null;
   }
 
-  // 2. MODO AURA: Resplandor sutil con CSS puro (Cero instancias WebGL)
-  if (mode === 'AURA') {
-    return (
-      <div
-        className={`relative w-full h-full flex items-center justify-center overflow-hidden pointer-events-none select-none ${className}`}
-        aria-hidden="true"
-      >
-        <div
-          className="w-48 h-20 rounded-full blur-2xl transition-all duration-700"
-          style={{
-            backgroundColor: `rgba(${accentRgb}, ${isPlaying ? 0.38 : 0.15})`,
-            transform: isPlaying ? (bpm > 140 ? 'scale(1.25)' : 'scale(1.15)') : 'scale(0.95)',
-          }}
-        />
-        <div
-          className="absolute w-24 h-12 rounded-full blur-lg opacity-40 transition-all duration-500"
-          style={{
-            backgroundColor: tempoActive
-              ? '#FF2A2A'
-              : restModeActive
-              ? '#10B981'
-              : `rgba(${accentRgb}, 0.85)`,
-          }}
-        />
-      </div>
-    );
-  }
-
-  // 3. MODOS 3D (WAVE u ORB): Contenedor interactivo para WebGL Canvas
+  // MODOS 3D ACTIVOS (AURA, WAVE, ORB, TUNNEL, VORTEX, SPECTRUM):
+  // Contenedor interactivo para WebGL Canvas de Three.js
   return (
     <div
       ref={mountRef}
@@ -465,4 +671,5 @@ export function SpotifyThreeCanvas({
     />
   );
 }
+
 export default SpotifyThreeCanvas;
