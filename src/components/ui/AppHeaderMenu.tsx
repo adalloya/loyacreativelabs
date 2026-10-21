@@ -753,11 +753,8 @@ export function AppHeaderMenu({
             <div className={`mt-2 pt-2 border-t flex items-center justify-between text-[10px] font-mono ${
               isLight ? "border-slate-200 text-slate-500" : "border-white/[0.06] text-zinc-500"
             }`}>
-              <span className="flex items-center gap-1.5">
-                <span>APEX // V2.5</span>
-                <span className={`px-1.5 py-0.5 rounded text-[9px] ${activeUxVersion === 'v2' ? 'bg-violet-500/25 text-violet-600 dark:text-violet-300 border border-violet-500/30' : (isLight ? 'bg-slate-200 text-slate-700' : 'bg-white/[0.05] text-zinc-400')}`}>
-                  {activeUxVersion === 'v2' ? 'v2 BETA' : 'v1 ESTABLE'}
-                </span>
+              <span className="flex items-center gap-1.5 font-bold tracking-wider">
+                APEX
               </span>
               <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold">
                 <Shield className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> Seguro

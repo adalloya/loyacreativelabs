@@ -138,7 +138,7 @@ export const ApexV2SettingsView: React.FC<ApexV2SettingsViewProps> = ({
 
                 {/* Badge de Versión */}
                 <span className="px-2.5 py-1 rounded-full bg-violet-500/20 text-violet-600 dark:text-violet-300 border border-violet-500/30 font-mono text-[10px] font-bold shrink-0">
-                    V2 LIQUID GLASS
+                    v2.0
                 </span>
             </div>
 
