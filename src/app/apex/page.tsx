@@ -99,6 +99,8 @@ import { SpotifySettingsModal } from "@/components/apex/SpotifySettingsModal";
 import { ApexAmbientVisualizer } from "@/components/apex/ApexAmbientVisualizer";
 import { isSpotifyConnected, handleSpotifyCallback } from "@/services/spotifyService";
 import { OnboardingFlow, UserApexProfile } from "@/app/onboarding/OnboardingFlow";
+import { ApexOnboardingModal } from "@/components/apex/ApexOnboardingModal";
+import { ApexFeedbackModal } from "@/components/apex/ApexFeedbackModal";
 
 /**
  * Determina si un ejercicio requiere cálculo de discos para barra olímpica / EZ.
@@ -215,6 +217,10 @@ export default function ApexDashboard() {
     // Hot-Swap: VBT Velocity Modal State
     const [isVbtModalOpen, setIsVbtModalOpen] = useState(false);
     const [vbtExerciseName, setVbtExerciseName] = useState("Press de Banca");
+
+    // Onboarding & Feedback Modals
+    const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false);
+    const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
 
     // Hot-Swap: Tempo Sonar state per exercise (default OFF)
     const [tempoActive, setTempoActive] = useState<Record<string, boolean>>({});
@@ -785,6 +791,8 @@ export default function ApexDashboard() {
                             }}
                             onOpenSpotifyModal={() => setIsSpotifyModalOpen(true)}
                             isSpotifyConnected={isSpotifyLinked}
+                            onOpenOnboarding={() => setIsOnboardingModalOpen(true)}
+                            onOpenFeedback={() => setIsFeedbackModalOpen(true)}
                         />
                     </div>
                 </div>
@@ -2504,6 +2512,18 @@ export default function ApexDashboard() {
                     </div>
                 </div>
             )}
+
+            {/* Guía y Tutorial Detallado para Todos */}
+            <ApexOnboardingModal
+                isOpen={isOnboardingModalOpen}
+                onClose={() => setIsOnboardingModalOpen(false)}
+            />
+
+            {/* Formulario y Cuestionario de Feedback */}
+            <ApexFeedbackModal
+                isOpen={isFeedbackModalOpen}
+                onClose={() => setIsFeedbackModalOpen(false)}
+            />
 
             {/* Executive Apple / Tesla Style Footer */}
             <ApexFooter />

@@ -3,7 +3,26 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { Menu, X, Download, Shield, RefreshCw, Zap, Music, Sparkles, Layers, Flame, Sun, Moon } from 'lucide-react';
+import Link from 'next/link';
+import { 
+  Menu, 
+  X, 
+  Download, 
+  Shield, 
+  RefreshCw, 
+  Zap, 
+  Music, 
+  Sparkles, 
+  Layers, 
+  Flame, 
+  Sun, 
+  Moon,
+  BookOpen,
+  MessageSquareHeart,
+  MessageSquareQuote,
+  ChevronRight,
+  ExternalLink
+} from 'lucide-react';
 import { DownloadPDFButton } from '@/components/pdf/DownloadPDFButton';
 import { getInitialTheme, setSiteTheme, Theme } from '@/lib/theme';
 
@@ -24,7 +43,9 @@ export function AppHeaderMenu({
   readiness = 'normal',
   onReadinessChange,
   onOpenSpotifyModal,
-  isSpotifyConnected = false
+  isSpotifyConnected = false,
+  onOpenOnboarding,
+  onOpenFeedback
 }: { 
   environmentMode: string;
   onEnvironmentChange: (mode: string) => void;
@@ -43,6 +64,8 @@ export function AppHeaderMenu({
   onReadinessChange?: (readiness: any) => void;
   onOpenSpotifyModal?: () => void;
   isSpotifyConnected?: boolean;
+  onOpenOnboarding?: () => void;
+  onOpenFeedback?: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>('dark');
@@ -152,6 +175,73 @@ export function AppHeaderMenu({
               >
                 <X className="w-4 h-4" />
               </button>
+            </div>
+
+            {/* SECCIÓN ESTRELLA: Guía Paso a Paso y Buzón de Opinión */}
+            <div className="mb-4 pb-4 border-b border-white/[0.08] space-y-2">
+              <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider block flex items-center justify-between">
+                <span>GUÍA & MEJORA CONTINUA</span>
+                <span className="text-[#10B981] text-[9px] font-mono font-bold">PARA TODOS // FÁCIL</span>
+              </label>
+
+              {/* Botón de Onboarding Detallado */}
+              {onOpenOnboarding && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    onOpenOnboarding();
+                  }}
+                  className="w-full bg-[#10B981]/10 hover:bg-[#10B981]/20 border border-[#10B981]/30 text-white font-medium text-xs py-2.5 px-3 rounded-2xl transition-all flex items-center justify-between active:scale-95 group text-left shadow-sm"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-xl bg-[#10B981]/20 flex items-center justify-center text-[#10B981] shrink-0">
+                      <BookOpen className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-white text-xs">Guía y Tutorial para Todos</div>
+                      <div className="text-[10px] text-zinc-400">Paso a paso para volverse experto</div>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-zinc-500 group-hover:text-white transition-colors" />
+                </button>
+              )}
+
+              {/* Botón de Formulario de Feedback */}
+              {onOpenFeedback && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    onOpenFeedback();
+                  }}
+                  className="w-full bg-[#FF2A2A]/10 hover:bg-[#FF2A2A]/20 border border-[#FF2A2A]/30 text-white font-medium text-xs py-2.5 px-3 rounded-2xl transition-all flex items-center justify-between active:scale-95 group text-left shadow-sm"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-xl bg-[#FF2A2A]/20 flex items-center justify-center text-[#FF2A2A] shrink-0">
+                      <MessageSquareHeart className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-white text-xs">Danos tu Opinión / Qué te Falta</div>
+                      <div className="text-[10px] text-zinc-400">Buzón formal de sugerencias</div>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-zinc-500 group-hover:text-white transition-colors" />
+                </button>
+              )}
+
+              {/* Enlace al panel de revisión de comentarios para el admin */}
+              <Link
+                href="/apex/feedback"
+                onClick={() => setIsOpen(false)}
+                className="w-full bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] text-zinc-300 hover:text-white font-mono text-[11px] py-2 px-3 rounded-xl transition-all flex items-center justify-between active:scale-95"
+              >
+                <div className="flex items-center gap-2">
+                  <MessageSquareQuote className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="truncate">Ver Buzón de Comentarios (Admin)</span>
+                </div>
+                <ExternalLink className="w-3 h-3 text-zinc-500 shrink-0" />
+              </Link>
             </div>
 
             {/* Apariencia del Sitio: Modo Oscuro vs Modo Claro */}
