@@ -101,6 +101,7 @@ import { isSpotifyConnected, handleSpotifyCallback } from "@/services/spotifySer
 import { OnboardingFlow, UserApexProfile } from "@/app/onboarding/OnboardingFlow";
 import { ApexOnboardingModal } from "@/components/apex/ApexOnboardingModal";
 import { ApexFeedbackModal } from "@/components/apex/ApexFeedbackModal";
+import { getInitialUxVersion, setUxVersion, UxVersion } from "@/lib/uxVersion";
 
 /**
  * Determina si un ejercicio requiere cálculo de discos para barra olímpica / EZ.
@@ -177,6 +178,21 @@ export default function ApexDashboard() {
         };
         window.addEventListener("apex:catalog-updated", handleCatalogUpdated);
         return () => window.removeEventListener("apex:catalog-updated", handleCatalogUpdated);
+    }, []);
+
+    // UX Version Control (Stable v1 vs Beta v2)
+    const [uxVersion, setUxVersionState] = useState<UxVersion>("stable");
+
+    useEffect(() => {
+        setUxVersionState(getInitialUxVersion());
+        const handleUxVersionChange = (e: Event) => {
+            const customEvt = e as CustomEvent<{ version: UxVersion }>;
+            if (customEvt.detail?.version) {
+                setUxVersionState(customEvt.detail.version);
+            }
+        };
+        window.addEventListener("apex_ux_version_change", handleUxVersionChange);
+        return () => window.removeEventListener("apex_ux_version_change", handleUxVersionChange);
     }, []);
 
     // Modals
@@ -746,6 +762,32 @@ export default function ApexDashboard() {
             {/* Ambient WebGL Visualizer & Reactive Lighting (100% disposed if FX: OFF) */}
             <ApexAmbientVisualizer />
 
+            {/* V2 Beta Status Banner */}
+            {uxVersion === 'v2' && (
+                <div className="bg-gradient-to-r from-violet-950/90 via-indigo-950/90 to-purple-950/90 border-b border-violet-500/40 px-4 py-2 text-xs flex items-center justify-between text-violet-200 z-50 relative backdrop-blur-md shadow-lg shadow-violet-950/30">
+                    <div className="max-w-6xl mx-auto w-full flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                            <span className="px-1.5 py-0.5 rounded bg-violet-500/30 text-violet-200 font-mono font-bold text-[10px] border border-violet-400/40 tracking-wider">
+                                V2 BETA
+                            </span>
+                            <span className="text-[11px] sm:text-xs text-violet-100">
+                                Estás previsualizando la <strong>Nueva Versión UX (v2)</strong>. La versión estable para tus usuarios no ha sido alterada.
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setUxVersion('stable');
+                                setUxVersionState('stable');
+                            }}
+                            className="text-[11px] font-mono text-violet-300 hover:text-white underline shrink-0 cursor-pointer transition-colors"
+                        >
+                            Regresar a v1 Estable
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Top Navigation & Telemetry Header */}
             <header className="sticky top-0 z-40 bg-[#000000]/80 backdrop-blur-2xl border-b border-white/[0.08] px-4 py-3">
                 <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
@@ -804,6 +846,8 @@ export default function ApexDashboard() {
                             isSpotifyConnected={isSpotifyLinked}
                             onOpenOnboarding={() => setIsOnboardingModalOpen(true)}
                             onOpenFeedback={() => setIsFeedbackModalOpen(true)}
+                            uxVersion={uxVersion}
+                            onUxVersionChange={setUxVersionState}
                         />
                     </div>
                 </div>

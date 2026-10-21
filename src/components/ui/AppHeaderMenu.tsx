@@ -18,10 +18,12 @@ import {
   Moon,
   BookOpen,
   MessageSquareHeart,
-  ChevronRight
+  ChevronRight,
+  RotateCcw
 } from 'lucide-react';
 import { DownloadPDFButton } from '@/components/pdf/DownloadPDFButton';
 import { getInitialTheme, setSiteTheme, Theme } from '@/lib/theme';
+import { getInitialUxVersion, setUxVersion, UxVersion } from '@/lib/uxVersion';
 
 export function AppHeaderMenu({ 
   environmentMode, 
@@ -43,7 +45,9 @@ export function AppHeaderMenu({
   onOpenSpotifyModal,
   isSpotifyConnected = false,
   onOpenOnboarding,
-  onOpenFeedback
+  onOpenFeedback,
+  uxVersion: propUxVersion,
+  onUxVersionChange
 }: { 
   environmentMode: string;
   onEnvironmentChange: (mode: string) => void;
@@ -65,22 +69,40 @@ export function AppHeaderMenu({
   isSpotifyConnected?: boolean;
   onOpenOnboarding?: () => void;
   onOpenFeedback?: () => void;
+  uxVersion?: UxVersion;
+  onUxVersionChange?: (version: UxVersion) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>('dark');
+  const [internalUxVersion, setInternalUxVersion] = useState<UxVersion>('stable');
+  const activeUxVersion = propUxVersion ?? internalUxVersion;
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setTheme(getInitialTheme());
+    setInternalUxVersion(getInitialUxVersion());
+
     const handleThemeChange = (e: Event) => {
       const customEvt = e as CustomEvent<{ theme: Theme }>;
       if (customEvt.detail?.theme) {
         setTheme(customEvt.detail.theme);
       }
     };
+
+    const handleUxVersionChange = (e: Event) => {
+      const customEvt = e as CustomEvent<{ version: UxVersion }>;
+      if (customEvt.detail?.version) {
+        setInternalUxVersion(customEvt.detail.version);
+      }
+    };
+
     window.addEventListener('apex_theme_change', handleThemeChange);
-    return () => window.removeEventListener('apex_theme_change', handleThemeChange);
+    window.addEventListener('apex_ux_version_change', handleUxVersionChange);
+    return () => {
+      window.removeEventListener('apex_theme_change', handleThemeChange);
+      window.removeEventListener('apex_ux_version_change', handleUxVersionChange);
+    };
   }, []);
 
   // Cerrar al hacer clic/tap fuera del menú o presionar Escape
@@ -510,8 +532,64 @@ export function AppHeaderMenu({
               </div>
             )}
 
-            <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center justify-between text-[10px] font-mono text-zinc-500">
-              <span>APEX // V2.5</span>
+            {/* Selector de Versión UX (v1 Estable vs v2 Nueva) */}
+            <div className="mb-3 pt-3 border-t border-white/[0.08]">
+              {activeUxVersion === 'stable' ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextV: UxVersion = 'v2';
+                    setInternalUxVersion(nextV);
+                    setUxVersion(nextV);
+                    onUxVersionChange?.(nextV);
+                    setIsOpen(false);
+                  }}
+                  className="w-full bg-gradient-to-r from-violet-600/20 via-indigo-600/20 to-purple-600/20 hover:from-violet-600/30 hover:via-indigo-600/30 hover:to-purple-600/30 border border-violet-500/40 hover:border-violet-400 text-white font-medium text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-between active:scale-95 group shadow-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-violet-400 group-hover:rotate-12 transition-transform" />
+                    <div className="text-left">
+                      <div className="font-semibold text-white">Probar Nueva Versión (v2)</div>
+                      <div className="text-[10px] text-zinc-400">Activar nueva experiencia UX</div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-violet-500/30 text-violet-200 border border-violet-400/40">
+                    BETA
+                  </span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextV: UxVersion = 'stable';
+                    setInternalUxVersion(nextV);
+                    setUxVersion(nextV);
+                    onUxVersionChange?.(nextV);
+                    setIsOpen(false);
+                  }}
+                  className="w-full bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 hover:border-emerald-400 text-white font-medium text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-between active:scale-95 group shadow-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <RotateCcw className="w-4 h-4 text-emerald-400 group-hover:-rotate-45 transition-transform" />
+                    <div className="text-left">
+                      <div className="font-semibold text-white">Regresar a Versión Estable (v1)</div>
+                      <div className="text-[10px] text-emerald-200/80">Versión probada por usuarios</div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-emerald-500/30 text-emerald-200 border border-emerald-400/40">
+                    ESTABLE
+                  </span>
+                </button>
+              )}
+            </div>
+
+            <div className="mt-2 pt-2 border-t border-white/[0.06] flex items-center justify-between text-[10px] font-mono text-zinc-500">
+              <span className="flex items-center gap-1.5">
+                <span>APEX // V2.5</span>
+                <span className={`px-1.5 py-0.5 rounded text-[9px] ${activeUxVersion === 'v2' ? 'bg-violet-500/25 text-violet-300 border border-violet-500/30' : 'bg-white/[0.05] text-zinc-400'}`}>
+                  {activeUxVersion === 'v2' ? 'v2 BETA' : 'v1 ESTABLE'}
+                </span>
+              </span>
               <span className="flex items-center gap-1 text-emerald-400">
                 <Shield className="w-3 h-3 text-emerald-400" /> Seguro
               </span>
