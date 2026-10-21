@@ -969,6 +969,7 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -8 }}
                             transition={{ duration: 0.2 }}
+                            className="w-full flex-1 flex flex-col"
                         >
                             <ApexV2AnatomyView
                                 selectedMuscle={selectedMuscle}

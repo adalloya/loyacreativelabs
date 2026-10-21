@@ -198,7 +198,7 @@ export function AnatomyVisualizer({
 
             {/* Renderizado de Polígonos de react-body-highlighter */}
             <div
-                className="relative w-full max-w-[280px] flex items-center justify-center py-1"
+                className="relative w-full max-w-[340px] sm:max-w-[380px] flex items-center justify-center py-1"
                 style={{ height: height }}
             >
                 <Model
