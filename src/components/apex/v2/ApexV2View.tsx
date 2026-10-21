@@ -514,6 +514,7 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
                 onOpenSpotifyModal={() => setIsSpotifyModalOpen(true)}
+                isSpotifyConnected={isSpotifyLinked}
                 restRemaining={restRemaining}
                 onSkipRest={handleSkipRest}
             />
