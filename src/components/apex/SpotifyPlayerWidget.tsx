@@ -1,7 +1,7 @@
 // src/components/apex/SpotifyPlayerWidget.tsx
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
     Music,
     Play,
@@ -15,7 +15,8 @@ import {
     VolumeX,
     Speaker,
     Sliders,
-    Sparkles
+    Sparkles,
+    RefreshCw
 } from "lucide-react";
 import { useApexFx } from "@/hooks/useApexFx";
 import { useSpotifyPlayback } from "@/hooks/useSpotifyPlayback";
@@ -60,7 +61,17 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
         toggleMute,
         toggleShuffle,
         toggleRepeat,
+        refreshPlayback,
     } = useSpotifyPlayback();
+
+    const [isSyncing, setIsSyncing] = useState(false);
+
+    const handleManualSync = async (e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        setIsSyncing(true);
+        await refreshPlayback();
+        setIsSyncing(false);
+    };
 
     const { isFxActive, visualizerMode, cycleMode } = useApexFx();
 
@@ -184,7 +195,7 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                         <div
                             onClick={onOpenSettings}
                             className="flex items-center gap-2 cursor-pointer text-left min-w-0"
-                            title="Spotify conectado sin sesión activa. Toca para abrir"
+                            title="Spotify conectado. Toca para abrir ajustes o detectar"
                         >
                             <div className="w-8 h-8 rounded-full bg-[#1DB954]/20 border border-[#1DB954]/40 flex items-center justify-center text-[#1DB954] shrink-0">
                                 <Music size={16} />
@@ -193,9 +204,17 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                                 <span className="text-xs font-semibold text-white truncate block">
                                     Spotify Conectado
                                 </span>
-                                <span className="text-[10px] text-[#1DB954] font-mono truncate block">
-                                    Tocar para reproducir
-                                </span>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                    <button
+                                        type="button"
+                                        onClick={handleManualSync}
+                                        className="text-[10px] text-[#1DB954] hover:text-[#1ed760] font-mono flex items-center gap-1 font-bold"
+                                        title="Detectar canción sonando en iPhone o dispositivo"
+                                    >
+                                        <RefreshCw size={10} className={isSyncing ? "animate-spin" : ""} />
+                                        <span>{isSyncing ? "Detectando..." : "Detectar Música"}</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}

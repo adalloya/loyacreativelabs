@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
     isSpotifyConnected,
     getCurrentPlayback,
+    getLastKnownTrack,
     getTrackAudioFeatures,
     getSpotifyQueue,
     spotifyPlay,
@@ -160,7 +161,18 @@ export function useSpotifyPlayback() {
         };
     }, [isSeeking]);
 
-    // Polling activo cada 2.5s y reactivación instantánea al cambiar de pestaña / volver de la app de Spotify
+    // Hidratación inmediata desde memoria local para que la UI nunca aparezca vacía en iOS
+    useEffect(() => {
+        if (!track) {
+            const cached = getLastKnownTrack();
+            if (cached) {
+                setTrack(cached);
+                broadcastState({ track: cached });
+            }
+        }
+    }, [track, broadcastState]);
+
+    // Polling activo cada 2.5s y reactivación escalonada instantánea al volver de la app de Spotify en iOS
     useEffect(() => {
         updatePlayback();
         loadQueue();
@@ -169,27 +181,49 @@ export function useSpotifyPlayback() {
             updatePlayback();
         }, 2500);
 
-        const handleVisibilityOrFocus = () => {
+        const handleWakeup = () => {
             if (typeof document !== "undefined" && document.visibilityState === "visible") {
-                updatePlayback();
-                loadQueue();
+                // Reiniciar el polling timer por si WebKit de iOS congeló el setInterval al salir
+                if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+                pollIntervalRef.current = setInterval(() => {
+                    updatePlayback();
+                }, 2500);
+
+                // Ejecución escalonada para compensar la reconexión de sockets de iOS y los servidores de Spotify:
+                // Intento 1 (350ms): tiempo para que Safari reabra la conexión de red
+                setTimeout(() => {
+                    updatePlayback();
+                    loadQueue();
+                }, 350);
+
+                // Intento 2 (1200ms): tiempo para que Spotify Connect reciba el inicio de canción
+                setTimeout(() => {
+                    updatePlayback();
+                }, 1200);
+
+                // Intento 3 (2600ms): confirmación de reproducción
+                setTimeout(() => {
+                    updatePlayback();
+                }, 2600);
             }
         };
 
         if (typeof document !== "undefined") {
-            document.addEventListener("visibilitychange", handleVisibilityOrFocus);
+            document.addEventListener("visibilitychange", handleWakeup);
         }
         if (typeof window !== "undefined") {
-            window.addEventListener("focus", handleVisibilityOrFocus);
+            window.addEventListener("pageshow", handleWakeup);
+            window.addEventListener("focus", handleWakeup);
         }
 
         return () => {
             if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
             if (typeof document !== "undefined") {
-                document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
+                document.removeEventListener("visibilitychange", handleWakeup);
             }
             if (typeof window !== "undefined") {
-                window.removeEventListener("focus", handleVisibilityOrFocus);
+                window.removeEventListener("pageshow", handleWakeup);
+                window.removeEventListener("focus", handleWakeup);
             }
         };
     }, [updatePlayback, loadQueue]);

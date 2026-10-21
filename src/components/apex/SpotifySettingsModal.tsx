@@ -36,6 +36,7 @@ import {
     spotifyGetDevices,
     spotifyTransferPlayback,
     openSpotifyDeepLink,
+    isIOSDevice,
     SpotifyDevice
 } from "@/services/spotifyService";
 import { useSpotifyPlayback } from "@/hooks/useSpotifyPlayback";
@@ -96,6 +97,7 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
     const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
     const [isRefreshingDevices, setIsRefreshingDevices] = useState(false);
     const [fallbackPlaylist, setFallbackPlaylist] = useState<WorkoutPlaylist | null>(null);
+    const [isDetecting, setIsDetecting] = useState(false);
 
     const loadDevices = async () => {
         setIsRefreshingDevices(true);
@@ -110,6 +112,22 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
             }
         } finally {
             setIsRefreshingDevices(false);
+        }
+    };
+
+    const handleDetectMusic = async () => {
+        setIsDetecting(true);
+        setErrorMsg(null);
+        setSuccessMsg(null);
+        try {
+            await loadDevices();
+            await refreshPlayback();
+            await loadQueue();
+            setSuccessMsg("¡Sincronización completada! Si la música está sonando en tu Spotify, los controles y el visualizador responderán.");
+        } catch {
+            setErrorMsg("No se pudo detectar reproducción activa. Asegúrate de tener música sonando en tu app de Spotify.");
+        } finally {
+            setTimeout(() => setIsDetecting(false), 500);
         }
     };
 
@@ -378,16 +396,27 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                                             )}
                                         </div>
 
-                                        {/* Botón directo de despertar en la App para iPhone / Dispositivos en reposo */}
+                                        {/* Botón de Sincronizar / Despertar en la App para iPhone / Dispositivos en reposo */}
                                         {!isPlaying && (
-                                            <button
-                                                type="button"
-                                                onClick={() => openSpotifyDeepLink(track.uri || "spotify:")}
-                                                className="mt-3 px-3.5 py-1.5 bg-[#1DB954] hover:bg-[#1ed760] text-black font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-lg active:scale-95 transition-all"
-                                            >
-                                                <Play size={12} fill="currentColor" />
-                                                <span>Abrir en App de Spotify</span>
-                                            </button>
+                                            <div className="mt-3 flex items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={handleDetectMusic}
+                                                    disabled={isDetecting}
+                                                    className="px-3.5 py-1.5 bg-white/[0.1] hover:bg-white/[0.18] text-white font-bold text-xs rounded-xl flex items-center gap-1.5 border border-white/20 active:scale-95 transition-all"
+                                                >
+                                                    <RefreshCw size={12} className={isDetecting ? "animate-spin" : ""} />
+                                                    <span>{isDetecting ? "Detectando..." : "Detectar Música"}</span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openSpotifyDeepLink(track.uri || "spotify:")}
+                                                    className="px-3.5 py-1.5 bg-[#1DB954] hover:bg-[#1ed760] text-black font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-lg active:scale-95 transition-all"
+                                                >
+                                                    <Play size={12} fill="currentColor" />
+                                                    <span>Abrir en Spotify</span>
+                                                </button>
+                                            </div>
                                         )}
 
                                         {/* Scrubber Progress Bar */}
@@ -477,19 +506,49 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
                                     </div>
                                     <div>
                                         <h4 className="text-base font-bold text-white">Spotify Conectado</h4>
-                                        <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
-                                            Tu cuenta está vinculada. En iPhone (iOS), abre tu app de Spotify y dale Play a cualquier canción o elige una playlist abajo.
+                                        <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto leading-relaxed">
+                                            Tu cuenta está vinculada. Si ya tienes música sonando en Spotify en este momento, toca <strong>"Detectar Música"</strong> para vincularla al visualizador 3D.
                                         </p>
                                     </div>
-                                    <div className="flex items-center justify-center gap-3">
+                                    <div className="flex flex-wrap items-center justify-center gap-2.5">
+                                        <button
+                                            type="button"
+                                            onClick={handleDetectMusic}
+                                            disabled={isDetecting}
+                                            className="px-4 py-2.5 bg-white text-black font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-lg active:scale-95 transition-all hover:bg-zinc-200"
+                                        >
+                                            <RefreshCw size={13} className={isDetecting ? "animate-spin text-black" : ""} />
+                                            <span>{isDetecting ? "Detectando Música..." : "Detectar Música en iPhone"}</span>
+                                        </button>
                                         <button
                                             type="button"
                                             onClick={() => openSpotifyDeepLink("spotify:")}
-                                            className="px-4 py-2 bg-[#1DB954] hover:bg-[#1ed760] text-black font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-lg active:scale-95 transition-all"
+                                            className="px-4 py-2.5 bg-[#1DB954] hover:bg-[#1ed760] text-black font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-lg active:scale-95 transition-all"
                                         >
-                                            <Play size={14} fill="currentColor" />
+                                            <Play size={13} fill="currentColor" />
                                             <span>Abrir App de Spotify</span>
                                         </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* GUÍA RÁPIDA PARA IPHONE (SAFARI & CHROME) */}
+                            {isIOSDevice() && (
+                                <div className="p-4 bg-white/[0.03] border border-white/[0.08] rounded-2xl space-y-2 text-xs">
+                                    <div className="flex items-center gap-2 text-amber-400 font-bold">
+                                        <Smartphone size={14} />
+                                        <span>Guía de Conexión en iPhone</span>
+                                    </div>
+                                    <div className="text-[11px] text-zinc-300 space-y-1.5 leading-relaxed">
+                                        <p>
+                                            1. Abre tu app de Spotify y pon play a cualquier canción.
+                                        </p>
+                                        <p>
+                                            2. Regresa a APEX y presiona <strong>"Detectar Música en iPhone"</strong> (o espera 2 segundos).
+                                        </p>
+                                        <p className="text-zinc-400 text-[10px] bg-white/[0.04] p-2.5 rounded-xl border border-white/10 mt-1">
+                                            💡 <strong>Importante en iPhone:</strong> En tu app de Spotify ve a tu <em>Foto de perfil &gt; Configuración y privacidad &gt; Dispositivos</em> y activa <strong>"Estado de emisión del dispositivo"</strong> para que Spotify transmita tu música a APEX.
+                                        </p>
                                     </div>
                                 </div>
                             )}

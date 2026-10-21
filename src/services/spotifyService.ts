@@ -14,7 +14,10 @@ const STORAGE_KEYS = {
     REFRESH_TOKEN: "apex_spotify_refresh_token",
     EXPIRES_AT: "apex_spotify_expires_at",
     CODE_VERIFIER: "apex_spotify_code_verifier",
-    STATE: "apex_spotify_state"
+    STATE: "apex_spotify_state",
+    LAST_DEVICE_ID: "apex_spotify_last_device_id",
+    LAST_DEVICE_NAME: "apex_spotify_last_device_name",
+    LAST_TRACK: "apex_spotify_last_known_track",
 };
 
 export interface SpotifyDevice {
@@ -180,6 +183,34 @@ export function disconnectSpotify(): void {
     localStorage.removeItem(STORAGE_KEYS.EXPIRES_AT);
     localStorage.removeItem(STORAGE_KEYS.CODE_VERIFIER);
     localStorage.removeItem(STORAGE_KEYS.STATE);
+    localStorage.removeItem(STORAGE_KEYS.LAST_DEVICE_ID);
+    localStorage.removeItem(STORAGE_KEYS.LAST_DEVICE_NAME);
+    localStorage.removeItem(STORAGE_KEYS.LAST_TRACK);
+}
+
+export function getLastKnownTrack(): SpotifyTrack | null {
+    if (typeof window === "undefined") return null;
+    try {
+        const raw = localStorage.getItem(STORAGE_KEYS.LAST_TRACK);
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        return null;
+    }
+}
+
+export function saveLastKnownTrack(track: SpotifyTrack): void {
+    if (typeof window === "undefined" || !track) return;
+    try {
+        localStorage.setItem(STORAGE_KEYS.LAST_TRACK, JSON.stringify(track));
+        if (track.deviceId) {
+            localStorage.setItem(STORAGE_KEYS.LAST_DEVICE_ID, track.deviceId);
+        }
+        if (track.deviceName) {
+            localStorage.setItem(STORAGE_KEYS.LAST_DEVICE_NAME, track.deviceName);
+        }
+    } catch {
+        // ignore
+    }
 }
 
 /**
@@ -397,29 +428,80 @@ export async function getValidAccessToken(): Promise<string | null> {
 }
 
 /**
- * Realiza una petición autenticada a la Web API de Spotify.
+ * Fuerza el refresco del access_token usando el refresh_token guardado en localStorage.
+ */
+export async function forceRefreshToken(): Promise<string | null> {
+    if (typeof window === "undefined") return null;
+    const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+    const clientId = INTERNAL_CLIENT_ID;
+    if (!refreshToken || !clientId) return null;
+
+    try {
+        const response = await fetch("https://accounts.spotify.com/api/token", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: new URLSearchParams({
+                client_id: clientId,
+                grant_type: "refresh_token",
+                refresh_token: refreshToken
+            })
+        });
+
+        if (!response.ok) return null;
+
+        const data = await response.json();
+        const newExpiresAt = Date.now() + (data.expires_in || 3600) * 1000;
+        localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, data.access_token);
+        if (data.refresh_token) {
+            localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.refresh_token);
+        }
+        localStorage.setItem(STORAGE_KEYS.EXPIRES_AT, newExpiresAt.toString());
+        return data.access_token;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Realiza una petición autenticada a la Web API de Spotify con auto-reintento en caso de 401 Unauthorized.
  */
 async function spotifyFetch(endpoint: string, options: RequestInit = {}): Promise<Response | null> {
-    const token = await getValidAccessToken();
+    let token = await getValidAccessToken();
     if (!token) return null;
 
-    const headers = new Headers(options.headers || {});
-    headers.set("Authorization", `Bearer ${token}`);
+    const makeCall = async (authToken: string) => {
+        const headers = new Headers(options.headers || {});
+        headers.set("Authorization", `Bearer ${authToken}`);
+        return fetch(`https://api.spotify.com/v1${endpoint}`, {
+            ...options,
+            headers
+        });
+    };
 
-    const res = await fetch(`https://api.spotify.com/v1${endpoint}`, {
-        ...options,
-        headers
-    });
-
-    return res;
+    try {
+        let res = await makeCall(token);
+        if (res && res.status === 401) {
+            const refreshed = await forceRefreshToken();
+            if (refreshed) {
+                res = await makeCall(refreshed);
+            }
+        }
+        return res;
+    } catch (err) {
+        console.warn(`[Spotify API] Conexión interrumpida en ${endpoint}:`, err);
+        return null;
+    }
 }
 
 /**
  * Consulta la pista que se está reproduciendo actualmente en el dispositivo del usuario.
- * Incorpora estrategia de 3 niveles resistente a la suspensión de iOS (Safari & Chrome WebKit):
+ * Incorpora estrategia de 4 niveles ultra-resistente a la suspensión de iOS (Safari & Chrome WebKit):
  *   1. GET /v1/me/player (Estado completo y dispositivo activo)
- *   2. GET /v1/me/player/currently-playing (Por si el dispositivo está en transición o background)
- *   3. GET /v1/me/player/recently-played (Por si iOS suspendió Spotify en segundo plano o el reproductor está pausado)
+ *   2. GET /v1/me/player/currently-playing (Respuesta directa y ligera sin bloquear en /devices)
+ *   3. GET /v1/me/player/recently-played (Recupera la sesión reciente si iOS suspendió Spotify Connect)
+ *   4. Cache local de última pista en localStorage para evitar pantallas en blanco / desvanecidas.
  */
 export async function getCurrentPlayback(): Promise<SpotifyTrack | null> {
     try {
@@ -430,7 +512,7 @@ export async function getCurrentPlayback(): Promise<SpotifyTrack | null> {
                 const data = await res.json();
                 if (data && data.item) {
                     const item = data.item;
-                    return {
+                    const trackObj: SpotifyTrack = {
                         id: item.id || "",
                         name: item.name || "Sin título",
                         artist: item.artists?.map((a: any) => a.name).join(", ") || "Artista",
@@ -447,6 +529,8 @@ export async function getCurrentPlayback(): Promise<SpotifyTrack | null> {
                         volumePercent: data.device?.volume_percent ?? 100,
                         isRecentlyPlayed: false
                     };
+                    saveLastKnownTrack(trackObj);
+                    return trackObj;
                 }
             } catch {
                 // fallthrough to Tier 2
@@ -460,10 +544,10 @@ export async function getCurrentPlayback(): Promise<SpotifyTrack | null> {
                 const cpData = await cpRes.json();
                 if (cpData && cpData.item) {
                     const item = cpData.item;
-                    const devices = await spotifyGetDevices();
-                    const activeDev = devices.find(d => d.is_active) || devices[0];
+                    const cachedDevName = (typeof window !== "undefined" && localStorage.getItem(STORAGE_KEYS.LAST_DEVICE_NAME)) || (isIOSDevice() ? "iPhone (Spotify)" : "Dispositivo Móvil");
+                    const cachedDevId = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.LAST_DEVICE_ID) || undefined : undefined;
 
-                    return {
+                    const trackObj: SpotifyTrack = {
                         id: item.id || "",
                         name: item.name || "Sin título",
                         artist: item.artists?.map((a: any) => a.name).join(", ") || "Artista",
@@ -473,13 +557,15 @@ export async function getCurrentPlayback(): Promise<SpotifyTrack | null> {
                         progressMs: cpData.progress_ms || 0,
                         isPlaying: Boolean(cpData.is_playing),
                         uri: item.uri || "",
-                        deviceName: activeDev?.name,
-                        deviceId: activeDev?.id,
+                        deviceName: cachedDevName,
+                        deviceId: cachedDevId,
                         shuffleState: false,
                         repeatState: "off",
-                        volumePercent: activeDev?.volume_percent ?? 100,
+                        volumePercent: 100,
                         isRecentlyPlayed: false
                     };
+                    saveLastKnownTrack(trackObj);
+                    return trackObj;
                 }
             } catch {
                 // fallthrough to Tier 3
@@ -494,10 +580,14 @@ export async function getCurrentPlayback(): Promise<SpotifyTrack | null> {
                 const lastItem = rpData?.items?.[0];
                 if (lastItem && lastItem.track) {
                     const t = lastItem.track;
-                    const devices = await spotifyGetDevices();
-                    const activeDev = devices.find(d => d.is_active) || devices[0];
+                    const cachedDevName = (typeof window !== "undefined" && localStorage.getItem(STORAGE_KEYS.LAST_DEVICE_NAME)) || (isIOSDevice() ? "iPhone (Spotify)" : "Dispositivo Móvil");
+                    const cachedDevId = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.LAST_DEVICE_ID) || undefined : undefined;
 
-                    return {
+                    const playedAt = lastItem.played_at ? new Date(lastItem.played_at).getTime() : 0;
+                    const diffMins = playedAt > 0 ? (Date.now() - playedAt) / (1000 * 60) : 999;
+                    const isVeryRecent = diffMins < 45;
+
+                    const trackObj: SpotifyTrack = {
                         id: t.id || "",
                         name: t.name || "Sin título",
                         artist: t.artists?.map((a: any) => a.name).join(", ") || "Artista",
@@ -505,25 +595,36 @@ export async function getCurrentPlayback(): Promise<SpotifyTrack | null> {
                         albumArt: t.album?.images?.[0]?.url || t.album?.images?.[1]?.url || "",
                         durationMs: t.duration_ms || 0,
                         progressMs: 0,
-                        isPlaying: false,
+                        isPlaying: isVeryRecent && isIOSDevice(),
                         uri: t.uri || "",
-                        deviceName: activeDev?.name,
-                        deviceId: activeDev?.id,
+                        deviceName: cachedDevName,
+                        deviceId: cachedDevId,
                         shuffleState: false,
                         repeatState: "off",
-                        volumePercent: activeDev?.volume_percent ?? 100,
+                        volumePercent: 100,
                         isRecentlyPlayed: true
                     };
+                    saveLastKnownTrack(trackObj);
+                    return trackObj;
                 }
             } catch {
-                // ignore
+                // fallthrough to Tier 4
             }
+        }
+
+        // Nivel 4 (Memoria local): si Spotify no responde, no dejar la pantalla en negro
+        const localCached = getLastKnownTrack();
+        if (localCached) {
+            return {
+                ...localCached,
+                isPlaying: false
+            };
         }
 
         return null;
     } catch (err) {
         console.error("Error fetching Spotify playback:", err);
-        return null;
+        return getLastKnownTrack();
     }
 }
 
@@ -717,45 +818,53 @@ export function openSpotifyDeepLink(uri: string, webUrl?: string): void {
 export async function spotifyPlay(targetDeviceId?: string, trackUri?: string): Promise<boolean> {
     try {
         let devId = targetDeviceId;
+        if (!devId && typeof window !== "undefined") {
+            devId = localStorage.getItem(STORAGE_KEYS.LAST_DEVICE_ID) || undefined;
+        }
+
         if (!devId) {
             const best = await getBestAvailableDevice();
             if (best) {
                 devId = best.id;
                 if (!best.is_active) {
-                    const transferred = await spotifyTransferPlayback(best.id, true);
-                    if (transferred) return true;
+                    await spotifyTransferPlayback(best.id, true);
                 }
             }
         }
 
-        const endpoint = devId ? `/me/player/play?device_id=${encodeURIComponent(devId)}` : "/me/player/play";
-        const bodyPayload = trackUri ? JSON.stringify({ uris: [trackUri] }) : undefined;
-        const res = await spotifyFetch(endpoint, {
-            method: "PUT",
-            headers: bodyPayload ? { "Content-Type": "application/json" } : undefined,
-            body: bodyPayload
-        });
-
-        if (res && (res.status === 204 || res.ok)) return true;
-
+        // Si tenemos dispositivo identificado
         if (devId) {
+            const endpoint = `/me/player/play?device_id=${encodeURIComponent(devId)}`;
+            const bodyPayload = trackUri ? JSON.stringify({ uris: [trackUri] }) : undefined;
+            const res = await spotifyFetch(endpoint, {
+                method: "PUT",
+                headers: bodyPayload ? { "Content-Type": "application/json" } : undefined,
+                body: bodyPayload
+            });
+
+            if (res && (res.status === 204 || res.ok)) return true;
+
             const transferred = await spotifyTransferPlayback(devId, true);
             if (transferred) return true;
         }
 
-        // Si falló por falta de dispositivo activo (frecuente en iPhone al suspender la app en background)
-        // Despertar la app de Spotify directamente con deep link
-        if (isIOSDevice() || !devId) {
-            openSpotifyDeepLink(trackUri || "spotify:");
+        // Intento general a Spotify Connect
+        const genRes = await spotifyFetch("/me/player/play", {
+            method: "PUT",
+            headers: trackUri ? { "Content-Type": "application/json" } : undefined,
+            body: trackUri ? JSON.stringify({ uris: [trackUri] }) : undefined
+        });
+
+        if (genRes && (genRes.status === 204 || genRes.ok)) return true;
+
+        // Solo como último recurso si no hay pista conocida en memoria
+        if (!devId && !trackUri) {
+            openSpotifyDeepLink("spotify:");
             return true;
         }
 
         return false;
     } catch {
-        if (isIOSDevice()) {
-            openSpotifyDeepLink(trackUri || "spotify:");
-            return true;
-        }
         return false;
     }
 }
