@@ -35,6 +35,7 @@ export function AppHeaderMenu({
   showInstallButton,
   pdfProfile,
   pdfRoutine,
+  pdfWeeklyProgram,
   pdfDiet,
   onResetProfile,
   readiness = 'normal',
@@ -55,6 +56,7 @@ export function AppHeaderMenu({
   showInstallButton: boolean;
   pdfProfile?: any;
   pdfRoutine?: any[];
+  pdfWeeklyProgram?: any[];
   pdfDiet?: any;
   onResetProfile?: () => void;
   readiness?: string;
@@ -275,6 +277,7 @@ export function AppHeaderMenu({
                   <DownloadPDFButton 
                     profile={pdfProfile} 
                     routine={pdfRoutine || []} 
+                    weeklyProgram={pdfWeeklyProgram || []}
                     diet={pdfDiet} 
                   />
                 </div>

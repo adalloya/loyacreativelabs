@@ -4,470 +4,640 @@ import { Page, Text, View, Document, StyleSheet } from '@react-pdf/renderer';
 
 const styles = StyleSheet.create({
   page: {
-    backgroundColor: '#070709',
-    color: '#FFFFFF',
+    backgroundColor: '#FFFFFF',
+    color: '#0F172A',
     fontFamily: 'Helvetica',
-    padding: 36,
+    paddingTop: 16,
+    paddingBottom: 16,
+    paddingLeft: 18,
+    paddingRight: 18,
+    fontSize: 7,
+    lineHeight: 1.25,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    borderBottomWidth: 1,
-    borderBottomColor: '#1F1F24',
-    paddingBottom: 16,
-    marginBottom: 20,
+    alignItems: 'center',
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#DC2626',
+    paddingBottom: 6,
+    marginBottom: 7,
   },
   brand: {
-    fontSize: 10,
-    letterSpacing: 2,
-    color: '#A1A1AA',
+    fontSize: 6.5,
+    letterSpacing: 1.5,
+    color: '#DC2626',
+    fontWeight: 'bold',
     textTransform: 'uppercase',
-    marginBottom: 4,
+    marginBottom: 1,
   },
   title: {
-    fontSize: 22,
+    fontSize: 12,
     fontWeight: 'bold',
+    color: '#0F172A',
     textTransform: 'uppercase',
-    letterSpacing: -0.5,
-    color: '#FFFFFF',
-  },
-  badge: {
-    backgroundColor: '#121215',
-    borderWidth: 1,
-    borderColor: '#27272A',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-    fontSize: 9,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    letterSpacing: -0.3,
   },
   badgeRed: {
-    backgroundColor: '#1A0808',
+    backgroundColor: '#FEE2E2',
     borderWidth: 1,
-    borderColor: '#FF2A2A',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-    fontSize: 9,
+    borderColor: '#F87171',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 4,
+    fontSize: 6.5,
     fontWeight: 'bold',
-    color: '#FF2A2A',
+    color: '#DC2626',
+    textAlign: 'right',
+  },
+  badgeEmerald: {
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#34D399',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 4,
+    fontSize: 6.5,
+    fontWeight: 'bold',
+    color: '#059669',
+    textAlign: 'right',
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
-    marginTop: 6,
+    marginBottom: 4,
+    marginTop: 5,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#E2E8F0',
+    paddingBottom: 2,
   },
   sectionTitle: {
-    fontSize: 11,
-    letterSpacing: 1.5,
-    color: '#FF2A2A',
+    fontSize: 7.5,
+    letterSpacing: 1,
+    color: '#DC2626',
     textTransform: 'uppercase',
     fontWeight: 'bold',
   },
-  grid3: {
+  sectionSub: {
+    fontSize: 6,
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  profileGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 6,
   },
-  grid4: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  card: {
-    backgroundColor: '#111114',
+  profileCard: {
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#1F1F24',
-    padding: 10,
-    borderRadius: 6,
+    borderColor: '#E2E8F0',
+    padding: 4.5,
+    borderRadius: 4,
     flex: 1,
-    marginRight: 8,
+    marginRight: 4,
   },
-  cardLast: {
-    backgroundColor: '#111114',
+  profileCardLast: {
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#1F1F24',
-    padding: 10,
-    borderRadius: 6,
+    borderColor: '#E2E8F0',
+    padding: 4.5,
+    borderRadius: 4,
     flex: 1,
     marginRight: 0,
   },
-  cardHighlight: {
-    backgroundColor: '#161114',
+  profileCardHighlight: {
+    backgroundColor: '#FFF1F2',
     borderWidth: 1,
-    borderColor: '#FF2A2A',
-    padding: 10,
-    borderRadius: 6,
+    borderColor: '#FECDD3',
+    padding: 4.5,
+    borderRadius: 4,
     flex: 1,
-    marginRight: 8,
+    marginRight: 4,
   },
   cardLabel: {
-    fontSize: 8,
-    color: '#71717A',
+    fontSize: 5.5,
+    color: '#64748B',
     textTransform: 'uppercase',
-    marginBottom: 3,
+    fontWeight: 'bold',
+    marginBottom: 1.5,
+    letterSpacing: 0.4,
   },
   cardValue: {
-    fontSize: 14,
+    fontSize: 9,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: '#0F172A',
   },
-  cardSubtext: {
-    fontSize: 8,
-    color: '#A1A1AA',
-    marginTop: 2,
-  },
-  tableRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#17171C',
-    paddingVertical: 7,
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  exerciseLeft: {
-    flex: 2,
-    marginRight: 10,
-  },
-  exerciseName: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  exerciseSub: {
-    fontSize: 8.5,
-    color: '#A1A1AA',
-    marginTop: 1.5,
-  },
-  exerciseCue: {
-    fontSize: 8,
-    color: '#71717A',
-    marginTop: 1.5,
-    fontStyle: 'italic',
-  },
-  prescription: {
-    flex: 1,
+  cardValueHighlight: {
     fontSize: 9.5,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-    textAlign: 'right',
+    color: '#DC2626',
   },
-  bannerBox: {
-    backgroundColor: '#111114',
+  cardSubtext: {
+    fontSize: 6,
+    color: '#475569',
+    marginTop: 1,
+  },
+  // Routine Week Grid
+  routineGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 5,
+  },
+  dayCard: {
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#1F1F24',
-    padding: 12,
-    borderRadius: 6,
-    marginBottom: 14,
+    borderColor: '#E2E8F0',
+    borderRadius: 4,
+    padding: 4,
+    marginBottom: 4,
   },
-  bannerTitle: {
-    fontSize: 12,
+  dayCardHeader: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    paddingBottom: 2.5,
+    marginBottom: 3,
+  },
+  dayBadgeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 1,
+  },
+  dayName: {
+    fontSize: 6.5,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 2,
+    color: '#DC2626',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  bannerText: {
-    fontSize: 9,
-    color: '#A1A1AA',
-    lineHeight: 1.3,
+  dayCardioPill: {
+    fontSize: 5,
+    color: '#059669',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 3,
+    paddingVertical: 1,
+    borderRadius: 2,
+    fontWeight: 'bold',
+  },
+  dayTitle: {
+    fontSize: 6.8,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  exerciseRow: {
+    flexDirection: 'column',
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#F1F5F9',
+    paddingVertical: 2,
+  },
+  exerciseRowLast: {
+    flexDirection: 'column',
+    paddingTop: 2,
+  },
+  exerciseName: {
+    fontSize: 6.2,
+    fontWeight: 'bold',
+    color: '#1E293B',
+  },
+  exerciseMeta: {
+    fontSize: 5.4,
+    color: '#475569',
+    marginTop: 0.5,
+  },
+  // Diet & Grocery 3-Column Grid
+  nutritionGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 2,
+  },
+  nutritionCol1: {
+    flex: 2.2,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 4,
+    padding: 5,
+    marginRight: 4,
+  },
+  nutritionCol2: {
+    flex: 1.5,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 4,
+    padding: 5,
+    marginRight: 4,
+  },
+  nutritionCol3: {
+    flex: 1.8,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 4,
+    padding: 5,
+  },
+  subHeaderTitle: {
+    fontSize: 6.8,
+    fontWeight: 'bold',
+    color: '#0F172A',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    paddingBottom: 2,
+    marginBottom: 3,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  mealItem: {
+    marginBottom: 3,
+    paddingBottom: 2.5,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#F1F5F9',
+  },
+  mealHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 0.5,
+  },
+  mealName: {
+    fontSize: 6.2,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  mealMacros: {
+    fontSize: 5.4,
+    color: '#DC2626',
+    fontWeight: 'bold',
+  },
+  mealDesc: {
+    fontSize: 5.4,
+    color: '#475569',
+  },
+  suppItem: {
+    marginBottom: 2.5,
+    paddingBottom: 2,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#F1F5F9',
+  },
+  suppName: {
+    fontSize: 6,
+    fontWeight: 'bold',
+    color: '#1E293B',
+  },
+  suppTiming: {
+    fontSize: 5.2,
+    color: '#059669',
+    fontWeight: 'bold',
+  },
+  groceryCatTitle: {
+    fontSize: 5.8,
+    fontWeight: 'bold',
+    color: '#DC2626',
+    marginTop: 1,
+    marginBottom: 0.5,
+    textTransform: 'uppercase',
+  },
+  groceryItemText: {
+    fontSize: 5.4,
+    color: '#334155',
+    marginBottom: 0.5,
   },
   footer: {
     position: 'absolute',
-    bottom: 24,
-    left: 36,
-    right: 36,
+    bottom: 8,
+    left: 18,
+    right: 18,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: '#1A1A1E',
-    paddingTop: 10,
-    fontSize: 8,
-    color: '#52525B',
+    borderTopWidth: 0.5,
+    borderTopColor: '#CBD5E1',
+    paddingTop: 3,
+    fontSize: 5.5,
+    color: '#64748B',
   },
 });
+
+interface WorkoutPDFDocumentProps {
+  profile: any;
+  routine?: any[];
+  weeklyProgram?: any[];
+  diet: any;
+}
 
 export function WorkoutPDFDocument({ 
   profile, 
   routine = [], 
+  weeklyProgram = [],
   diet 
-}: { 
-  profile: any; 
-  routine: any[]; 
-  diet: any 
-}) {
-  const goalLabel = profile?.fitnessGoal === "surplus"
-    ? `SUPERÁVIT CALÓRICO (+${profile?.caloricAdjustmentPct || 15}%)`
-    : profile?.fitnessGoal === "maintenance"
-    ? "MANTENIMIENTO CALÓRICO (0%)"
-    : `DÉFICIT CALÓRICO (${profile?.caloricAdjustmentPct ? `${profile.caloricAdjustmentPct}%` : `-${profile?.caloricDeficitPct || 15}%`})`;
-
+}: WorkoutPDFDocumentProps) {
   const athleteFullName = `${profile?.firstName || 'Atleta'} ${profile?.lastName || ''}`.trim();
+
+  // Determinación de días de la rutina semanal completa
+  const days: any[] = (weeklyProgram && weeklyProgram.length > 0)
+    ? weeklyProgram
+    : (routine && routine.length > 0
+        ? [{
+            dayNumber: 1,
+            dayName: 'Lunes',
+            title: profile?.dayTitle || 'Sesión Activa de Hipertrofia',
+            exercises: routine,
+            cardio: {
+              durationMinutes: profile?.cardioMinutes || 0,
+              type: profile?.cardioType || 'none'
+            }
+          }]
+        : []);
+
+  // Formateo del badge de objetivo
+  const isSurplus = profile?.fitnessGoal === 'surplus';
+  const isDeficit = profile?.fitnessGoal === 'deficit';
+  const goalBadgeLabel = isSurplus
+    ? `SUPERÁVIT (+${profile?.caloricAdjustmentPct || 15}%)`
+    : isDeficit
+    ? `DÉFICIT (${profile?.caloricAdjustmentPct ? `${profile.caloricAdjustmentPct}%` : `-${profile?.caloricDeficitPct || 15}%`})`
+    : 'MANTENIMIENTO (0%)';
+
+  // Ancho dinámico de columnas de días para ajuste perfecto en 1 sola hoja
+  // Si son 3 o menos días: ancho 32% (1 fila)
+  // Si son 4 días: ancho 24% (1 fila de 4)
+  // Si son 5 o 6 días: ancho 32% (2 filas de 3 columnas)
+  const dayColWidth = days.length === 4 ? '24%' : '32.3%';
+
+  // Comidas de la dieta (personalizadas por Gemini si existen, o calibradas a sus macros)
+  const userMeals = diet?.dietPlan?.thirtyDayPlan?.[0]?.meals 
+    || diet?.dietPlan?.weeklyTemplates?.[0]?.meals 
+    || null;
+
+  const targetCal = profile?.targetCalories || 2200;
+  const targetProt = profile?.targetProteinG || 180;
+  const targetCarb = profile?.targetCarbsG || 240;
+  const targetFat = profile?.targetFatsG || 55;
+
+  const defaultMeals = [
+    {
+      name: 'Comida 1 (Desayuno Anabólico)',
+      cal: Math.round(targetCal * 0.25),
+      prot: Math.round(targetProt * 0.25),
+      desc: '4 claras + 2 huevos enteros, 80g avena integral con canela, 60g frutos rojos.'
+    },
+    {
+      name: 'Comida 2 (Almuerzo de Rendimiento)',
+      cal: Math.round(targetCal * 0.35),
+      prot: Math.round(targetProt * 0.35),
+      desc: '200g pechuga de pollo o res magra, 180g arroz jazmín, 120g brócoli/espárragos, 10ml aceite de oliva.'
+    },
+    {
+      name: 'Comida 3 (Pre/Post-Entreno)',
+      cal: Math.round(targetCal * 0.18),
+      prot: Math.round(targetProt * 0.18),
+      desc: '1 scoop proteína whey (30g), 1 plátano maduro mediano, 25g almendras o nueces.'
+    },
+    {
+      name: 'Comida 4 (Cena de Recuperación)',
+      cal: Math.round(targetCal * 0.22),
+      prot: Math.round(targetProt * 0.22),
+      desc: '200g pescado blanco o lomo magro, 220g papa/camote al horno, ensalada verde con 1/2 aguacate.'
+    }
+  ];
 
   return (
     <Document>
-      {/* =========================================================================
-          PÁGINA 1: IDENTIFICACIÓN DEL ATLETA & ARQUITECTURA METABÓLICA
-         ========================================================================= */}
       <Page size="A4" style={styles.page}>
         
-        {/* Header */}
+        {/* =========================================================================
+            HEADER & BRANDING PRINCIPAL
+           ========================================================================= */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.brand}>APEX // AUTOPILOT DE HIPERTROFIA CIENTÍFICA</Text>
-            <Text style={styles.title}>Blueprint Clínico del Atleta</Text>
+            <Text style={styles.brand}>APEX HYPERTROPHY OS • BLUEPRINT MAESTRO CLÍNICO</Text>
+            <Text style={styles.title}>Hoja Maestra de Entrenamiento & Nutrición</Text>
           </View>
-          <Text style={styles.badgeRed}>{goalLabel}</Text>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={isSurplus ? styles.badgeEmerald : styles.badgeRed}>
+              {goalBadgeLabel} • {targetCal} KCAL
+            </Text>
+            <Text style={{ fontSize: 5.5, color: '#64748B', marginTop: 1.5, textTransform: 'uppercase' }}>
+              CALIBRACIÓN OFICIAL 100% PERSONALIZADA
+            </Text>
+          </View>
         </View>
 
-        {/* Sección 01: Identificación y Biometría */}
+        {/* =========================================================================
+            SECCIÓN 01: DATOS PERSONALES DEL PERFIL DE ATLETA (HASTA ARRIBA)
+           ========================================================================= */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>01. Perfil Biométrico y Calibración</Text>
-          <Text style={{ fontSize: 9, color: '#71717A' }}>ATLETA: {athleteFullName.toUpperCase()}</Text>
+          <Text style={styles.sectionTitle}>01. Perfil Biométrico y Calibración del Atleta</Text>
+          <Text style={styles.sectionSub}>ATLETA REGISTRADO: {athleteFullName.toUpperCase()}</Text>
         </View>
 
-        <View style={styles.grid3}>
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>Atleta</Text>
+        <View style={styles.profileGrid}>
+          {/* Card 1: Identificación */}
+          <View style={styles.profileCard}>
+            <Text style={styles.cardLabel}>Atleta / Biotipo</Text>
             <Text style={styles.cardValue}>{athleteFullName}</Text>
-            <Text style={styles.cardSubtext}>{profile?.gender === 'female' ? 'Femenino' : 'Masculino'}, {profile?.age || 38} años</Text>
+            <Text style={styles.cardSubtext}>
+              {profile?.gender === 'female' ? 'Mujer' : 'Hombre'}, {profile?.age || 30} años
+            </Text>
           </View>
-          <View style={styles.card}>
+
+          {/* Card 2: Composición */}
+          <View style={styles.profileCard}>
             <Text style={styles.cardLabel}>Composición Corporal</Text>
-            <Text style={styles.cardValue}>{profile?.weightKg || 80} kg</Text>
-            <Text style={styles.cardSubtext}>{profile?.heightCm || 178} cm • {profile?.bodyFatPct || 14.5}% Grasa Est.</Text>
+            <Text style={styles.cardValue}>{profile?.weightKg || 75} kg ({Math.round((profile?.weightKg || 75) * 2.20462)} lbs)</Text>
+            <Text style={styles.cardSubtext}>
+              {profile?.heightCm || 175} cm • {profile?.bodyFatPct || 14}% Grasa Est.
+            </Text>
           </View>
-          <View style={styles.cardLast}>
-            <Text style={styles.cardLabel}>Volumen Semanal</Text>
-            <Text style={styles.cardValue}>{profile?.trainingDaysPerWeek || 6} días / sem</Text>
-            <Text style={styles.cardSubtext}>{profile?.sessionDurationMins || 60} min por sesión</Text>
+
+          {/* Card 3: Programa */}
+          <View style={styles.profileCard}>
+            <Text style={styles.cardLabel}>Programa & Volumen</Text>
+            <Text style={styles.cardValue}>{profile?.trainingDaysPerWeek || days.length || 6} Días / Sem</Text>
+            <Text style={styles.cardSubtext}>
+              {profile?.sessionDurationMins || 60} min/sesión • {(profile?.environmentMode || 'Gimnasio').replace('_', ' ').toUpperCase()}
+            </Text>
+          </View>
+
+          {/* Card 4: Balance Energético */}
+          <View style={styles.profileCardHighlight}>
+            <Text style={styles.cardLabel}>Energía Diaria Meta</Text>
+            <Text style={styles.cardValueHighlight}>{targetCal} kcal</Text>
+            <Text style={styles.cardSubtext}>
+              TMB: {profile?.calculatedBmr || 1700} • TDEE: {profile?.calculatedTdee || 2400} kcal
+            </Text>
+          </View>
+
+          {/* Card 5: Macros Clínicos */}
+          <View style={styles.profileCardLast}>
+            <Text style={styles.cardLabel}>Macronutrientes & Agua</Text>
+            <Text style={styles.cardValue}>P:{targetProt}g • C:{targetCarb}g • G:{targetFat}g</Text>
+            <Text style={styles.cardSubtext}>
+              Agua: {profile?.waterLiters || 3.5}L/día • RIR {profile?.readiness === 'optimal' ? '1' : '1-2'}
+            </Text>
           </View>
         </View>
 
-        {/* Sección 02: Decisiones Estratégicas y Entorno */}
+        {/* =========================================================================
+            SECCIÓN 02: TODA LA RUTINA DE LA SEMANA ACOMODADA POR DÍA
+           ========================================================================= */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>02. Parámetros de Entrenamiento y Entorno</Text>
+          <Text style={styles.sectionTitle}>02. Rutina Semanal Completa (Acomodada por Día)</Text>
+          <Text style={styles.sectionSub}>SOBRECARGA PROGRESIVA • TEMPO 3-1-1 • RIR 1-2</Text>
         </View>
 
-        <View style={styles.grid3}>
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>Objetivo Metabólico</Text>
-            <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#FFFFFF' }}>
-              {profile?.fitnessGoal === 'deficit' ? 'Pérdida de Grasa' : profile?.fitnessGoal === 'surplus' ? 'Hipertrofia Muscular' : 'Recomposición'}
-            </Text>
-            <Text style={styles.cardSubtext}>Ajuste Calórico: {profile?.caloricAdjustmentPct ? `${profile.caloricAdjustmentPct}%` : '-15%'}</Text>
-          </View>
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>Entorno Configurado</Text>
-            <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#FFFFFF' }}>
-              {(profile?.environmentMode || 'Gimnasio Completo').replace('_', ' ').toUpperCase()}
-            </Text>
-            <Text style={styles.cardSubtext}>Selección óptima de equipamiento</Text>
-          </View>
-          <View style={styles.cardLast}>
-            <Text style={styles.cardLabel}>Disposición Biométrica</Text>
-            <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#FFFFFF' }}>
-              {profile?.readiness === 'optimal' ? 'Óptimo (RIR 1)' : profile?.readiness === 'fatigued' ? 'Fatigado (-5%)' : 'Normal (RIR 1-2)'}
-            </Text>
-            <Text style={styles.cardSubtext}>Autorregulación del sistema nervioso</Text>
-          </View>
+        <View style={styles.routineGrid}>
+          {days.slice(0, 6).map((day: any, dIdx: number) => {
+            const dayExs = (day.exercises || []).slice(0, 5);
+            const cardioMin = day.cardio?.durationMinutes || 0;
+            const cardioLabel = cardioMin > 0 ? `+ Cardio: ${cardioMin}m` : null;
+
+            return (
+              <View 
+                key={dIdx} 
+                style={[styles.dayCard, { width: dayColWidth }]}
+                wrap={false}
+              >
+                {/* Cabecera del Día */}
+                <View style={styles.dayCardHeader}>
+                  <View style={styles.dayBadgeRow}>
+                    <Text style={styles.dayName}>
+                      DÍA {day.dayNumber || dIdx + 1} • {(day.dayName || `Día ${dIdx + 1}`).toUpperCase()}
+                    </Text>
+                    {cardioLabel && (
+                      <Text style={styles.dayCardioPill}>{cardioLabel}</Text>
+                    )}
+                  </View>
+                  <Text style={styles.dayTitle}>
+                    {day.title || `Sesión ${dIdx + 1}`}
+                  </Text>
+                </View>
+
+                {/* Lista de Ejercicios del Día */}
+                {dayExs.map((ex: any, exIdx: number) => {
+                  const sets = ex.targetSets || ex.default_sets || 3;
+                  const repsMin = ex.targetRepsMin || ex.rep_range_min || 8;
+                  const repsMax = ex.targetRepsMax || ex.rep_range_max || 12;
+                  const rir = ex.target_rir !== undefined ? ex.target_rir : (ex.targetRir || 1);
+                  const rest = ex.rest_seconds || 90;
+                  const isLast = exIdx === dayExs.length - 1;
+
+                  return (
+                    <View key={exIdx} style={isLast ? styles.exerciseRowLast : styles.exerciseRow}>
+                      <Text style={styles.exerciseName}>
+                        {exIdx + 1}. {ex.name}
+                      </Text>
+                      <Text style={styles.exerciseMeta}>
+                        {sets}s × {repsMin}-{repsMax} reps • RIR {rir} • {rest}s
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            );
+          })}
         </View>
 
-        {/* Sección 03: Balance Energético y Macros */}
+        {/* =========================================================================
+            SECCIÓN 03: DIETA COMPLETA & LISTA DE COMPRAS DE SUPERMERCADO
+           ========================================================================= */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>03. Arquitectura Energética y Macros Clínicos</Text>
+          <Text style={styles.sectionTitle}>03. Plan Nutricional Clínico & Lista de Compras</Text>
+          <Text style={styles.sectionSub}>FUENTES LIMPIAS • PROTEÍNA ANABÓLICA 2.2G/KG</Text>
         </View>
 
-        <View style={styles.grid4}>
-          <View style={styles.cardHighlight}>
-            <Text style={styles.cardLabel}>Calorías Objetivo</Text>
-            <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#FF2A2A' }}>{profile?.targetCalories || 2200} kcal</Text>
-            <Text style={styles.cardSubtext}>Energía neta diaria</Text>
+        <View style={styles.nutritionGrid}>
+          {/* Columna 1: Distribución de Comidas del Día (Dieta) */}
+          <View style={styles.nutritionCol1}>
+            <Text style={styles.subHeaderTitle}>Estructura Diaria de Comidas (Dieta)</Text>
+            
+            {userMeals && userMeals.length > 0 ? (
+              userMeals.slice(0, 4).map((m: any, mIdx: number) => {
+                const mealName = m.mealName || m.name || `Comida ${mIdx + 1}`;
+                const calories = m.calories || Math.round(((m.macros?.proteinG || 0) * 4) + ((m.macros?.carbsG || 0) * 4) + ((m.macros?.fatsG || 0) * 9)) || 0;
+                const protein = m.proteinG || m.macros?.proteinG || 0;
+                const items = m.items || (m.ingredients?.map((i: any) => `${i.grams}g ${i.item}`).join(", ")) || "";
+
+                return (
+                  <View key={mIdx} style={styles.mealItem}>
+                    <View style={styles.mealHeader}>
+                      <Text style={styles.mealName}>{mIdx + 1}. {mealName}</Text>
+                      <Text style={styles.mealMacros}>{calories} kcal ({protein}g P)</Text>
+                    </View>
+                    <Text style={styles.mealDesc}>{items}</Text>
+                  </View>
+                );
+              })
+            ) : (
+              defaultMeals.map((m, mIdx) => (
+                <View key={mIdx} style={styles.mealItem}>
+                  <View style={styles.mealHeader}>
+                    <Text style={styles.mealName}>{m.name}</Text>
+                    <Text style={styles.mealMacros}>~{m.cal} kcal ({m.prot}g P)</Text>
+                  </View>
+                  <Text style={styles.mealDesc}>{m.desc}</Text>
+                </View>
+              ))
+            )}
           </View>
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>Proteína Diaria</Text>
-            <Text style={styles.cardValue}>{profile?.targetProteinG || 180}g</Text>
-            <Text style={styles.cardSubtext}>2.2g / kg masa magra</Text>
+
+          {/* Columna 2: Suplementación Grado A */}
+          <View style={styles.nutritionCol2}>
+            <Text style={styles.subHeaderTitle}>Suplementación Grado A</Text>
+            <View style={styles.suppItem}>
+              <Text style={styles.suppName}>• Creatina Creapure (5g)</Text>
+              <Text style={styles.suppTiming}>Diario continuo post-entreno</Text>
+            </View>
+            <View style={styles.suppItem}>
+              <Text style={styles.suppName}>• Proteína Whey Isolate (30g)</Text>
+              <Text style={styles.suppTiming}>Post-sesión o entre comidas</Text>
+            </View>
+            <View style={styles.suppItem}>
+              <Text style={styles.suppName}>• Omega-3 Ultra Puro (2,500mg)</Text>
+              <Text style={styles.suppTiming}>Con el desayuno o comida copiosa</Text>
+            </View>
+            <View style={styles.suppItem}>
+              <Text style={styles.suppName}>• Magnesio Bisglicinato (400mg)</Text>
+              <Text style={styles.suppTiming}>60 min antes de dormir</Text>
+            </View>
+            <View style={{ marginTop: 2 }}>
+              <Text style={{ fontSize: 5.5, color: '#64748B', fontWeight: 'bold' }}>
+                HIDRATACIÓN: {profile?.waterLiters || 3.5} Litros de agua/día
+              </Text>
+            </View>
           </View>
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>Carbohidratos</Text>
-            <Text style={styles.cardValue}>{profile?.targetCarbsG || 240}g</Text>
-            <Text style={styles.cardSubtext}>Glucógeno y energía</Text>
-          </View>
-          <View style={styles.cardLast}>
-            <Text style={styles.cardLabel}>Grasas Saludables</Text>
-            <Text style={styles.cardValue}>{profile?.targetFatsG || 55}g</Text>
-            <Text style={styles.cardSubtext}>Función hormonal</Text>
+
+          {/* Columna 3: Lista de Compras de Supermercado Consolidada */}
+          <View style={styles.nutritionCol3}>
+            <Text style={styles.subHeaderTitle}>Lista de Compras (Semanal)</Text>
+            
+            <Text style={styles.groceryCatTitle}>Proteínas Magras</Text>
+            <Text style={styles.groceryItemText}>• Pechuga de pollo / res magra / pescado ({((profile?.weightKg || 75) * 2.2 * 7 * 0.6 / 250).toFixed(1)} kg)</Text>
+            <Text style={styles.groceryItemText}>• Huevos enteros pasteurizados ({Math.round(14 + ((profile?.weightKg || 75) > 80 ? 7 : 0))} piezas)</Text>
+
+            <Text style={styles.groceryCatTitle}>Carbohidratos Complejos</Text>
+            <Text style={styles.groceryItemText}>• Arroz blanco jazmín / Avena en hojuelas (1.8 kg)</Text>
+            <Text style={styles.groceryItemText}>• Papas o camote / batata (2.0 kg)</Text>
+
+            <Text style={styles.groceryCatTitle}>Grasas, Frutas & Vegetales</Text>
+            <Text style={styles.groceryItemText}>• Aguacate Hass (7 piezas) + Aceite de oliva EV (1 bot.)</Text>
+            <Text style={styles.groceryItemText}>• Espinacas, brócoli y frutos rojos (1.5 kg surtido)</Text>
           </View>
         </View>
 
-        {/* Métricas Basales */}
-        <View style={styles.bannerBox}>
-          <Text style={styles.bannerTitle}>Telemetría Metabólica Katch-McArdle</Text>
-          <Text style={styles.bannerText}>
-            Gasto Metabólico Basal (BMR): {profile?.calculatedBmr || 1750} kcal • Gasto Diario Total (TDEE): {profile?.calculatedTdee || 2600} kcal • Consumo hídrico mínimo recomendado: {profile?.waterLiters || 3.5} litros de agua al día.
-          </Text>
-        </View>
-
-        {/* Footer */}
+        {/* =========================================================================
+            FOOTER INSTITUCIONAL
+           ========================================================================= */}
         <View style={styles.footer}>
-          <Text>DOCUMENTO CLÍNICO CONFIDENCIAL • APEX HYPERTROPHY OS</Text>
-          <Text>PÁGINA 1 DE 3</Text>
-        </View>
-      </Page>
-
-      {/* =========================================================================
-          PÁGINA 2: PROGRAMACIÓN DE HIPERTROFIA & CARDIO ZONA 2
-         ========================================================================= */}
-      <Page size="A4" style={styles.page}>
-        
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.brand}>APEX // PRESCRIPCIÓN BIOMECÁNICA</Text>
-            <Text style={styles.title}>Rutina Activa & Series Efectivas</Text>
-          </View>
-          <Text style={styles.badge}>{profile?.dayTitle || 'SESIÓN ACTIVA'}</Text>
-        </View>
-
-        {/* Banner de Enfoque */}
-        <View style={styles.bannerBox}>
-          <Text style={styles.bannerTitle}>{profile?.dayTitle || 'Sesión de Sobrecarga Progresiva'}</Text>
-          <Text style={styles.bannerText}>
-            Enfoque neuromuscular: {profile?.dayFocus || 'Tensión mecánica en longitud muscular máxima con RIR 1-2 y tempo controlado (3-1-1).'}
-          </Text>
-        </View>
-
-        {/* Tabla de Ejercicios */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>04. Secuencia Biomecánica Tier S / A</Text>
-          <Text style={{ fontSize: 9, color: '#71717A' }}>TEMPO ESTÁNDAR: 3-1-1</Text>
-        </View>
-
-        {routine && routine.slice(0, 7).map((ex: any, index: number) => (
-          <View key={index} style={styles.tableRow} wrap={false}>
-            <View style={styles.exerciseLeft}>
-              <Text style={styles.exerciseName}>{index + 1}. {ex.name}</Text>
-              <Text style={styles.exerciseSub}>
-                {ex.anatomicalSubdivision || ex.anatomical_subdivision || 'Músculo Principal'} • {(ex.equipment || 'Equipamiento').toUpperCase()} • TIER {ex.hypertrophy_tier || 'S'}
-              </Text>
-              {ex.biomechanical_cue && (
-                <Text style={styles.exerciseCue}>Consigna: {ex.biomechanical_cue}</Text>
-              )}
-            </View>
-            <Text style={styles.prescription}>
-              {ex.targetSets || ex.default_sets || 3} Series × {ex.targetRepsMin || ex.rep_range_min || 8}-{ex.targetRepsMax || ex.rep_range_max || 12} Reps
-              {'\n'}<Text style={{ fontSize: 8, color: '#A1A1AA' }}>RIR {ex.target_rir !== undefined ? ex.target_rir : (ex.targetRir || 1)} • {ex.rest_seconds || 90}s descanso</Text>
-            </Text>
-          </View>
-        ))}
-
-        {/* Cardio Finisher Zona 2 */}
-        <View style={{ marginTop: 14 }}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>05. Cardio Zona 2 (Final de Sesión)</Text>
-            <Text style={{ fontSize: 9, color: '#10B981' }}>ZONA AERÓBICA PURA (120-140 BPM)</Text>
-          </View>
-
-          <View style={styles.card}>
-            <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 2 }}>
-              {profile?.cardioType && profile.cardioType !== 'none'
-                ? `${profile.cardioType.replace('_', ' ').toUpperCase()} • ${profile.cardioMinutes || 20} MIN • INCLINACIÓN: ${profile.cardioIncline ?? 12}% • VELOCIDAD: ${profile.cardioSpeed ?? 4.8} km/h`
-                : 'SIN CARDIO HOY (RECUPERACIÓN METABÓLICA)'}
-            </Text>
-            {profile?.cardioCalories ? (
-              <Text style={{ fontSize: 8.5, color: '#10B981', marginBottom: 3 }}>
-                Gasto calórico: ~{profile.cardioCalories} kcal • Distancia: ~{profile.cardioDistance || 0} km • Zona 2
-              </Text>
-            ) : null}
-            <Text style={styles.bannerText}>
-              {profile?.cardioProtocol || 'Oxidación lipídica suave sin interferencia con la vía de señalización mTOR de hipertrofia muscular.'}
-            </Text>
-          </View>
-        </View>
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text>DOCUMENTO CLÍNICO CONFIDENCIAL • APEX HYPERTROPHY OS</Text>
-          <Text>PÁGINA 2 DE 3</Text>
-        </View>
-      </Page>
-
-      {/* =========================================================================
-          PÁGINA 3: FARMACOLOGÍA DEPORTIVA, SUPLEMENTACIÓN & COMPRAS
-         ========================================================================= */}
-      <Page size="A4" style={styles.page}>
-        
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.brand}>APEX // SUPLEMENTACIÓN & NUTRICIÓN</Text>
-            <Text style={styles.title}>Stack Clínico & Insumos</Text>
-          </View>
-          <Text style={styles.badge}>EVIDENCIA GRADO A</Text>
-        </View>
-
-        {/* Suplementación Grado A */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>06. Protocolo de Suplementación Dirigida</Text>
-        </View>
-
-        {diet?.dailySupplements && diet.dailySupplements.slice(0, 5).map((sup: any, i: number) => (
-          <View key={i} style={styles.tableRow} wrap={false}>
-            <View style={styles.exerciseLeft}>
-              <Text style={styles.exerciseName}>{sup.name} ({sup.dosage})</Text>
-              <Text style={styles.exerciseSub}>{sup.clinicalReason}</Text>
-            </View>
-            <Text style={styles.prescription}>{sup.timing}</Text>
-          </View>
-        ))}
-
-        {/* Canasta de Compras e Insumos */}
-        <View style={{ marginTop: 14 }}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>07. Canasta de Compras & Fuentes Limpias</Text>
-          </View>
-
-          <View style={styles.grid3}>
-            <View style={styles.card}>
-              <Text style={styles.cardLabel}>Proteínas Magras</Text>
-              <Text style={styles.bannerText}>
-                Pechuga de pollo, lomo de res/cerdo magro, huevos enteros, claras líquidas, atún y pescado blanco.
-              </Text>
-            </View>
-            <View style={styles.card}>
-              <Text style={styles.cardLabel}>Carbohidratos Complejos</Text>
-              <Text style={styles.bannerText}>
-                Avena integral, arroz jazmín, papas al horno, camote y frutas frescas de temporada.
-              </Text>
-            </View>
-            <View style={styles.cardLast}>
-              <Text style={styles.cardLabel}>Lípidos Saludables</Text>
-              <Text style={styles.bannerText}>
-                Aceite de oliva extra virgen, aguacate fresco, almendras y semillas de chía.
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Directrices de Recuperación */}
-        <View style={styles.bannerBox}>
-          <Text style={styles.bannerTitle}>Protocolo de Sueño y Regeneración Biomecánica</Text>
-          <Text style={styles.bannerText}>
-            • Mantén 7.5 - 8.5 horas de descanso ininterrumpido en habitación oscura y fresca (18-20°C).{'\n'}
-            • Respeta 90 a 120 segundos de recuperación activa entre series efectivas para asegurar el reclutamiento de unidades motoras de alto umbral.
-          </Text>
-        </View>
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text>DOCUMENTO CLÍNICO CONFIDENCIAL • APEX HYPERTROPHY OS • GENERADO PARA {athleteFullName.toUpperCase()}</Text>
-          <Text>PÁGINA 3 DE 3</Text>
+          <Text>DOCUMENTO OFICIAL CONFIDENCIAL • APEX HYPERTROPHY OS • AUTOPILOT METABÓLICO & BIOMECÁNICO</Text>
+          <Text>GENERADO PARA {athleteFullName.toUpperCase()} • HOJA MAESTRA INTEGRAL (1 DE 1)</Text>
         </View>
       </Page>
     </Document>
   );
 }
+
+export default WorkoutPDFDocument;

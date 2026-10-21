@@ -534,12 +534,6 @@ export default function ApexDashboard() {
         cardioProtocol: CARDIO_PROTOCOLS[todayCardio.type]?.protocol || ""
     }), [profile, bio, macros, environmentMode, readiness, currentRoutine, todayCardio]);
 
-    const pdfDiet = useMemo(() => ({
-        dailySupplements: supplements,
-        groceryList: groceryList,
-        macros: macros
-    }), [supplements, groceryList, macros]);
-
     // Set Completion with Dexie.js Offline-First logging
     const handleCompleteSet = (exerciseId: string, setIdx: number, restSeconds: number, customWeight?: number, customReps?: number) => {
         const key = `${exerciseId}_${setIdx}`;
@@ -682,9 +676,15 @@ export default function ApexDashboard() {
         }
     };
 
-    // Gemini 30-Day Diet State (Persistido en localStorage para no tener que regenerarlo cada vez)
     const [dietPlan, setDietPlan] = useLocalStorage<any>("apex_diet_plan", null);
     const [dietLoading, setDietLoading] = useState(false);
+
+    const pdfDiet = useMemo(() => ({
+        dailySupplements: supplements,
+        groceryList: groceryList,
+        macros: macros,
+        dietPlan: dietPlan
+    }), [supplements, groceryList, macros, dietPlan]);
 
     const handleGenerateAiDiet = async (selectedDiet?: DietType, customNotes?: string) => {
         const pref = selectedDiet || dietPreference || "standard";
@@ -794,6 +794,7 @@ export default function ApexDashboard() {
                             showInstallButton={true}
                             pdfProfile={pdfProfile}
                             pdfRoutine={activeExercises}
+                            pdfWeeklyProgram={weeklyProgram}
                             pdfDiet={pdfDiet}
                             onResetProfile={() => {
                                 localStorage.removeItem('apex_user_profile');

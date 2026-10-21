@@ -8,13 +8,14 @@ import { Download } from 'lucide-react';
 
 interface DownloadPDFButtonProps {
   profile: any;
-  routine: any[];
+  routine?: any[];
+  weeklyProgram?: any[];
   diet: any;
 }
 
-function PDFButtonInner({ profile, routine, diet }: DownloadPDFButtonProps) {
+function PDFButtonInner({ profile, routine, weeklyProgram, diet }: DownloadPDFButtonProps) {
   const [instance] = usePDF({
-    document: <WorkoutPDFDocument profile={profile} routine={routine} diet={diet} />
+    document: <WorkoutPDFDocument profile={profile} routine={routine} weeklyProgram={weeklyProgram} diet={diet} />
   });
 
   if (instance.loading) {
@@ -45,7 +46,7 @@ function PDFButtonInner({ profile, routine, diet }: DownloadPDFButtonProps) {
   );
 }
 
-export function DownloadPDFButton({ profile, routine, diet }: DownloadPDFButtonProps) {
+export function DownloadPDFButton({ profile, routine, weeklyProgram, diet }: DownloadPDFButtonProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -64,5 +65,5 @@ export function DownloadPDFButton({ profile, routine, diet }: DownloadPDFButtonP
     );
   }
 
-  return <PDFButtonInner profile={profile} routine={routine} diet={diet} />;
+  return <PDFButtonInner profile={profile} routine={routine} weeklyProgram={weeklyProgram} diet={diet} />;
 }
