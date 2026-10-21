@@ -1,7 +1,7 @@
 // src/components/ui/AppHeaderMenu.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { Menu, X, Download, Shield, RefreshCw, Zap, Music, Sparkles, Layers, Flame, Sun, Moon } from 'lucide-react';
 import { DownloadPDFButton } from '@/components/pdf/DownloadPDFButton';
@@ -46,6 +46,8 @@ export function AppHeaderMenu({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>('dark');
+  const menuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setTheme(getInitialTheme());
@@ -59,6 +61,39 @@ export function AppHeaderMenu({
     return () => window.removeEventListener('apex_theme_change', handleThemeChange);
   }, []);
 
+  // Cerrar al hacer clic/tap fuera del menú o presionar Escape
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node;
+      if (
+        menuRef.current && 
+        !menuRef.current.contains(target) && 
+        buttonRef.current && 
+        !buttonRef.current.contains(target)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside, true);
+    document.addEventListener('touchstart', handleClickOutside, true);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside, true);
+      document.removeEventListener('touchstart', handleClickOutside, true);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen]);
+
   const handleToggleTheme = (newTheme: Theme) => {
     setTheme(newTheme);
     setSiteTheme(newTheme);
@@ -68,9 +103,10 @@ export function AppHeaderMenu({
     <div className="relative z-50">
       {/* Botón de tres rayitas (Hamburguesa) */}
       <button
+        ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         className="bg-[#121214]/90 backdrop-blur-xl border border-white/[0.1] hover:border-white/30 text-white p-2.5 rounded-2xl transition-all shadow-lg flex items-center justify-center active:scale-95"
-        aria-label="Menú principal"
+        aria-label={isOpen ? "Cerrar menú" : "Abrir menú principal"}
       >
         {isOpen ? <X className="w-5 h-5 text-white" /> : <Menu className="w-5 h-5 text-white" />}
       </button>
@@ -78,15 +114,19 @@ export function AppHeaderMenu({
       {/* Menú desplegable tipo iOS / Tesla */}
       {isOpen && (
         <>
-          {/* Backdrop invisible para cerrar al hacer clic afuera */}
+          {/* Backdrop con blur para cerrar al hacer clic afuera */}
           <div 
-            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs" 
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs" 
             onClick={() => setIsOpen(false)} 
+            aria-hidden="true"
           />
 
-          <div className="absolute right-0 mt-3 w-80 bg-[#121214]/95 backdrop-blur-2xl border border-white/[0.12] rounded-3xl p-5 shadow-2xl z-50 text-white animate-in fade-in slide-in-from-top-2 duration-200 font-sans">
+          <div 
+            ref={menuRef}
+            className="absolute right-0 mt-3 w-[calc(100vw-2rem)] sm:w-80 max-h-[88vh] overflow-y-auto bg-[#121214]/95 backdrop-blur-2xl border border-white/[0.12] rounded-3xl p-5 shadow-2xl z-50 text-white animate-in fade-in slide-in-from-top-2 duration-200 font-sans"
+          >
             
-            {/* Cabecera del Menú con Logo APEX */}
+            {/* Cabecera del Menú con Logo APEX y Cruz de Cierre */}
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.08]">
               <div className="flex items-center gap-2.5">
                 <div className="relative w-6 h-6 rounded-lg overflow-hidden border border-white/10 bg-black shrink-0">
@@ -99,10 +139,19 @@ export function AppHeaderMenu({
                   />
                 </div>
                 <span className="text-xs font-mono tracking-widest uppercase text-white font-bold">APEX</span>
+                <span className="text-[10px] font-mono text-zinc-500 bg-white/[0.04] px-2 py-0.5 rounded-full border border-white/[0.06]">
+                  SISTEMA
+                </span>
               </div>
-              <span className="text-[10px] font-mono text-zinc-500 bg-white/[0.04] px-2 py-0.5 rounded-full border border-white/[0.06]">
-                SISTEMA
-              </span>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="w-7 h-7 rounded-xl bg-white/[0.06] hover:bg-white/[0.15] text-zinc-400 hover:text-white border border-white/[0.08] flex items-center justify-center transition-all active:scale-90"
+                title="Cerrar menú"
+                aria-label="Cerrar menú"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
             {/* Apariencia del Sitio: Modo Oscuro vs Modo Claro */}

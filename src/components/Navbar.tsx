@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -15,6 +15,41 @@ export function Navbar() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const { t, language, toggleLanguage } = useLanguage();
     const [theme, setTheme] = useState<Theme>("dark");
+    const mobileMenuRef = useRef<HTMLDivElement>(null);
+    const mobileToggleRef = useRef<HTMLButtonElement>(null);
+
+    // Cerrar menú móvil al hacer clic afuera o presionar Escape
+    useEffect(() => {
+        if (!isMobileMenuOpen) return;
+
+        const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+            const target = event.target as Node;
+            if (
+                mobileMenuRef.current &&
+                !mobileMenuRef.current.contains(target) &&
+                mobileToggleRef.current &&
+                !mobileToggleRef.current.contains(target)
+            ) {
+                setIsMobileMenuOpen(false);
+            }
+        };
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                setIsMobileMenuOpen(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside, true);
+        document.addEventListener("touchstart", handleClickOutside, true);
+        window.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside, true);
+            document.removeEventListener("touchstart", handleClickOutside, true);
+            window.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [isMobileMenuOpen]);
 
     useEffect(() => {
         setTheme(getInitialTheme());
@@ -133,8 +168,10 @@ export function Navbar() {
                         {language}
                     </button>
                     <button
+                        ref={mobileToggleRef}
                         className="text-white z-10 p-2"
                         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                        aria-label={isMobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
                     >
                         {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
                     </button>
@@ -143,43 +180,63 @@ export function Navbar() {
 
                 {/* Mobile Nav */}
                 {isMobileMenuOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        className="absolute top-0 left-0 right-0 bg-black border-b border-white/10 p-4 pt-24 pb-8 md:hidden flex flex-col gap-4 shadow-2xl"
-                    >
-                        {[
-                            { label: t.nav.work, href: "#work" },
-                            { label: t.nav.services, href: "#services" },
-                            { label: t.nav.about, href: "#about" },
-                            { label: "APEX", href: "/apex" },
-                        ].map((item) => (
-                            <Link
-                                key={item.label}
-                                href={item.href}
-                                className={`text-lg font-medium flex items-center gap-2 py-2 border-b border-white/5 ${item.label === "APEX"
-                                    ? "text-red-400 font-mono font-bold"
-                                    : "text-gray-300 hover:text-white"
-                                    }`}
-                                onClick={() => setIsMobileMenuOpen(false)}
-                            >
-                                {item.label === "APEX" && (
-                                    <Image
-                                        src="/apex-logo.png"
-                                        alt="APEX"
-                                        width={20}
-                                        height={20}
-                                        className="w-5 h-5 rounded-md object-cover"
-                                    />
-                                )}
-                                {item.label}
+                    <>
+                        {/* Backdrop para cerrar al hacer clic/tap afuera */}
+                        <div
+                            className="fixed inset-0 bg-black/70 backdrop-blur-xs z-30 md:hidden"
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            aria-hidden="true"
+                        />
+                        <motion.div
+                            ref={mobileMenuRef}
+                            initial={{ opacity: 0, y: -20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            className="absolute top-0 left-0 right-0 bg-black border-b border-white/10 p-4 pt-6 pb-8 md:hidden flex flex-col gap-4 shadow-2xl z-40"
+                        >
+                            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                                <span className="text-xs font-mono uppercase tracking-widest text-zinc-400">NAVEGACIÓN</span>
+                                <button
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className="w-8 h-8 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-zinc-400 hover:text-white border border-white/10 flex items-center justify-center transition-all active:scale-90"
+                                    aria-label="Cerrar menú"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            {[
+                                { label: t.nav.work, href: "#work" },
+                                { label: t.nav.services, href: "#services" },
+                                { label: t.nav.about, href: "#about" },
+                                { label: "APEX", href: "/apex" },
+                            ].map((item) => (
+                                <Link
+                                    key={item.label}
+                                    href={item.href}
+                                    className={`text-lg font-medium flex items-center gap-2 py-2 border-b border-white/5 ${item.label === "APEX"
+                                        ? "text-red-400 font-mono font-bold"
+                                        : "text-gray-300 hover:text-white"
+                                        }`}
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                >
+                                    {item.label === "APEX" && (
+                                        <Image
+                                            src="/apex-logo.png"
+                                            alt="APEX"
+                                            width={20}
+                                            height={20}
+                                            className="w-5 h-5 rounded-md object-cover"
+                                        />
+                                    )}
+                                    {item.label}
+                                </Link>
+                            ))}
+                            <Link href="#contact" onClick={() => setIsMobileMenuOpen(false)}>
+                                <Button className="w-full mt-4">{t.nav.start}</Button>
                             </Link>
-                        ))}
-                        <Link href="#contact" onClick={() => setIsMobileMenuOpen(false)}>
-                            <Button className="w-full mt-4">{t.nav.start}</Button>
-                        </Link>
-                    </motion.div>
+                        </motion.div>
+                    </>
                 )}
             </Container>
         </motion.header>
