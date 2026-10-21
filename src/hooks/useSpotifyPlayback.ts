@@ -97,7 +97,13 @@ export function useSpotifyPlayback() {
             setTrack(current);
             setIsPlaying(current.isPlaying);
             if (!isSeeking) {
-                setProgressMs(current.progressMs);
+                if (current.progressMs > 0) {
+                    setProgressMs(current.progressMs);
+                } else if (current.isPlaying) {
+                    setProgressMs((prev) => (prev > 0 ? prev : current.progressMs));
+                } else {
+                    setProgressMs(current.progressMs);
+                }
             }
             if (current.volumePercent !== undefined) {
                 setVolumeState(current.volumePercent);

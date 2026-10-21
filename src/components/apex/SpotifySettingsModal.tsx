@@ -174,6 +174,25 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
         }
     }, [isOpen, connected, loadQueue, refreshPlayback]);
 
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const handleFocusOrVisible = () => {
+            if (typeof document !== "undefined" && document.visibilityState === "visible") {
+                loadDevices();
+                refreshPlayback();
+                loadQueue();
+            }
+        };
+
+        window.addEventListener("focus", handleFocusOrVisible);
+        document.addEventListener("visibilitychange", handleFocusOrVisible);
+        return () => {
+            window.removeEventListener("focus", handleFocusOrVisible);
+            document.removeEventListener("visibilitychange", handleFocusOrVisible);
+        };
+    }, [isOpen, refreshPlayback, loadQueue]);
+
     if (!isOpen) return null;
 
     const handleConnect = async () => {

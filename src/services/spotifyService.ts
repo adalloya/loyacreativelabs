@@ -505,6 +505,12 @@ async function spotifyFetch(endpoint: string, options: RequestInit = {}): Promis
  */
 export async function getCurrentPlayback(): Promise<SpotifyTrack | null> {
     try {
+        const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+        const isAndroid = /Android/i.test(ua);
+        const isIOS = isIOSDevice();
+        const isMobile = isAndroid || isIOS;
+        const defaultMobileName = isAndroid ? "Tu Teléfono Android" : (isIOS ? "Tu iPhone" : "Dispositivo Móvil");
+
         // Nivel 1: Consulta del reproductor activo completo
         const res = await spotifyFetch("/me/player");
         if (res && res.ok && res.status !== 204 && res.status !== 404) {
@@ -512,17 +518,24 @@ export async function getCurrentPlayback(): Promise<SpotifyTrack | null> {
                 const data = await res.json();
                 if (data && data.item) {
                     const item = data.item;
+                    if (data.device?.name) {
+                        localStorage.setItem(STORAGE_KEYS.LAST_DEVICE_NAME, data.device.name);
+                    }
+                    if (data.device?.id) {
+                        localStorage.setItem(STORAGE_KEYS.LAST_DEVICE_ID, data.device.id);
+                    }
+
                     const trackObj: SpotifyTrack = {
                         id: item.id || "",
                         name: item.name || "Sin título",
                         artist: item.artists?.map((a: any) => a.name).join(", ") || "Artista",
                         album: item.album?.name || "",
                         albumArt: item.album?.images?.[0]?.url || item.album?.images?.[1]?.url || "",
-                        durationMs: item.duration_ms || 0,
+                        durationMs: item.duration_ms || 210000,
                         progressMs: data.progress_ms || 0,
                         isPlaying: Boolean(data.is_playing),
                         uri: item.uri || "",
-                        deviceName: data.device?.name,
+                        deviceName: data.device?.name || defaultMobileName,
                         deviceId: data.device?.id,
                         shuffleState: Boolean(data.shuffle_state),
                         repeatState: data.repeat_state || "off",
@@ -544,8 +557,8 @@ export async function getCurrentPlayback(): Promise<SpotifyTrack | null> {
                 const cpData = await cpRes.json();
                 if (cpData && cpData.item) {
                     const item = cpData.item;
-                    const cachedDevName = (typeof window !== "undefined" && localStorage.getItem(STORAGE_KEYS.LAST_DEVICE_NAME)) || (isIOSDevice() ? "iPhone (Spotify)" : "Dispositivo Móvil");
-                    const cachedDevId = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.LAST_DEVICE_ID) || undefined : undefined;
+                    const cachedDevName = (typeof window !== "undefined" && localStorage.getItem(STORAGE_KEYS.LAST_DEVICE_NAME)) || defaultMobileName;
+                    const cachedDevId = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.LAST_DEVICE_ID) || "local_mobile_device" : "local_mobile_device";
 
                     const trackObj: SpotifyTrack = {
                         id: item.id || "",
@@ -553,7 +566,7 @@ export async function getCurrentPlayback(): Promise<SpotifyTrack | null> {
                         artist: item.artists?.map((a: any) => a.name).join(", ") || "Artista",
                         album: item.album?.name || "",
                         albumArt: item.album?.images?.[0]?.url || item.album?.images?.[1]?.url || "",
-                        durationMs: item.duration_ms || 0,
+                        durationMs: item.duration_ms || 210000,
                         progressMs: cpData.progress_ms || 0,
                         isPlaying: Boolean(cpData.is_playing),
                         uri: item.uri || "",
@@ -572,7 +585,7 @@ export async function getCurrentPlayback(): Promise<SpotifyTrack | null> {
             }
         }
 
-        // Nivel 3 (Rescate iOS / Standby): Consulta la última pista reproducida recientemente
+        // Nivel 3 (Rescate Móvil Standby Android/iOS): Consulta la última pista reproducida recientemente
         const rpRes = await spotifyFetch("/me/player/recently-played?limit=1");
         if (rpRes && rpRes.ok && rpRes.status === 200) {
             try {
@@ -580,12 +593,23 @@ export async function getCurrentPlayback(): Promise<SpotifyTrack | null> {
                 const lastItem = rpData?.items?.[0];
                 if (lastItem && lastItem.track) {
                     const t = lastItem.track;
-                    const cachedDevName = (typeof window !== "undefined" && localStorage.getItem(STORAGE_KEYS.LAST_DEVICE_NAME)) || (isIOSDevice() ? "iPhone (Spotify)" : "Dispositivo Móvil");
-                    const cachedDevId = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.LAST_DEVICE_ID) || undefined : undefined;
+                    const cachedDevName = (typeof window !== "undefined" && localStorage.getItem(STORAGE_KEYS.LAST_DEVICE_NAME)) || defaultMobileName;
+                    const cachedDevId = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.LAST_DEVICE_ID) || "local_mobile_device" : "local_mobile_device";
 
                     const playedAt = lastItem.played_at ? new Date(lastItem.played_at).getTime() : 0;
-                    const diffMins = playedAt > 0 ? (Date.now() - playedAt) / (1000 * 60) : 999;
+                    const diffMs = playedAt > 0 ? (Date.now() - playedAt) : 999999;
+                    const diffMins = diffMs / (1000 * 60);
                     const isVeryRecent = diffMins < 45;
+
+                    let calculatedProgress = 0;
+                    if (diffMs > 0 && diffMs < (t.duration_ms || 240000)) {
+                        calculatedProgress = Math.floor(diffMs);
+                    } else {
+                        const prevTrack = getLastKnownTrack();
+                        if (prevTrack && prevTrack.id === t.id && prevTrack.progressMs > 0) {
+                            calculatedProgress = prevTrack.progressMs;
+                        }
+                    }
 
                     const trackObj: SpotifyTrack = {
                         id: t.id || "",
@@ -593,9 +617,9 @@ export async function getCurrentPlayback(): Promise<SpotifyTrack | null> {
                         artist: t.artists?.map((a: any) => a.name).join(", ") || "Artista",
                         album: t.album?.name || "",
                         albumArt: t.album?.images?.[0]?.url || t.album?.images?.[1]?.url || "",
-                        durationMs: t.duration_ms || 0,
-                        progressMs: 0,
-                        isPlaying: isVeryRecent && isIOSDevice(),
+                        durationMs: t.duration_ms || 210000,
+                        progressMs: calculatedProgress,
+                        isPlaying: isVeryRecent && isMobile,
                         uri: t.uri || "",
                         deviceName: cachedDevName,
                         deviceId: cachedDevId,
@@ -617,7 +641,7 @@ export async function getCurrentPlayback(): Promise<SpotifyTrack | null> {
         if (localCached) {
             return {
                 ...localCached,
-                isPlaying: false
+                deviceName: localCached.deviceName || defaultMobileName
             };
         }
 
@@ -928,10 +952,28 @@ export async function getBestAvailableDevice(): Promise<SpotifyDevice | null> {
 export function openSpotifyDeepLink(uri: string, webUrl?: string): void {
     if (typeof window === "undefined") return;
     try {
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || isIOSDevice();
+        const ua = navigator.userAgent || "";
+        const isAndroid = /Android/i.test(ua);
+        const isMobile = isAndroid || /iPhone|iPad|iPod/i.test(ua) || isIOSDevice();
         const targetUri = uri || "spotify:";
 
-        // En móviles, el esquema nativo spotify:... despierta la app instalada sin bloquearse por popup blocker
+        if (isAndroid) {
+            // En Android, Intent URI oficial que despierta la app instalada sin bloqueo de Chrome
+            if (targetUri.startsWith("spotify:track:")) {
+                const trackId = targetUri.replace("spotify:track:", "").split("?")[0];
+                window.location.href = `intent://open.spotify.com/track/${trackId}#Intent;scheme=https;package=com.spotify.music;S.browser_fallback_url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F${trackId};end`;
+                return;
+            } else if (targetUri.startsWith("spotify:playlist:")) {
+                const playlistId = targetUri.replace("spotify:playlist:", "").split("?")[0];
+                window.location.href = `intent://open.spotify.com/playlist/${playlistId}#Intent;scheme=https;package=com.spotify.music;S.browser_fallback_url=https%3A%2F%2Fopen.spotify.com%2Fplaylist%2F${playlistId};end`;
+                return;
+            } else {
+                window.location.href = `intent:#Intent;package=com.spotify.music;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;S.browser_fallback_url=https%3A%2F%2Fopen.spotify.com;end`;
+                return;
+            }
+        }
+
+        // En iOS, el esquema nativo spotify:... despierta la app instalada sin bloquearse por popup blocker
         if (isMobile && targetUri.startsWith("spotify:")) {
             window.location.href = targetUri;
             return;
@@ -1139,9 +1181,45 @@ export async function spotifySetVolume(volumePercent: number, deviceId?: string)
 export async function spotifyGetDevices(): Promise<SpotifyDevice[]> {
     try {
         const res = await spotifyFetch("/me/player/devices");
-        if (!res || !res.ok) return [];
-        const data = await res.json();
-        return data.devices || [];
+        let remoteDevices: SpotifyDevice[] = [];
+        if (res && res.ok) {
+            const data = await res.json();
+            remoteDevices = data.devices || [];
+        }
+
+        if (remoteDevices.length > 0) {
+            return remoteDevices;
+        }
+
+        // Si Spotify Web API devuelve 0 dispositivos (común en Android e iOS mientras reproducen localmente),
+        // sintetizamos el dispositivo móvil del usuario para que el widget y el modal reconozcan el teléfono
+        if (typeof window !== "undefined") {
+            const ua = navigator.userAgent || "";
+            const isAndroid = /Android/i.test(ua);
+            const isIOS = isIOSDevice();
+            const isMobile = isAndroid || isIOS || /iPhone|iPad|iPod/i.test(ua);
+
+            const lastTrack = getLastKnownTrack();
+            const storedDevName = localStorage.getItem(STORAGE_KEYS.LAST_DEVICE_NAME);
+            const storedDevId = localStorage.getItem(STORAGE_KEYS.LAST_DEVICE_ID);
+
+            if (isMobile || storedDevName || lastTrack) {
+                const devName = storedDevName || (isAndroid ? "Tu Teléfono Android" : (isIOS ? "Tu iPhone" : "Dispositivo Móvil"));
+                const devId = storedDevId || "local_mobile_device";
+
+                return [{
+                    id: devId,
+                    name: devName,
+                    type: "Smartphone",
+                    is_active: Boolean(lastTrack?.isPlaying || isMobile),
+                    is_private_session: false,
+                    is_restricted: false,
+                    volume_percent: 100
+                }];
+            }
+        }
+
+        return [];
     } catch {
         return [];
     }
@@ -1151,6 +1229,10 @@ export async function spotifyGetDevices(): Promise<SpotifyDevice[]> {
  * Transferir reproducción a un dispositivo específico y activarlo.
  */
 export async function spotifyTransferPlayback(deviceId: string, play: boolean = true): Promise<boolean> {
+    if (!deviceId || deviceId === "local_mobile_device") {
+        openSpotifyDeepLink("spotify:");
+        return true;
+    }
     try {
         const res = await spotifyFetch("/me/player", {
             method: "PUT",
