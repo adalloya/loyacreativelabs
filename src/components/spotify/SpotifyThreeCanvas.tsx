@@ -82,6 +82,9 @@ export function SpotifyThreeCanvas({
       camera.position.set(0, 0, 3.2);
     } else if (mode === 'ORB') {
       camera.position.set(0, 0, 3.2);
+    } else if (mode === 'APEX') {
+      camera.position.set(0, 0.65, 3.8);
+      camera.lookAt(0, 0, 0);
     } else if (mode === 'AURA') {
       camera.position.set(0, 0, 3.8);
     } else if (mode === 'TUNNEL') {
@@ -127,13 +130,13 @@ export function SpotifyThreeCanvas({
       color: primaryColor,
       wireframe: true,
       transparent: true,
-      opacity: mode === 'AURA' ? 0.45 : mode === 'ORB' ? 0.38 : 0.48,
-      blending: mode === 'AURA' || mode === 'TUNNEL' || mode === 'VORTEX' ? THREE.AdditiveBlending : THREE.NormalBlending,
+      opacity: mode === 'AURA' ? 0.45 : mode === 'ORB' ? 0.38 : mode === 'APEX' ? 0.65 : 0.48,
+      blending: mode === 'AURA' || mode === 'TUNNEL' || mode === 'VORTEX' || mode === 'APEX' ? THREE.AdditiveBlending : THREE.NormalBlending,
     });
 
     const pointsMat = new THREE.PointsMaterial({
       color: 0xffffff,
-      size: mode === 'AURA' ? 0.038 : mode === 'ORB' ? 0.035 : 0.03,
+      size: mode === 'AURA' ? 0.038 : mode === 'ORB' ? 0.035 : mode === 'APEX' ? 0.034 : 0.03,
       transparent: true,
       opacity: 0.85,
       blending: THREE.AdditiveBlending,
@@ -147,11 +150,65 @@ export function SpotifyThreeCanvas({
     let extraPointsGeom: THREE.BufferGeometry | null = null;
     let extraPointsPositions: Float32Array | null = null;
     let spectrumBars: THREE.Mesh[] = [];
+    let apexInnerMesh: THREE.Mesh | null = null;
+    let apexCoreMesh: THREE.Mesh | null = null;
 
     // ==========================================
     // INICIALIZACIÓN DE GEOMETRÍAS POR MODO
     // ==========================================
-    if (mode === 'AURA') {
+    if (mode === 'APEX') {
+      // MODO APEX: Reactor Cuántico / Anillo de Singularidad APEX con halo de partículas estelares
+      // 1. Torus Principal de alambre de alta resolución (halo wireframe mostrado en screenshot)
+      mainGeometry = new THREE.TorusGeometry(1.45, 0.44, 22, 64);
+      mainGeometry.rotateX(Math.PI / 2.3);
+      originalPositions = Float32Array.from(mainGeometry.attributes.position.array);
+
+      meshGroup.add(new THREE.Mesh(mainGeometry, wireMat));
+      meshGroup.add(new THREE.Points(mainGeometry, pointsMat));
+
+      // 2. Anillo interior concéntrico secundario
+      const innerTorusGeom = new THREE.TorusGeometry(0.82, 0.08, 14, 48);
+      innerTorusGeom.rotateX(Math.PI / 2.3);
+      apexInnerMesh = new THREE.Mesh(innerTorusGeom, wireMat);
+      meshGroup.add(apexInnerMesh);
+
+      // 3. Núcleo Icosaedro central APEX de energía pulsante
+      const coreGeom = new THREE.IcosahedronGeometry(0.28, 1);
+      const coreMat = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.75,
+      });
+      apexCoreMesh = new THREE.Mesh(coreGeom, coreMat);
+      meshGroup.add(apexCoreMesh);
+
+      // 4. Disco orbital de polvo estelar cuántico (halo de puntos cósmicos como en el screenshot)
+      const apexParticleCount = 850;
+      extraPointsGeom = new THREE.BufferGeometry();
+      const apexPositions = new Float32Array(apexParticleCount * 3);
+
+      for (let i = 0; i < apexParticleCount; i++) {
+        const theta = Math.random() * Math.PI * 2;
+        const rad = 1.15 + Math.pow(Math.random(), 0.75) * 3.0;
+        apexPositions[i * 3] = Math.cos(theta) * rad;
+        apexPositions[i * 3 + 1] = (Math.random() - 0.5) * 0.9;
+        apexPositions[i * 3 + 2] = Math.sin(theta) * rad * 0.75;
+      }
+
+      extraPointsGeom.setAttribute('position', new THREE.BufferAttribute(apexPositions, 3));
+      extraPointsPositions = Float32Array.from(apexPositions);
+
+      const apexStardustMat = new THREE.PointsMaterial({
+        color: 0xffffff,
+        size: 0.035,
+        transparent: true,
+        opacity: 0.85,
+        blending: THREE.AdditiveBlending,
+      });
+      meshGroup.add(new THREE.Points(extraPointsGeom, apexStardustMat));
+
+    } else if (mode === 'AURA') {
       // MODO AURA: Cortinas de luz polar / aurora boreal ondulante
       mainGeometry = new THREE.PlaneGeometry(9.0, 4.2, 56, 24);
       mainGeometry.rotateX(-0.25);
@@ -483,6 +540,81 @@ export function SpotifyThreeCanvas({
             posArray[idx + 2] = Math.sin(angle) * rad * 0.6;
           }
           posAttr.needsUpdate = true;
+        }
+      } else if (mode === 'APEX') {
+        // ------------------------------------------
+        // MODO APEX: Reactor Cuántico / Anillo Torus
+        // ------------------------------------------
+        // A. Ondulación reactiva de los vértices del Torus al ritmo del beat y BPM
+        if (mainGeometry && originalPositions) {
+          const posAttr = mainGeometry.attributes.position as THREE.BufferAttribute;
+          const posArray = posAttr.array as Float32Array;
+          const count = originalPositions.length / 3;
+
+          const waveFreq = isHighBpm ? 5.2 : isMidBpm ? 3.6 : 2.4;
+          const waveAmp = (isHighBpm ? 0.09 : 0.05) * currentEnergy;
+          const beatKick = beatPulse * (isHighBpm ? 0.15 : 0.08);
+
+          for (let i = 0; i < count; i++) {
+            const idx = i * 3;
+            const x0 = originalPositions[idx];
+            const y0 = originalPositions[idx + 1];
+            const z0 = originalPositions[idx + 2];
+            const angle = Math.atan2(z0, x0);
+
+            // Deformación radial armónica en Z y radio
+            const ripple = Math.sin(angle * waveFreq + time * 3.5) * waveAmp;
+            const expansion = 1.0 + beatKick + ripple + (jitter * 0.35);
+
+            posArray[idx] = x0 * expansion;
+            posArray[idx + 1] = y0 * expansion + Math.sin(time * 2.0 + x0 * 2.2) * 0.03;
+            posArray[idx + 2] = z0 * expansion;
+          }
+          posAttr.needsUpdate = true;
+        }
+
+        // B. Rotación continua 3D y balanceo majestuoso
+        const spinSpeed = activePlayback ? (validBpm / 125) * 0.008 : 0.0025;
+        meshGroup.rotation.y += spinSpeed;
+        meshGroup.rotation.x = 0.35 + Math.sin(time * 0.6) * 0.12;
+        meshGroup.rotation.z = Math.cos(time * 0.4) * 0.07;
+
+        // C. Contrarotación del anillo interior y núcleo
+        if (apexInnerMesh) {
+          apexInnerMesh.rotation.z -= spinSpeed * 1.8;
+          apexInnerMesh.rotation.y += spinSpeed * 1.2;
+        }
+        if (apexCoreMesh) {
+          apexCoreMesh.rotation.x += spinSpeed * 2.2;
+          apexCoreMesh.rotation.y -= spinSpeed * 2.0;
+          const corePulse = 1.0 + beatPulse * 0.35;
+          apexCoreMesh.scale.set(corePulse, corePulse, corePulse);
+        }
+
+        // D. Pulso dimensional del reactor completo en cada beat
+        const apexPulse = 1.0 + beatPulse * 0.09 + burstWave;
+        meshGroup.scale.set(apexPulse, apexPulse, apexPulse);
+
+        // E. Órbitas de las partículas cuánticas auxiliares en espiral
+        if (extraPointsGeom && extraPointsPositions) {
+          const pAttr = extraPointsGeom.attributes.position as THREE.BufferAttribute;
+          const pArray = pAttr.array as Float32Array;
+          const pCount = extraPointsPositions.length / 3;
+          const orbitSpeed = 0.38 * speedMultiplier;
+
+          for (let i = 0; i < pCount; i++) {
+            const idx = i * 3;
+            const ox = extraPointsPositions[idx];
+            const oz = extraPointsPositions[idx + 2];
+            const r = Math.sqrt(ox * ox + oz * oz);
+            const initialAngle = Math.atan2(oz, ox);
+            const currentAngle = initialAngle + time * (orbitSpeed / Math.max(0.8, r * 0.75));
+
+            pArray[idx] = Math.cos(currentAngle) * r;
+            pArray[idx + 1] = extraPointsPositions[idx + 1] + Math.sin(time * 1.6 + r) * 0.08;
+            pArray[idx + 2] = Math.sin(currentAngle) * r;
+          }
+          pAttr.needsUpdate = true;
         }
       } else if (mode === 'AURA') {
         // ------------------------------------------

@@ -222,6 +222,16 @@ export default function ApexDashboard() {
     const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false);
     const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
 
+    // Zen Mode State (se activa a los 3s cuando el usuario está en el footer escuchando música con FX)
+    const [isZenModeActive, setIsZenModeActive] = useState(false);
+    useEffect(() => {
+        const handleZenMode = (e: any) => {
+            setIsZenModeActive(Boolean(e?.detail?.active));
+        };
+        window.addEventListener("apex:zen-mode", handleZenMode);
+        return () => window.removeEventListener("apex:zen-mode", handleZenMode);
+    }, []);
+
     // Hot-Swap: Tempo Sonar state per exercise (default OFF)
     const [tempoActive, setTempoActive] = useState<Record<string, boolean>>({});
 
@@ -1752,7 +1762,9 @@ export default function ApexDashboard() {
                         </div>
 
                         {/* Extra Volume Button */}
-                        <div className="p-6 bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl text-center space-y-2.5 shadow-xl">
+                        <div className={`p-6 bg-[#121214]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl text-center space-y-2.5 shadow-xl transition-all duration-1000 ease-out ${
+                            isZenModeActive ? "opacity-0 pointer-events-none" : "opacity-100"
+                        }`}>
                             <p className="text-xs text-zinc-400 font-normal">
                                 ¿Terminaste la rutina y tienes energía extra para continuar?
                             </p>

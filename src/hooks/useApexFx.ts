@@ -8,7 +8,7 @@ const STORAGE_KEY_ENABLED = "apex_fx_enabled";
 const STORAGE_KEY_MODE = "apex_fx_mode";
 const EVENT_NAME = "apex:fx-change";
 
-const MODES: VisualizerMode[] = ["CANVAS", "ORB", "WAVE", "AURA", "TUNNEL", "VORTEX", "SPECTRUM", "OFF"];
+const MODES: VisualizerMode[] = ["CANVAS", "ORB", "WAVE", "APEX", "AURA", "TUNNEL", "VORTEX", "SPECTRUM", "OFF"];
 
 export function useApexFx() {
     const [visualizerMode, setVisualizerModeState] = useState<VisualizerMode>("OFF");

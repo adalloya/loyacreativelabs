@@ -1,7 +1,7 @@
 // src/services/spotifyTelemetry.ts
 "use client";
 
-export type VisualizerMode = 'OFF' | 'CANVAS' | 'ORB' | 'WAVE' | 'AURA' | 'TUNNEL' | 'VORTEX' | 'SPECTRUM';
+export type VisualizerMode = 'OFF' | 'CANVAS' | 'ORB' | 'WAVE' | 'APEX' | 'AURA' | 'TUNNEL' | 'VORTEX' | 'SPECTRUM';
 
 // Caché en memoria de colores dominantes extraídos por URL para evitar reprocesamiento
 const colorCache = new Map<string, string>();

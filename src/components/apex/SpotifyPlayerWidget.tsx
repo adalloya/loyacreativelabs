@@ -418,7 +418,7 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
                         }}
                         title={
                             isFxActive
-                                ? `FX: ${visualizerMode} (Clic para alternar: CANVAS, ORB, WAVE, AURA, TUNNEL, VORTEX, SPECTRUM, OFF)`
+                                ? `FX: ${visualizerMode} (Clic para alternar: CANVAS, ORB, WAVE, APEX, AURA, TUNNEL, VORTEX, SPECTRUM, OFF)`
                                 : "FX: OFF (Modo silencioso: WebGL destruido al 100% con 0% CPU/GPU)"
                         }
                         aria-label="Alternar modo de efectos visuales"
