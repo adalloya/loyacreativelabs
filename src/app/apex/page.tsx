@@ -849,6 +849,7 @@ export default function ApexDashboard() {
                     exerciseNotes={exerciseNotes}
                     setExerciseNotes={setExerciseNotes}
                     isPlateLoadedExercise={isPlateLoadedExercise}
+                    onAddExercise={handleAddExerciseToSession}
                 />
 
                 {/* Modales y Drawers Compartidos */}

@@ -18,7 +18,7 @@ import {
     ChevronDown,
     Sliders
 } from "lucide-react";
-import { calculateTodayTarget, ExerciseItem, ReadinessState } from "@/lib/hypertrophy-engine";
+import { calculateTodayTarget, ExerciseItem, ReadinessState, EXERCISE_DATABASE } from "@/lib/hypertrophy-engine";
 import { getInitialTheme, Theme } from "@/lib/theme";
 import { ApexV2BottomNav, ApexV2Tab } from "./ApexV2BottomNav";
 import { ApexV2ExerciseCard } from "./ApexV2ExerciseCard";
@@ -26,6 +26,14 @@ import { ApexV2NutritionCalendarHub } from "./ApexV2NutritionCalendarHub";
 import { ApexV2AnatomyView } from "./ApexV2AnatomyView";
 import { ApexV2SettingsView } from "./ApexV2SettingsView";
 import { ApexV2Footer } from "./ApexV2Footer";
+import { useApexVoiceAgent, VoiceAgentActionResult, VoiceAgentWorkoutResult } from "@/hooks/useApexVoiceAgent";
+import { ApexVoiceExercisePickerModal } from "./ApexVoiceExercisePickerModal";
+import {
+    DailyNutritionLog,
+    createEmptyDailyNutritionLog,
+    FoodItem,
+    getLocalDateString
+} from "@/lib/nutrition-tracker";
 
 interface ApexV2ViewProps {
     profile: any;
@@ -90,6 +98,7 @@ interface ApexV2ViewProps {
     exerciseNotes: Record<string, string>;
     setExerciseNotes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
     isPlateLoadedExercise: (equipment?: string, name?: string) => boolean;
+    onAddExercise?: (ex: ExerciseItem) => void;
 }
 
 export const ApexV2View: React.FC<ApexV2ViewProps> = ({
@@ -154,7 +163,8 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
     onSwitchToStable,
     exerciseNotes,
     setExerciseNotes,
-    isPlateLoadedExercise
+    isPlateLoadedExercise,
+    onAddExercise
 }) => {
     // Current V2 active navigation destination (Entrenar, Nutrición, Anatomía, Ajustes)
     const [activeTab, setActiveTab] = useState<ApexV2Tab>("workout");
@@ -179,6 +189,240 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
     }, []);
 
     const isLight = theme === "light";
+
+    // Voice Agent State & Ambiguity Modal
+    const [isVoicePickerOpen, setIsVoicePickerOpen] = useState(false);
+    const [voicePickerSpokenName, setVoicePickerSpokenName] = useState("");
+    const [voicePickerCandidates, setVoicePickerCandidates] = useState<ExerciseItem[]>([]);
+    const [pendingVoiceWorkoutData, setPendingVoiceWorkoutData] = useState<VoiceAgentWorkoutResult | null>(null);
+
+    const handleApplyVoiceExercise = React.useCallback((targetEx: ExerciseItem, workoutData?: VoiceAgentWorkoutResult | null) => {
+        // 1. Inyectar ejercicio si no está en la rutina de hoy
+        if (!activeExercises.some(e => e.id === targetEx.id)) {
+            if (onAddExercise) {
+                onAddExercise(targetEx);
+            }
+        }
+
+        // 2. Determinar índice de serie objetivo (la primera incompleta o la 0)
+        let targetSetIdx = 0;
+        for (let s = 0; s < (targetEx.default_sets || 3); s++) {
+            if (!completedSets[`${targetEx.id}_${s}`]) {
+                targetSetIdx = s;
+                break;
+            }
+        }
+
+        const weightVal = (workoutData?.weight !== undefined && workoutData?.weight !== null)
+            ? workoutData.weight
+            : (exerciseMemory[targetEx.id]?.weight || 0);
+
+        const repsVal = (workoutData?.reps !== undefined && workoutData?.reps !== null)
+            ? workoutData.reps
+            : (targetEx.rep_range_min || 10);
+
+        const setKey = `${targetEx.id}_${targetSetIdx}`;
+        handleSetInputChange(setKey, "weight", weightVal);
+        handleSetInputChange(setKey, "reps", repsVal);
+
+        const restSecs = targetEx.rest_seconds || (trainingMethodology === "cycled_circuits" ? 45 : 90);
+        handleCompleteSet(targetEx.id, targetSetIdx, restSecs, weightVal, repsVal);
+
+        // Enfocar el ejercicio
+        const foundIdx = activeExercises.findIndex(e => e.id === targetEx.id);
+        if (foundIdx >= 0) {
+            setSelectedExerciseIndex(foundIdx);
+        }
+    }, [activeExercises, completedSets, exerciseMemory, handleCompleteSet, handleSetInputChange, onAddExercise, trainingMethodology]);
+
+    const handleCreateCustomVoiceExercise = React.useCallback((name: string, workoutData?: VoiceAgentWorkoutResult | null) => {
+        const cleanName = name.trim();
+        const customId = "custom_" + Date.now();
+        const customEx: ExerciseItem = {
+            id: customId,
+            name: cleanName,
+            primary_muscle: "chest",
+            anatomical_subdivision: "Personalizado",
+            secondary_muscles: [],
+            equipment: "dumbbell",
+            movement_pattern: "press",
+            hypertrophy_tier: "A",
+            resistance_profile: "mid_range_overload",
+            biomechanical_cue: "Control excéntrico de 3 segundos y contracción controlada",
+            default_sets: 3,
+            rep_range_min: 8,
+            rep_range_max: 12,
+            target_rir: 1,
+            rest_seconds: 90
+        };
+
+        handleApplyVoiceExercise(customEx, workoutData);
+    }, [handleApplyVoiceExercise]);
+
+    const handleVoiceActionResult = React.useCallback((action: VoiceAgentActionResult) => {
+        // Conmutación automática de sección si el dictado pertenece a otra sección
+        if (action.targetTab && action.targetTab !== activeTab) {
+            setActiveTab(action.targetTab);
+        }
+
+        if (action.intent === "LOG_WORKOUT") {
+            setActiveTab("workout");
+            const workoutData = action.workout;
+            const spokenName = workoutData?.exerciseName?.trim() || "";
+
+            if (spokenName) {
+                const normSpoken = spokenName.toLowerCase();
+                // 1. Buscar en activeExercises
+                const existing = activeExercises.find(e =>
+                    e.name.toLowerCase().includes(normSpoken) || normSpoken.includes(e.name.toLowerCase())
+                );
+
+                if (existing) {
+                    handleApplyVoiceExercise(existing, workoutData);
+                    return;
+                }
+
+                // 2. Buscar en catálogo completo
+                const matches = EXERCISE_DATABASE.filter(e => {
+                    const eNorm = e.name.toLowerCase();
+                    return eNorm.includes(normSpoken) || normSpoken.includes(eNorm);
+                });
+
+                if (matches.length === 1) {
+                    handleApplyVoiceExercise(matches[0], workoutData);
+                } else if (matches.length > 1) {
+                    setVoicePickerCandidates(matches.slice(0, 5));
+                    setVoicePickerSpokenName(spokenName);
+                    setPendingVoiceWorkoutData(workoutData || null);
+                    setIsVoicePickerOpen(true);
+                } else {
+                    setVoicePickerCandidates([]);
+                    setVoicePickerSpokenName(spokenName);
+                    setPendingVoiceWorkoutData(workoutData || null);
+                    setIsVoicePickerOpen(true);
+                }
+            } else {
+                // Si no especificó nombre, aplicar al ejercicio actualmente abierto/seleccionado
+                const currentEx = (selectedExerciseIndex >= 0 && selectedExerciseIndex < activeExercises.length)
+                    ? activeExercises[selectedExerciseIndex]
+                    : activeExercises[0];
+
+                if (currentEx) {
+                    handleApplyVoiceExercise(currentEx, workoutData);
+                }
+            }
+        } else if (action.intent === "LOG_NUTRITION") {
+            setActiveTab("nutrition");
+            const nutData = action.nutrition;
+            if (nutData && nutData.foods && nutData.foods.length > 0) {
+                const dateStr = activeNutritionDate || getLocalDateString();
+                const currentLog: DailyNutritionLog = allNutritionLogs[dateStr]
+                    ? JSON.parse(JSON.stringify(allNutritionLogs[dateStr]))
+                    : createEmptyDailyNutritionLog(dateStr);
+
+                const cat = nutData.mealCategory || "lunch";
+                if (!currentLog.meals[cat]) {
+                    currentLog.meals[cat] = [];
+                }
+
+                nutData.foods.forEach(f => {
+                    currentLog.meals[cat].push({
+                        id: "food_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+                        name: f.name,
+                        calories: Math.round(f.calories || 0),
+                        proteinG: Math.round(f.proteinG || 0),
+                        carbsG: Math.round(f.carbsG || 0),
+                        fatsG: Math.round(f.fatsG || 0),
+                        time: new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })
+                    });
+                });
+
+                handleSaveNutritionLog(dateStr, currentLog);
+            }
+        } else if (action.intent === "LOG_DIET_PLAN") {
+            setActiveTab("nutrition");
+            const dateStr = activeNutritionDate || getLocalDateString();
+            const currentLog: DailyNutritionLog = allNutritionLogs[dateStr]
+                ? JSON.parse(JSON.stringify(allNutritionLogs[dateStr]))
+                : createEmptyDailyNutritionLog(dateStr);
+
+            const templateMeals = (dietPlan?.thirtyDayPlan?.[0]?.meals) || (dietPlan?.weeklyTemplates?.[0]?.meals);
+            if (templateMeals && Array.isArray(templateMeals) && templateMeals.length > 0) {
+                const catKeys: Array<"breakfast" | "snack1" | "lunch" | "snack2" | "dinner"> = [
+                    "breakfast", "snack1", "lunch", "snack2", "dinner"
+                ];
+                templateMeals.forEach((m: any, idx: number) => {
+                    const cat = catKeys[idx % catKeys.length];
+                    currentLog.meals[cat].push({
+                        id: "diet_meal_" + Date.now() + "_" + idx,
+                        name: m.name + (m.items ? `: ${m.items}` : ""),
+                        calories: Number(m.calories) || 400,
+                        proteinG: Number(m.proteinG) || 30,
+                        time: idx === 0 ? "08:30" : idx === 1 ? "11:30" : idx === 2 ? "14:30" : idx === 3 ? "17:30" : "20:30"
+                    });
+                });
+            } else {
+                const targetCal = macros?.targetCalories || 2200;
+                const targetProt = macros?.proteinG || 160;
+                currentLog.meals.breakfast.push({
+                    id: "diet_bf_" + Date.now(),
+                    name: "Desayuno estructurado (Huevos + Avena con proteína)",
+                    calories: Math.round(targetCal * 0.28),
+                    proteinG: Math.round(targetProt * 0.28),
+                    time: "08:30"
+                });
+                currentLog.meals.lunch.push({
+                    id: "diet_lu_" + Date.now(),
+                    name: "Almuerzo Anabólico (Pechuga de pollo + Arroz + Aguacate)",
+                    calories: Math.round(targetCal * 0.38),
+                    proteinG: Math.round(targetProt * 0.38),
+                    time: "14:00"
+                });
+                currentLog.meals.dinner.push({
+                    id: "diet_dn_" + Date.now(),
+                    name: "Cena Regenerativa (Pescado o Lomo + Papa + Ensalada)",
+                    calories: Math.round(targetCal * 0.34),
+                    proteinG: Math.round(targetProt * 0.34),
+                    time: "20:30"
+                });
+            }
+
+            handleSaveNutritionLog(dateStr, currentLog);
+        } else if (action.intent === "SEARCH_EXERCISE") {
+            setActiveTab("anatomy");
+            setIsExerciseLibraryOpen(true);
+        } else if (action.intent === "NAVIGATE" && action.targetTab) {
+            setActiveTab(action.targetTab);
+        }
+    }, [
+        activeTab,
+        activeExercises,
+        activeNutritionDate,
+        allNutritionLogs,
+        handleSaveNutritionLog,
+        dietPlan,
+        macros,
+        selectedExerciseIndex,
+        handleApplyVoiceExercise,
+        setIsExerciseLibraryOpen
+    ]);
+
+    // Instancia del Hook del Asistente de Voz APEX
+    const {
+        isListening: isVoiceListening,
+        isProcessing: isVoiceProcessing,
+        toastMessage: voiceToastMessage,
+        showPromoTooltip: showVoicePromoTooltip,
+        setShowPromoTooltip: setShowVoicePromoTooltip,
+        handlePointerDown: handleVoicePointerDown,
+        handlePointerUp: handleVoicePointerUp,
+        handlePointerCancel: handleVoicePointerCancel,
+        getContextualTooltip: getVoiceContextualTooltip
+    } = useApexVoiceAgent({
+        currentTab: activeTab,
+        activeExerciseNames: activeExercises.map(e => e.name),
+        onActionResult: handleVoiceActionResult
+    });
 
     return (
         <div className={`min-h-screen font-sans antialiased selection:bg-slate-900 selection:text-white dark:selection:bg-white dark:selection:text-slate-900 pb-32 w-full max-w-full overflow-x-hidden relative transition-colors duration-200 ${
@@ -638,7 +882,7 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                 <ApexV2Footer />
             </main>
 
-            {/* Unified Bottom Bar (Navigation + Liquid Glass Spotify Mini-Player) */}
+            {/* Unified Bottom Bar (Navigation + Liquid Glass Mic + Spotify Mini-Player) */}
             <ApexV2BottomNav
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
@@ -646,6 +890,32 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                 isSpotifyConnected={isSpotifyLinked}
                 restRemaining={restRemaining}
                 onSkipRest={handleSkipRest}
+                isVoiceListening={isVoiceListening}
+                isVoiceProcessing={isVoiceProcessing}
+                onVoicePointerDown={handleVoicePointerDown}
+                onVoicePointerUp={handleVoicePointerUp}
+                onVoicePointerCancel={handleVoicePointerCancel}
+                contextualTooltipText={getVoiceContextualTooltip()}
+                showPromoTooltip={showVoicePromoTooltip}
+                onDismissPromoTooltip={() => setShowVoicePromoTooltip(false)}
+                toastMessage={voiceToastMessage}
+            />
+
+            {/* Modal de Resolución de Ambigüedad o Creación Personalizada de Ejercicio por Voz */}
+            <ApexVoiceExercisePickerModal
+                isOpen={isVoicePickerOpen}
+                onClose={() => setIsVoicePickerOpen(false)}
+                spokenName={voicePickerSpokenName}
+                candidates={voicePickerCandidates}
+                onSelectExercise={(ex) => {
+                    handleApplyVoiceExercise(ex, pendingVoiceWorkoutData);
+                    setIsVoicePickerOpen(false);
+                }}
+                onCreateCustom={(name) => {
+                    handleCreateCustomVoiceExercise(name, pendingVoiceWorkoutData);
+                    setIsVoicePickerOpen(false);
+                }}
+                isLight={isLight}
             />
 
         </div>

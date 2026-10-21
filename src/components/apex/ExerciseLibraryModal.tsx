@@ -37,6 +37,7 @@ interface ExerciseLibraryModalProps {
     onClose: () => void;
     onAddExercise: (exercise: ExerciseItem) => void;
     activeExerciseIds: string[];
+    initialSearchQuery?: string;
 }
 
 const EQUIPMENT_TRANSLATIONS: Record<string, string> = {
@@ -170,12 +171,13 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
     isOpen,
     onClose,
     onAddExercise,
-    activeExerciseIds
+    activeExerciseIds,
+    initialSearchQuery = ""
 }) => {
     // Muscle group filter: "ALL" or specific MuscleGroup
     const [selectedMuscle, setSelectedMuscle] = useState<MuscleGroup | "ALL">("ALL");
     // Search query
-    const [searchQuery, setSearchQuery] = useState("");
+    const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
     // Equipment filter
     const [equipmentFilter, setEquipmentFilter] = useState<string>("ALL");
     // Recently added id for visual confirmation
@@ -184,6 +186,12 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
     const [displayLimit, setDisplayLimit] = useState(48);
     // Equipment AI Scanner modal state
     const [isScannerOpen, setIsScannerOpen] = useState(false);
+
+    useEffect(() => {
+        if (initialSearchQuery) {
+            setSearchQuery(initialSearchQuery);
+        }
+    }, [initialSearchQuery, isOpen]);
 
     // Theme state (Claro vs Oscuro)
     const [theme, setTheme] = useState<Theme>("dark");
