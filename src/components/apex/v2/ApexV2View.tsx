@@ -17,7 +17,6 @@ import {
     Sliders
 } from "lucide-react";
 import { calculateTodayTarget, ExerciseItem, ReadinessState } from "@/lib/hypertrophy-engine";
-import { AppHeaderMenu } from "@/components/ui/AppHeaderMenu";
 import { getInitialTheme, Theme } from "@/lib/theme";
 import { ApexV2BottomNav, ApexV2Tab } from "./ApexV2BottomNav";
 import { ApexV2ExerciseCard } from "./ApexV2ExerciseCard";
@@ -177,116 +176,8 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
         <div className={`min-h-screen font-sans antialiased selection:bg-slate-900 selection:text-white dark:selection:bg-white dark:selection:text-slate-900 pb-32 w-full max-w-full overflow-x-hidden relative transition-colors duration-200 ${
             isLight ? "bg-[#f8fafc] text-slate-900" : "bg-[#0c0e14] text-[#EAEAEA]"
         }`}>
-            
-            {/* V2 Beta Status Bar (Sutil) */}
-            <div className={`border-b px-4 py-1.5 text-xs flex items-center justify-between z-50 relative backdrop-blur-md transition-colors ${
-                isLight
-                    ? "bg-violet-100/80 border-violet-200 text-violet-900"
-                    : "bg-gradient-to-r from-violet-950/80 via-indigo-950/80 to-purple-950/80 border-violet-500/30 text-violet-200"
-            }`}>
-                <div className="max-w-4xl mx-auto w-full flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                        <span className={`px-1.5 py-0.5 rounded font-mono font-bold text-[9px] border tracking-wider ${
-                            isLight
-                                ? "bg-violet-200/80 text-violet-900 border-violet-300"
-                                : "bg-violet-500/30 text-violet-200 border-violet-400/40"
-                        }`}>
-                            V2 LIQUID GLASS
-                        </span>
-                        <span className={`text-[11px] hidden xs:inline sm:inline ${isLight ? "text-violet-800" : "text-violet-100"}`}>
-                            Nueva experiencia táctil. Tu versión estable sigue intacta.
-                        </span>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={onSwitchToStable}
-                        className={`text-[10px] font-mono underline shrink-0 cursor-pointer transition-colors ${
-                            isLight ? "text-violet-700 hover:text-violet-950" : "text-violet-300 hover:text-white"
-                        }`}
-                    >
-                        Volver a v1 Estable
-                    </button>
-                </div>
-            </div>
-
-            {/* Top Minimalist Header */}
-            <header className={`sticky top-0 z-40 backdrop-blur-2xl border-b px-4 py-3 transition-colors ${
-                isLight ? "bg-white/80 border-slate-200/80 text-slate-900" : "bg-[#0c0e14]/80 border-white/[0.08] text-white"
-            }`}>
-                <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
-                    {/* Brand & Greeting */}
-                    <div className="flex items-center gap-2.5">
-                        <div className={`relative w-8 h-8 rounded-xl overflow-hidden border shrink-0 ${
-                            isLight ? "border-slate-300 bg-slate-100" : "border-white/15 bg-zinc-900"
-                        }`}>
-                            <Image
-                                src="/apex-logo.png"
-                                alt="APEX"
-                                width={32}
-                                height={32}
-                                className="w-full h-full object-cover"
-                                priority
-                            />
-                        </div>
-                        <div>
-                            <h1 className={`text-sm sm:text-base font-bold tracking-tight uppercase leading-none ${
-                                isLight ? "text-slate-950" : "text-white"
-                            }`}>
-                                {timeGreeting}, {profile?.firstName}
-                            </h1>
-                            <p className={`text-[11px] mt-0.5 capitalize font-normal ${
-                                isLight ? "text-slate-500" : "text-zinc-400"
-                            }`}>
-                                {todayFormattedDate}
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Right Controls */}
-                    <div className="flex items-center gap-2">
-                        {isScreenLocked && (
-                            <div className="hidden sm:flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                                <span>PANTALLA ACTIVA</span>
-                            </div>
-                        )}
-
-                        <AppHeaderMenu
-                            environmentMode={environmentMode}
-                            onEnvironmentChange={setEnvironmentMode}
-                            weightUnit={weightUnit}
-                            onWeightUnitChange={setWeightUnit}
-                            trainingMethodology={trainingMethodology}
-                            onTrainingMethodologyChange={setTrainingMethodology}
-                            onOpenRoutineImporter={() => setIsRoutineImporterOpen(true)}
-                            readiness={readiness}
-                            onReadinessChange={setReadiness}
-                            onInstallClick={() => setIsInstallModalOpen(true)}
-                            showInstallButton={true}
-                            pdfProfile={pdfProfile}
-                            pdfRoutine={activeExercises}
-                            pdfWeeklyProgram={weeklyProgram}
-                            pdfDiet={pdfDiet}
-                            onResetProfile={() => {
-                                localStorage.removeItem("apex_user_profile");
-                                window.location.reload();
-                            }}
-                            onOpenSpotifyModal={() => setIsSpotifyModalOpen(true)}
-                            isSpotifyConnected={isSpotifyLinked}
-                            onOpenOnboarding={() => setIsOnboardingModalOpen(true)}
-                            onOpenFeedback={() => setIsFeedbackModalOpen(true)}
-                            onOpenDietPlanModal={() => setIsDietPrefModalOpen(true)}
-                            uxVersion="v2"
-                            onUxVersionChange={(v) => {
-                                if (v === "stable") onSwitchToStable();
-                            }}
-                        />
-                    </div>
-                </div>
-            </header>
-
-            {/* Main Content Area con Transiciones de Framer Motion */}
-            <main className="max-w-4xl mx-auto px-3 sm:px-4 mt-4">
+            {/* Main Content Area con Transiciones de Framer Motion (Sin barra superior para máximo espacio y experiencia táctil) */}
+            <main className="max-w-4xl mx-auto px-3 sm:px-4 pt-3 sm:pt-4">
                 <AnimatePresence mode="wait">
                     
                     {/* DESTINO 1: ENTRENAR (Rutina Activa & Tarjetas Inmersivas Cero Scroll) */}
@@ -589,7 +480,14 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                 onTrainingMethodologyChange={setTrainingMethodology}
                                 environmentMode={environmentMode}
                                 onEnvironmentChange={setEnvironmentMode}
+                                readiness={readiness}
+                                onReadinessChange={setReadiness}
                                 onOpenRoutineImporter={() => setIsRoutineImporterOpen(true)}
+                                onOpenDietPlanModal={() => setIsDietPrefModalOpen(true)}
+                                onOpenSpotifyModal={() => setIsSpotifyModalOpen(true)}
+                                isSpotifyConnected={isSpotifyLinked}
+                                onOpenOnboarding={() => setIsOnboardingModalOpen(true)}
+                                onOpenFeedback={() => setIsFeedbackModalOpen(true)}
                                 pdfProfile={pdfProfile}
                                 pdfRoutine={activeExercises}
                                 pdfWeeklyProgram={weeklyProgram}

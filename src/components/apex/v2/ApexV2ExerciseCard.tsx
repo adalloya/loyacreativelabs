@@ -161,82 +161,66 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
             {/* Tarjeta Principal "Zero-Scroll" con Glassmorphism */}
             <div className={`relative backdrop-blur-2xl border rounded-3xl overflow-hidden transition-all ${
                 isLight
-                    ? "bg-white/90 border-slate-200/90 shadow-sm shadow-slate-900/[0.04] text-slate-900"
-                    : "bg-zinc-900/80 border-white/10 shadow-2xl text-white"
+                    ? "bg-white/95 border-slate-200/90 shadow-sm shadow-slate-900/[0.04] text-slate-900"
+                    : "bg-zinc-900/90 border-white/10 shadow-2xl text-white"
             } ${exercise.blockId ? "border-l-4 border-l-emerald-500" : ""}`}>
 
-                {/* Fondo Animado del Ejercicio en Bucle (Limpio, escala completa y opacidad suave para alta legibilidad) */}
-                <div className="absolute inset-0 pointer-events-none overflow-hidden z-0 select-none">
+                {/* 1. Banner Horizontal Superior de Animación del Ejercicio (Formato Ancho, Prominente y Claro) */}
+                <div className="relative w-full h-48 sm:h-56 overflow-hidden bg-black select-none">
                     <ExerciseMotionViewer
                         githubId={exercise.github_id || exercise.name}
                         exerciseName={exercise.name}
                         showBadges={false}
-                        className="w-full h-full border-0 rounded-none bg-transparent"
-                        imgClassName={`w-full h-full object-cover object-right sm:object-center filter contrast-125 transition-opacity duration-300 ${
-                            isLight ? "opacity-15" : "opacity-20"
-                        }`}
+                        className="w-full h-full border-0 rounded-none bg-black flex items-center justify-center"
+                        imgClassName="w-full h-full object-contain sm:object-cover mx-auto"
                     />
-                    {/* Degradado translúcido para garantizar legibilidad absoluta de textos, inputs y métricas */}
-                    <div className={`absolute inset-0 backdrop-blur-[1px] transition-colors ${
-                        isLight
-                            ? "bg-gradient-to-r from-white/95 via-white/85 to-white/65"
-                            : "bg-gradient-to-r from-zinc-950/95 via-zinc-950/85 to-zinc-950/65"
-                    }`} />
+
+                    {/* Degradado superior e inferior para legibilidad de insignias y transición suave */}
+                    <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/80 via-transparent to-black/50" />
+
+                    {/* Insignias Superiores Flotantes & Botón Menú (...) */}
+                    <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 z-10">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full uppercase bg-black/60 backdrop-blur-md text-rose-400 border border-rose-500/30 shadow-sm">
+                                TIER {exercise.hypertrophy_tier || "S"}
+                            </span>
+                            <span className="text-[10px] font-medium px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-zinc-200 border border-white/20 shadow-sm">
+                                {exercise.anatomical_subdivision}
+                            </span>
+                            <span className="text-[10px] capitalize hidden xs:inline px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-zinc-300 border border-white/10 shadow-sm">
+                                {exercise.equipment}
+                            </span>
+                        </div>
+
+                        {/* Botón Menú (...) Flotante sobre el Banner */}
+                        <button
+                            type="button"
+                            onClick={() => setIsMenuOpen(true)}
+                            className="w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 shrink-0 bg-black/60 backdrop-blur-md text-white hover:bg-black/80 border border-white/20 shadow-sm"
+                            title="Opciones avanzadas del ejercicio"
+                            aria-label="Más opciones"
+                        >
+                            <MoreVertical className="w-4 h-4" />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Contenido en Primer Plano con z-10 */}
                 <div className="relative z-10">
-                    {/* 1. Cabecera Espaciosa */}
-                    <div className={`p-3.5 sm:p-4 pb-3 border-b ${
-                        isLight ? "border-slate-200/70 bg-white/40" : "border-white/[0.06] bg-black/20"
+                    {/* 2. Cabecera con Nombre y Biomecánica del Ejercicio */}
+                    <div className={`p-3.5 sm:p-4 pb-3 border-b transition-colors ${
+                        isLight ? "bg-white border-slate-200/80" : "bg-black/30 border-white/[0.06]"
                     }`}>
-                        <div className="flex items-start justify-between gap-3">
-                            {/* Título, Insignias y Biomecánica */}
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
-                                    <span className={`text-[9px] sm:text-[10px] font-mono font-bold px-2 py-0.5 rounded-full uppercase border ${
-                                        isLight ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-rose-500/15 text-rose-400 border-rose-500/30"
-                                    }`}>
-                                        TIER {exercise.hypertrophy_tier || "S"}
-                                    </span>
-                                    <span className={`text-[9px] sm:text-[10px] font-medium px-2 py-0.5 rounded-full border ${
-                                        isLight ? "bg-slate-100 text-slate-700 border-slate-200" : "bg-white/[0.08] text-zinc-300 border-white/[0.1]"
-                                    }`}>
-                                        {exercise.anatomical_subdivision}
-                                    </span>
-                                    <span className={`text-[10px] capitalize hidden xs:inline ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
-                                        • {exercise.equipment}
-                                    </span>
-                                </div>
-
-                                <h3 className={`text-sm sm:text-base font-bold tracking-tight truncate leading-tight ${
-                                    isLight ? "text-slate-950 font-sans" : "text-white"
-                                }`}>
-                                    {exercise.name}
-                                </h3>
-
-                                <p className={`text-[10px] sm:text-[11px] mt-0.5 truncate leading-tight font-normal ${
-                                    isLight ? "text-slate-600" : "text-zinc-400"
-                                }`}>
-                                    {exercise.biomechanical_cue}
-                                </p>
-                            </div>
-
-                            {/* Botón Menú (...) */}
-                            <button
-                                type="button"
-                                onClick={() => setIsMenuOpen(true)}
-                                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 shrink-0 border ${
-                                    isLight
-                                        ? "bg-white/80 hover:bg-white text-slate-700 border-slate-200 shadow-xs"
-                                        : "bg-white/[0.08] hover:bg-white/[0.16] text-zinc-300 hover:text-white border-white/10"
-                                }`}
-                                title="Opciones avanzadas del ejercicio"
-                                aria-label="Más opciones"
-                            >
-                                <MoreVertical className="w-4 h-4" />
-                            </button>
-                        </div>
+                        <h3 className={`text-sm sm:text-base font-bold tracking-tight truncate leading-tight ${
+                            isLight ? "text-slate-950 font-sans" : "text-white"
+                        }`}>
+                            {exercise.name}
+                        </h3>
+                        <p className={`text-[10px] sm:text-[11px] mt-0.5 truncate leading-tight font-normal ${
+                            isLight ? "text-slate-600" : "text-zinc-400"
+                        }`}>
+                            {exercise.biomechanical_cue}
+                        </p>
                     </div>
 
                 {/* 2. Barra Horizontal de Métricas Condensadas de un Vistazo */}
