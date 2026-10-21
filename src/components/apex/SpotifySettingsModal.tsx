@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
     X,
     Music,
@@ -25,7 +26,11 @@ import {
     RefreshCw,
     AlertCircle,
     ListMusic,
-    Clock
+    MoreVertical,
+    ChevronLeft,
+    Sliders,
+    Zap,
+    Flame
 } from "lucide-react";
 import {
     initiateSpotifyLogin,
@@ -41,12 +46,15 @@ import {
     SpotifyQueueItem
 } from "@/services/spotifyService";
 import { useSpotifyPlayback } from "@/hooks/useSpotifyPlayback";
+import { getInitialTheme, Theme } from "@/lib/theme";
 
 interface SpotifySettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
     onStatusChange?: () => void;
 }
+
+type ModalView = "player" | "playlists" | "settings";
 
 function formatTime(ms: number): string {
     if (!ms || isNaN(ms)) return "0:00";
@@ -89,6 +97,8 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
         refreshPlayback
     } = useSpotifyPlayback();
 
+    const [theme, setTheme] = useState<Theme>("dark");
+    const [currentView, setCurrentView] = useState<ModalView>("player");
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const [isConnecting, setIsConnecting] = useState(false);
@@ -100,6 +110,21 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
     const [isRefreshingDevices, setIsRefreshingDevices] = useState(false);
     const [fallbackPlaylist, setFallbackPlaylist] = useState<WorkoutPlaylist | null>(null);
     const [isDetecting, setIsDetecting] = useState(false);
+
+    // Escuchar el cambio de tema para soportar Modo Claro y Modo Oscuro
+    useEffect(() => {
+        setTheme(getInitialTheme());
+        const handleThemeChange = (e: Event) => {
+            const customEvt = e as CustomEvent<{ theme: Theme }>;
+            if (customEvt.detail?.theme) {
+                setTheme(customEvt.detail.theme);
+            }
+        };
+        window.addEventListener("apex_theme_change", handleThemeChange);
+        return () => window.removeEventListener("apex_theme_change", handleThemeChange);
+    }, []);
+
+    const isLight = theme === "light";
 
     const loadDevices = async () => {
         setIsRefreshingDevices(true);
@@ -125,9 +150,9 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
             await loadDevices();
             await refreshPlayback();
             await loadQueue();
-            setSuccessMsg("¡Sincronización completada! Si la música está sonando en tu Spotify, los controles y el visualizador responderán.");
+            setSuccessMsg("¡Sincronización completada!");
         } catch {
-            setErrorMsg("No se pudo detectar reproducción activa. Asegúrate de tener música sonando en tu app de Spotify.");
+            setErrorMsg("No se detectó reproducción. Asegúrate de tener música sonando en Spotify.");
         } finally {
             setTimeout(() => setIsDetecting(false), 500);
         }
@@ -139,6 +164,7 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
             setSuccessMsg(null);
             setIsConnecting(false);
             setFallbackPlaylist(null);
+            setCurrentView("player");
 
             if (connected) {
                 loadDevices();
@@ -191,7 +217,7 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
 
         const result = await spotifyPlayPlaylist(playlist.spotifyUri, selectedDeviceId || undefined);
         if (result.success) {
-            setSuccessMsg(`¡Reproduciendo "${playlist.name}" en ${result.deviceName || "tu dispositivo"}!`);
+            setSuccessMsg(`¡Reproduciendo "${playlist.name}"!`);
             setTimeout(() => {
                 loadDevices();
                 loadQueue();
@@ -209,7 +235,7 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
         let formatted = customUri.trim();
         const result = await spotifyPlayPlaylist(formatted, selectedDeviceId || undefined);
         if (result.success) {
-            setSuccessMsg("¡Iniciando reproducción solicitada!");
+            setSuccessMsg("¡Iniciando reproducción!");
             setCustomUri("");
             setTimeout(() => {
                 loadDevices();
@@ -229,7 +255,7 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
         try {
             const result = await playQueueItem(item.uri, selectedDeviceId || undefined);
             if (result.success) {
-                setSuccessMsg(`¡Reproduciendo "${item.name}" en ${result.deviceName || "tu dispositivo"}!`);
+                setSuccessMsg(`¡Reproduciendo "${item.name}"!`);
                 setTimeout(() => {
                     loadDevices();
                     loadQueue();
@@ -250,628 +276,866 @@ export const SpotifySettingsModal: React.FC<SpotifySettingsModalProps> = ({
         : 0;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-            <div className="bg-[#121214] border border-white/[0.12] rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
-                {/* Header */}
-                <div className="p-5 sm:p-6 border-b border-white/[0.08] flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-[#1DB954]/15 border border-[#1DB954]/30 flex items-center justify-center text-[#1DB954] shadow-sm">
-                            <Music size={20} />
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
-                                    Spotify for APEX
-                                </h3>
-                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border bg-[#1DB954]/10 text-[#1DB954] border-[#1DB954]/30 font-semibold">
-                                    OFFICIAL
-                                </span>
+        /* Contenedor Flotante Orgánico:
+           - z-40 para que la barra inferior (z-50) se siga viendo al frente.
+           - pb-22 sm:pb-26 para anclarse suavemente arriba de la barra de donde salió.
+           - Backdrop translúcido con blur para que la pantalla detrás se siga distinguiendo.
+        */
+        <div className="fixed inset-0 z-40 flex flex-col justify-end sm:justify-center p-2.5 sm:p-5 pb-22 sm:pb-26 animate-in fade-in duration-200">
+            {/* Fondo Translúcido Interactivo (Cierra al dar tap afuera) */}
+            <div
+                onClick={onClose}
+                className={`fixed inset-0 backdrop-blur-md transition-colors ${
+                    isLight ? "bg-slate-900/30" : "bg-black/60"
+                }`}
+            />
+
+            {/* Tarjeta Modal "Liquid Glass" */}
+            <motion.div
+                initial={{ opacity: 0, y: 30, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 25, scale: 0.98 }}
+                transition={{ type: "spring", damping: 28, stiffness: 320 }}
+                className={`relative z-10 w-full max-w-lg mx-auto h-[82vh] sm:h-[84vh] max-h-[820px] rounded-3xl overflow-hidden flex flex-col shadow-2xl transition-all duration-300 ${
+                    isLight
+                        ? "bg-white/90 backdrop-blur-3xl border border-white/80 shadow-[0_25px_60px_rgba(15,23,42,0.22),inset_0_1px_1px_rgba(255,255,255,0.95)] text-slate-900"
+                        : "bg-zinc-950/85 backdrop-blur-3xl border border-white/[0.15] shadow-[0_25px_60px_rgba(0,0,0,0.75),inset_0_1px_1px_rgba(255,255,255,0.2)] text-white"
+                }`}
+            >
+                {/* Resplandor Especular Superior del Vidrio */}
+                <div className={`absolute inset-x-8 top-0 h-[1.5px] pointer-events-none rounded-full z-20 ${
+                    isLight
+                        ? "bg-gradient-to-r from-transparent via-white/95 to-transparent"
+                        : "bg-gradient-to-r from-transparent via-white/40 to-transparent"
+                }`} />
+
+                {/* 1. CABECERA UNIFICADA */}
+                <div className={`p-4 sm:p-5 border-b flex items-center justify-between shrink-0 transition-colors ${
+                    isLight ? "border-slate-200/80 bg-white/50" : "border-white/[0.08] bg-black/20"
+                }`}>
+                    {currentView === "player" ? (
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-[#1DB954] flex items-center justify-center text-black shadow-md shadow-[#1DB954]/25">
+                                <Music size={16} fill="currentColor" />
                             </div>
-                            <p className="text-xs text-zinc-400 mt-0.5">
-                                Controla tu música e hipertrofia directamente desde tus entrenamientos.
-                            </p>
+                            <div>
+                                <div className="flex items-center gap-1.5">
+                                    <h3 className={`text-sm sm:text-base font-bold tracking-tight ${isLight ? "text-slate-900" : "text-white"}`}>
+                                        Spotify // APEX
+                                    </h3>
+                                    {connected && (
+                                        <span className="text-[9px] font-mono px-2 py-0.2 rounded-full border bg-[#1DB954]/10 text-[#1DB954] border-[#1DB954]/30 font-bold">
+                                            LIVE
+                                        </span>
+                                    )}
+                                </div>
+                                <p className={`text-[10px] sm:text-[11px] font-medium leading-tight ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
+                                    Audio & Hipertrofia
+                                </p>
+                            </div>
                         </div>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={() => setCurrentView("player")}
+                            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-all cursor-pointer active:scale-95 border ${
+                                isLight
+                                    ? "bg-slate-100 hover:bg-slate-200/80 text-slate-800 border-slate-200"
+                                    : "bg-white/[0.08] hover:bg-white/[0.14] text-white border-white/10"
+                            }`}
+                        >
+                            <ChevronLeft size={14} />
+                            <span>Reproductor</span>
+                        </button>
+                    )}
+
+                    {/* Acciones de Cabecera */}
+                    <div className="flex items-center gap-2">
+                        {/* Botón Destacado: Playlists para ti */}
+                        <button
+                            type="button"
+                            onClick={() => setCurrentView(currentView === "playlists" ? "player" : "playlists")}
+                            className={`px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 border ${
+                                currentView === "playlists"
+                                    ? (isLight ? "bg-slate-900 text-white border-slate-900 shadow-sm" : "bg-white text-black border-white shadow-md")
+                                    : (isLight ? "bg-slate-100/90 hover:bg-slate-200 text-slate-800 border-slate-200/90 shadow-xs" : "bg-white/[0.08] hover:bg-white/[0.15] text-zinc-200 border-white/10")
+                            }`}
+                            title="Playlists de entrenamiento por BPM"
+                        >
+                            <Zap size={13} className="text-[#1DB954]" fill="currentColor" />
+                            <span className="hidden xs:inline">Playlists</span>
+                            <span className="xs:hidden">Listas</span>
+                        </button>
+
+                        {/* Botón de 3 puntos (...) para Funciones Avanzadas */}
+                        {connected && (
+                            <button
+                                type="button"
+                                onClick={() => setCurrentView(currentView === "settings" ? "player" : "settings")}
+                                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-95 border ${
+                                    currentView === "settings"
+                                        ? (isLight ? "bg-slate-900 text-white border-slate-900" : "bg-white text-black border-white")
+                                        : (isLight ? "bg-slate-100/90 hover:bg-slate-200 text-slate-700 border-slate-200/90" : "bg-white/[0.08] hover:bg-white/[0.15] text-zinc-300 hover:text-white border-white/10")
+                                }`}
+                                title="Opciones avanzadas (Dispositivos, Cola, Desconexión)"
+                                aria-label="Opciones avanzadas"
+                            >
+                                <MoreVertical size={15} />
+                            </button>
+                        )}
+
+                        {/* Botón Cerrar */}
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 border ${
+                                isLight
+                                    ? "bg-slate-100/90 hover:bg-slate-200 text-slate-600 hover:text-slate-900 border-slate-200/90"
+                                    : "bg-white/[0.06] hover:bg-white/[0.12] text-zinc-400 hover:text-white border-white/10"
+                            }`}
+                            aria-label="Cerrar modal"
+                        >
+                            <X size={15} />
+                        </button>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="p-2 text-zinc-400 hover:text-white rounded-xl hover:bg-white/[0.06] transition-all"
-                        aria-label="Cerrar"
-                    >
-                        <X size={18} />
-                    </button>
                 </div>
 
-                {/* Body (Scrollable) */}
-                <div className="p-5 sm:p-6 space-y-6 overflow-y-auto">
-                    {/* Error / Fallback Banner */}
+                {/* Banner de Mensajes (Error / Éxito) */}
+                <div className="shrink-0 px-4 pt-2">
                     {errorMsg && (
-                        <div className="p-4 bg-[#FF2A2A]/10 border border-[#FF2A2A]/30 rounded-2xl space-y-2 animate-in fade-in">
-                            <div className="flex items-start gap-2.5 text-xs text-[#FF2A2A]">
-                                <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                                <div>
-                                    <p className="font-semibold">{errorMsg}</p>
-                                    <p className="text-[11px] text-zinc-400 mt-1">
-                                        Si Spotify está en segundo plano o suspendido, ábrelo para despertar el reproductor.
-                                    </p>
-                                </div>
-                            </div>
-                            {fallbackPlaylist && (
-                                <div className="pt-2 flex items-center gap-2">
+                        <div className={`p-3 rounded-2xl flex items-start gap-2.5 text-xs animate-in fade-in border ${
+                            isLight
+                                ? "bg-rose-50 text-rose-700 border-rose-200"
+                                : "bg-rose-500/10 text-rose-400 border-rose-500/30"
+                        }`}>
+                            <AlertCircle size={15} className="shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                                <p className="font-semibold leading-tight">{errorMsg}</p>
+                                {fallbackPlaylist && (
                                     <button
                                         type="button"
                                         onClick={() => openSpotifyDeepLink(fallbackPlaylist.spotifyUri, fallbackPlaylist.webUrl)}
-                                        className="px-4 py-2 bg-[#1DB954] text-black font-bold text-xs rounded-xl shadow-lg flex items-center gap-1.5 active:scale-95"
+                                        className="mt-1.5 px-3 py-1 bg-[#1DB954] text-black font-bold text-[11px] rounded-lg shadow-sm flex items-center gap-1 active:scale-95"
                                     >
-                                        <ExternalLink size={13} />
-                                        <span>Abrir en la App de Spotify</span>
+                                        <ExternalLink size={12} />
+                                        <span>Abrir en Spotify</span>
                                     </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            loadDevices();
-                                            refreshPlayback();
-                                        }}
-                                        className="px-3 py-2 bg-white/[0.06] hover:bg-white/[0.12] text-white text-xs font-mono rounded-xl border border-white/10"
-                                    >
-                                        Reintentar
-                                    </button>
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
                     )}
 
-                    {/* Success Banner */}
                     {successMsg && (
-                        <div className="p-3.5 bg-[#10B981]/15 border border-[#10B981]/30 rounded-2xl text-xs text-[#10B981] font-semibold flex items-center gap-2 animate-in fade-in">
-                            <Check size={16} />
+                        <div className={`p-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 animate-in fade-in border ${
+                            isLight
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                        }`}>
+                            <Check size={14} />
                             <span>{successMsg}</span>
                         </div>
                     )}
+                </div>
 
-                    {/* Login / Status Card */}
+                {/* 2. CUERPO DEL REPRODUCTOR (CON INTERCAMBIO DE VISTAS) */}
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+                    {/* SI NO ESTÁ CONECTADO: Pantalla de Login limpia & elegante */}
                     {!connected ? (
-                        <div className="bg-gradient-to-br from-[#1DB954]/10 via-black/40 to-transparent border border-[#1DB954]/30 rounded-3xl p-6 text-center space-y-4 shadow-xl">
-                            <div className="w-14 h-14 mx-auto rounded-3xl bg-[#1DB954] flex items-center justify-center text-black shadow-lg shadow-[#1DB954]/25">
-                                <Disc size={28} className="animate-spin-slow" />
+                        <div className={`rounded-3xl p-6 sm:p-8 text-center space-y-5 shadow-lg border transition-all ${
+                            isLight
+                                ? "bg-slate-50/80 border-slate-200/80"
+                                : "bg-gradient-to-b from-white/[0.04] to-black/50 border-white/10"
+                        }`}>
+                            <div className="w-16 h-16 mx-auto rounded-3xl bg-[#1DB954] flex items-center justify-center text-black shadow-xl shadow-[#1DB954]/30">
+                                <Disc size={32} className="animate-spin-slow" />
                             </div>
-                            <div>
-                                <h4 className="text-base font-bold text-white tracking-tight">
+                            <div className="space-y-1.5 max-w-sm mx-auto">
+                                <h4 className={`text-base sm:text-lg font-bold tracking-tight ${isLight ? "text-slate-900" : "text-white"}`}>
                                     Sincroniza tus Sesiones con Spotify
                                 </h4>
-                                <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto leading-relaxed">
-                                    Conéctate con tu cuenta para ver la carátula en grande, controlar la reproducción y sincronizar visualizadores 3D en tiempo real.
+                                <p className={`text-xs leading-relaxed ${isLight ? "text-slate-600" : "text-zinc-400"}`}>
+                                    Controla la música de tus series pesadas, sincroniza los BPMs con tu ritmo motor y visualiza la carátula en alta definición.
                                 </p>
                             </div>
 
                             <button
+                                type="button"
                                 onClick={handleConnect}
                                 disabled={isConnecting}
-                                className="w-full py-3.5 px-6 rounded-2xl bg-[#1DB954] hover:bg-[#1ed760] text-black font-bold text-sm flex items-center justify-center gap-2.5 transition-all active:scale-98 shadow-xl shadow-[#1DB954]/30 hover:shadow-[#1DB954]/40"
+                                className="w-full py-3.5 px-6 rounded-2xl bg-[#1DB954] hover:bg-[#1ed760] text-black font-bold text-sm flex items-center justify-center gap-2.5 transition-all active:scale-98 shadow-xl shadow-[#1DB954]/25 hover:shadow-[#1DB954]/40 cursor-pointer"
                             >
                                 <Music size={18} fill="currentColor" />
                                 <span>{isConnecting ? "Conectando con Spotify..." : "Conectar con Spotify"}</span>
                             </button>
+
+                            {/* Opcional: Escuchar playlists directamente en la app */}
+                            <div className="pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setCurrentView("playlists")}
+                                    className={`text-xs font-semibold underline underline-offset-4 cursor-pointer ${
+                                        isLight ? "text-slate-700 hover:text-slate-950" : "text-zinc-300 hover:text-white"
+                                    }`}
+                                >
+                                    O explora las playlists de entrenamiento curadas →
+                                </button>
+                            </div>
                         </div>
                     ) : (
-                        <div className="space-y-6">
-                            {/* REPRODUCTOR EXPANDIDO CON PORTADA GRANDE */}
-                            {/* REPRODUCTOR EXPANDIDO CON PORTADA GRANDE */}
-                            {track ? (
-                                <div className="relative bg-gradient-to-b from-white/[0.06] to-black/60 border border-white/10 rounded-3xl p-5 sm:p-6 shadow-2xl overflow-hidden">
-                                    {/* Ambient Glow matching album art */}
+                        <AnimatePresence mode="wait">
+                            {/* VISTA 1: REPRODUCTOR PRINCIPAL (ENFOCADO EN CARÁTULA E INFO) */}
+                            {currentView === "player" && (
+                                <motion.div
+                                    key="player-view"
+                                    initial={{ opacity: 0, scale: 0.97 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.97 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="flex flex-col items-center justify-center text-center space-y-4 sm:space-y-5"
+                                >
+                                    {/* Ambient Glow reactivo al color del álbum */}
                                     <div
-                                        className="absolute -top-12 left-1/2 -translate-x-1/2 w-72 h-44 rounded-full blur-3xl opacity-35 pointer-events-none transition-all duration-700"
-                                        style={{ backgroundColor: `rgb(${accentRgb})` }}
+                                        className="absolute top-12 left-1/2 -translate-x-1/2 w-64 h-48 rounded-full blur-3xl opacity-35 pointer-events-none transition-all duration-700"
+                                        style={{ backgroundColor: `rgb(${accentRgb || "29, 185, 84"})` }}
                                     />
 
-                                    {/* Gran Carátula del Álbum */}
-                                    <div className="relative z-10 flex flex-col items-center text-center">
-                                        <div className="relative w-48 h-48 sm:w-56 sm:h-56 rounded-3xl overflow-hidden border border-white/15 bg-zinc-900 shadow-2xl mb-4 group">
-                                            {track.albumArt ? (
+                                    {/* CARÁTULA DEL ÁLBUM GRANDE */}
+                                    <div className="relative z-10">
+                                        <div className={`relative w-48 h-48 sm:w-60 sm:h-60 rounded-3xl overflow-hidden border shadow-2xl transition-all duration-500 group ${
+                                            isLight ? "bg-slate-100 border-slate-200/90 shadow-slate-300/60" : "bg-zinc-900 border-white/20 shadow-black/80"
+                                        }`}>
+                                            {track?.albumArt ? (
                                                 <img
                                                     src={track.albumArt}
-                                                    alt={track.album}
+                                                    alt={track.album || "Album artwork"}
                                                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                                                 />
                                             ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-[#1DB954]">
+                                                <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-[#1DB954]">
                                                     <Music size={48} />
+                                                    <span className={`text-[11px] font-mono ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
+                                                        Sin pista activa
+                                                    </span>
                                                 </div>
                                             )}
+
+                                            {/* Insignia LIVE o Reposo */}
                                             {isPlaying ? (
-                                                <div className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/20 text-[9px] font-mono text-[#10B981] flex items-center gap-1">
+                                                <div className="absolute bottom-2.5 right-2.5 px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-[9px] font-mono text-[#10B981] flex items-center gap-1.5 shadow-md">
                                                     <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-ping" />
-                                                    <span>LIVE</span>
+                                                    <span className="font-bold">SONANDO</span>
                                                 </div>
-                                            ) : track.isRecentlyPlayed ? (
-                                                <div className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-amber-400/30 text-[9px] font-mono text-amber-400 flex items-center gap-1">
-                                                    <span>REPOSO</span>
+                                            ) : track?.isRecentlyPlayed ? (
+                                                <div className="absolute bottom-2.5 right-2.5 px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-amber-400/40 text-[9px] font-mono text-amber-400 flex items-center gap-1.5 shadow-md">
+                                                    <span>PAUSADA</span>
                                                 </div>
                                             ) : null}
                                         </div>
+                                    </div>
 
-                                        {/* Song Title & Artist */}
-                                        <h3 className="text-lg sm:text-xl font-extrabold text-white tracking-tight line-clamp-1 max-w-full">
-                                            {track.name}
+                                    {/* INFO DE LA CANCIÓN: Título, Artista y Telemetría */}
+                                    <div className="relative z-10 w-full px-2 max-w-sm">
+                                        <h3 className={`text-base sm:text-lg font-bold tracking-tight truncate leading-tight ${
+                                            isLight ? "text-slate-900" : "text-white"
+                                        }`} title={track?.name || "Sin reproducción"}>
+                                            {track?.name || "No hay reproducción activa"}
                                         </h3>
-                                        <p className="text-xs sm:text-sm text-zinc-400 font-medium mt-0.5 line-clamp-1">
-                                            {track.artist}
+                                        <p className={`text-xs sm:text-sm font-medium mt-1 truncate leading-tight ${
+                                            isLight ? "text-slate-600" : "text-zinc-400"
+                                        }`} title={track?.artist || "Spotify"}>
+                                            {track?.artist || "Abre Spotify o selecciona una playlist"}
                                         </p>
 
-                                        {/* Badges de Telemetría (BPM y Dispositivo) */}
-                                        <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
+                                        {/* Badges de Telemetría: BPM y Dispositivo */}
+                                        <div className="flex items-center justify-center gap-2 mt-2.5 flex-wrap">
                                             {bpm > 0 && (
-                                                <span className="text-[10px] font-mono font-bold text-[#10B981] bg-[#10B981]/15 px-2.5 py-0.5 rounded-full border border-[#10B981]/30">
-                                                    ⚡️ {Math.round(bpm)} BPM
+                                                <span className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${
+                                                    isLight
+                                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                        : "bg-[#10B981]/15 text-[#10B981] border-[#10B981]/30"
+                                                }`}>
+                                                    <Zap size={11} fill="currentColor" />
+                                                    <span>{Math.round(bpm)} BPM</span>
                                                 </span>
                                             )}
-                                            {track.deviceName ? (
-                                                <span className="text-[10px] font-mono text-zinc-300 bg-white/[0.08] px-2 py-0.5 rounded-full border border-white/10 flex items-center gap-1">
-                                                    <Speaker size={10} className="text-[#1DB954]" />
+
+                                            {track?.deviceName ? (
+                                                <span className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 ${
+                                                    isLight
+                                                        ? "bg-slate-100 text-slate-700 border-slate-200"
+                                                        : "bg-white/[0.08] text-zinc-300 border-white/10"
+                                                }`}>
+                                                    <Speaker size={11} className="text-[#1DB954]" />
                                                     <span className="truncate max-w-[120px]">{track.deviceName}</span>
                                                 </span>
                                             ) : (
-                                                <span className="text-[10px] font-mono text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
-                                                    Esperando Audio en Dispositivo
-                                                </span>
-                                            )}
-                                            {track.isRecentlyPlayed && (
-                                                <span className="text-[10px] font-mono text-zinc-400 bg-white/[0.05] px-2 py-0.5 rounded-full border border-white/10">
-                                                    Última Pista
+                                                <span className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full border ${
+                                                    isLight
+                                                        ? "bg-amber-50 text-amber-700 border-amber-200"
+                                                        : "bg-amber-400/10 text-amber-400 border-amber-400/20"
+                                                }`}>
+                                                    En espera de audio
                                                 </span>
                                             )}
                                         </div>
+                                    </div>
 
-                                        {/* Botón de Sincronizar / Despertar en la App para iPhone / Dispositivos en reposo */}
-                                        {!isPlaying && (
-                                            <div className="mt-3 flex items-center gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={handleDetectMusic}
-                                                    disabled={isDetecting}
-                                                    className="px-3.5 py-1.5 bg-white/[0.1] hover:bg-white/[0.18] text-white font-bold text-xs rounded-xl flex items-center gap-1.5 border border-white/20 active:scale-95 transition-all"
-                                                >
-                                                    <RefreshCw size={12} className={isDetecting ? "animate-spin" : ""} />
-                                                    <span>{isDetecting ? "Detectando..." : "Detectar Música"}</span>
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => openSpotifyDeepLink(track.uri || "spotify:")}
-                                                    className="px-3.5 py-1.5 bg-[#1DB954] hover:bg-[#1ed760] text-black font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-lg active:scale-95 transition-all"
-                                                >
-                                                    <Play size={12} fill="currentColor" />
-                                                    <span>Abrir en Spotify</span>
-                                                </button>
-                                            </div>
-                                        )}
-
-                                        {/* Scrubber Progress Bar */}
-                                        <div className="w-full mt-4 space-y-1">
-                                            <div className="relative w-full flex items-center group py-1">
-                                                <div className="w-full h-1.5 bg-white/[0.15] rounded-full overflow-hidden relative">
-                                                    <div
-                                                        className="h-full bg-white group-hover:bg-[#1DB954] transition-colors rounded-full"
-                                                        style={{ width: `${progressPct}%` }}
-                                                    />
-                                                </div>
-                                                <input
-                                                    type="range"
-                                                    min={0}
-                                                    max={track.durationMs || 100}
-                                                    value={progressMs}
-                                                    onChange={(e) => seekTo(parseInt(e.target.value, 10))}
-                                                    className="absolute inset-0 w-full opacity-0 cursor-pointer"
+                                    {/* BARRA DE PROGRESO (SCRUBBER) */}
+                                    <div className="w-full max-w-sm space-y-1.5 pt-1 relative z-10">
+                                        <div className="relative w-full flex items-center group py-1">
+                                            <div className={`w-full h-1.5 rounded-full overflow-hidden relative ${
+                                                isLight ? "bg-slate-200" : "bg-white/[0.15]"
+                                            }`}>
+                                                <div
+                                                    className={`h-full transition-colors rounded-full ${
+                                                        isLight ? "bg-slate-900 group-hover:bg-[#1DB954]" : "bg-white group-hover:bg-[#1DB954]"
+                                                    }`}
+                                                    style={{ width: `${progressPct}%` }}
                                                 />
                                             </div>
-                                            <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400">
-                                                <span>{formatTime(progressMs)}</span>
-                                                <span>{formatTime(track.durationMs)}</span>
+                                            <input
+                                                type="range"
+                                                min={0}
+                                                max={track?.durationMs || 100}
+                                                value={progressMs}
+                                                onChange={(e) => seekTo(parseInt(e.target.value, 10))}
+                                                className="absolute inset-0 w-full opacity-0 cursor-pointer"
+                                                aria-label="Posición de reproducción"
+                                            />
+                                        </div>
+                                        <div className={`flex items-center justify-between text-[10px] font-mono ${
+                                            isLight ? "text-slate-500" : "text-zinc-400"
+                                        }`}>
+                                            <span>{formatTime(progressMs)}</span>
+                                            <span>{formatTime(track?.durationMs || 0)}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* CONTROLES DE REPRODUCCIÓN PRINCIPALES */}
+                                    <div className="flex items-center justify-center gap-5 sm:gap-7 pt-1 relative z-10">
+                                        {/* Aleatorio */}
+                                        <button
+                                            type="button"
+                                            onClick={toggleShuffle}
+                                            className={`p-2 rounded-full transition-all cursor-pointer active:scale-95 ${
+                                                track?.shuffleState
+                                                    ? "text-[#1DB954]"
+                                                    : (isLight ? "text-slate-400 hover:text-slate-800" : "text-zinc-400 hover:text-white")
+                                            }`}
+                                            title="Modo aleatorio"
+                                        >
+                                            <Shuffle size={17} />
+                                        </button>
+
+                                        {/* Anterior */}
+                                        <button
+                                            type="button"
+                                            onClick={prevTrack}
+                                            className={`p-2 transition-all cursor-pointer active:scale-95 ${
+                                                isLight ? "text-slate-700 hover:text-slate-950" : "text-zinc-300 hover:text-white"
+                                            }`}
+                                            title="Pista anterior"
+                                        >
+                                            <SkipBack size={24} fill="currentColor" />
+                                        </button>
+
+                                        {/* Play / Pause Principal */}
+                                        <button
+                                            type="button"
+                                            onClick={togglePlay}
+                                            className={`w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer ${
+                                                isLight
+                                                    ? "bg-slate-900 text-white hover:bg-black shadow-slate-400/40"
+                                                    : "bg-white text-black hover:bg-zinc-200 shadow-black/80"
+                                            }`}
+                                            title={isPlaying ? "Pausar" : "Reproducir"}
+                                        >
+                                            {isPlaying ? (
+                                                <Pause size={24} fill="currentColor" />
+                                            ) : (
+                                                <Play size={24} fill="currentColor" className="ml-1" />
+                                            )}
+                                        </button>
+
+                                        {/* Siguiente */}
+                                        <button
+                                            type="button"
+                                            onClick={nextTrack}
+                                            className={`p-2 transition-all cursor-pointer active:scale-95 ${
+                                                isLight ? "text-slate-700 hover:text-slate-950" : "text-zinc-300 hover:text-white"
+                                            }`}
+                                            title="Siguiente pista"
+                                        >
+                                            <SkipForward size={24} fill="currentColor" />
+                                        </button>
+
+                                        {/* Repetir */}
+                                        <button
+                                            type="button"
+                                            onClick={toggleRepeat}
+                                            className={`p-2 rounded-full transition-all cursor-pointer active:scale-95 ${
+                                                track?.repeatState && track.repeatState !== "off"
+                                                    ? "text-[#1DB954]"
+                                                    : (isLight ? "text-slate-400 hover:text-slate-800" : "text-zinc-400 hover:text-white")
+                                            }`}
+                                            title={`Repetir: ${track?.repeatState || "off"}`}
+                                        >
+                                            {track?.repeatState === "track" ? <Repeat1 size={18} /> : <Repeat size={17} />}
+                                        </button>
+                                    </div>
+
+                                    {/* BANNER INFERIOR: ACCESO RÁPIDO A PLAYLISTS */}
+                                    <div className="w-full max-w-sm pt-2 relative z-10">
+                                        <button
+                                            type="button"
+                                            onClick={() => setCurrentView("playlists")}
+                                            className={`w-full py-2.5 px-4 rounded-2xl flex items-center justify-between gap-2 transition-all cursor-pointer active:scale-98 border ${
+                                                isLight
+                                                    ? "bg-emerald-50/70 hover:bg-emerald-100/80 text-emerald-900 border-emerald-200/80 shadow-xs"
+                                                    : "bg-[#1DB954]/10 hover:bg-[#1DB954]/20 text-white border-[#1DB954]/30"
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <Zap size={14} className="text-[#1DB954]" fill="currentColor" />
+                                                <span className="text-xs font-bold">Playlists para ti (BPM Hub)</span>
                                             </div>
-                                        </div>
-
-                                        {/* Controles de Reproducción Expandidos */}
-                                        <div className="flex items-center justify-center gap-4 sm:gap-6 mt-3">
-                                            <button
-                                                onClick={toggleShuffle}
-                                                className={`p-2 rounded-full transition-all ${
-                                                    track.shuffleState
-                                                        ? "text-[#1DB954]"
-                                                        : "text-zinc-400 hover:text-white"
-                                                }`}
-                                                title="Modo aleatorio"
-                                            >
-                                                <Shuffle size={16} />
-                                            </button>
-
-                                            <button
-                                                onClick={prevTrack}
-                                                className="p-2 text-zinc-300 hover:text-white transition-all active:scale-95"
-                                                title="Anterior"
-                                            >
-                                                <SkipBack size={22} fill="currentColor" />
-                                            </button>
-
-                                            <button
-                                                onClick={togglePlay}
-                                                className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-all"
-                                                title={isPlaying ? "Pausar" : "Reproducir"}
-                                            >
-                                                {isPlaying ? (
-                                                    <Pause size={22} fill="currentColor" />
-                                                ) : (
-                                                    <Play size={22} fill="currentColor" className="ml-0.5" />
-                                                )}
-                                            </button>
-
-                                            <button
-                                                onClick={nextTrack}
-                                                className="p-2 text-zinc-300 hover:text-white transition-all active:scale-95"
-                                                title="Siguiente"
-                                            >
-                                                <SkipForward size={22} fill="currentColor" />
-                                            </button>
-
-                                            <button
-                                                onClick={toggleRepeat}
-                                                className={`p-2 rounded-full transition-all ${
-                                                    track.repeatState && track.repeatState !== "off"
-                                                        ? "text-[#1DB954]"
-                                                        : "text-zinc-400 hover:text-white"
-                                                }`}
-                                                title={`Repetir: ${track.repeatState || "off"}`}
-                                            >
-                                                {track.repeatState === "track" ? <Repeat1 size={17} /> : <Repeat size={16} />}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="p-6 text-center bg-gradient-to-b from-white/[0.04] to-black/50 border border-white/10 rounded-3xl space-y-4 shadow-xl">
-                                    <div className="w-16 h-16 mx-auto rounded-2xl bg-[#1DB954]/20 border border-[#1DB954]/40 flex items-center justify-center text-[#1DB954]">
-                                        <Music size={32} />
-                                    </div>
-                                    <div>
-                                        <h4 className="text-base font-bold text-white">Spotify Conectado</h4>
-                                        <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto leading-relaxed">
-                                            Tu cuenta está vinculada. Si ya tienes música sonando en Spotify en este momento, toca <strong>"Detectar Música"</strong> para vincularla al visualizador 3D.
-                                        </p>
-                                    </div>
-                                    <div className="flex flex-wrap items-center justify-center gap-2.5">
-                                        <button
-                                            type="button"
-                                            onClick={handleDetectMusic}
-                                            disabled={isDetecting}
-                                            className="px-4 py-2.5 bg-white text-black font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-lg active:scale-95 transition-all hover:bg-zinc-200"
-                                        >
-                                            <RefreshCw size={13} className={isDetecting ? "animate-spin text-black" : ""} />
-                                            <span>{isDetecting ? "Detectando Música..." : "Detectar Música en iPhone"}</span>
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => openSpotifyDeepLink("spotify:")}
-                                            className="px-4 py-2.5 bg-[#1DB954] hover:bg-[#1ed760] text-black font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-lg active:scale-95 transition-all"
-                                        >
-                                            <Play size={13} fill="currentColor" />
-                                            <span>Abrir App de Spotify</span>
+                                            <span className={`text-[10px] font-mono font-semibold ${isLight ? "text-emerald-700" : "text-[#1DB954]"}`}>
+                                                VER TODAS →
+                                            </span>
                                         </button>
                                     </div>
-                                </div>
+                                </motion.div>
                             )}
 
-                            {/* GUÍA RÁPIDA PARA IPHONE (SAFARI & CHROME) */}
-                            {isIOSDevice() && (
-                                <div className="p-4 bg-white/[0.03] border border-white/[0.08] rounded-2xl space-y-2 text-xs">
-                                    <div className="flex items-center gap-2 text-amber-400 font-bold">
-                                        <Smartphone size={14} />
-                                        <span>Guía de Conexión en iPhone</span>
-                                    </div>
-                                    <div className="text-[11px] text-zinc-300 space-y-1.5 leading-relaxed">
-                                        <p>
-                                            1. Abre tu app de Spotify y pon play a cualquier canción.
-                                        </p>
-                                        <p>
-                                            2. Regresa a APEX y presiona <strong>"Detectar Música en iPhone"</strong> (o espera 2 segundos).
-                                        </p>
-                                        <p className="text-zinc-400 text-[10px] bg-white/[0.04] p-2.5 rounded-xl border border-white/10 mt-1">
-                                            💡 <strong>Importante en iPhone:</strong> En tu app de Spotify ve a tu <em>Foto de perfil &gt; Configuración y privacidad &gt; Dispositivos</em> y activa <strong>"Estado de emisión del dispositivo"</strong> para que Spotify transmita tu música a APEX.
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* SECCIÓN: CANCIONES QUE SIGUEN EN LA LISTA DE REPRODUCCIÓN (QUEUE) */}
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <ListMusic size={15} className="text-[#1DB954]" />
-                                        <span className="text-[11px] font-mono text-zinc-300 font-bold uppercase tracking-wider">
-                                            A CONTINUACIÓN EN COLA ({queue.length})
+                            {/* VISTA 2: "PLAYLISTS PARA TI" (MENÚ PADRE Y PROFESIONAL CON BPMS Y PLAY DIRECTO) */}
+                            {currentView === "playlists" && (
+                                <motion.div
+                                    key="playlists-view"
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -20 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="space-y-4"
+                                >
+                                    {/* Encabezado del Menú Padre */}
+                                    <div className="flex items-center justify-between pb-1">
+                                        <div>
+                                            <h4 className={`text-sm sm:text-base font-bold tracking-tight ${isLight ? "text-slate-900" : "text-white"}`}>
+                                                Playlists de Entrenamiento
+                                            </h4>
+                                            <p className={`text-[11px] ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
+                                                Optimizadas por BPMs y cadencia neuromuscular para hipertrofia.
+                                            </p>
+                                        </div>
+                                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
+                                            isLight ? "bg-slate-100 text-slate-600 border-slate-200" : "bg-white/[0.06] text-zinc-400 border-white/10"
+                                        }`}>
+                                            1-TAP PLAY
                                         </span>
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={loadQueue}
-                                        className="text-[10px] font-mono text-zinc-400 hover:text-white flex items-center gap-1 transition-colors"
-                                    >
-                                        <RefreshCw size={10} />
-                                        <span>Actualizar Cola</span>
-                                    </button>
-                                </div>
 
-                                {queue.length > 0 ? (
-                                    <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
-                                        {queue.map((item, idx) => (
-                                            <div
-                                                key={`${item.id}-${idx}`}
-                                                onClick={() => handlePlayQueueItem(item)}
-                                                className="group p-2 sm:p-2.5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] hover:border-[#1DB954]/40 flex items-center justify-between gap-3 cursor-pointer transition-all active:scale-[0.99]"
-                                                title={`Haz clic para reproducir "${item.name}"`}
-                                            >
-                                                <div className="flex items-center gap-3 min-w-0">
-                                                    <span className="text-[10px] font-mono text-zinc-500 w-4 text-center shrink-0">
-                                                        {idx + 1}
-                                                    </span>
-                                                    <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/10 bg-zinc-900 shrink-0">
-                                                        {item.albumArt ? (
-                                                            <img
-                                                                src={item.albumArt}
-                                                                alt={item.name}
-                                                                className="w-full h-full object-cover"
-                                                            />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center text-zinc-600">
-                                                                <Music size={14} />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <span className="text-xs font-semibold text-white group-hover:text-[#1DB954] transition-colors truncate block">
-                                                            {item.name}
-                                                        </span>
-                                                        <span className="text-[11px] text-zinc-400 truncate block">
-                                                            {item.artist}
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex items-center gap-2 shrink-0">
-                                                    <span className="text-[10px] font-mono text-zinc-500 hidden sm:inline">
-                                                        {formatTime(item.durationMs)}
-                                                    </span>
-                                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
-                                                        playingSongUri === item.uri
-                                                            ? "bg-[#1DB954] text-black shadow-md shadow-[#1DB954]/30"
-                                                            : "bg-white/[0.08] group-hover:bg-[#1DB954] text-zinc-300 group-hover:text-black"
-                                                    }`}>
-                                                        {playingSongUri === item.uri ? (
-                                                            <RefreshCw size={11} className="animate-spin text-black" />
-                                                        ) : (
-                                                            <Play size={10} fill="currentColor" className="ml-0.5" />
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.05] text-[11px] text-zinc-400 flex items-center justify-between">
-                                        <span>No hay más canciones pendientes en la cola activa.</span>
-                                        <button
-                                            onClick={loadQueue}
-                                            className="text-xs text-[#1DB954] hover:underline font-mono"
-                                        >
-                                            Consultar Spotify
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Section: Dispositivos Detectados */}
-                            <div className="pt-2 border-t border-white/[0.06] space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider block">
-                                        DISPOSITIVOS SPOTIFY ({devices.length})
-                                    </span>
-                                    <button
-                                        type="button"
-                                        onClick={loadDevices}
-                                        className="text-[10px] font-mono text-zinc-400 hover:text-white flex items-center gap-1 transition-colors"
-                                    >
-                                        <RefreshCw size={10} className={isRefreshingDevices ? "animate-spin" : ""} />
-                                        <span>Buscar</span>
-                                    </button>
-                                </div>
-
-                                {devices.length > 0 ? (
-                                    <div className="space-y-1.5">
-                                        {devices.map((dev) => {
-                                            const Icon = getDeviceIcon(dev.type);
-                                            const isSelected = selectedDeviceId === dev.id || dev.is_active;
+                                    {/* Grid de Tarjetas de Playlists Profesionales */}
+                                    <div className="grid grid-cols-1 gap-2.5">
+                                        {CURATED_WORKOUT_PLAYLISTS.map((pl) => {
+                                            const isThisPlaying = playingPlaylistId === pl.id;
 
                                             return (
                                                 <div
-                                                    key={dev.id}
-                                                    className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
-                                                        dev.is_active
-                                                            ? "bg-[#10B981]/15 border-[#10B981]/30 text-white"
-                                                            : isSelected
-                                                            ? "bg-white/[0.08] border-white/20 text-zinc-200"
-                                                            : "bg-black/30 border-white/[0.05] text-zinc-400 hover:bg-white/[0.04]"
+                                                    key={pl.id}
+                                                    className={`p-3.5 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-3 group ${
+                                                        isLight
+                                                            ? "bg-slate-50/90 hover:bg-white border-slate-200/90 shadow-xs hover:shadow-md"
+                                                            : "bg-white/[0.03] hover:bg-white/[0.07] border-white/[0.08] hover:border-white/20"
                                                     }`}
                                                 >
-                                                    <div className="flex items-center gap-2.5 min-w-0">
-                                                        <Icon size={16} className={dev.is_active ? "text-[#10B981]" : "text-zinc-400"} />
-                                                        <div className="min-w-0">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className="text-xs font-semibold truncate block">
-                                                                    {dev.name}
-                                                                </span>
-                                                                {dev.is_active && (
-                                                                    <span className="text-[9px] font-mono bg-[#10B981] text-black font-bold px-1.5 py-0.2 rounded-full uppercase">
-                                                                        Activo
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            <span className="text-[10px] font-mono text-zinc-500 capitalize">
-                                                                {dev.type.toLowerCase()} • {dev.volume_percent}% vol
+                                                    {/* Información de la Playlist & BPM */}
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            {/* BPM Pill Badge Destacado */}
+                                                            <span
+                                                                className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1 shrink-0"
+                                                                style={{
+                                                                    color: pl.accentColor,
+                                                                    borderColor: `${pl.accentColor}50`,
+                                                                    backgroundColor: `${pl.accentColor}18`
+                                                                }}
+                                                            >
+                                                                <Zap size={10} fill="currentColor" />
+                                                                <span>{pl.bpm}</span>
+                                                            </span>
+
+                                                            <span className={`text-[10px] font-mono truncate ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
+                                                                {pl.genre}
                                                             </span>
                                                         </div>
+
+                                                        <h5 className={`text-xs sm:text-sm font-bold tracking-tight truncate ${
+                                                            isLight ? "text-slate-900 group-hover:text-emerald-600" : "text-white group-hover:text-[#1DB954]"
+                                                        } transition-colors`}>
+                                                            {pl.name}
+                                                        </h5>
+
+                                                        <p className={`text-[10px] sm:text-[11px] mt-0.5 line-clamp-1 leading-tight ${
+                                                            isLight ? "text-slate-600" : "text-zinc-400"
+                                                        }`}>
+                                                            {pl.description}
+                                                        </p>
                                                     </div>
 
-                                                    {!dev.is_active && (
+                                                    {/* Botones de Acción: Play Directo + Enlace App */}
+                                                    <div className="flex items-center gap-1.5 shrink-0">
+                                                        {/* Botón Play Directo */}
                                                         <button
                                                             type="button"
-                                                            onClick={() => handleTransferDevice(dev.id)}
-                                                            className="px-2.5 py-1 bg-white/[0.08] hover:bg-white text-white hover:text-black rounded-lg text-[10px] font-semibold border border-white/10 transition-all shrink-0 active:scale-95"
+                                                            onClick={() => handlePlayPlaylist(pl)}
+                                                            disabled={!connected}
+                                                            className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shadow-sm ${
+                                                                isThisPlaying
+                                                                    ? "bg-[#1DB954] text-black"
+                                                                    : connected
+                                                                    ? (isLight
+                                                                        ? "bg-slate-900 hover:bg-black text-white hover:shadow-md"
+                                                                        : "bg-white/[0.1] hover:bg-white text-white hover:text-black border border-white/10")
+                                                                    : (isLight
+                                                                        ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                                                                        : "bg-white/[0.04] text-zinc-600 cursor-not-allowed")
+                                                            }`}
+                                                            title={connected ? `Reproducir ${pl.name}` : "Conecta Spotify primero"}
                                                         >
-                                                            Reproducir aquí
+                                                            {isThisPlaying ? (
+                                                                <RefreshCw size={12} className="animate-spin text-black" />
+                                                            ) : (
+                                                                <Play size={12} fill="currentColor" className="ml-0.5" />
+                                                            )}
+                                                            <span>{isThisPlaying ? "Cargando..." : "Play"}</span>
                                                         </button>
-                                                    )}
+
+                                                        {/* Botón Abrir en App de Spotify */}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => openSpotifyDeepLink(pl.spotifyUri, pl.webUrl)}
+                                                            title="Abrir en la app de Spotify"
+                                                            className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer active:scale-90 border ${
+                                                                isLight
+                                                                    ? "bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 border-slate-200"
+                                                                    : "bg-white/[0.05] hover:bg-white/[0.12] text-zinc-400 hover:text-white border-white/10"
+                                                            }`}
+                                                        >
+                                                            <ExternalLink size={13} />
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             );
                                         })}
                                     </div>
-                                ) : (
-                                    <div className="p-3.5 rounded-2xl bg-black/40 border border-white/[0.08] text-xs text-zinc-400 space-y-2.5">
-                                        <div className="flex items-center justify-between gap-2">
-                                            <span className="font-medium text-white text-xs">Sin dispositivo activo detectado</span>
+                                </motion.div>
+                            )}
+
+                            {/* VISTA 3: OPCIONES AVANZADAS (DISPOSITIVOS, COLA, ENLACES PERSONALIZADOS, GUÍA IPHONE) */}
+                            {currentView === "settings" && (
+                                <motion.div
+                                    key="settings-view"
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -20 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="space-y-5"
+                                >
+                                    {/* Encabezado */}
+                                    <div className="flex items-center justify-between pb-1">
+                                        <div>
+                                            <h4 className={`text-sm sm:text-base font-bold tracking-tight ${isLight ? "text-slate-900" : "text-white"}`}>
+                                                Ajustes Avanzados de Audio
+                                            </h4>
+                                            <p className={`text-[11px] ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
+                                                Control de dispositivos, cola y sincronización local.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* DISPOSITIVOS SPOTIFY DETECTADOS */}
+                                    <div className={`p-4 rounded-2xl border space-y-3 ${
+                                        isLight ? "bg-slate-50/80 border-slate-200/80" : "bg-white/[0.03] border-white/[0.08]"
+                                    }`}>
+                                        <div className="flex items-center justify-between">
+                                            <span className={`text-[10px] font-mono uppercase tracking-wider font-bold ${
+                                                isLight ? "text-slate-600" : "text-zinc-400"
+                                            }`}>
+                                                DISPOSITIVOS DETECTADOS ({devices.length})
+                                            </span>
                                             <button
                                                 type="button"
-                                                onClick={() => openSpotifyDeepLink("spotify:")}
-                                                className="px-3 py-1.5 bg-[#1DB954] hover:bg-[#1ed760] text-black font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md active:scale-95 transition-all shrink-0"
+                                                onClick={loadDevices}
+                                                className={`text-[10px] font-mono flex items-center gap-1 transition-colors cursor-pointer ${
+                                                    isLight ? "text-slate-600 hover:text-slate-950" : "text-zinc-400 hover:text-white"
+                                                }`}
                                             >
-                                                <Smartphone size={13} />
-                                                <span>Despertar Spotify</span>
+                                                <RefreshCw size={10} className={isRefreshingDevices ? "animate-spin" : ""} />
+                                                <span>Actualizar</span>
                                             </button>
                                         </div>
-                                        <p className="text-[11px] text-zinc-500 leading-relaxed">
-                                            En iPhone (Safari / Chrome), iOS suspende Spotify en segundo plano. Abre tu app de Spotify y dale Play a cualquier canción para que aparezca aquí tu iPhone.
-                                        </p>
+
+                                        {devices.length > 0 ? (
+                                            <div className="space-y-2">
+                                                {devices.map((dev) => {
+                                                    const Icon = getDeviceIcon(dev.type);
+                                                    const isSelected = selectedDeviceId === dev.id || dev.is_active;
+
+                                                    return (
+                                                        <div
+                                                            key={dev.id}
+                                                            className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
+                                                                dev.is_active
+                                                                    ? (isLight
+                                                                        ? "bg-emerald-50 border-emerald-300 text-emerald-900"
+                                                                        : "bg-[#10B981]/15 border-[#10B981]/30 text-white")
+                                                                    : (isLight
+                                                                        ? "bg-white border-slate-200 text-slate-800"
+                                                                        : "bg-black/30 border-white/[0.06] text-zinc-300")
+                                                            }`}
+                                                        >
+                                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                                <Icon size={16} className={dev.is_active ? "text-[#10B981]" : (isLight ? "text-slate-500" : "text-zinc-400")} />
+                                                                <div className="min-w-0">
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <span className="text-xs font-semibold truncate block">
+                                                                            {dev.name}
+                                                                        </span>
+                                                                        {dev.is_active && (
+                                                                            <span className="text-[9px] font-mono bg-[#10B981] text-black font-bold px-1.5 py-0.2 rounded-full uppercase">
+                                                                                Activo
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <span className={`text-[10px] font-mono capitalize ${isLight ? "text-slate-500" : "text-zinc-500"}`}>
+                                                                        {dev.type.toLowerCase()} • {dev.volume_percent}% vol
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+
+                                                            {!dev.is_active && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleTransferDevice(dev.id)}
+                                                                    className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold border transition-all shrink-0 active:scale-95 cursor-pointer ${
+                                                                        isLight
+                                                                            ? "bg-slate-100 hover:bg-slate-900 hover:text-white text-slate-800 border-slate-300"
+                                                                            : "bg-white/[0.08] hover:bg-white text-white hover:text-black border-white/10"
+                                                                    }`}
+                                                                >
+                                                                    Pasar aquí
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-2 space-y-2">
+                                                <p className={`text-xs ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
+                                                    No hay dispositivos activos de Spotify detectados.
+                                                </p>
+                                                <div className="flex justify-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleDetectMusic}
+                                                        disabled={isDetecting}
+                                                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 border active:scale-95 cursor-pointer ${
+                                                            isLight
+                                                                ? "bg-slate-100 text-slate-800 border-slate-300"
+                                                                : "bg-white/[0.08] text-white border-white/10"
+                                                        }`}
+                                                    >
+                                                        <RefreshCw size={12} className={isDetecting ? "animate-spin" : ""} />
+                                                        <span>Detectar Música</span>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openSpotifyDeepLink("spotify:")}
+                                                        className="px-3 py-1.5 bg-[#1DB954] hover:bg-[#1ed760] text-black font-bold text-xs rounded-xl flex items-center gap-1 active:scale-95 cursor-pointer shadow-sm"
+                                                    >
+                                                        <Smartphone size={12} />
+                                                        <span>Despertar App</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                            </div>
 
-                            {/* Cuenta Vinculada & Desconexión */}
-                            <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
-                                <span className="text-xs text-zinc-400 font-mono">CUENTA VINCULADA</span>
-                                <button
-                                    onClick={handleDisconnect}
-                                    className="px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-[#FF2A2A]/20 text-zinc-400 hover:text-[#FF2A2A] border border-white/10 hover:border-[#FF2A2A]/30 text-xs font-medium transition-all flex items-center gap-1.5"
-                                >
-                                    <LogOut size={12} />
-                                    <span>Cerrar sesión</span>
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Playlists de Entrenamiento Curadas */}
-                    <div className="space-y-3 pt-2 border-t border-white/[0.06]">
-                        <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider block">
-                                PLAYLISTS DE ENTRENAMIENTO PRECONFIGURADAS
-                            </span>
-                            <span className="text-[10px] text-zinc-500 font-mono">1-TAP PLAY</span>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                            {CURATED_WORKOUT_PLAYLISTS.map((pl) => (
-                                <div
-                                    key={pl.id}
-                                    className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.18] transition-all flex flex-col justify-between gap-3 group"
-                                >
-                                    <div>
-                                        <div className="flex items-center justify-between gap-2 mb-1">
-                                            <span
-                                                className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border"
-                                                style={{
-                                                    color: pl.accentColor,
-                                                    borderColor: `${pl.accentColor}40`,
-                                                    backgroundColor: `${pl.accentColor}15`
-                                                }}
-                                            >
-                                                {pl.bpm}
+                                    {/* COLA DE REPRODUCCIÓN (QUEUE) */}
+                                    <div className={`p-4 rounded-2xl border space-y-2.5 ${
+                                        isLight ? "bg-slate-50/80 border-slate-200/80" : "bg-white/[0.03] border-white/[0.08]"
+                                    }`}>
+                                        <div className="flex items-center justify-between">
+                                            <span className={`text-[10px] font-mono uppercase tracking-wider font-bold ${
+                                                isLight ? "text-slate-600" : "text-zinc-400"
+                                            }`}>
+                                                A CONTINUACIÓN EN COLA ({queue.length})
                                             </span>
-                                            <span className="text-[10px] text-zinc-500 font-mono truncate">{pl.genre}</span>
+                                            <button
+                                                type="button"
+                                                onClick={loadQueue}
+                                                className={`text-[10px] font-mono flex items-center gap-1 transition-colors cursor-pointer ${
+                                                    isLight ? "text-slate-600 hover:text-slate-950" : "text-zinc-400 hover:text-white"
+                                                }`}
+                                            >
+                                                <RefreshCw size={10} />
+                                                <span>Actualizar</span>
+                                            </button>
                                         </div>
-                                        <h4 className="text-xs font-bold text-white group-hover:text-[#1DB954] transition-colors leading-snug">
-                                            {pl.name}
-                                        </h4>
-                                        <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">
-                                            {pl.description}
-                                        </p>
+
+                                        {queue.length > 0 ? (
+                                            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                                                {queue.slice(0, 10).map((item, idx) => (
+                                                    <div
+                                                        key={`${item.id}-${idx}`}
+                                                        onClick={() => handlePlayQueueItem(item)}
+                                                        className={`p-2 rounded-xl border flex items-center justify-between gap-2.5 cursor-pointer transition-all active:scale-[0.99] ${
+                                                            isLight
+                                                                ? "bg-white hover:bg-slate-100 border-slate-200/80"
+                                                                : "bg-white/[0.03] hover:bg-white/[0.08] border-white/[0.05]"
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-center gap-2.5 min-w-0">
+                                                            <span className={`text-[10px] font-mono w-4 text-center shrink-0 ${
+                                                                isLight ? "text-slate-400" : "text-zinc-500"
+                                                            }`}>
+                                                                {idx + 1}
+                                                            </span>
+                                                            <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-zinc-900 border border-white/10">
+                                                                {item.albumArt ? (
+                                                                    <img src={item.albumArt} alt="" className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <div className="w-full h-full flex items-center justify-center text-zinc-500">
+                                                                        <Music size={12} />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <span className={`text-xs font-semibold truncate block ${isLight ? "text-slate-900" : "text-white"}`}>
+                                                                    {item.name}
+                                                                </span>
+                                                                <span className={`text-[10px] truncate block ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
+                                                                    {item.artist}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="shrink-0">
+                                                            {playingSongUri === item.uri ? (
+                                                                <RefreshCw size={12} className="animate-spin text-[#1DB954]" />
+                                                            ) : (
+                                                                <Play size={11} fill="currentColor" className={isLight ? "text-slate-600" : "text-zinc-400"} />
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className={`text-xs py-1 ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
+                                                No hay canciones pendientes en la cola activa.
+                                            </p>
+                                        )}
                                     </div>
 
-                                    <div className="flex items-center gap-1.5 pt-1">
+                                    {/* REPRODUCIR CUALQUIER LINK / URI PERSONALIZADA */}
+                                    <div className={`p-4 rounded-2xl border space-y-2.5 ${
+                                        isLight ? "bg-slate-50/80 border-slate-200/80" : "bg-white/[0.03] border-white/[0.08]"
+                                    }`}>
+                                        <span className={`text-[10px] font-mono uppercase tracking-wider font-bold block ${
+                                            isLight ? "text-slate-600" : "text-zinc-400"
+                                        }`}>
+                                            LANZAR ENLACE O URI DE SPOTIFY
+                                        </span>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="Pega link o URI de canción o playlist..."
+                                                value={customUri}
+                                                onChange={(e) => setCustomUri(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === "Enter") handlePlayCustom();
+                                                }}
+                                                className={`flex-1 rounded-xl px-3 text-xs outline-none font-mono h-9 border transition-colors ${
+                                                    isLight
+                                                        ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-slate-800"
+                                                        : "bg-black/40 border-white/10 text-white placeholder:text-zinc-600 focus:border-white/30"
+                                                }`}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handlePlayCustom}
+                                                className={`h-9 px-3.5 rounded-xl text-xs font-bold transition-all active:scale-95 shrink-0 flex items-center gap-1.5 cursor-pointer ${
+                                                    isLight
+                                                        ? "bg-slate-900 hover:bg-black text-white"
+                                                        : "bg-white text-black hover:bg-zinc-200"
+                                                }`}
+                                            >
+                                                <Play size={11} fill="currentColor" />
+                                                <span>Lanzar</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* GUÍA IPHONE & SEGUNDO PLANO */}
+                                    {isIOSDevice() && (
+                                        <div className={`p-3.5 rounded-2xl border space-y-1.5 text-xs ${
+                                            isLight ? "bg-amber-50/80 border-amber-200 text-amber-900" : "bg-amber-400/10 border-amber-400/20 text-amber-300"
+                                        }`}>
+                                            <div className="flex items-center gap-1.5 font-bold">
+                                                <Smartphone size={13} />
+                                                <span>Tip para iPhone (iOS)</span>
+                                            </div>
+                                            <p className={`text-[11px] leading-relaxed ${isLight ? "text-amber-800" : "text-zinc-300"}`}>
+                                                Si Spotify se suspende en segundo plano, abre tu app de Spotify, pon play a cualquier tema y regresa. En la app ve a <em>Configuración &gt; Dispositivos</em> y activa <strong>"Estado de emisión del dispositivo"</strong>.
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* CERRAR SESIÓN */}
+                                    <div className="pt-2 flex items-center justify-between border-t border-slate-200/50">
+                                        <span className={`text-xs font-mono ${isLight ? "text-slate-500" : "text-zinc-500"}`}>
+                                            CUENTA VINCULADA
+                                        </span>
                                         <button
                                             type="button"
-                                            onClick={() => handlePlayPlaylist(pl)}
-                                            disabled={!connected}
-                                            className={`flex-1 h-9 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
-                                                connected
-                                                    ? "bg-white/[0.08] hover:bg-white text-white hover:text-black border border-white/10"
-                                                    : "bg-white/[0.03] text-zinc-600 border border-white/[0.04] cursor-not-allowed"
+                                            onClick={handleDisconnect}
+                                            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 border cursor-pointer ${
+                                                isLight
+                                                    ? "bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200"
+                                                    : "bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/30"
                                             }`}
                                         >
-                                            <Play size={12} fill="currentColor" />
-                                            <span>{playingPlaylistId === pl.id ? "Iniciando..." : "Reproducir"}</span>
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => openSpotifyDeepLink(pl.spotifyUri, pl.webUrl)}
-                                            title="Abrir directamente en la app de Spotify"
-                                            className="w-9 h-9 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] text-zinc-400 hover:text-white border border-white/[0.06] transition-all flex items-center justify-center shrink-0 active:scale-95"
-                                        >
-                                            <ExternalLink size={14} />
+                                            <LogOut size={12} />
+                                            <span>Cerrar sesión de Spotify</span>
                                         </button>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Custom Playlist URI or URL input */}
-                    {connected && (
-                        <div className="p-3.5 bg-white/[0.02] border border-white/[0.06] rounded-2xl space-y-2">
-                            <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wide block">
-                                O REPRODUCIR CUALQUIER PLAYLIST O CANCIÓN ESPECÍFICA
-                            </span>
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    placeholder="Pega enlace de playlist o canción de Spotify..."
-                                    value={customUri}
-                                    onChange={(e) => setCustomUri(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") handlePlayCustom();
-                                    }}
-                                    className="flex-1 bg-black/40 border border-white/[0.08] rounded-xl px-3 text-xs text-white placeholder:text-zinc-600 outline-none focus:border-white/30 font-mono h-9"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={handlePlayCustom}
-                                    className="h-9 px-4 bg-white text-black font-bold text-xs rounded-xl hover:bg-zinc-200 transition-all active:scale-95 shrink-0 flex items-center justify-center gap-1.5"
-                                >
-                                    <Play size={12} fill="currentColor" />
-                                    <span>Lanzar</span>
-                                </button>
-                            </div>
-                        </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     )}
                 </div>
 
-                {/* Footer */}
-                <div className="p-4 border-t border-white/[0.08] bg-black/40 flex items-center justify-between text-xs text-zinc-500">
-                    <span className="text-[10px] font-mono">APEX // SPOTIFY CLIENT</span>
+                {/* 3. FOOTER DISCRETO */}
+                <div className={`p-3 sm:p-4 border-t flex items-center justify-between text-xs shrink-0 transition-colors ${
+                    isLight ? "border-slate-200/80 bg-white/50 text-slate-500" : "border-white/[0.08] bg-black/20 text-zinc-500"
+                }`}>
+                    <span className="text-[10px] font-mono">
+                        APEX // SPOTIFY CLIENT
+                    </span>
                     <button
+                        type="button"
                         onClick={onClose}
-                        className="px-4 py-1.5 bg-white/[0.06] hover:bg-white/[0.12] text-white rounded-xl text-xs font-medium transition-all"
+                        className={`px-4 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                            isLight
+                                ? "bg-slate-100 hover:bg-slate-200 text-slate-800"
+                                : "bg-white/[0.08] hover:bg-white/[0.15] text-white"
+                        }`}
                     >
                         Listo
                     </button>
                 </div>
-            </div>
+            </motion.div>
         </div>
     );
 };
