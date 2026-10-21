@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 
 export type OperatorName = 'Adal' | 'Marco';
 
@@ -36,6 +37,18 @@ export default function OperatorSelector({ isOpen, onSelect }: OperatorSelectorP
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-3xl">
       <div className="w-full max-w-2xl rounded-[32px] border border-white/20 bg-white/[0.07] p-8 shadow-[0_25px_70px_rgba(0,0,0,0.8)] backdrop-blur-2xl">
         <div className="text-center">
+          <div className="flex justify-center mb-3">
+            <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-yellow-400/40 bg-black shadow-xl shadow-yellow-500/20">
+              <Image
+                src="/logo-arco-maestro.png"
+                alt="Arco Maestro"
+                width={56}
+                height={56}
+                className="w-full h-full object-cover"
+                priority
+              />
+            </div>
+          </div>
           <span className="inline-block rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3.5 py-1 text-[11px] font-semibold uppercase tracking-widest text-yellow-300">
             Configuración Única de Dispositivo
           </span>

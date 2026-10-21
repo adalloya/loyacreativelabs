@@ -7,10 +7,12 @@ export const metadata: Metadata = {
   manifest: "/arco-maestro-manifest.json",
   icons: {
     icon: [
-      { url: "/logo-arco-maestro.png", sizes: "192x192", type: "image/png" },
+      { url: "/logo-arco-maestro-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/logo-arco-maestro.png", sizes: "512x512", type: "image/png" },
+      { url: "/arco-maestro-favicon.png", sizes: "64x64", type: "image/png" },
     ],
     apple: [
-      { url: "/logo-arco-maestro.png", sizes: "180x180", type: "image/png" },
+      { url: "/logo-arco-maestro-apple.png", sizes: "180x180", type: "image/png" },
     ],
   },
   appleWebApp: {

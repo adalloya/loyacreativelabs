@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { OperatorName } from '@/lib/arco-maestro/database.types';
 import SteelCalculator from '@/components/arco-maestro/SteelCalculator';
@@ -63,8 +64,15 @@ export default function ArcoMaestroApp() {
               <ArrowLeft size={16} />
             </Link>
 
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-yellow-400/30 bg-gradient-to-br from-yellow-400/20 to-black text-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.25)]">
-              <Flame size={20} />
+            <div className="relative h-10 w-10 rounded-2xl overflow-hidden border border-yellow-400/40 bg-black shadow-[0_0_15px_rgba(234,179,8,0.3)] shrink-0">
+              <Image
+                src="/logo-arco-maestro.png"
+                alt="Arco Maestro"
+                width={40}
+                height={40}
+                className="w-full h-full object-cover"
+                priority
+              />
             </div>
 
             <div>

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { Zap, Wrench, Shield, Sparkles, ArrowRight, Flame, Music, Cpu } from "lucide-react";
 
@@ -14,8 +15,15 @@ export default function ArcoMaestroPromo() {
         {/* Header Badge & Title */}
         <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
           <div className="flex justify-center mb-2">
-            <div className="relative w-16 h-16 rounded-2xl overflow-hidden border border-yellow-400/30 bg-gradient-to-br from-yellow-400/20 to-black flex items-center justify-center shadow-2xl shadow-yellow-950/40">
-              <Flame className="w-8 h-8 text-yellow-400" />
+            <div className="relative w-16 h-16 rounded-2xl overflow-hidden border border-yellow-400/40 bg-black/60 shadow-2xl shadow-yellow-500/20 flex items-center justify-center">
+              <Image
+                src="/logo-arco-maestro.png"
+                alt="Arco Maestro AI Welding Logo"
+                width={64}
+                height={64}
+                className="w-full h-full object-cover"
+                priority
+              />
             </div>
           </div>
 

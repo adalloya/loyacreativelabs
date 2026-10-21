@@ -36,6 +36,21 @@ export function Footer() {
                             </div>
                             <span className="text-red-400 font-bold group-hover:text-red-300">APEX</span>
                         </Link>
+                        <Link 
+                            href="/arco-maestro" 
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 hover:border-yellow-500/40 text-white font-mono text-xs transition-all group"
+                        >
+                            <div className="relative w-4 h-4 rounded overflow-hidden">
+                                <Image
+                                    src="/logo-arco-maestro.png"
+                                    alt="Arco Maestro"
+                                    width={16}
+                                    height={16}
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+                            <span className="text-yellow-400 font-bold group-hover:text-yellow-300">ARCO MAESTRO</span>
+                        </Link>
                         <Link href="#" className="hover:text-white transition-colors">Instagram</Link>
                         <Link href="#" className="hover:text-white transition-colors">LinkedIn</Link>
                         <Link href="#" className="hover:text-white transition-colors">Twitter</Link>
