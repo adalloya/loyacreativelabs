@@ -99,7 +99,9 @@ export const SpotifyPlayerWidget: React.FC<SpotifyPlayerWidgetProps> = ({
     };
 
     return (
-        <div className={`fixed bottom-0 left-0 right-0 z-30 bg-[#000000]/95 backdrop-blur-2xl border-t transition-all ${
+        <div
+            id="apex-spotify-player"
+            className={`fixed bottom-0 left-0 right-0 z-30 bg-[#000000]/95 backdrop-blur-2xl border-t transition-all ${
             isFxActive
                 ? "shadow-2xl"
                 : "border-white/[0.12] shadow-2xl"

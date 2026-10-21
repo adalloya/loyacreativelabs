@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { VisualizerMode } from '@/services/spotifyTelemetry';
 
@@ -56,6 +56,23 @@ export function SpotifyThreeCanvas({
   const restModeActiveRef = useRef(restModeActive);
   const burstTriggerRef = useRef(burstTrigger);
   const accentRgbRef = useRef(accentRgb);
+
+  const [isLightMode, setIsLightMode] = useState<boolean>(() => {
+    if (typeof document !== 'undefined') {
+      return document.documentElement.classList.contains('light');
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    const handleTheme = () => {
+      if (typeof document !== 'undefined') {
+        setIsLightMode(document.documentElement.classList.contains('light'));
+      }
+    };
+    window.addEventListener('apex_theme_change', handleTheme);
+    return () => window.removeEventListener('apex_theme_change', handleTheme);
+  }, []);
 
   albumArtRef.current = albumArt;
   isPlayingRef.current = isPlaying;
@@ -130,16 +147,16 @@ export function SpotifyThreeCanvas({
       color: primaryColor,
       wireframe: true,
       transparent: true,
-      opacity: mode === 'AURA' ? 0.45 : mode === 'ORB' ? 0.38 : mode === 'APEX' ? 0.65 : 0.48,
-      blending: mode === 'AURA' || mode === 'TUNNEL' || mode === 'VORTEX' || mode === 'APEX' ? THREE.AdditiveBlending : THREE.NormalBlending,
+      opacity: isLightMode ? 0.7 : (mode === 'AURA' ? 0.45 : mode === 'ORB' ? 0.38 : mode === 'APEX' ? 0.65 : 0.48),
+      blending: isLightMode ? THREE.NormalBlending : (mode === 'AURA' || mode === 'TUNNEL' || mode === 'VORTEX' || mode === 'APEX' ? THREE.AdditiveBlending : THREE.NormalBlending),
     });
 
     const pointsMat = new THREE.PointsMaterial({
-      color: 0xffffff,
+      color: isLightMode ? primaryColor : 0xffffff,
       size: mode === 'AURA' ? 0.038 : mode === 'ORB' ? 0.035 : mode === 'APEX' ? 0.034 : 0.03,
       transparent: true,
-      opacity: 0.85,
-      blending: THREE.AdditiveBlending,
+      opacity: isLightMode ? 0.8 : 0.85,
+      blending: isLightMode ? THREE.NormalBlending : THREE.AdditiveBlending,
     });
 
     // Variables de geometrías según el modo
@@ -937,7 +954,7 @@ export function SpotifyThreeCanvas({
       }
       container.innerHTML = '';
     };
-  }, [mode, albumArt]);
+  }, [mode, albumArt, isLightMode]);
 
   // Si burstTrigger cambia por prop, disparar ráfaga
   useEffect(() => {
@@ -1000,8 +1017,12 @@ export function SpotifyThreeCanvas({
               className="absolute inset-0 w-full h-full object-cover opacity-45 mix-blend-screen pointer-events-none"
             />
           )}
-          {/* Viñeta sutil cinemática con sombra oscura en bordes */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/70 pointer-events-none" />
+          {/* Viñeta sutil cinemática con sombra oscura en bordes adaptable */}
+          <div className={`absolute inset-0 pointer-events-none transition-opacity duration-300 ${
+            isLightMode
+              ? "bg-gradient-to-t from-slate-200/40 via-transparent to-transparent"
+              : "bg-gradient-to-t from-black via-transparent to-black/70"
+          }`} />
         </div>
       )}
 
