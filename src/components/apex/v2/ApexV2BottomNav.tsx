@@ -1,8 +1,7 @@
 // src/components/apex/v2/ApexV2BottomNav.tsx
 "use client";
 
-import React from "react";
-import Image from "next/image";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
     Dumbbell,
@@ -40,6 +39,12 @@ export const ApexV2BottomNav: React.FC<ApexV2BottomNavProps> = ({
         isPlaying,
         togglePlay
     } = useSpotifyPlayback();
+
+    const [imageError, setImageError] = useState(false);
+
+    useEffect(() => {
+        setImageError(false);
+    }, [track?.albumArt]);
 
     const navItems: { id: ApexV2Tab; label: string; icon: React.ElementType }[] = [
         { id: "workout", label: "Entrenar", icon: Dumbbell },
@@ -83,15 +88,15 @@ export const ApexV2BottomNav: React.FC<ApexV2BottomNavProps> = ({
                     <button
                         type="button"
                         onClick={onOpenSpotifyModal}
-                        className="relative w-8 h-8 rounded-full overflow-hidden bg-zinc-900 border border-white/15 flex items-center justify-center shrink-0 group active:scale-95 transition-transform"
+                        className="relative w-8 h-8 rounded-full overflow-hidden bg-zinc-900 border border-white/15 flex items-center justify-center shrink-0 group active:scale-95 transition-transform cursor-pointer"
                         title={track ? `${track.name} - ${track.artist}` : "Abrir Spotify"}
                     >
-                        {track?.albumArt ? (
-                            <Image
+                        {track?.albumArt && !imageError ? (
+                            <img
+                                key={track.albumArt}
                                 src={track.albumArt}
-                                alt={track.name}
-                                width={32}
-                                height={32}
+                                alt=""
+                                onError={() => setImageError(true)}
                                 className={`w-full h-full object-cover transition-opacity ${isPlaying ? "opacity-100" : "opacity-80"}`}
                             />
                         ) : (
