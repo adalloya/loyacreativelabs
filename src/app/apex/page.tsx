@@ -677,6 +677,11 @@ export default function ApexDashboard() {
         }
     };
 
+    // Eliminar ejercicio de la rutina activa del día
+    const handleRemoveExercise = (index: number) => {
+        setActiveExercises(prev => prev.filter((_, i) => i !== index));
+    };
+
     // Gemini Off-Plan State
     const [offPlanText, setOffPlanText] = useState("");
     const [offPlanLoading, setOffPlanLoading] = useState(false);
@@ -863,6 +868,7 @@ export default function ApexDashboard() {
                     onAddExercise={handleAddExerciseToSession}
                     todayCardio={todayCardio}
                     onUpdateCardio={handleUpdateCardio}
+                    onRemoveExercise={handleRemoveExercise}
                 />
 
                 {/* Modales y Drawers Compartidos */}

@@ -18,7 +18,8 @@ import {
     ChevronUp,
     Activity,
     Eye,
-    EyeOff
+    EyeOff,
+    Trash2
 } from "lucide-react";
 import { ExerciseItem, formatPlatesSummary } from "@/lib/hypertrophy-engine";
 import { ExerciseMotionViewer } from "@/components/apex/ExerciseMotionViewer";
@@ -50,6 +51,7 @@ interface ApexV2ExerciseCardProps {
     isPlateLoaded: boolean;
     notes?: string;
     onSaveNotes?: (notes: string) => void;
+    onRemoveExercise?: () => void;
     isLight?: boolean;
 }
 
@@ -73,9 +75,16 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
     isPlateLoaded,
     notes = "",
     onSaveNotes,
+    onRemoveExercise,
     isLight: isLightProp
 }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [confirmRemove, setConfirmRemove] = useState(false);
+
+    // Reiniciar la confirmación de borrado cada vez que se cierra el menú
+    useEffect(() => {
+        if (!isMenuOpen) setConfirmRemove(false);
+    }, [isMenuOpen]);
     const [localNotes, setLocalNotes] = useState(notes);
     const [showIndividualSets, setShowIndividualSets] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
@@ -698,6 +707,59 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                                     </div>
                                     <span className={`text-xs font-sans ${isLight ? "text-slate-500" : "text-zinc-400"}`}>Ver →</span>
                                 </button>
+                            )}
+
+                            {/* Eliminar ejercicio de la rutina (con confirmación) */}
+                            {onRemoveExercise && (
+                                confirmRemove ? (
+                                    <div className={`col-span-2 p-3 rounded-2xl border flex items-center justify-between gap-2 ${
+                                        isLight ? "bg-rose-50 border-rose-300" : "bg-rose-500/10 border-rose-500/40"
+                                    }`}>
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <Trash2 className="w-4 h-4 shrink-0 text-rose-500" />
+                                            <div className={`font-sans font-semibold text-xs truncate ${isLight ? "text-rose-900" : "text-rose-200"}`}>
+                                                ¿Eliminar de la rutina?
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 shrink-0 font-sans">
+                                            <button
+                                                type="button"
+                                                onClick={() => setConfirmRemove(false)}
+                                                className={`px-3 py-1.5 rounded-xl text-xs font-semibold border cursor-pointer active:scale-95 transition-all ${
+                                                    isLight ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-100" : "bg-white/10 text-zinc-200 border-white/15 hover:bg-white/20"
+                                                }`}
+                                            >
+                                                Cancelar
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setIsMenuOpen(false);
+                                                    onRemoveExercise();
+                                                }}
+                                                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white border border-rose-600 cursor-pointer active:scale-95 transition-all"
+                                            >
+                                                Eliminar
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => setConfirmRemove(true)}
+                                        className={`col-span-2 p-3 rounded-2xl border flex items-center gap-2.5 transition-colors cursor-pointer ${
+                                            isLight
+                                                ? "bg-white hover:bg-rose-50 border-rose-200 text-rose-700"
+                                                : "bg-white/[0.03] hover:bg-rose-500/10 border-rose-500/30 text-rose-300"
+                                        }`}
+                                    >
+                                        <Trash2 className="w-4 h-4 shrink-0 text-rose-500" />
+                                        <div className="text-left">
+                                            <div className="font-semibold">Eliminar de la rutina</div>
+                                            <div className={`text-[10px] font-sans ${isLight ? "text-rose-500" : "text-rose-300/70"}`}>Quitar este ejercicio de la sesión de hoy</div>
+                                        </div>
+                                    </button>
+                                )
                             )}
                         </div>
 

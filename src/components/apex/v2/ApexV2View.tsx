@@ -118,6 +118,7 @@ interface ApexV2ViewProps {
     onAddExercise?: (ex: ExerciseItem) => void;
     todayCardio?: DailyCardioEntry;
     onUpdateCardio?: (typeOrUpdates: CardioType | (Partial<DailyCardioEntry> & { type?: CardioType }), minutes?: number, completed?: boolean) => void;
+    onRemoveExercise?: (index: number) => void;
 }
 
 export const ApexV2View: React.FC<ApexV2ViewProps> = ({
@@ -185,7 +186,8 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
     isPlateLoadedExercise,
     onAddExercise,
     todayCardio,
-    onUpdateCardio
+    onUpdateCardio,
+    onRemoveExercise
 }) => {
     // Current V2 active navigation destination (Entrenar, Nutrición, Anatomía, Ajustes)
     const [activeTab, setActiveTab] = useState<ApexV2Tab>("workout");
@@ -874,6 +876,15 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                                         isPlateLoaded={isPlateLoadedExercise(ex.equipment, ex.name)}
                                                         notes={exerciseNotes[ex.id] || ""}
                                                         onSaveNotes={(n) => setExerciseNotes((prev) => ({ ...prev, [ex.id]: n }))}
+                                                        onRemoveExercise={onRemoveExercise ? () => {
+                                                            if (tempoActive[ex.id]) {
+                                                                setTempoActive((prev) => ({ ...prev, [ex.id]: false }));
+                                                                stopTempoLoop(ex.id);
+                                                            }
+                                                            onRemoveExercise(exIdx);
+                                                            const remaining = activeExercises.length - 1;
+                                                            setSelectedExerciseIndex(remaining <= 0 ? -1 : Math.min(exIdx, remaining - 1));
+                                                        } : undefined}
                                                         isLight={isLight}
                                                     />
                                                 </motion.div>
