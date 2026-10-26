@@ -61,9 +61,9 @@ export const ApexV2WorkoutDashboard: React.FC<ApexV2WorkoutDashboardProps> = ({
     isLight,
     athleteName
 }) => {
-    // Estado de contracción: Por defecto contraído si la rutina está completada
-    const [isCollapsed, setIsCollapsed] = useState<boolean | null>(null);
-    const activeCollapsed = isCollapsed !== null ? isCollapsed : isFinished;
+    // Estado de contracción: Por defecto contraído siempre
+    const [isCollapsed, setIsCollapsed] = useState<boolean>(true);
+    const activeCollapsed = isCollapsed;
     // Parámetros para el círculo de progreso SVG
     const radius = 44;
     const strokeWidth = 8.5;
@@ -83,34 +83,79 @@ export const ApexV2WorkoutDashboard: React.FC<ApexV2WorkoutDashboardProps> = ({
         .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu, "")
         .trim();
 
-    // Si está contraído (cuando se completó la rutina o el usuario lo contrajo manualmente):
+    // Si está contraído (por defecto o cuando el usuario lo contrajo manualmente):
     if (activeCollapsed) {
         return (
             <div className={`relative rounded-3xl p-4 sm:p-5 backdrop-blur-2xl border transition-all overflow-hidden select-none shadow-xl ${
                 isLight
-                    ? "bg-white/95 border-emerald-200/90 shadow-slate-900/[0.04] text-slate-900"
-                    : "bg-zinc-950/85 border-emerald-500/25 shadow-2xl text-white"
+                    ? isFinished
+                        ? "bg-white/95 border-emerald-300 shadow-slate-900/[0.04] text-slate-900"
+                        : "bg-white/95 border-slate-200/90 shadow-slate-900/[0.04] text-slate-900"
+                    : isFinished
+                        ? "bg-zinc-950/85 border-emerald-500/25 shadow-2xl text-white"
+                        : "bg-zinc-950/85 border-white/10 shadow-2xl text-white"
             }`}>
-                {/* Resplandor ambiental de éxito */}
-                <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full pointer-events-none blur-3xl opacity-20 bg-emerald-500" />
+                {/* Resplandor ambiental de éxito o progreso */}
+                <div className={`absolute -top-16 -right-16 w-48 h-48 rounded-full pointer-events-none blur-3xl opacity-20 ${
+                    isFinished ? "bg-emerald-500" : percent > 0 ? "bg-teal-500" : "bg-blue-500"
+                }`} />
 
-                {/* Cabecera del Resumen: Mensaje de felicitaciones con nombre y botón de expandir */}
+                {/* Cabecera del Resumen: Mensaje de felicitaciones (solo si terminó) o estado actual de la rutina */}
                 <div className="flex items-center justify-between gap-3 relative z-10">
                     <div className="flex items-center gap-3 min-w-0">
-                        {/* Indicador circular de éxito */}
-                        <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0 text-emerald-500 shadow-sm">
-                            <CheckCircle2 className="w-6 h-6 stroke-[2.5]" />
-                        </div>
+                        {/* Indicador visual a la izquierda: Check si terminó, círculo de progreso si está en curso */}
+                        {isFinished ? (
+                            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0 text-emerald-500 shadow-sm">
+                                <CheckCircle2 className="w-6 h-6 stroke-[2.5]" />
+                            </div>
+                        ) : (
+                            <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shrink-0 border relative ${
+                                isLight
+                                    ? "bg-slate-100 text-slate-800 border-slate-200"
+                                    : "bg-white/[0.05] text-white border-white/10"
+                            }`}>
+                                <svg className="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
+                                    <circle
+                                        cx="18"
+                                        cy="18"
+                                        r="13.5"
+                                        className={isLight ? "text-slate-200" : "text-white/10"}
+                                        strokeWidth="3.5"
+                                        stroke="currentColor"
+                                        fill="none"
+                                    />
+                                    <circle
+                                        cx="18"
+                                        cy="18"
+                                        r="13.5"
+                                        className={percent > 0 ? "text-emerald-500" : "text-zinc-600"}
+                                        strokeWidth="3.5"
+                                        strokeDasharray={2 * Math.PI * 13.5}
+                                        strokeDashoffset={2 * Math.PI * 13.5 - (Math.min(100, Math.max(0, percent)) / 100) * (2 * Math.PI * 13.5)}
+                                        strokeLinecap="round"
+                                        stroke="currentColor"
+                                        fill="none"
+                                    />
+                                </svg>
+                                <span className="absolute text-[10px] font-mono font-bold">
+                                    {percent}%
+                                </span>
+                            </div>
+                        )}
 
                         <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                                 <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border ${
-                                    isLight
-                                        ? "bg-emerald-50 text-emerald-700 border-emerald-300"
-                                        : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                    isFinished
+                                        ? (isLight ? "bg-emerald-50 text-emerald-700 border-emerald-300" : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30")
+                                        : percent > 0
+                                        ? (isLight ? "bg-teal-50 text-teal-700 border-teal-300" : "bg-teal-500/15 text-teal-400 border-teal-500/30")
+                                        : (isLight ? "bg-slate-100 text-slate-600 border-slate-200" : "bg-white/[0.06] text-zinc-400 border-white/10")
                                 }`}>
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block mr-1" />
-                                    {isFinished ? "RUTINA COMPLETADA" : `${percent}% AVANCE`}
+                                    <span className={`w-1.5 h-1.5 rounded-full inline-block mr-1 ${
+                                        isFinished ? "bg-emerald-500 animate-pulse" : percent > 0 ? "bg-teal-400 animate-pulse" : "bg-zinc-500"
+                                    }`} />
+                                    {isFinished ? "RUTINA COMPLETADA" : percent > 0 ? `${percent}% AVANCE` : "POR INICIAR"}
                                 </span>
                                 {isFinished && (
                                     <span className={`text-[11px] font-mono font-bold ${
@@ -121,12 +166,21 @@ export const ApexV2WorkoutDashboard: React.FC<ApexV2WorkoutDashboardProps> = ({
                                 )}
                             </div>
 
-                            <h3 className={`text-base sm:text-lg font-bold tracking-tight mt-0.5 truncate flex items-center gap-1.5 ${
-                                isLight ? "text-slate-950" : "text-white"
-                            }`}>
-                                <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" />
-                                <span>¡Felicidades{athleteName ? `, ${athleteName}` : ""}!</span>
-                            </h3>
+                            {/* El mensaje de felicidades solo aparece cuando se completan todos los ejercicios */}
+                            {isFinished ? (
+                                <h3 className={`text-base sm:text-lg font-bold tracking-tight mt-0.5 truncate flex items-center gap-1.5 ${
+                                    isLight ? "text-slate-950" : "text-white"
+                                }`}>
+                                    <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" />
+                                    <span>¡Felicidades{athleteName ? `, ${athleteName}` : ""}!</span>
+                                </h3>
+                            ) : (
+                                <h3 className={`text-base sm:text-lg font-bold tracking-tight mt-0.5 truncate ${
+                                    isLight ? "text-slate-950" : "text-white"
+                                }`}>
+                                    {cleanTitle || "Entrenamiento del Día"}
+                                </h3>
+                            )}
 
                             <p className={`text-[11px] truncate ${
                                 isLight ? "text-slate-600" : "text-zinc-400"

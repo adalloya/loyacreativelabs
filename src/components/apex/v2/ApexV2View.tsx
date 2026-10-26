@@ -1182,7 +1182,7 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                             )}
                                         </div>
 
-                                        {routineStats.pending.length === 0 ? (
+                                        {routineStats.isFinished ? (
                                             <div className={`p-6 text-center rounded-3xl border transition-all ${
                                                 isLight
                                                     ? "bg-emerald-50/60 border-emerald-200 text-emerald-950"
@@ -1190,7 +1190,7 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                             }`}>
                                                 <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-500" />
                                                 <p className="text-xs font-bold">
-                                                    ¡Felicidades{profile?.firstName ? `, ${profile.firstName}` : profile?.name ? `, ${profile.name}` : ""}! Has completado todos los ejercicios pendientes.
+                                                    ¡Felicidades{profile?.firstName ? `, ${profile.firstName}` : profile?.name ? `, ${profile.name}` : ""}! Has completado todos los ejercicios de tu rutina.
                                                 </p>
                                                 <p className={`text-[11px] mt-0.5 ${isLight ? "text-emerald-800/80" : "text-emerald-400/80"}`}>
                                                     Puedes revisar o editar tus series en la sección de completados abajo.
