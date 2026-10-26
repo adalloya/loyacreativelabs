@@ -724,8 +724,8 @@ export function AppHeaderMenu({
             )}
 
             {/* Selector de Versión UX (v1 Estable vs v2 Nueva) */}
-            <div className={`mb-3 pt-3 border-t ${isLight ? "border-slate-200" : "border-white/[0.08]"}`}>
-              {activeUxVersion === 'stable' ? (
+            {activeUxVersion === 'stable' && (
+              <div className={`mb-3 pt-3 border-t ${isLight ? "border-slate-200" : "border-white/[0.08]"}`}>
                 <button
                   type="button"
                   onClick={() => {
@@ -748,35 +748,8 @@ export function AppHeaderMenu({
                     BETA
                   </span>
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const nextV: UxVersion = 'stable';
-                    setInternalUxVersion(nextV);
-                    setUxVersion(nextV);
-                    onUxVersionChange?.(nextV);
-                    setIsOpen(false);
-                  }}
-                  className={`w-full font-medium text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-between active:scale-95 group shadow-sm border cursor-pointer ${
-                    isLight
-                      ? "bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-950"
-                      : "bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/40 hover:border-emerald-400 text-white"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <RotateCcw className="w-4 h-4 text-emerald-500 group-hover:-rotate-45 transition-transform" />
-                    <div className="text-left">
-                      <div className={`font-semibold ${isLight ? "text-emerald-950" : "text-white"}`}>Regresar a Versión Estable (v1)</div>
-                      <div className={`text-[10px] ${isLight ? "text-emerald-700" : "text-emerald-200/80"}`}>Versión probada por usuarios</div>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-emerald-500/30 text-emerald-700 border border-emerald-400/40">
-                    ESTABLE
-                  </span>
-                </button>
-              )}
-            </div>
+              </div>
+            )}
 
             <div className={`mt-2 pt-2 border-t flex items-center justify-between text-[10px] font-mono ${
               isLight ? "border-slate-200 text-slate-500" : "border-white/[0.06] text-zinc-500"

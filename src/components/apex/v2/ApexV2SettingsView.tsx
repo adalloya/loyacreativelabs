@@ -602,22 +602,6 @@ export const ApexV2SettingsView: React.FC<ApexV2SettingsViewProps> = ({
                     </button>
                 )}
 
-                {/* Botón Chiquito: Ver Primera Versión (v1 Clásica) */}
-                <div className="pt-2 flex justify-center">
-                    <button
-                        type="button"
-                        onClick={onSwitchToStable}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono border transition-all cursor-pointer opacity-70 hover:opacity-100 active:scale-95 ${
-                            isLight
-                                ? "bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-600 hover:text-slate-900"
-                                : "bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-zinc-400 hover:text-zinc-200"
-                        }`}
-                        title="Ver la interfaz de la primera versión (v1 clásica)"
-                    >
-                        <RotateCcw className="w-3 h-3 text-zinc-400" />
-                        <span>Ver primera versión (v1 clásica)</span>
-                    </button>
-                </div>
             </div>
 
             {/* =========================================================================
