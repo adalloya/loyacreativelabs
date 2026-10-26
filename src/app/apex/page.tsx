@@ -451,12 +451,40 @@ export default function ApexDashboard() {
         }
     }, [currentRoutine]);
 
+    // Persiste los cambios de ejercicios de la sesión activa en el día correspondiente de la rutina semanal
+    const persistDayExercises = (newExercises: ExerciseItem[]) => {
+        setActiveExercises(newExercises);
+
+        const baseProgram: RoutineDay[] = (customWeeklyRoutine && customWeeklyRoutine.length > 0)
+            ? customWeeklyRoutine
+            : weeklyProgram;
+
+        if (!baseProgram || baseProgram.length === 0) return;
+
+        const targetIndex = (currentDayIndex >= 0 && currentDayIndex < baseProgram.length)
+            ? currentDayIndex
+            : 0;
+
+        const updatedProgram = baseProgram.map((day, idx) => {
+            if (idx === targetIndex) {
+                return {
+                    ...day,
+                    exercises: newExercises
+                };
+            }
+            return day;
+        });
+
+        setCustomWeeklyRoutine(updatedProgram);
+    };
+
     const handleAddExerciseToSession = (exercise: ExerciseItem) => {
         const translated: ExerciseItem = {
             ...exercise,
             name: translateExerciseNameToSpanish(exercise.name)
         };
-        setActiveExercises(prev => [...prev, translated]);
+        const nextExercises = [...activeExercises, translated];
+        persistDayExercises(nextExercises);
     };
 
     // Completed sets tracker: { [exerciseId_setIndex]: boolean }
@@ -650,10 +678,9 @@ export default function ApexDashboard() {
             ...ex,
             name: translateExerciseNameToSpanish(ex.name)
         };
-        setActiveExercises(prev => {
-            if (prev.some(e => e.id === translated.id)) return prev;
-            return [...prev, translated];
-        });
+        if (activeExercises.some(e => e.id === translated.id)) return;
+        const nextExercises = [...activeExercises, translated];
+        persistDayExercises(nextExercises);
     };
 
     // Exercise Random Swap (Acción Instantánea)
@@ -663,9 +690,13 @@ export default function ApexDashboard() {
         const swaps = findBiomechanicalSwaps(currentEx.id);
         if (swaps.length > 0) {
             const nextEx = swaps[Math.floor(Math.random() * swaps.length)];
+            const translated: ExerciseItem = {
+                ...nextEx,
+                name: translateExerciseNameToSpanish(nextEx.name)
+            };
             const updated = [...activeExercises];
-            updated[index] = nextEx;
-            setActiveExercises(updated);
+            updated[index] = translated;
+            persistDayExercises(updated);
         }
     };
 
@@ -674,16 +705,21 @@ export default function ApexDashboard() {
 
     const handleSelectSwapReplacement = (replacement: ExerciseItem) => {
         if (swapTargetIndex !== null && swapTargetIndex >= 0 && swapTargetIndex < activeExercises.length) {
+            const translated: ExerciseItem = {
+                ...replacement,
+                name: translateExerciseNameToSpanish(replacement.name)
+            };
             const updated = [...activeExercises];
-            updated[swapTargetIndex] = replacement;
-            setActiveExercises(updated);
+            updated[swapTargetIndex] = translated;
+            persistDayExercises(updated);
             setSwapTargetIndex(null);
         }
     };
 
     // Eliminar ejercicio de la rutina activa del día
     const handleRemoveExercise = (index: number) => {
-        setActiveExercises(prev => prev.filter((_, i) => i !== index));
+        const nextExercises = activeExercises.filter((_, i) => i !== index);
+        persistDayExercises(nextExercises);
     };
 
     // Gemini Off-Plan State
