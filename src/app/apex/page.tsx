@@ -36,6 +36,7 @@ import {
     Shuffle,
     RefreshCw,
     Camera,
+    Loader2,
     X
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -803,7 +804,63 @@ export default function ApexDashboard() {
         return Array.from(new Set(activeExercises.map(e => e.primary_muscle)));
     }, [activeExercises]);
 
-    // Si no hay perfil configurado, mostramos obligatoriamente el formulario y ocultamos todo lo demás
+    // Control de hidratación para evitar el parpadeo del formulario inicial (onboarding)
+    const [isClientReady, setIsClientReady] = useState(false);
+
+    useEffect(() => {
+        setIsClientReady(true);
+    }, []);
+
+    // Verificación directa en localStorage para no mostrar el formulario si el usuario ya tiene perfil configurado
+    const isProfileConfiguredInStorage = useMemo(() => {
+        if (typeof window === "undefined") return null;
+        try {
+            const raw = window.localStorage.getItem("apex_user_profile");
+            if (!raw) return false;
+            const parsed = JSON.parse(raw);
+            return Boolean(parsed && parsed.isConfigured);
+        } catch {
+            return false;
+        }
+    }, [isClientReady, profile]);
+
+    // Pantalla de carga mientras se sincroniza localStorage en el cliente
+    const isProfileLoading = !isClientReady || (isProfileConfiguredInStorage === true && (!profile || !profile.isConfigured));
+
+    if (isProfileLoading) {
+        return (
+            <div className="min-h-screen bg-[#08080A] text-white flex flex-col items-center justify-center p-6 select-none">
+                <div className="w-full max-w-sm flex flex-col items-center text-center space-y-6">
+                    {/* Logo con pulso */}
+                    <div className="relative w-16 h-16 rounded-2xl overflow-hidden border border-white/[0.12] bg-[#121214] shadow-2xl flex items-center justify-center">
+                        <Image
+                            src="/apex-logo.png"
+                            alt="APEX"
+                            width={64}
+                            height={64}
+                            className="w-full h-full object-cover"
+                            priority
+                        />
+                        <div className="absolute inset-0 border border-emerald-500/40 rounded-2xl animate-ping opacity-25" />
+                    </div>
+
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-center gap-2">
+                            <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+                            <h2 className="text-sm sm:text-base font-bold tracking-tight text-white">
+                                Cargando tus datos...
+                            </h2>
+                        </div>
+                        <p className="text-xs text-zinc-400 font-mono">
+                            Sincronizando rutina y telemetría de entrenamiento
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Si el usuario no tiene perfil configurado en localStorage, mostramos el formulario
     if (!profile || !profile.isConfigured) {
         return (
             <OnboardingFlow
