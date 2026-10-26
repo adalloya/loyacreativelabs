@@ -2163,10 +2163,10 @@ export default function ApexDashboard() {
                                         <Sparkles size={14} />
                                         <span>
                                             {dietLoading
-                                                ? "GENERANDO CON GEMINI..."
+                                                ? "GENERANDO CON IA..."
                                                 : dietPlan
-                                                ? "REGENERAR CON GEMINI AI"
-                                                : "GENERAR CON GEMINI AI"}
+                                                ? "REGENERAR CON IA"
+                                                : "GENERAR CON IA"}
                                         </span>
                                     </button>
                                 </div>
@@ -2217,7 +2217,7 @@ export default function ApexDashboard() {
                                 </div>
                             ) : (
                                 <div className="text-center py-8 border border-dashed border-white/[0.08] rounded-2xl text-xs text-zinc-500 font-normal">
-                                    Presiona "Generar con Gemini AI" para estructurar tus 7 días de alimentación exacta calculada a tus macros. Una vez generado, quedará guardado automáticamente en tu dispositivo.
+                                    Presiona "Generar con IA" para estructurar tus 7 días de alimentación exacta calculada a tus macros. Una vez generado, quedará guardado automáticamente en tu dispositivo.
                                 </div>
                             )}
                         </div>
@@ -2669,7 +2669,7 @@ export default function ApexDashboard() {
                         </div>
 
                         <p className="text-xs text-zinc-400 mb-3 leading-relaxed">
-                            Describe lo que comiste (ej. "2 rebanadas de pizza y un refresco"). Gemini reajustará tu cena y los próximos 2 días para proteger tu déficit.
+                            Describe lo que comiste (ej. "2 rebanadas de pizza y un refresco"). La IA reajustará tu cena y los próximos 2 días para proteger tu déficit.
                         </p>
 
                         <textarea
@@ -2684,7 +2684,7 @@ export default function ApexDashboard() {
                             disabled={offPlanLoading || !offPlanText.trim()}
                             className="w-full py-3 bg-white hover:bg-zinc-200 text-black font-semibold text-xs rounded-full transition-all disabled:opacity-50"
                         >
-                            {offPlanLoading ? "RECALCULANDO CON GEMINI..." : "RECALCULAR CENA Y DÉFICIT"}
+                            {offPlanLoading ? "RECALCULANDO CON IA..." : "RECALCULAR CENA Y DÉFICIT"}
                         </button>
 
                         {offPlanResult && (

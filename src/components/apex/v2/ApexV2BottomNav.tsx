@@ -15,13 +15,16 @@ import {
     X,
     Mic,
     CheckCircle2,
-    Loader2,
-    Sparkles
+    Loader2
 } from "lucide-react";
 import { useSpotifyPlayback } from "@/hooks/useSpotifyPlayback";
 import { getInitialTheme, Theme } from "@/lib/theme";
 
 export type ApexV2Tab = "workout" | "nutrition" | "anatomy" | "settings";
+
+// Temporal: ocultar el texto reconocido en vivo mientras se dicta (no se renderiza correctamente).
+// Cambiar a `true` para volver a mostrar la transcripción en tiempo real.
+const SHOW_LIVE_TRANSCRIPT = false;
 
 interface ApexV2BottomNavProps {
     activeTab: ApexV2Tab;
@@ -183,14 +186,14 @@ export const ApexV2BottomNav: React.FC<ApexV2BottomNavProps> = ({
                             </div>
                         </div>
 
-                        {/* Área de Transcripción Ampliada en Tiempo Real */}
+                        {/* Área de Transcripción: el texto reconocido se oculta temporalmente (SHOW_LIVE_TRANSCRIPT = false) */}
                         <div className="my-3 min-h-[64px] max-h-[140px] overflow-y-auto px-3.5 py-3 rounded-2xl bg-black/[0.04] dark:bg-white/[0.05] border border-black/10 dark:border-white/10 flex items-center">
                             {(() => {
                                 const cleanLive = voiceLiveTranscript?.trim() || "";
                                 const cleanInterim = voiceInterimTranscript?.trim() || "";
                                 const showInterim = cleanInterim && !cleanLive.toLowerCase().endsWith(cleanInterim.toLowerCase());
 
-                                if (cleanLive || cleanInterim) {
+                                if (SHOW_LIVE_TRANSCRIPT && (cleanLive || cleanInterim)) {
                                     return (
                                         <p className={`text-base sm:text-lg font-semibold leading-relaxed tracking-tight ${
                                             isLight ? "text-slate-900" : "text-white"
@@ -207,10 +210,10 @@ export const ApexV2BottomNav: React.FC<ApexV2BottomNavProps> = ({
                                 }
 
                                 return (
-                                    <p className={`text-sm sm:text-base font-medium italic ${
-                                        isLight ? "text-slate-400" : "text-zinc-500"
+                                    <p className={`text-sm sm:text-base font-medium ${
+                                        isLight ? "text-slate-500" : "text-zinc-400"
                                     }`}>
-                                        Habla con naturalidad... dicta tu ejercicio, repeticiones, comida o pide música en Spotify.
+                                        Habla con naturalidad: dicta tu ejercicio, repeticiones, comida o pide música en Spotify.
                                     </p>
                                 );
                             })()}
@@ -218,8 +221,8 @@ export const ApexV2BottomNav: React.FC<ApexV2BottomNavProps> = ({
 
                         {/* Pie de Ayuda y Confirmación */}
                         <div className="flex items-center justify-between text-[11px] font-medium pt-0.5">
-                            <span className="flex items-center gap-1.5 text-rose-500 font-semibold">
-                                <span>🗣️</span> Puedes corregir o repetir en el mismo audio
+                            <span className="text-rose-500 font-semibold">
+                                Puedes corregir o repetir en el mismo audio
                             </span>
                             <span className={isLight ? "text-slate-600 font-medium" : "text-zinc-400 font-medium"}>
                                 Suelta el botón para enviar
@@ -385,7 +388,7 @@ export const ApexV2BottomNav: React.FC<ApexV2BottomNavProps> = ({
                                 ) : isVoiceListening ? (
                                     <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping shrink-0" />
                                 ) : (
-                                    <Sparkles className="w-3 h-3 text-[#FF2A2A] shrink-0" />
+                                    <Mic className="w-3 h-3 text-[#FF2A2A] shrink-0" />
                                 )}
                                 <span className="max-w-[210px] sm:max-w-[320px] truncate">
                                     {contextualTooltipText}

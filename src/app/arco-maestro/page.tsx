@@ -4,22 +4,21 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { OperatorName } from '@/lib/arco-maestro/database.types';
-import SteelCalculator from '@/components/arco-maestro/SteelCalculator';
+import Arco3DStudio from '@/components/arco-maestro/Arco3DStudio';
+import CutListOptimizerView from '@/components/arco-maestro/CutListOptimizerView';
+import AreaPriceManager from '@/components/arco-maestro/AreaPriceManager';
 import AcademyView from '@/components/arco-maestro/AcademyView';
 import FinanceTracker from '@/components/arco-maestro/FinanceTracker';
-import ARVisualizerStudio from '@/components/arco-maestro/ARVisualizerStudio';
-import OpenSourceDiagramsLibrary from '@/components/arco-maestro/OpenSourceDiagramsLibrary';
 import SpotifyWeldingPlayer from '@/components/arco-maestro/SpotifyWeldingPlayer';
 import OperatorSelector from '@/components/arco-maestro/OperatorSelector';
 import {
-  Flame,
-  ArrowLeft,
-  Sliders,
-  BookOpen,
+  Box,
+  Scissors,
   DollarSign,
-  FileCode,
+  BookOpen,
+  ArrowLeft,
   Users,
-  Eye,
+  Wallet,
 } from 'lucide-react';
 
 const STORAGE_KEY = 'arco_maestro_operator_v1';
@@ -28,8 +27,8 @@ export default function ArcoMaestroApp() {
   const [activeOperator, setActiveOperator] = useState<OperatorName>('Adal');
   const [showFirstRunModal, setShowFirstRunModal] = useState<boolean>(false);
   const [currentSection, setCurrentSection] = useState<
-    'calculator' | 'academy' | 'finances' | 'ar-studio' | 'diagrams'
-  >('calculator');
+    'studio-3d' | 'cuts-6m' | 'local-prices' | 'academy' | 'finances'
+  >('studio-3d');
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY) as OperatorName | null;
@@ -51,9 +50,10 @@ export default function ArcoMaestroApp() {
     <div className="min-h-screen bg-[#07080A] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(234,179,8,0.12),rgba(56,189,248,0.06),rgba(0,0,0,0))] text-zinc-100 selection:bg-yellow-400 selection:text-zinc-950 pb-24">
       {/* Modal First-Run Adal / Marco */}
       <OperatorSelector isOpen={showFirstRunModal} onSelect={handleSelectOperator} />
+
       {/* Barra de Navegación Superior Estilo VisionOS / Apple Glass */}
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-black/60 backdrop-blur-2xl">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-6">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-black/70 backdrop-blur-2xl">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
           {/* Identidad de la App */}
           <div className="flex items-center gap-3">
             <Link
@@ -78,35 +78,36 @@ export default function ArcoMaestroApp() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-sm font-extrabold tracking-tight text-white">
-                  Arco Maestro <span className="text-yellow-400 font-medium">· AI Welding</span>
+                  Arco Maestro <span className="text-yellow-400 font-medium">· 3D Structural CAD</span>
                 </h1>
                 <span className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[10px] font-bold text-yellow-300">
                   Mérida, Yuc.
                 </span>
               </div>
               <p className="text-[11px] text-zinc-400">
-                Sección Independiente · Taller de Herrería Residencial
+                Constructor de Estructuras & Optimizador de Tramos de 6m
               </p>
             </div>
           </div>
 
-          {/* Navegación por Módulos */}
+          {/* Navegación por Módulos Principales */}
           <nav className="flex flex-wrap items-center gap-1 rounded-2xl border border-white/15 bg-white/[0.04] p-1">
             {[
-              { id: 'calculator', label: 'Cotizador & Cortes 6m', icon: Sliders },
-              { id: 'academy', label: 'Academia (14 Clases)', icon: BookOpen },
-              { id: 'finances', label: 'Finanzas & Tickets IA', icon: DollarSign },
-              { id: 'ar-studio', label: 'Estudio AR & Fachadas', icon: Eye },
-              { id: 'diagrams', label: 'Diagramas Open Source', icon: FileCode },
+              { id: 'studio-3d', label: 'Constructor 3D', icon: Box },
+              { id: 'cuts-6m', label: 'Despiece & Cortes 6m', icon: Scissors },
+              { id: 'local-prices', label: 'Precios de mi Área', icon: DollarSign },
+              { id: 'academy', label: 'Manual & Soldadura', icon: BookOpen },
+              { id: 'finances', label: 'Finanzas 50/50', icon: Wallet },
             ].map((item) => {
               const Icon = item.icon;
+              const isActive = currentSection === item.id;
               return (
                 <button
                   key={item.id}
                   onClick={() => setCurrentSection(item.id as typeof currentSection)}
                   className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
-                    currentSection === item.id
-                      ? 'bg-yellow-400 text-zinc-950 font-bold shadow-md'
+                    isActive
+                      ? 'bg-yellow-400 text-zinc-950 font-extrabold shadow-md'
                       : 'text-zinc-300 hover:bg-white/10 hover:text-white'
                   }`}
                 >
@@ -148,11 +149,16 @@ export default function ArcoMaestroApp() {
 
       {/* Contenedor Principal */}
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        {currentSection === 'calculator' && <SteelCalculator activeOperator={activeOperator} />}
+        {currentSection === 'studio-3d' && (
+          <Arco3DStudio
+            onOpenCutList={() => setCurrentSection('cuts-6m')}
+            onOpenPriceManager={() => setCurrentSection('local-prices')}
+          />
+        )}
+        {currentSection === 'cuts-6m' && <CutListOptimizerView />}
+        {currentSection === 'local-prices' && <AreaPriceManager />}
         {currentSection === 'academy' && <AcademyView />}
         {currentSection === 'finances' && <FinanceTracker activeOperator={activeOperator} />}
-        {currentSection === 'ar-studio' && <ARVisualizerStudio />}
-        {currentSection === 'diagrams' && <OpenSourceDiagramsLibrary />}
       </main>
 
       {/* Reproductor Flotante de Spotify para el Taller */}

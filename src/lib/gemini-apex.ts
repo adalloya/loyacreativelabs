@@ -6,6 +6,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { BiometricProfile, MacroTarget } from "./nutrition-logistics";
 
 const API_KEYS = [
+    process.env.GEMINI_API_KEY,
     process.env.GOOGLE_API_KEY,
     process.env.GOOGLE_API_KEY_BACKUP
 ].filter(Boolean) as string[];
@@ -13,6 +14,8 @@ const API_KEYS = [
 const CANDIDATE_MODELS = [
     process.env.GEMINI_MODEL,
     "gemini-2.5-flash",
+    "gemini-flash-latest",
+    "gemini-2.5-flash-lite",
     "gemini-3.5-flash-lite",
     "gemini-3.8-flash"
 ].filter(Boolean) as string[];

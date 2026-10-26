@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const API_KEYS = [
+    process.env.GEMINI_API_KEY,
     process.env.GOOGLE_API_KEY,
     process.env.GOOGLE_API_KEY_BACKUP
 ].filter(Boolean) as string[];

@@ -234,7 +234,7 @@ export function AppHeaderMenu({
                 <label className={`text-[10px] font-mono uppercase tracking-wider block mb-2 flex items-center justify-between ${
                   isLight ? "text-slate-500" : "text-zinc-500"
                 }`}>
-                  <span>NUTRICIÓN & PROTOCOLO GEMINI</span>
+                  <span>NUTRICIÓN & PROTOCOLO IA</span>
                   <span className="text-emerald-500 font-bold text-[9px] font-mono">IA GENERATIVA</span>
                 </label>
                 <button
@@ -260,7 +260,7 @@ export function AppHeaderMenu({
                     <div>
                       <div className="font-bold text-xs">Generar Dieta Personalizada</div>
                       <div className={`text-[10px] ${isLight ? "text-emerald-700/80" : "text-emerald-400/80"}`}>
-                        Gemini AI: Macros, 7 días & suplementos
+                        IA: Macros, 7 días & suplementos
                       </div>
                     </div>
                   </div>

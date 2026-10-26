@@ -223,7 +223,7 @@ export const ApexV2SettingsView: React.FC<ApexV2SettingsViewProps> = ({
                         </h3>
                     </div>
                     <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">
-                        GEMINI 2.5
+                        IA
                     </span>
                 </div>
 
@@ -245,7 +245,7 @@ export const ApexV2SettingsView: React.FC<ApexV2SettingsViewProps> = ({
                                 <Sparkles className="w-4 h-4" />
                             </div>
                             <div>
-                                <div className="text-xs font-bold">Generar Dieta Personalizada (Gemini AI)</div>
+                                <div className="text-xs font-bold">Generar Dieta Personalizada (IA)</div>
                                 <div className={`text-[10px] ${isLight ? "text-emerald-700" : "text-emerald-300/80"}`}>
                                     Macros, cálculo clínico, plan de 7 días y suplementación
                                 </div>

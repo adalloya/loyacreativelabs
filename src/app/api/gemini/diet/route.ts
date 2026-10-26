@@ -483,7 +483,7 @@ export async function POST(req: NextRequest) {
         let activeMeals = fallbackMeals;
         let clinicalSummary = `Plan nutricional clínico de 7 días bajo protocolo ${dietTitle} para ${goalDesc} con balance estricto de ${targetProtein}g de proteína (${targetCalories} kcal/día).`;
 
-        const apiKey = process.env.GOOGLE_API_KEY || process.env.GOOGLE_API_KEY_BACKUP;
+        const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_API_KEY_BACKUP;
 
         if (apiKey) {
             try {
@@ -531,7 +531,7 @@ ESTRUCTURA JSON EXACTA REQUERIDA:
 
                 const geminiPromise = model.generateContent(prompt);
                 const timeoutPromise = new Promise<never>((_, reject) =>
-                    setTimeout(() => reject(new Error("Gemini request timeout (10s)")), 10000)
+                    setTimeout(() => reject(new Error("Gemini request timeout (30s)")), 30000)
                 );
 
                 const result = await Promise.race([geminiPromise, timeoutPromise]);

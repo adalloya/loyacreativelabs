@@ -3,10 +3,10 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export async function POST(req: NextRequest) {
   try {
-    const apiKey = process.env.GOOGLE_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_API_KEY_BACKUP;
     if (!apiKey) {
       return NextResponse.json(
-        { error: "GOOGLE_API_KEY no está configurada en el servidor" },
+        { error: "GOOGLE_API_KEY o GEMINI_API_KEY no está configurada en el servidor" },
         { status: 500 }
       );
     }

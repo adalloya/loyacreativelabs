@@ -114,7 +114,7 @@ export default function NutritionPage() {
             disabled={loading}
             className="bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] font-semibold text-xs px-4 py-2.5 rounded-xl transition-all disabled:opacity-50"
           >
-            {loading ? 'PROCESANDO CON GEMINI...' : dietPlan ? 'REGENERAR PLAN' : 'GENERAR PLAN 7 DÍAS'}
+            {loading ? 'PROCESANDO CON IA...' : dietPlan ? 'REGENERAR PLAN' : 'GENERAR PLAN 7 DÍAS'}
           </button>
         </div>
       </div>

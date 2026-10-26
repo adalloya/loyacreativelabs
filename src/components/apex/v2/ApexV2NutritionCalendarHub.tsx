@@ -313,8 +313,8 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                                     ? "bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-700"
                                     : "bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/35 text-emerald-400"
                             }`}
-                            title="Personalizar o generar dieta con Gemini AI"
-                            aria-label="Dieta Gemini AI"
+                            title="Personalizar o generar dieta con IA"
+                            aria-label="Dieta con IA"
                         >
                             <Sparkles className="w-4 h-4" />
                         </button>
@@ -889,7 +889,7 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                                 isLight ? "bg-slate-50 border-slate-200" : "bg-white/[0.04] border-white/10"
                             }`}>
                                 <div>
-                                    <div className={`text-xs font-bold ${isLight ? "text-slate-950" : "text-white"}`}>Plan Nutricional Gemini AI</div>
+                                    <div className={`text-xs font-bold ${isLight ? "text-slate-950" : "text-white"}`}>Plan Nutricional con IA</div>
                                     <div className={`text-[10px] ${isLight ? "text-slate-500" : "text-zinc-400"}`}>Régimen adaptativo con superávit o déficit controlado</div>
                                 </div>
                                 {onOpenDietPlanModal && (

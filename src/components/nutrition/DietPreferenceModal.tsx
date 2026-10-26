@@ -198,7 +198,7 @@ export function DietPreferenceModal({
                             <span className={`text-[10px] font-mono uppercase tracking-wider font-semibold ${
                                 isLight ? "text-slate-500" : "text-zinc-400"
                             }`}>
-                                PROTOCOLO NUTRICIONAL // GEMINI CLINICAL AI
+                                PROTOCOLO NUTRICIONAL // IA CLÍNICA
                             </span>
                         </div>
                         <h2 className={`text-lg sm:text-xl font-bold tracking-tight flex items-center gap-2 ${
@@ -209,7 +209,7 @@ export function DietPreferenceModal({
                         <p className={`text-xs mt-1 ${
                             isLight ? "text-slate-600" : "text-zinc-400"
                         }`}>
-                            Gemini adaptará al 100% la selección de ingredientes, fuentes de proteína y distribución de macros a tu protocolo.
+                            La IA adaptará al 100% la selección de ingredientes, fuentes de proteína y distribución de macros a tu protocolo.
                         </p>
                     </div>
                     <button
@@ -378,7 +378,7 @@ export function DietPreferenceModal({
                     >
                         <Sparkles size={14} className={isLoading ? "animate-spin" : ""} />
                         <span>
-                            {isLoading ? "ANALIZANDO CON GEMINI AI..." : "GENERAR PLAN CON GEMINI AI →"}
+                            {isLoading ? "ANALIZANDO CON IA..." : "GENERAR PLAN CON IA →"}
                         </span>
                     </button>
                 </div>

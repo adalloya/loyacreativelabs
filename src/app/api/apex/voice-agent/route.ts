@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const API_KEYS = [
+    process.env.GEMINI_API_KEY,
     process.env.GOOGLE_API_KEY,
     process.env.GOOGLE_API_KEY_BACKUP
 ].filter(Boolean) as string[];
@@ -10,8 +11,9 @@ const API_KEYS = [
 const CANDIDATE_MODELS = [
     process.env.GEMINI_MODEL,
     "gemini-2.5-flash",
-    "gemini-1.5-flash",
-    "gemini-2.0-flash"
+    "gemini-flash-latest",
+    "gemini-2.5-flash-lite",
+    "gemini-3.5-flash-lite"
 ].filter(Boolean) as string[];
 
 async function queryGemini(prompt: string, systemInstruction: string): Promise<string> {

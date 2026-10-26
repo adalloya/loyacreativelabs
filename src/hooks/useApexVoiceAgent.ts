@@ -148,7 +148,7 @@ export function useApexVoiceAgent({
                     rawTranscript: clean
                 };
                 onActionResultRef.current(action);
-                showToast("✓ Dieta programada cargada con éxito a Nutrición");
+                showToast("Dieta programada cargada con éxito a Nutrición");
                 setIsProcessing(false);
                 return;
             }
@@ -167,7 +167,7 @@ export function useApexVoiceAgent({
                     rawTranscript: clean
                 };
                 onActionResultRef.current(action);
-                showToast("✓ Spotify: Reproduciendo Bad Bunny");
+                showToast("Spotify: Reproduciendo Bad Bunny");
                 setIsProcessing(false);
                 return;
             }
@@ -194,7 +194,7 @@ export function useApexVoiceAgent({
                     rawTranscript: clean
                 };
                 onActionResultRef.current(action);
-                showToast("✓ Spotify: Playlist calmada activada (80-90 BPM)");
+                showToast("Spotify: Playlist calmada activada (80-90 BPM)");
                 setIsProcessing(false);
                 return;
             }
@@ -223,7 +223,7 @@ export function useApexVoiceAgent({
                     rawTranscript: clean
                 };
                 onActionResultRef.current(action);
-                showToast("✓ Spotify: Modo Máxima Intensidad activado (140-160 BPM)");
+                showToast("Spotify: Modo Máxima Intensidad activado (140-160 BPM)");
                 setIsProcessing(false);
                 return;
             }
@@ -238,7 +238,7 @@ export function useApexVoiceAgent({
                     rawTranscript: clean
                 };
                 onActionResultRef.current(action);
-                showToast("✓ Spotify: Pausa");
+                showToast("Spotify: Pausa");
                 setIsProcessing(false);
                 return;
             }
@@ -257,7 +257,7 @@ export function useApexVoiceAgent({
                     rawTranscript: clean
                 };
                 onActionResultRef.current(action);
-                showToast("✓ Spotify: Mansión Reggaetón Gym activado");
+                showToast("Spotify: Mansión Reggaetón Gym activado");
                 setIsProcessing(false);
                 return;
             }
@@ -276,7 +276,7 @@ export function useApexVoiceAgent({
                     rawTranscript: clean
                 };
                 onActionResultRef.current(action);
-                showToast("✓ Spotify: Heavy Rock & Metal activado");
+                showToast("Spotify: Heavy Rock & Metal activado");
                 setIsProcessing(false);
                 return;
             }
@@ -294,7 +294,7 @@ export function useApexVoiceAgent({
                     rawTranscript: clean
                 };
                 onActionResultRef.current(action);
-                showToast("✓ Spotify: Beast Mode activado");
+                showToast("Spotify: Beast Mode activado");
                 setIsProcessing(false);
                 return;
             }
@@ -326,7 +326,7 @@ export function useApexVoiceAgent({
                 const action: VoiceAgentActionResult = {
                     intent: "MUSIC_CONTROL",
                     targetTab: currentTabRef.current,
-                    summary: "Spotify: Reproduciendo Gym Phonk ⚡️",
+                    summary: "Spotify: Reproduciendo Gym Phonk",
                     music: {
                         action: "play_bpm",
                         bpmCategory: "high",
@@ -335,7 +335,7 @@ export function useApexVoiceAgent({
                     rawTranscript: clean
                 };
                 onActionResultRef.current(action);
-                showToast("✓ Spotify: Reproduciendo Playlist Gym Phonk ⚡️");
+                showToast("Spotify: Reproduciendo Playlist Gym Phonk");
                 setIsProcessing(false);
                 return;
             }
@@ -350,7 +350,7 @@ export function useApexVoiceAgent({
                     rawTranscript: clean
                 };
                 onActionResultRef.current(action);
-                showToast("✓ Spotify: Reproduciendo");
+                showToast("Spotify: Reproduciendo");
                 setIsProcessing(false);
                 return;
             }
@@ -364,7 +364,7 @@ export function useApexVoiceAgent({
                     rawTranscript: clean
                 };
                 onActionResultRef.current(action);
-                showToast("✓ Spotify: Siguiente pista");
+                showToast("Spotify: Siguiente pista");
                 setIsProcessing(false);
                 return;
             }
@@ -410,7 +410,7 @@ export function useApexVoiceAgent({
             }
 
             if (overallSummary) {
-                showToast(`✓ ${overallSummary}`);
+                showToast(`${overallSummary}`);
             }
         } catch (err: any) {
             console.warn("[useApexVoiceAgent] Error enviando comando a Gemini:", err);
@@ -567,25 +567,24 @@ export function useApexVoiceAgent({
     // Texto dinámico para el tooltip según la sección actual
     const getContextualTooltip = useCallback(() => {
         if (isListening) {
-            const preview = interimTranscript || transcript;
-            return preview ? `🔴 «${preview}»` : "🔴 Escuchando... habla ahora";
+            return "Escuchando... habla ahora";
         }
         if (isProcessing) {
-            return "⚡ Analizando dictado con Gemini...";
+            return "Analizando dictado con IA...";
         }
 
         switch (currentTab) {
             case "workout":
-                return "🎙️ Dicta tu ejercicio, repeticiones y peso";
+                return "Dicta tu ejercicio, repeticiones y peso";
             case "nutrition":
-                return "🎙️ Dicta qué comiste o «comí lo de la dieta»";
+                return "Dicta qué comiste o «comí lo de la dieta»";
             case "anatomy":
-                return "🎙️ Busca por voz (ej. «mancuernas», «pecho»)";
+                return "Busca por voz (ej. «mancuernas», «pecho»)";
             case "settings":
             default:
-                return "🎙️ Asistente de voz APEX: mantén presionado";
+                return "Asistente de voz APEX: mantén presionado";
         }
-    }, [isListening, isProcessing, interimTranscript, transcript, currentTab]);
+    }, [isListening, isProcessing, currentTab]);
 
     return {
         isListening,

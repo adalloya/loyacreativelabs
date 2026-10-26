@@ -694,7 +694,7 @@ export const GymEquipmentScannerModal: React.FC<GymEquipmentScannerModalProps> =
                 {/* Footer */}
                 <footer className="pt-6 pb-12 border-t border-white/[0.08] flex items-center justify-between text-xs text-zinc-400 flex-wrap gap-4">
                     <span className="font-mono">
-                        Escáner Biomecánico APEX • Visión IA Gemini & Catálogo 876
+                        Escáner Biomecánico APEX • Visión IA & Catálogo 876
                     </span>
 
                     <button

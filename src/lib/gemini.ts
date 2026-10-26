@@ -2,6 +2,7 @@ import { GoogleGenerativeAI, Part } from "@google/generative-ai";
 // Fixed syntax and hydration errors
 
 const API_KEYS = [
+    process.env.GEMINI_API_KEY,
     process.env.GOOGLE_API_KEY,
     process.env.GOOGLE_API_KEY_BACKUP
 ].filter(Boolean) as string[];
@@ -70,6 +71,8 @@ export const geminiService = {
             const candidateModels = [
                 process.env.GEMINI_MODEL,
                 "gemini-2.5-flash",
+                "gemini-flash-latest",
+                "gemini-2.5-flash-lite",
                 "gemini-3.5-flash-lite",
                 "gemini-3.8-flash"
             ].filter(Boolean) as string[];

@@ -109,7 +109,7 @@ export const FoodCameraScannerModal: React.FC<FoodCameraScannerModalProps> = ({
     // Send payload (image or text) to API
     const analyzeFood = async (payload: { imageBase64?: string; textDescription?: string }) => {
         setIsScanning(true);
-        setStatusMessage("Analizando composición nutricional con Gemini...");
+        setStatusMessage("Analizando composición nutricional con IA...");
         setIsError(false);
 
         try {
