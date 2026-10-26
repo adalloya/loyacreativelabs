@@ -27,7 +27,8 @@ import {
     CheckSquare,
     Square,
     Copy,
-    RotateCcw
+    RotateCcw,
+    CalendarPlus
 } from "lucide-react";
 import {
     DailyNutritionLog,
@@ -41,6 +42,7 @@ import {
 import { SupplementDose } from "@/lib/nutrition-logistics";
 import { localDb, ExerciseLog } from "@/lib/local-db";
 import { FoodCameraScannerModal } from "@/components/nutrition/FoodCameraScannerModal";
+import { ApexCalendarSyncModal } from "./ApexCalendarSyncModal";
 import { Drawer } from "vaul";
 import { getInitialTheme, Theme } from "@/lib/theme";
 
@@ -126,6 +128,7 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
         }
     });
     const [dietActionToast, setDietActionToast] = useState<string | null>(null);
+    const [isCalendarSyncOpen, setIsCalendarSyncOpen] = useState(false);
 
     const handleToggleShoppingItem = (key: string) => {
         setShoppingChecked((prev) => {
@@ -593,6 +596,20 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                                 <span className="hidden xs:inline">{dietPlan ? "Regenerar" : "Generar con IA"}</span>
                             </button>
                         )}
+                        {/* Botón Agregar a Calendario Personal (Gmail / Outlook) */}
+                        <button
+                            type="button"
+                            onClick={() => setIsCalendarSyncOpen(true)}
+                            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border ${
+                                isLight
+                                    ? "bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-800"
+                                    : "bg-blue-500/15 hover:bg-blue-500/25 border-blue-500/30 text-blue-300"
+                            }`}
+                            title="Agregar menú y comidas a tu calendario personal Gmail u Outlook"
+                        >
+                            <CalendarPlus className="w-3.5 h-3.5" />
+                            <span className="hidden xs:inline">Calendario</span>
+                        </button>
                         <button
                             type="button"
                             onClick={() => setIsDietCardCollapsed(!isDietCardCollapsed)}
@@ -711,6 +728,26 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                                             </button>
                                         );
                                     })}
+                                </div>
+
+                                {/* Barra de Acción Rápida: Agregar Día a Calendario Personal (Gmail / Outlook) */}
+                                <div className={`flex items-center justify-between gap-2 p-2.5 rounded-2xl border transition-all ${
+                                    isLight ? "bg-slate-50 border-slate-200/90" : "bg-white/[0.03] border-white/5"
+                                }`}>
+                                    <div className="flex items-center gap-1.5 text-[11px] font-mono min-w-0">
+                                        <CalendarIcon className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                                        <span className={`truncate ${isLight ? "text-slate-600" : "text-zinc-400"}`}>
+                                            Agendar comidas en tu calendario
+                                        </span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsCalendarSyncOpen(true)}
+                                        className="px-2.5 py-1 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs shrink-0"
+                                    >
+                                        <CalendarPlus className="w-3 h-3" />
+                                        <span>Gmail / Outlook</span>
+                                    </button>
                                 </div>
 
                                 {/* Lista de Comidas del Día Seleccionado */}
@@ -958,6 +995,21 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                 </div>
 
                 <div className="flex items-center gap-2">
+                    {/* Botón Sincronizar Calendario Personal (Gmail / Outlook) */}
+                    <button
+                        type="button"
+                        onClick={() => setIsCalendarSyncOpen(true)}
+                        className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-xs border ${
+                            isLight
+                                ? "bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700"
+                                : "bg-blue-500/15 hover:bg-blue-500/25 border-blue-500/35 text-blue-400"
+                        }`}
+                        title="Agregar a mi calendario personal Gmail u Outlook"
+                        aria-label="Agregar a Calendario"
+                    >
+                        <CalendarPlus className="w-4 h-4" />
+                    </button>
+
                     {/* Botón Dieta Gemini AI (Solo Icono) */}
                     {onOpenDietPlanModal && (
                         <button
@@ -1629,6 +1681,16 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                 onClose={() => setIsFoodScannerOpen(false)}
                 initialCategory={scannerCategory}
                 onAddFoodItem={handleAddScannedFood}
+            />
+
+            {/* Modal para Sincronizar Comidas con Calendario Personal (Gmail / Outlook / iCal) */}
+            <ApexCalendarSyncModal
+                isOpen={isCalendarSyncOpen}
+                onClose={() => setIsCalendarSyncOpen(false)}
+                dietPlan={dietPlan}
+                activeDate={activeDate}
+                selectedDayIndex={selectedDietDayIndex}
+                targetCalories={targetCalories}
             />
         </div>
     );
