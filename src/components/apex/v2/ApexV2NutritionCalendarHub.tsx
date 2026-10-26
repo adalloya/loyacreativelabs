@@ -471,7 +471,7 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                             <span>Escanear Comida</span>
                         </button>
 
-                        {/* Suplementación & Medicamentos (Lista Vertical Debajo de Escanear Comida) */}
+                        {/* Suplementos (Lista Vertical Debajo de Escanear Comida) */}
                         <div className={`p-3.5 sm:p-4 rounded-2xl border transition-all ${
                             isLight
                                 ? "bg-slate-50/90 border-slate-200/90 shadow-xs"
@@ -485,7 +485,7 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                                     <h4 className={`text-xs font-bold uppercase tracking-wider font-mono ${
                                         isLight ? "text-slate-900" : "text-white"
                                     }`}>
-                                        Suplementación & Medicamentos
+                                        Suplementos
                                     </h4>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -505,7 +505,7 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                                                     ? (isLight ? "bg-slate-200 text-slate-800 border-slate-300" : "bg-white/20 text-white border-white/30")
                                                     : (isLight ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300" : "bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border-emerald-500/30")
                                             }`}
-                                            title="Añadir nuevo suplemento o medicamento"
+                                            title="Añadir nuevo suplemento"
                                         >
                                             {isAddingSupplement ? <X className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
                                             <span>{isAddingSupplement ? "Cerrar" : "Agregar"}</span>
@@ -514,18 +514,18 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                                 </div>
                             </div>
 
-                            {/* Formulario Inline para Añadir Suplemento / Medicamento */}
+                            {/* Formulario Inline para Añadir Suplemento */}
                             {isAddingSupplement && (
                                 <div className={`mb-3 p-3 rounded-xl border transition-all ${
                                     isLight ? "bg-white border-slate-300/80 shadow-xs" : "bg-black/40 border-white/10"
                                 }`}>
                                     <p className={`text-[11px] font-semibold mb-2 ${isLight ? "text-slate-700" : "text-zinc-300"}`}>
-                                        Registrar Suplemento o Medicamento:
+                                        Registrar Suplemento:
                                     </p>
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                         <input
                                             type="text"
-                                            placeholder="Nombre (ej. Creatina, Omega 3, Metformina)"
+                                            placeholder="Nombre (ej. Creatina, Omega 3, Proteína)"
                                             value={newSupName}
                                             onChange={(e) => setNewSupName(e.target.value)}
                                             className={`px-2.5 py-1.5 rounded-xl text-xs border outline-none transition-all ${
@@ -574,12 +574,12 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                                 </div>
                             )}
 
-                            {/* Lista Vertical de Suplementos / Medicamentos */}
+                            {/* Lista Vertical de Suplementos */}
                             {supplements.length === 0 ? (
                                 <div className={`p-3.5 text-center rounded-xl border text-xs ${
                                     isLight ? "bg-white border-slate-200 text-slate-500" : "bg-black/20 border-white/5 text-zinc-500"
                                 }`}>
-                                    No hay suplementos o medicamentos registrados. Toca <strong>Agregar</strong> para registrar uno.
+                                    No hay suplementos registrados. Toca <strong>Agregar</strong> para registrar uno.
                                 </div>
                             ) : (
                                 <div className="space-y-1.5">
