@@ -206,7 +206,93 @@ export const ApexV2SettingsView: React.FC<ApexV2SettingsViewProps> = ({
             </div>
 
             {/* =========================================================================
-                BLOQUE 2: INTELIGENCIA ARTIFICIAL APEX & PROTOCOLOS
+                BLOQUE 2: APARIENCIA DEL SITIO (MODO OSCURO / CLARO)
+               ========================================================================= */}
+            <div className={`backdrop-blur-2xl rounded-3xl p-4 sm:p-5 shadow-xl border space-y-3 transition-colors ${
+                isLight ? "bg-white/85 border-slate-200/90 text-slate-900 shadow-slate-950/[0.04]" : "bg-zinc-950/75 border-white/10 text-white shadow-xl"
+            }`}>
+                <div className={`flex items-center justify-between pb-2 border-b ${
+                    isLight ? "border-slate-200" : "border-white/[0.06]"
+                }`}>
+                    <div className="flex items-center gap-2">
+                        {theme === "light" ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-violet-400" />}
+                        <h3 className={`text-xs font-bold uppercase tracking-wider font-mono ${
+                            isLight ? "text-slate-900" : "text-white"
+                        }`}>
+                            Apariencia & Modo Visual
+                        </h3>
+                    </div>
+                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
+                        isLight ? "bg-slate-100 border-slate-200 text-slate-700 font-bold" : "bg-white/[0.06] border-white/10 text-zinc-300 font-bold"
+                    }`}>
+                        {theme === "dark" ? "🌙 OSCURO" : "☀️ CLARO"}
+                    </span>
+                </div>
+
+                {/* Selector Modo Oscuro vs Modo Claro */}
+                <div>
+                    <label className={`text-[11px] font-mono uppercase tracking-wider block mb-2 ${
+                        isLight ? "text-slate-600" : "text-zinc-400"
+                    }`}>
+                        Tema Visual
+                    </label>
+                    <div className={`grid grid-cols-2 p-1 rounded-2xl border ${
+                        isLight ? "bg-slate-100 border-slate-200" : "bg-black/50 border-white/10"
+                    }`}>
+                        <button
+                            type="button"
+                            onClick={() => handleToggleTheme("dark")}
+                            className={`py-2 px-1.5 rounded-xl text-center transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                                theme === "dark"
+                                    ? (isLight ? "bg-white text-slate-950 font-bold shadow-sm" : "bg-white text-black font-semibold shadow-md")
+                                    : (isLight ? "text-slate-600 hover:text-slate-900" : "text-zinc-400 hover:text-white")
+                            }`}
+                        >
+                            <Moon className="w-3.5 h-3.5" />
+                            <span className="text-xs font-bold">Modo Oscuro</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleToggleTheme("light")}
+                            className={`py-2 px-1.5 rounded-xl text-center transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                                theme === "light"
+                                    ? (isLight ? "bg-white text-slate-950 font-bold shadow-sm" : "bg-white text-black font-semibold shadow-md")
+                                    : (isLight ? "text-slate-600 hover:text-slate-900" : "text-zinc-400 hover:text-white")
+                            }`}
+                        >
+                            <Sun className="w-3.5 h-3.5 text-amber-500" />
+                            <span className="text-xs font-bold">Modo Claro</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Botón de Instalar Aplicación PWA */}
+                {showInstallButton && onInstallPwa && (
+                    <button
+                        type="button"
+                        onClick={onInstallPwa}
+                        className={`w-full p-3 rounded-2xl border flex items-center justify-between text-left transition-all cursor-pointer active:scale-98 ${
+                            isLight
+                                ? "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800"
+                                : "bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-white"
+                        }`}
+                    >
+                        <div className="flex items-center gap-3">
+                            <Download className={`w-4 h-4 ${isLight ? "text-slate-600" : "text-zinc-300"}`} />
+                            <div>
+                                <div className="text-xs font-bold">Instalar Aplicación (PWA)</div>
+                                <div className={`text-[10px] ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
+                                    Acceso directo en pantalla de inicio de iPhone / Android
+                                </div>
+                            </div>
+                        </div>
+                        <span className={`text-xs font-mono ${isLight ? "text-slate-600" : "text-zinc-400"}`}>Instalar →</span>
+                    </button>
+                )}
+            </div>
+
+            {/* =========================================================================
+                BLOQUE 3: INTELIGENCIA ARTIFICIAL APEX & PROTOCOLOS
                ========================================================================= */}
             <div className={`backdrop-blur-2xl rounded-3xl p-4 sm:p-5 shadow-xl border space-y-3 transition-colors ${
                 isLight ? "bg-white/85 border-slate-200/90 text-slate-900 shadow-slate-950/[0.04]" : "bg-zinc-950/75 border-white/10 text-white shadow-xl"
@@ -297,7 +383,7 @@ export const ApexV2SettingsView: React.FC<ApexV2SettingsViewProps> = ({
             </div>
 
             {/* =========================================================================
-                BLOQUE 3: SISTEMA, METODOLOGÍA & AUTORREGULACIÓN
+                BLOQUE 4: SISTEMA, METODOLOGÍA & AUTORREGULACIÓN
                ========================================================================= */}
             <div className={`backdrop-blur-2xl rounded-3xl p-4 sm:p-5 shadow-xl border space-y-4 transition-colors ${
                 isLight ? "bg-white/85 border-slate-200/90 text-slate-900 shadow-slate-950/[0.04]" : "bg-zinc-950/75 border-white/10 text-white shadow-xl"
@@ -464,7 +550,7 @@ export const ApexV2SettingsView: React.FC<ApexV2SettingsViewProps> = ({
             </div>
 
             {/* =========================================================================
-                BLOQUE 4: MÚSICA & SPOTIFY INTEGRATION
+                BLOQUE 5: MÚSICA & SPOTIFY INTEGRATION
                ========================================================================= */}
             {onOpenSpotifyModal && (
                 <div className={`backdrop-blur-2xl rounded-3xl p-4 sm:p-5 shadow-xl border space-y-3 transition-colors ${
@@ -517,92 +603,6 @@ export const ApexV2SettingsView: React.FC<ApexV2SettingsViewProps> = ({
                 </div>
             )}
 
-            {/* =========================================================================
-                BLOQUE 5: APARIENCIA & PREFERENCIAS DE LA APP
-               ========================================================================= */}
-            <div className={`backdrop-blur-2xl rounded-3xl p-4 sm:p-5 shadow-xl border space-y-3 transition-colors ${
-                isLight ? "bg-white/85 border-slate-200/90 text-slate-900 shadow-slate-950/[0.04]" : "bg-zinc-950/75 border-white/10 text-white shadow-xl"
-            }`}>
-                <div className={`flex items-center justify-between pb-2 border-b ${
-                    isLight ? "border-slate-200" : "border-white/[0.06]"
-                }`}>
-                    <div className="flex items-center gap-2">
-                        {theme === "light" ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-violet-400" />}
-                        <h3 className={`text-xs font-bold uppercase tracking-wider font-mono ${
-                            isLight ? "text-slate-900" : "text-white"
-                        }`}>
-                            Apariencia & Versión UX
-                        </h3>
-                    </div>
-                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
-                        isLight ? "bg-slate-100 border-slate-200 text-slate-700 font-bold" : "bg-white/[0.06] border-white/10 text-zinc-300 font-bold"
-                    }`}>
-                        {theme === "dark" ? "🌙 OSCURO" : "☀️ CLARO"}
-                    </span>
-                </div>
-
-                {/* Selector Modo Oscuro vs Modo Claro */}
-                <div>
-                    <label className={`text-[11px] font-mono uppercase tracking-wider block mb-2 ${
-                        isLight ? "text-slate-600" : "text-zinc-400"
-                    }`}>
-                        Tema Visual
-                    </label>
-                    <div className={`grid grid-cols-2 p-1 rounded-2xl border ${
-                        isLight ? "bg-slate-100 border-slate-200" : "bg-black/50 border-white/10"
-                    }`}>
-                        <button
-                            type="button"
-                            onClick={() => handleToggleTheme("dark")}
-                            className={`py-2 px-1.5 rounded-xl text-center transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                                theme === "dark"
-                                    ? (isLight ? "bg-white text-slate-950 font-bold shadow-sm" : "bg-white text-black font-semibold shadow-md")
-                                    : (isLight ? "text-slate-600 hover:text-slate-900" : "text-zinc-400 hover:text-white")
-                            }`}
-                        >
-                            <Moon className="w-3.5 h-3.5" />
-                            <span className="text-xs font-bold">Modo Oscuro</span>
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleToggleTheme("light")}
-                            className={`py-2 px-1.5 rounded-xl text-center transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                                theme === "light"
-                                    ? (isLight ? "bg-white text-slate-950 font-bold shadow-sm" : "bg-white text-black font-semibold shadow-md")
-                                    : (isLight ? "text-slate-600 hover:text-slate-900" : "text-zinc-400 hover:text-white")
-                            }`}
-                        >
-                            <Sun className="w-3.5 h-3.5 text-amber-500" />
-                            <span className="text-xs font-bold">Modo Claro</span>
-                        </button>
-                    </div>
-                </div>
-
-                {/* Botón de Instalar Aplicación PWA */}
-                {showInstallButton && onInstallPwa && (
-                    <button
-                        type="button"
-                        onClick={onInstallPwa}
-                        className={`w-full p-3 rounded-2xl border flex items-center justify-between text-left transition-all cursor-pointer active:scale-98 ${
-                            isLight
-                                ? "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800"
-                                : "bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-white"
-                        }`}
-                    >
-                        <div className="flex items-center gap-3">
-                            <Download className={`w-4 h-4 ${isLight ? "text-slate-600" : "text-zinc-300"}`} />
-                            <div>
-                                <div className="text-xs font-bold">Instalar Aplicación (PWA)</div>
-                                <div className={`text-[10px] ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
-                                    Acceso directo en pantalla de inicio de iPhone / Android
-                                </div>
-                            </div>
-                        </div>
-                        <span className={`text-xs font-mono ${isLight ? "text-slate-600" : "text-zinc-400"}`}>Instalar →</span>
-                    </button>
-                )}
-
-            </div>
 
             {/* =========================================================================
                 BLOQUE 6: AYUDA, GUÍA & FEEDBACK (MEJORA CONTINUA)

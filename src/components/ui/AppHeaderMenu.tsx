@@ -256,6 +256,50 @@ export function AppHeaderMenu({
               </button>
             </div>
 
+            {/* Apariencia del Sitio: Modo Oscuro vs Modo Claro (Arriba, justo abajo de perfil) */}
+            <div className={`mb-4 pb-4 border-b ${isLight ? "border-slate-200" : "border-white/[0.08]"}`}>
+              <label className={`text-[10px] font-mono uppercase tracking-wider block mb-2 flex items-center justify-between ${
+                isLight ? "text-slate-500" : "text-zinc-500"
+              }`}>
+                <span>APARIENCIA DEL SITIO</span>
+                <span className={`font-mono text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded border ${
+                  isLight
+                    ? "text-slate-700 bg-slate-100 border-slate-200"
+                    : "text-zinc-400 bg-white/[0.06] border-white/[0.08]"
+                }`}>
+                  {theme === 'dark' ? '🌙 OSCURO // DEFAULT' : '☀️ MODO CLARO'}
+                </span>
+              </label>
+              <div className={`grid grid-cols-2 gap-1 p-1 rounded-2xl border ${
+                isLight ? "bg-slate-100 border-slate-200" : "bg-black/40 border-white/[0.08]"
+              }`}>
+                <button
+                  type="button"
+                  onClick={() => handleToggleTheme('dark')}
+                  className={`py-2 px-1.5 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    theme === 'dark'
+                      ? (isLight ? 'bg-white text-slate-900 font-bold shadow-sm' : 'bg-white text-black font-semibold shadow-md')
+                      : (isLight ? 'text-slate-600 hover:text-slate-900' : 'text-zinc-400 hover:text-white')
+                  }`}
+                >
+                  <Moon className="w-3.5 h-3.5" />
+                  <span className="text-xs font-bold leading-none">Oscuro</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleToggleTheme('light')}
+                  className={`py-2 px-1.5 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    theme === 'light'
+                      ? (isLight ? 'bg-white text-slate-900 font-bold shadow-sm' : 'bg-white text-black font-semibold shadow-md')
+                      : (isLight ? 'text-slate-600 hover:text-slate-900' : 'text-zinc-400 hover:text-white')
+                  }`}
+                >
+                  <Sun className="w-3.5 h-3.5" />
+                  <span className="text-xs font-bold leading-none">Claro</span>
+                </button>
+              </div>
+            </div>
+
             {/* Nutrición & Generar Dieta Gemini AI */}
             {onOpenDietPlanModal && (
               <div className={`mb-4 pb-4 border-b ${isLight ? "border-slate-200" : "border-white/[0.08]"}`}>
@@ -374,49 +418,6 @@ export function AppHeaderMenu({
               </div>
             )}
 
-            {/* Apariencia del Sitio: Modo Oscuro vs Modo Claro */}
-            <div className={`mb-4 pb-4 border-b ${isLight ? "border-slate-200" : "border-white/[0.08]"}`}>
-              <label className={`text-[10px] font-mono uppercase tracking-wider block mb-2 flex items-center justify-between ${
-                isLight ? "text-slate-500" : "text-zinc-500"
-              }`}>
-                <span>APARIENCIA DEL SITIO</span>
-                <span className={`font-mono text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded border ${
-                  isLight
-                    ? "text-slate-700 bg-slate-100 border-slate-200"
-                    : "text-zinc-400 bg-white/[0.06] border-white/[0.08]"
-                }`}>
-                  {theme === 'dark' ? '🌙 OSCURO // DEFAULT' : '☀️ MODO CLARO'}
-                </span>
-              </label>
-              <div className={`grid grid-cols-2 gap-1 p-1 rounded-2xl border ${
-                isLight ? "bg-slate-100 border-slate-200" : "bg-black/40 border-white/[0.08]"
-              }`}>
-                <button
-                  type="button"
-                  onClick={() => handleToggleTheme('dark')}
-                  className={`py-2 px-1.5 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                    theme === 'dark'
-                      ? (isLight ? 'bg-white text-slate-900 font-bold shadow-sm' : 'bg-white text-black font-semibold shadow-md')
-                      : (isLight ? 'text-slate-600 hover:text-slate-900' : 'text-zinc-400 hover:text-white')
-                  }`}
-                >
-                  <Moon className="w-3.5 h-3.5" />
-                  <span className="text-xs font-bold leading-none">Oscuro</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleToggleTheme('light')}
-                  className={`py-2 px-1.5 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                    theme === 'light'
-                      ? (isLight ? 'bg-white text-slate-900 font-bold shadow-sm' : 'bg-white text-black font-semibold shadow-md')
-                      : (isLight ? 'text-slate-600 hover:text-slate-900' : 'text-zinc-400 hover:text-white')
-                  }`}
-                >
-                  <Sun className="w-3.5 h-3.5" />
-                  <span className="text-xs font-bold leading-none">Claro</span>
-                </button>
-              </div>
-            </div>
 
             {/* Exportar Blueprint PDF */}
             {pdfProfile && (
