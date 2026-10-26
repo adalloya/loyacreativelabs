@@ -648,7 +648,7 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                             )}
                         </div>
 
-                        {/* Botón Principal: Escanear Comida con Cámara AI */}
+                        {/* Botón Principal: Escanear Comida */}
                         <button
                             type="button"
                             onClick={() => {
@@ -658,7 +658,7 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                             className="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-98 shadow-md shadow-emerald-500/20 cursor-pointer"
                         >
                             <Camera className="w-4 h-4" />
-                            <span>Escanear Comida con Cámara IA</span>
+                            <span>Escanear Comida</span>
                         </button>
 
                         {/* Desglose en 5 Tiempos */}

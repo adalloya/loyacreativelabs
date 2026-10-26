@@ -393,7 +393,7 @@ export const DailyMealTracker: React.FC<DailyMealTrackerProps> = ({
                         title="Tomar foto a tu plato de comida con la cámara para que Argon identifique porciones y calorías"
                     >
                         <Camera size={15} className="group-hover:scale-110 transition-transform" />
-                        <span>Escanear Comida con IA</span>
+                        <span>Escanear Comida</span>
                     </button>
                 </div>
 
