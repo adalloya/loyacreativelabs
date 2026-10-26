@@ -393,165 +393,7 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                 </div>
             </div>
 
-            {/* 3. Suplementación & Medicamentos (Con opción de agregar y eliminar) */}
-            <div className={`backdrop-blur-2xl rounded-3xl p-4 shadow-xl border transition-colors ${
-                isLight ? "bg-white/85 border-slate-200/90 text-slate-900 shadow-slate-950/[0.04]" : "bg-zinc-950/75 border-white/10 text-white shadow-xl"
-            }`}>
-                <div className={`flex items-center justify-between pb-2.5 mb-2.5 border-b ${
-                    isLight ? "border-slate-200" : "border-white/[0.06]"
-                }`}>
-                    <div className="flex items-center gap-2">
-                        <Pill className="w-4 h-4 text-emerald-500" />
-                        <h4 className={`text-xs font-bold uppercase tracking-wider font-mono ${
-                            isLight ? "text-slate-900" : "text-white"
-                        }`}>
-                            Suplementación & Medicamentos
-                        </h4>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
-                            isLight
-                                ? "bg-slate-100 border-slate-200 text-slate-600"
-                                : "bg-white/[0.06] border-white/10 text-zinc-300"
-                        }`}>
-                            <strong className={isLight ? "text-slate-900 font-bold" : "text-white"}>{supplementsTakenCount}</strong> / {supplementsCount} Tomados
-                        </span>
-                        {onUpdateSupplements && (
-                            <button
-                                type="button"
-                                onClick={() => setIsAddingSupplement(!isAddingSupplement)}
-                                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1 transition-all active:scale-95 cursor-pointer border ${
-                                    isAddingSupplement
-                                        ? (isLight ? "bg-slate-200 text-slate-800 border-slate-300" : "bg-white/20 text-white border-white/30")
-                                        : (isLight ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300" : "bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border-emerald-500/30")
-                                }`}
-                                title="Añadir nuevo suplemento o medicamento"
-                            >
-                                {isAddingSupplement ? <X className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
-                                <span>{isAddingSupplement ? "Cerrar" : "Agregar"}</span>
-                            </button>
-                        )}
-                    </div>
-                </div>
-
-                {/* Formulario Inline para Añadir Suplemento / Medicamento */}
-                {isAddingSupplement && (
-                    <div className={`mb-3 p-3 rounded-2xl border transition-all ${
-                        isLight ? "bg-slate-100/90 border-slate-200" : "bg-white/[0.04] border-white/10"
-                    }`}>
-                        <p className={`text-[11px] font-semibold mb-2 ${isLight ? "text-slate-700" : "text-zinc-300"}`}>
-                            Registrar Suplemento o Medicamento:
-                        </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                            <input
-                                type="text"
-                                placeholder="Nombre (ej. Creatina, Omega 3, Metformina)"
-                                value={newSupName}
-                                onChange={(e) => setNewSupName(e.target.value)}
-                                className={`px-2.5 py-1.5 rounded-xl text-xs border outline-none transition-all ${
-                                    isLight
-                                        ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-emerald-500"
-                                        : "bg-black/60 border-white/15 text-white placeholder:text-zinc-500 focus:border-emerald-500"
-                                }`}
-                            />
-                            <input
-                                type="text"
-                                placeholder="Dosis (ej. 5g, 500mg, 1 cap)"
-                                value={newSupDosage}
-                                onChange={(e) => setNewSupDosage(e.target.value)}
-                                className={`px-2.5 py-1.5 rounded-xl text-xs border outline-none transition-all ${
-                                    isLight
-                                        ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-emerald-500"
-                                        : "bg-black/60 border-white/15 text-white placeholder:text-zinc-500 focus:border-emerald-500"
-                                }`}
-                            />
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="text"
-                                    placeholder="Horario (ej. Mañana, Pre-entreno)"
-                                    value={newSupTiming}
-                                    onChange={(e) => setNewSupTiming(e.target.value)}
-                                    className={`flex-1 px-2.5 py-1.5 rounded-xl text-xs border outline-none transition-all ${
-                                        isLight
-                                            ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-emerald-500"
-                                            : "bg-black/60 border-white/15 text-white placeholder:text-zinc-500 focus:border-emerald-500"
-                                    }`}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={handleSaveNewSupplement}
-                                    disabled={!newSupName.trim()}
-                                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
-                                        newSupName.trim()
-                                            ? "bg-emerald-500 hover:bg-emerald-400 text-black active:scale-95 shadow-sm"
-                                            : "opacity-40 bg-zinc-700 text-zinc-400 cursor-not-allowed"
-                                    }`}
-                                >
-                                    Guardar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Lista de Suplementos / Medicamentos */}
-                {supplements.length === 0 ? (
-                    <div className={`p-4 text-center rounded-2xl border text-xs ${
-                        isLight ? "bg-slate-50 border-slate-200 text-slate-500" : "bg-white/[0.02] border-white/5 text-zinc-500"
-                    }`}>
-                        No hay suplementos o medicamentos registrados. Toca <strong>Agregar</strong> para registrar uno.
-                    </div>
-                ) : (
-                    <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-                        {supplements.map((sup, idx) => {
-                            const isTaken = !!currentLog.supplementsTaken?.[sup.name];
-
-                            return (
-                                <div
-                                    key={`${sup.name}_${idx}`}
-                                    onClick={() => handleToggleSupplement(sup.name)}
-                                    className={`px-3 py-2 rounded-2xl border text-left shrink-0 transition-all flex items-center justify-between gap-2.5 cursor-pointer active:scale-95 ${
-                                        isTaken
-                                            ? (isLight ? "bg-emerald-50 border-emerald-300 text-emerald-950 shadow-xs" : "bg-emerald-500/15 border-emerald-500/40 text-white")
-                                            : (isLight ? "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700" : "bg-white/[0.03] border-white/10 text-zinc-400 hover:text-white")
-                                    }`}
-                                >
-                                    <div className="flex items-center gap-2 min-w-0">
-                                        <div className={`w-4 h-4 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                                            isTaken
-                                                ? "bg-emerald-500 text-black"
-                                                : (isLight ? "border border-slate-300 bg-white" : "border border-zinc-600 bg-black/40")
-                                        }`}>
-                                            {isTaken ? <Check className="w-3 h-3 stroke-[3]" /> : null}
-                                        </div>
-                                        <div className="leading-tight min-w-0">
-                                            <div className="text-xs font-bold whitespace-nowrap truncate max-w-[130px] sm:max-w-none">{sup.name}</div>
-                                            <div className={`text-[9px] font-mono truncate max-w-[130px] sm:max-w-none ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
-                                                {sup.dosage} {sup.timing && sup.timing !== "Diario" ? `• ${sup.timing}` : ""}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {onUpdateSupplements && (
-                                        <button
-                                            type="button"
-                                            onClick={(e) => handleDeleteSupplement(e, sup.name)}
-                                            className={`p-1 -mr-1 rounded-lg transition-colors cursor-pointer ${
-                                                isLight ? "text-slate-400 hover:text-rose-600 hover:bg-rose-50" : "text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10"
-                                            }`}
-                                            title={`Eliminar ${sup.name}`}
-                                        >
-                                            <Trash2 className="w-3 h-3" />
-                                        </button>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-            </div>
-
-            {/* 4. Tarjeta Fusa: Segmented Switcher entre Resumen Nutricional y Resumen de Entrenamiento */}
+            {/* 3. Tarjeta Fusa: Segmented Switcher entre Resumen Nutricional y Resumen de Entrenamiento */}
             <div className={`backdrop-blur-2xl rounded-3xl p-4 sm:p-5 shadow-2xl border transition-colors ${
                 isLight ? "bg-white/85 border-slate-200/90 text-slate-900 shadow-slate-950/[0.04]" : "bg-zinc-950/75 border-white/10 text-white shadow-2xl"
             }`}>
@@ -588,7 +430,7 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                 {/* Contenido Dinámico: Tab Nutrición */}
                 {viewMode === "nutrition" && (
                     <div className="space-y-4">
-                        {/* Macro Bars Compactos */}
+                        {/* Macro Bars Compactos (Contador de Calorías) */}
                         <div className="grid grid-cols-3 gap-2 text-center font-mono">
                             <div className={`p-2.5 rounded-2xl border ${
                                 isLight ? "bg-slate-50 border-slate-200" : "bg-white/[0.03] border-white/[0.06]"
@@ -614,6 +456,196 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                                     {caloriePct}%
                                 </span>
                             </div>
+                        </div>
+
+                        {/* Suplementación & Medicamentos (Lista Vertical Debajo del Contador de Calorías) */}
+                        <div className={`p-3.5 sm:p-4 rounded-2xl border transition-all ${
+                            isLight
+                                ? "bg-slate-50/90 border-slate-200/90 shadow-xs"
+                                : "bg-white/[0.03] border-white/[0.08]"
+                        }`}>
+                            <div className={`flex items-center justify-between pb-2.5 mb-2.5 border-b ${
+                                isLight ? "border-slate-200" : "border-white/[0.06]"
+                            }`}>
+                                <div className="flex items-center gap-2">
+                                    <Pill className="w-4 h-4 text-emerald-500" />
+                                    <h4 className={`text-xs font-bold uppercase tracking-wider font-mono ${
+                                        isLight ? "text-slate-900" : "text-white"
+                                    }`}>
+                                        Suplementación & Medicamentos
+                                    </h4>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
+                                        isLight
+                                            ? "bg-slate-100 border-slate-200 text-slate-600"
+                                            : "bg-white/[0.06] border-white/10 text-zinc-300"
+                                    }`}>
+                                        <strong className={isLight ? "text-slate-900 font-bold" : "text-white"}>{supplementsTakenCount}</strong> / {supplementsCount} Tomados
+                                    </span>
+                                    {onUpdateSupplements && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsAddingSupplement(!isAddingSupplement)}
+                                            className={`px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1 transition-all active:scale-95 cursor-pointer border ${
+                                                isAddingSupplement
+                                                    ? (isLight ? "bg-slate-200 text-slate-800 border-slate-300" : "bg-white/20 text-white border-white/30")
+                                                    : (isLight ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300" : "bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border-emerald-500/30")
+                                            }`}
+                                            title="Añadir nuevo suplemento o medicamento"
+                                        >
+                                            {isAddingSupplement ? <X className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                                            <span>{isAddingSupplement ? "Cerrar" : "Agregar"}</span>
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Formulario Inline para Añadir Suplemento / Medicamento */}
+                            {isAddingSupplement && (
+                                <div className={`mb-3 p-3 rounded-xl border transition-all ${
+                                    isLight ? "bg-white border-slate-300/80 shadow-xs" : "bg-black/40 border-white/10"
+                                }`}>
+                                    <p className={`text-[11px] font-semibold mb-2 ${isLight ? "text-slate-700" : "text-zinc-300"}`}>
+                                        Registrar Suplemento o Medicamento:
+                                    </p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                        <input
+                                            type="text"
+                                            placeholder="Nombre (ej. Creatina, Omega 3, Metformina)"
+                                            value={newSupName}
+                                            onChange={(e) => setNewSupName(e.target.value)}
+                                            className={`px-2.5 py-1.5 rounded-xl text-xs border outline-none transition-all ${
+                                                isLight
+                                                    ? "bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-emerald-500"
+                                                    : "bg-black/60 border-white/15 text-white placeholder:text-zinc-500 focus:border-emerald-500"
+                                            }`}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Dosis (ej. 5g, 500mg, 1 cap)"
+                                            value={newSupDosage}
+                                            onChange={(e) => setNewSupDosage(e.target.value)}
+                                            className={`px-2.5 py-1.5 rounded-xl text-xs border outline-none transition-all ${
+                                                isLight
+                                                    ? "bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-emerald-500"
+                                                    : "bg-black/60 border-white/15 text-white placeholder:text-zinc-500 focus:border-emerald-500"
+                                            }`}
+                                        />
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="Horario (ej. Mañana, Pre-entreno)"
+                                                value={newSupTiming}
+                                                onChange={(e) => setNewSupTiming(e.target.value)}
+                                                className={`flex-1 px-2.5 py-1.5 rounded-xl text-xs border outline-none transition-all ${
+                                                    isLight
+                                                        ? "bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-emerald-500"
+                                                        : "bg-black/60 border-white/15 text-white placeholder:text-zinc-500 focus:border-emerald-500"
+                                                }`}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleSaveNewSupplement}
+                                                disabled={!newSupName.trim()}
+                                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                                                    newSupName.trim()
+                                                        ? "bg-emerald-500 hover:bg-emerald-400 text-black active:scale-95 shadow-sm"
+                                                        : "opacity-40 bg-zinc-700 text-zinc-400 cursor-not-allowed"
+                                                }`}
+                                            >
+                                                Guardar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Lista Vertical de Suplementos / Medicamentos */}
+                            {supplements.length === 0 ? (
+                                <div className={`p-3.5 text-center rounded-xl border text-xs ${
+                                    isLight ? "bg-white border-slate-200 text-slate-500" : "bg-black/20 border-white/5 text-zinc-500"
+                                }`}>
+                                    No hay suplementos o medicamentos registrados. Toca <strong>Agregar</strong> para registrar uno.
+                                </div>
+                            ) : (
+                                <div className="space-y-1.5">
+                                    {supplements.map((sup, idx) => {
+                                        const isTaken = !!currentLog.supplementsTaken?.[sup.name];
+
+                                        return (
+                                            <div
+                                                key={`${sup.name}_${idx}`}
+                                                onClick={() => handleToggleSupplement(sup.name)}
+                                                className={`w-full p-2.5 sm:p-3 rounded-xl border text-left transition-all flex items-center justify-between gap-3 cursor-pointer active:scale-[0.99] select-none ${
+                                                    isTaken
+                                                        ? (isLight
+                                                            ? "bg-emerald-50/80 border-emerald-300 text-emerald-950 shadow-xs"
+                                                            : "bg-emerald-500/10 border-emerald-500/30 text-white")
+                                                        : (isLight
+                                                            ? "bg-white hover:bg-slate-100/80 border-slate-200/90 text-slate-800"
+                                                            : "bg-black/30 hover:bg-white/[0.04] border-white/10 text-zinc-300 hover:text-white")
+                                                }`}
+                                            >
+                                                {/* Checkbox y Datos */}
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 transition-all ${
+                                                        isTaken
+                                                            ? "bg-emerald-500 text-black shadow-xs shadow-emerald-500/30"
+                                                            : (isLight ? "border-2 border-slate-300 bg-white" : "border-2 border-zinc-600 bg-black/40")
+                                                    }`}>
+                                                        {isTaken ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : null}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <div className={`text-xs sm:text-sm font-semibold truncate ${
+                                                            isTaken
+                                                                ? (isLight ? "text-emerald-950 line-through decoration-emerald-600/40" : "text-zinc-200 line-through decoration-emerald-400/40")
+                                                                : (isLight ? "text-slate-900" : "text-white")
+                                                        }`}>
+                                                            {sup.name}
+                                                        </div>
+                                                        <div className={`text-[10px] sm:text-[11px] font-mono flex items-center gap-1.5 ${
+                                                            isLight ? "text-slate-500" : "text-zinc-400"
+                                                        }`}>
+                                                            <span>{sup.dosage}</span>
+                                                            {sup.timing && (
+                                                                <>
+                                                                    <span>•</span>
+                                                                    <span className="capitalize">{sup.timing}</span>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Estado Badge y Acción Eliminar */}
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    <span className={`text-[10px] font-mono font-medium px-2 py-0.5 rounded-md ${
+                                                        isTaken
+                                                            ? (isLight ? "bg-emerald-100 text-emerald-800" : "bg-emerald-500/20 text-emerald-300")
+                                                            : (isLight ? "bg-slate-100 text-slate-500" : "bg-white/5 text-zinc-500")
+                                                    }`}>
+                                                        {isTaken ? "Tomado" : "Pendiente"}
+                                                    </span>
+
+                                                    {onUpdateSupplements && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => handleDeleteSupplement(e, sup.name)}
+                                                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                                                                isLight ? "text-slate-400 hover:text-rose-600 hover:bg-rose-50" : "text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10"
+                                                            }`}
+                                                            title={`Eliminar ${sup.name}`}
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
 
                         {/* Botón Principal: Escanear Comida con Cámara AI */}
