@@ -264,6 +264,7 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
             const shortDay = d.toLocaleDateString("es-MX", { weekday: "short" }).toUpperCase();
             const dayNum = d.getDate();
             const monthShort = d.toLocaleDateString("es-MX", { month: "short" }).toUpperCase();
+            const monthLong = d.toLocaleDateString("es-MX", { month: "long" });
             const isCenter = offset === 0;
             const isToday = iso === todayStr;
             const hasMeals = !!allNutritionLogs[iso];
@@ -273,6 +274,7 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                 shortDay,
                 dayNum,
                 monthShort,
+                monthLong,
                 isCenter,
                 isToday,
                 hasMeals,
@@ -348,24 +350,20 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                                 <motion.div
                                     key={`center-${d.iso}`}
                                     layout
-                                    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-sans transition-all flex items-center gap-1.5 sm:gap-2 shrink-0 select-none ${
+                                    className={`px-3.5 sm:px-5 py-1.5 rounded-2xl font-sans transition-all flex flex-col items-center justify-center shrink-0 select-none shadow-md ${
                                         isLight
-                                            ? "bg-slate-900 text-white shadow-md shadow-slate-900/20"
-                                            : "bg-white text-zinc-950 shadow-lg shadow-white/10"
+                                            ? "bg-slate-900 text-white shadow-slate-900/20"
+                                            : "bg-white text-zinc-950 shadow-white/10"
                                     }`}
                                 >
-                                    <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[11px] shrink-0 ${
-                                        isLight ? "bg-white/20 text-white" : "bg-black/15 text-zinc-950"
-                                    }`}>
-                                        {d.firstLetter}
-                                    </span>
-                                    <span className="font-bold text-xs uppercase tracking-tight whitespace-nowrap">
+                                    <span className="font-bold text-xs sm:text-sm uppercase tracking-tight whitespace-nowrap leading-tight">
                                         {d.dayName}
                                     </span>
-                                    <span className={`text-[10px] hidden xs:inline max-w-[80px] sm:max-w-none truncate ${
-                                        isLight ? "text-slate-300 font-normal" : "text-zinc-600 font-medium"
+                                    <span className={`text-[10px] font-mono font-medium tracking-tight mt-0.5 leading-tight ${
+                                        isLight ? "text-slate-300" : "text-zinc-600"
                                     }`}>
-                                        • {d.dayNum} {d.monthShort}
+                                        <span className="hidden xs:inline">{d.dayNum} de {d.monthLong}</span>
+                                        <span className="xs:hidden">{d.dayNum} {d.monthShort}</span>
                                     </span>
                                 </motion.div>
                             );

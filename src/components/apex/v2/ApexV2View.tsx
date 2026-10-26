@@ -1022,29 +1022,33 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                             const firstLetter = dayName.charAt(0).toUpperCase();
                                             const shortFocus = day.focus ? day.focus.split(",")[0].split("&")[0].trim() : (day.title?.split(" ")[0] || "Hipertrofia");
 
+                                            const now = new Date();
+                                            const currentMondayFirst = now.getDay() === 0 ? 6 : now.getDay() - 1;
+                                            const diffDays = idx - currentMondayFirst;
+                                            const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffDays);
+                                            const dayNum = targetDate.getDate();
+                                            const monthShort = targetDate.toLocaleDateString("es-MX", { month: "short" }).replace(".", "");
+                                            const monthLong = targetDate.toLocaleDateString("es-MX", { month: "long" });
+
                                             if (isCenter) {
                                                 return (
                                                     <motion.div
                                                         key={`center-${day.dayNumber || idx}`}
                                                         layout
-                                                        className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-sans transition-all flex items-center gap-1.5 sm:gap-2 shrink-0 select-none ${
+                                                        className={`px-3.5 sm:px-5 py-1.5 rounded-2xl font-sans transition-all flex flex-col items-center justify-center shrink-0 select-none shadow-md ${
                                                             isLight
-                                                                ? "bg-slate-900 text-white shadow-md shadow-slate-900/20"
-                                                                : "bg-white text-zinc-950 shadow-lg shadow-white/10"
+                                                                ? "bg-slate-900 text-white shadow-slate-900/20"
+                                                                : "bg-white text-zinc-950 shadow-white/10"
                                                         }`}
                                                     >
-                                                        <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[11px] shrink-0 ${
-                                                            isLight ? "bg-white/20 text-white" : "bg-black/15 text-zinc-950"
-                                                        }`}>
-                                                            {firstLetter}
-                                                        </span>
-                                                        <span className="font-bold text-xs uppercase tracking-tight whitespace-nowrap">
+                                                        <span className="font-bold text-xs sm:text-sm uppercase tracking-tight whitespace-nowrap leading-tight">
                                                             {dayName}
                                                         </span>
-                                                        <span className={`text-[10px] hidden xs:inline max-w-[80px] sm:max-w-none truncate ${
-                                                            isLight ? "text-slate-300 font-normal" : "text-zinc-600 font-medium"
+                                                        <span className={`text-[10px] font-mono font-medium tracking-tight mt-0.5 leading-tight ${
+                                                            isLight ? "text-slate-300" : "text-zinc-600"
                                                         }`}>
-                                                            • {shortFocus}
+                                                            <span className="hidden xs:inline">{dayNum} de {monthLong}</span>
+                                                            <span className="xs:hidden">{dayNum} {monthShort}</span>
                                                         </span>
                                                     </motion.div>
                                                 );
