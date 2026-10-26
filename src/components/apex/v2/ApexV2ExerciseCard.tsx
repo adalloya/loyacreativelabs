@@ -19,7 +19,8 @@ import {
     Activity,
     Eye,
     EyeOff,
-    Trash2
+    Trash2,
+    TrendingUp
 } from "lucide-react";
 import { ExerciseItem, formatPlatesSummary, isBodyweightExercise } from "@/lib/hypertrophy-engine";
 import { ExerciseMotionViewer } from "@/components/apex/ExerciseMotionViewer";
@@ -49,6 +50,7 @@ interface ApexV2ExerciseCardProps {
     onRandomSwap: () => void;
     onOpenSwapModal: () => void;
     onOpenPlateModal: (weight: number) => void;
+    onOpenLoadEvolution?: (exerciseId: string) => void;
     isPlateLoaded: boolean;
     notes?: string;
     onSaveNotes?: (notes: string) => void;
@@ -74,6 +76,7 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
     onRandomSwap,
     onOpenSwapModal,
     onOpenPlateModal,
+    onOpenLoadEvolution,
     isPlateLoaded,
     notes = "",
     onSaveNotes,
@@ -369,9 +372,22 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                                 : (target.suggestedReps > 0 ? `${target.suggestedWeight}${weightUnit}×${target.suggestedReps}` : `${exercise.rep_range_min}-${exercise.rep_range_max}`)}
                         </span>
                     </div>
-                    <div className={`px-1 border-r ${isLight ? "border-slate-200" : "border-white/[0.06]"}`}>
-                        <span className={`text-[9px] uppercase block font-sans ${isLight ? "text-slate-500 font-medium" : "text-zinc-500"}`}>1RM</span>
-                        <span className={`text-xs font-semibold truncate block ${isLight ? "text-slate-800" : "text-zinc-300"}`}>
+                    <div
+                        onClick={onOpenLoadEvolution ? () => onOpenLoadEvolution(exercise.id) : undefined}
+                        className={`px-1 border-r transition-all ${
+                            onOpenLoadEvolution ? "cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 group/onerm rounded-lg" : ""
+                        } ${isLight ? "border-slate-200" : "border-white/[0.06]"}`}
+                        title={onOpenLoadEvolution ? "Toca para ver gráfica de evolución de carga y 1RM" : undefined}
+                    >
+                        <span className={`text-[9px] uppercase flex items-center justify-center gap-0.5 font-sans ${
+                            isLight ? "text-slate-500 font-medium group-hover/onerm:text-emerald-700" : "text-zinc-500 group-hover/onerm:text-emerald-400"
+                        }`}>
+                            <span>1RM</span>
+                            {onOpenLoadEvolution && <TrendingUp className="w-2.5 h-2.5 opacity-60 group-hover/onerm:opacity-100 text-emerald-500" />}
+                        </span>
+                        <span className={`text-xs font-semibold truncate block ${
+                            isLight ? "text-slate-800 group-hover/onerm:text-emerald-700" : "text-zinc-300 group-hover/onerm:text-emerald-300"
+                        }`}>
                             {target.estimated1RM > 0 ? `${target.estimated1RM}${weightUnit}` : `—`}
                         </span>
                     </div>
@@ -623,6 +639,33 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
 
                         {/* Rejilla de Opciones */}
                         <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                            {/* Evolución de Carga & 1RM */}
+                            {onOpenLoadEvolution && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        onOpenLoadEvolution(exercise.id);
+                                        setIsMenuOpen(false);
+                                    }}
+                                    className={`col-span-2 p-3 rounded-2xl border flex items-center justify-between transition-colors cursor-pointer ${
+                                        isLight
+                                            ? "bg-emerald-50 hover:bg-emerald-100/80 border-emerald-300 text-emerald-950"
+                                            : "bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 text-emerald-200"
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2.5">
+                                        <TrendingUp className="w-4 h-4 shrink-0 text-emerald-500" />
+                                        <div className="text-left">
+                                            <div className="font-semibold text-xs sm:text-sm">Evolución de Carga & 1RM</div>
+                                            <div className={`text-[10px] font-sans ${isLight ? "text-emerald-700/80" : "text-emerald-400/80"}`}>
+                                                Gráfica de sobrecarga progresiva y tonelaje
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">Ver →</span>
+                                </button>
+                            )}
+
                             {/* YouTube Técnica */}
                             <a
                                 href={`https://www.youtube.com/results?search_query=${encodeURIComponent(exercise.name + " form technique hypertrophy")}`}

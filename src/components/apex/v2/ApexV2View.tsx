@@ -19,7 +19,8 @@ import {
     ChevronUp,
     CheckCircle2,
     Sliders,
-    X
+    X,
+    TrendingUp
 } from "lucide-react";
 import { Drawer } from "vaul";
 import {
@@ -40,6 +41,7 @@ import { ApexV2NutritionCalendarHub } from "./ApexV2NutritionCalendarHub";
 import { ApexV2AnatomyView } from "./ApexV2AnatomyView";
 import { ApexV2CardioFinisher } from "./ApexV2CardioFinisher";
 import { ApexV2WorkoutDashboard } from "./ApexV2WorkoutDashboard";
+import { ApexV2LoadEvolutionModal } from "./ApexV2LoadEvolutionModal";
 import { ApexV2SettingsView } from "./ApexV2SettingsView";
 import { ApexV2Footer } from "./ApexV2Footer";
 import { useApexVoiceAgent, VoiceAgentActionResult, VoiceAgentWorkoutResult } from "@/hooks/useApexVoiceAgent";
@@ -202,6 +204,17 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
     const [selectedExerciseIndex, setSelectedExerciseIndex] = useState<number>(0);
     const [isCompletedSectionOpen, setIsCompletedSectionOpen] = useState<boolean>(true);
     const [isCardioModalOpen, setIsCardioModalOpen] = useState<boolean>(false);
+    const [isLoadEvolutionOpen, setIsLoadEvolutionOpen] = useState<boolean>(false);
+    const [evolutionTargetExerciseId, setEvolutionTargetExerciseId] = useState<string>("");
+
+    const handleOpenLoadEvolution = (exerciseId?: string) => {
+        if (exerciseId) {
+            setEvolutionTargetExerciseId(exerciseId);
+        } else if (activeExercises && activeExercises.length > 0) {
+            setEvolutionTargetExerciseId(activeExercises[0].id);
+        }
+        setIsLoadEvolutionOpen(true);
+    };
 
     // Resetear al primer ejercicio pendiente al cambiar de día
     useEffect(() => {
@@ -857,6 +870,7 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                             setPlateModalWeight(w);
                             setIsPlateModalOpen(true);
                         }}
+                        onOpenLoadEvolution={handleOpenLoadEvolution}
                         isPlateLoaded={isPlateLoadedExercise(ex.equipment, ex.name)}
                         notes={exerciseNotes[ex.id] || ""}
                         onSaveNotes={(n) => setExerciseNotes((prev) => ({ ...prev, [ex.id]: n }))}
@@ -928,8 +942,24 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                     </div>
                 </div>
 
-                {/* Derecha: Badge de Progreso de Series + Chevron */}
-                <div className="flex items-center gap-2 shrink-0">
+                {/* Derecha: Botón Evolución + Badge de Progreso de Series + Chevron */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenLoadEvolution(ex.id);
+                        }}
+                        className={`p-1.5 rounded-xl border transition-all cursor-pointer ${
+                            isLight
+                                ? "bg-slate-100/90 hover:bg-emerald-50 text-slate-500 hover:text-emerald-700 border-slate-200 hover:border-emerald-300"
+                                : "bg-white/[0.04] hover:bg-emerald-500/15 text-zinc-400 hover:text-emerald-300 border-white/10 hover:border-emerald-500/30"
+                        }`}
+                        title={`Ver evolución de carga de ${translateExerciseNameToSpanish(ex.name)}`}
+                    >
+                        <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                    </button>
+
                     <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border font-semibold ${
                         isAllDone
                             ? (isLight ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30")
@@ -1075,6 +1105,7 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                         isFinished={routineStats.isFinished}
                                         todayCardio={todayCardio}
                                         onOpenCardioModal={() => setIsCardioModalOpen(true)}
+                                        onOpenLoadEvolution={() => handleOpenLoadEvolution()}
                                         readiness={readiness}
                                         onChangeReadiness={setReadiness}
                                         isLight={isLight}
@@ -1460,6 +1491,20 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                     handleCreateCustomVoiceExercise(name, pendingVoiceWorkoutData);
                     setIsVoicePickerOpen(false);
                 }}
+                isLight={isLight}
+            />
+
+            {/* Modal de Gráfica de Evolución de Carga & 1RM */}
+            <ApexV2LoadEvolutionModal
+                isOpen={isLoadEvolutionOpen}
+                onClose={() => setIsLoadEvolutionOpen(false)}
+                activeExercises={activeExercises}
+                initialExerciseId={evolutionTargetExerciseId}
+                weightUnit={weightUnit}
+                exerciseMemory={exerciseMemory}
+                completedSets={completedSets}
+                setInputs={setInputs}
+                userBodyweight={userBodyweight}
                 isLight={isLight}
             />
 
