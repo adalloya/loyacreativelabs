@@ -1,7 +1,4 @@
-// src/components/apex/v2/ApexV2WorkoutDashboard.tsx
-"use client";
-
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import {
     Activity,
@@ -12,6 +9,8 @@ import {
     CheckCircle2,
     Sparkles,
     ChevronRight,
+    ChevronDown,
+    ChevronUp,
     ArrowUpRight,
     TrendingUp
 } from "lucide-react";
@@ -39,6 +38,7 @@ export interface ApexV2WorkoutDashboardProps {
     readiness: ReadinessState;
     onChangeReadiness?: (r: ReadinessState) => void;
     isLight: boolean;
+    athleteName?: string;
 }
 
 export const ApexV2WorkoutDashboard: React.FC<ApexV2WorkoutDashboardProps> = ({
@@ -58,8 +58,12 @@ export const ApexV2WorkoutDashboard: React.FC<ApexV2WorkoutDashboardProps> = ({
     onOpenLoadEvolution,
     readiness,
     onChangeReadiness,
-    isLight
+    isLight,
+    athleteName
 }) => {
+    // Estado de contracción: Por defecto contraído si la rutina está completada
+    const [isCollapsed, setIsCollapsed] = useState<boolean | null>(null);
+    const activeCollapsed = isCollapsed !== null ? isCollapsed : isFinished;
     // Parámetros para el círculo de progreso SVG
     const radius = 44;
     const strokeWidth = 8.5;
@@ -78,6 +82,149 @@ export const ApexV2WorkoutDashboard: React.FC<ApexV2WorkoutDashboardProps> = ({
     const cleanFocus = (routineFocus || "Hipertrofia & Rendimiento")
         .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu, "")
         .trim();
+
+    // Si está contraído (cuando se completó la rutina o el usuario lo contrajo manualmente):
+    if (activeCollapsed) {
+        return (
+            <div className={`relative rounded-3xl p-4 sm:p-5 backdrop-blur-2xl border transition-all overflow-hidden select-none shadow-xl ${
+                isLight
+                    ? "bg-white/95 border-emerald-200/90 shadow-slate-900/[0.04] text-slate-900"
+                    : "bg-zinc-950/85 border-emerald-500/25 shadow-2xl text-white"
+            }`}>
+                {/* Resplandor ambiental de éxito */}
+                <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full pointer-events-none blur-3xl opacity-20 bg-emerald-500" />
+
+                {/* Cabecera del Resumen: Mensaje de felicitaciones con nombre y botón de expandir */}
+                <div className="flex items-center justify-between gap-3 relative z-10">
+                    <div className="flex items-center gap-3 min-w-0">
+                        {/* Indicador circular de éxito */}
+                        <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0 text-emerald-500 shadow-sm">
+                            <CheckCircle2 className="w-6 h-6 stroke-[2.5]" />
+                        </div>
+
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border ${
+                                    isLight
+                                        ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                                        : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                }`}>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block mr-1" />
+                                    {isFinished ? "RUTINA COMPLETADA" : `${percent}% AVANCE`}
+                                </span>
+                                {isFinished && (
+                                    <span className={`text-[11px] font-mono font-bold ${
+                                        isLight ? "text-emerald-700" : "text-emerald-400"
+                                    }`}>
+                                        100%
+                                    </span>
+                                )}
+                            </div>
+
+                            <h3 className={`text-base sm:text-lg font-bold tracking-tight mt-0.5 truncate flex items-center gap-1.5 ${
+                                isLight ? "text-slate-950" : "text-white"
+                            }`}>
+                                <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" />
+                                <span>¡Felicidades{athleteName ? `, ${athleteName}` : ""}!</span>
+                            </h3>
+
+                            <p className={`text-[11px] truncate ${
+                                isLight ? "text-slate-600" : "text-zinc-400"
+                            }`}>
+                                {isFinished
+                                    ? `Completaste tu rutina de hoy (${cleanTitle})`
+                                    : `${completedExercisesCount} de ${totalExercisesCount} ejercicios completados`}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Acciones del Header: Evolución Carga + Botón Ver detalles */}
+                    <div className="flex items-center gap-2 shrink-0">
+                        {onOpenLoadEvolution && (
+                            <button
+                                type="button"
+                                onClick={onOpenLoadEvolution}
+                                className={`hidden xs:flex px-2.5 py-1.5 rounded-xl text-[11px] font-mono font-bold items-center gap-1.5 transition-all cursor-pointer border active:scale-95 ${
+                                    isLight
+                                        ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"
+                                        : "bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 border-white/10"
+                                }`}
+                                title="Ver gráfica interactiva de evolución de carga"
+                            >
+                                <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                                <span className="hidden sm:inline">Evolución</span>
+                            </button>
+                        )}
+
+                        <button
+                            type="button"
+                            onClick={() => setIsCollapsed(false)}
+                            className={`px-3 py-1.5 rounded-xl text-[11px] font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer border active:scale-95 ${
+                                isLight
+                                    ? "bg-slate-900 hover:bg-black text-white border-slate-900 shadow-sm"
+                                    : "bg-white hover:bg-zinc-200 text-black border-white shadow-sm"
+                            }`}
+                            title="Expandir dashboard completo"
+                        >
+                            <span>Ver detalles</span>
+                            <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Pequeño Resumen de Métricas Clave (4 chips en 1 fila) */}
+                <div className={`mt-3 pt-3 border-t grid grid-cols-2 xs:grid-cols-4 gap-2 relative z-10 ${
+                    isLight ? "border-slate-200/80" : "border-white/[0.08]"
+                }`}>
+                    {/* Chip 1: Series Completadas */}
+                    <div className={`px-2.5 py-1.5 rounded-xl border flex items-center justify-between gap-1.5 ${
+                        isLight ? "bg-slate-50 border-slate-200/80" : "bg-white/[0.03] border-white/[0.06]"
+                    }`}>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                            <Layers className="w-3.5 h-3.5 text-teal-500 shrink-0" />
+                            <span className="text-[10px] font-mono text-zinc-400 uppercase">Series</span>
+                        </div>
+                        <span className="text-xs font-mono font-bold text-emerald-500">{completedSetsCount}/{totalSets}</span>
+                    </div>
+
+                    {/* Chip 2: Calorías Quemadas */}
+                    <div className={`px-2.5 py-1.5 rounded-xl border flex items-center justify-between gap-1.5 ${
+                        isLight ? "bg-slate-50 border-slate-200/80" : "bg-white/[0.03] border-white/[0.06]"
+                    }`}>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                            <Flame className="w-3.5 h-3.5 text-amber-500 shrink-0 fill-amber-500/20" />
+                            <span className="text-[10px] font-mono text-zinc-400 uppercase">Quemadas</span>
+                        </div>
+                        <span className="text-xs font-mono font-bold text-amber-500">~{burnedKcal} kcal</span>
+                    </div>
+
+                    {/* Chip 3: Tonelaje Total */}
+                    <div className={`px-2.5 py-1.5 rounded-xl border flex items-center justify-between gap-1.5 ${
+                        isLight ? "bg-slate-50 border-slate-200/80" : "bg-white/[0.03] border-white/[0.06]"
+                    }`}>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                            <Dumbbell className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                            <span className="text-[10px] font-mono text-zinc-400 uppercase">Tonelaje</span>
+                        </div>
+                        <span className="text-xs font-mono font-bold truncate">{formattedVolume} {weightUnit}</span>
+                    </div>
+
+                    {/* Chip 4: Cardio */}
+                    <div className={`px-2.5 py-1.5 rounded-xl border flex items-center justify-between gap-1.5 ${
+                        isLight ? "bg-slate-50 border-slate-200/80" : "bg-white/[0.03] border-white/[0.06]"
+                    }`}>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                            <HeartPulse className={`w-3.5 h-3.5 shrink-0 ${isCardioDone ? "text-emerald-500" : "text-zinc-400"}`} />
+                            <span className="text-[10px] font-mono text-zinc-400 uppercase">Cardio</span>
+                        </div>
+                        <span className={`text-xs font-mono font-bold truncate ${isCardioDone ? "text-emerald-500" : ""}`}>
+                            {isCardioDone ? "Listo" : isCardioActive ? `${todayCardio?.minutes}m` : "Descanso"}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className={`relative rounded-3xl p-4 sm:p-5.5 backdrop-blur-2xl border transition-all overflow-hidden select-none shadow-xl ${
@@ -118,12 +265,28 @@ export const ApexV2WorkoutDashboard: React.FC<ApexV2WorkoutDashboardProps> = ({
                     <h2 className={`text-base sm:text-lg font-bold tracking-tight uppercase truncate ${
                         isLight ? "text-slate-950" : "text-white"
                     }`}>
-                        {cleanTitle || "Entrenamiento del Día"}
+                        {isFinished
+                            ? `¡Felicidades${athleteName ? `, ${athleteName}` : ""}!`
+                            : cleanTitle || "Entrenamiento del Día"}
                     </h2>
                 </div>
 
-                {/* Acciones Derecha: Botón Evolución de Carga + Selector Readiness */}
+                {/* Acciones Derecha: Botón Contraer + Botón Evolución de Carga + Selector Readiness */}
                 <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 flex-wrap">
+                    <button
+                        type="button"
+                        onClick={() => setIsCollapsed(true)}
+                        className={`px-3 py-1.5 rounded-2xl text-[11px] font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer border active:scale-95 shadow-xs ${
+                            isLight
+                                ? "bg-slate-100/90 hover:bg-slate-200 text-slate-800 border-slate-300"
+                                : "bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 border-white/10"
+                        }`}
+                        title="Contraer a resumen compacto"
+                    >
+                        <span>Contraer</span>
+                        <ChevronUp className="w-3.5 h-3.5" />
+                    </button>
+
                     {onOpenLoadEvolution && (
                         <button
                             type="button"

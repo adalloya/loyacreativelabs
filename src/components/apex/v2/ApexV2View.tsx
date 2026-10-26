@@ -1113,6 +1113,8 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                     }
                                 }
 
+                                const athleteName = profile?.firstName?.trim() || profile?.name?.trim() || "";
+
                                 return (
                                     <ApexV2WorkoutDashboard
                                         routineTitle={cleanTitle || "Entrenamiento de Hoy"}
@@ -1132,6 +1134,7 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                         readiness={readiness}
                                         onChangeReadiness={setReadiness}
                                         isLight={isLight}
+                                        athleteName={athleteName}
                                     />
                                 );
                             })()}
@@ -1186,7 +1189,9 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                                     : "bg-emerald-500/10 border-emerald-500/20 text-emerald-300"
                                             }`}>
                                                 <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-500" />
-                                                <p className="text-xs font-bold">¡Has completado todos los ejercicios pendientes!</p>
+                                                <p className="text-xs font-bold">
+                                                    ¡Felicidades{profile?.firstName ? `, ${profile.firstName}` : profile?.name ? `, ${profile.name}` : ""}! Has completado todos los ejercicios pendientes.
+                                                </p>
                                                 <p className={`text-[11px] mt-0.5 ${isLight ? "text-emerald-800/80" : "text-emerald-400/80"}`}>
                                                     Puedes revisar o editar tus series en la sección de completados abajo.
                                                 </p>
