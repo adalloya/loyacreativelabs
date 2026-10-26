@@ -71,6 +71,14 @@ export const ApexV2WorkoutDashboard: React.FC<ApexV2WorkoutDashboardProps> = ({
 
     const formattedVolume = new Intl.NumberFormat("es-MX").format(totalVolume);
 
+    // Limpieza estricta de emojis en textos dinámicos
+    const cleanTitle = (routineTitle || "Entrenamiento del Día")
+        .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu, "")
+        .trim();
+    const cleanFocus = (routineFocus || "Hipertrofia & Rendimiento")
+        .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu, "")
+        .trim();
+
     return (
         <div className={`relative rounded-3xl p-4 sm:p-5.5 backdrop-blur-2xl border transition-all overflow-hidden select-none shadow-xl ${
             isLight
@@ -103,14 +111,14 @@ export const ApexV2WorkoutDashboard: React.FC<ApexV2WorkoutDashboardProps> = ({
                         <span className={`text-[11px] font-medium hidden xs:inline truncate ${
                             isLight ? "text-slate-500" : "text-zinc-400"
                         }`}>
-                            {routineFocus || "Hipertrofia & Rendimiento"}
+                            {cleanFocus || "Hipertrofia & Rendimiento"}
                         </span>
                     </div>
 
                     <h2 className={`text-base sm:text-lg font-bold tracking-tight uppercase truncate ${
                         isLight ? "text-slate-950" : "text-white"
                     }`}>
-                        {routineTitle || "Entrenamiento del Día"}
+                        {cleanTitle || "Entrenamiento del Día"}
                     </h2>
                 </div>
 
@@ -326,7 +334,7 @@ export const ApexV2WorkoutDashboard: React.FC<ApexV2WorkoutDashboardProps> = ({
                                 <span>Carga total</span>
                                 {onOpenLoadEvolution && (
                                     <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold group-hover:underline">
-                                        Gráfica ↗
+                                        Ver gráfica
                                     </span>
                                 )}
                             </span>
@@ -369,7 +377,7 @@ export const ApexV2WorkoutDashboard: React.FC<ApexV2WorkoutDashboardProps> = ({
                                 isCardioDone ? "text-emerald-600 dark:text-emerald-400" : (isLight ? "text-slate-900" : "text-white")
                             }`}>
                                 {isCardioDone
-                                    ? "✓ Listo"
+                                    ? "Listo"
                                     : isCardioActive
                                     ? `${todayCardio?.minutes} min`
                                     : "Descanso"}

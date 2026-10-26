@@ -395,33 +395,35 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
             <div className={`backdrop-blur-2xl rounded-3xl p-4 sm:p-5 shadow-2xl border transition-colors ${
                 isLight ? "bg-white/85 border-slate-200/90 text-slate-900 shadow-slate-950/[0.04]" : "bg-zinc-950/75 border-white/10 text-white shadow-2xl"
             }`}>
-                {/* Switcher Segmentado */}
-                <div className={`grid grid-cols-2 p-1 rounded-2xl mb-4 border ${
+                {/* Switcher Segmentado (Solo Iconos) */}
+                <div className={`grid grid-cols-2 p-1 rounded-2xl mb-4 border max-w-[180px] mx-auto ${
                     isLight ? "bg-slate-100 border-slate-200" : "bg-black/50 border-white/10"
                 }`}>
                     <button
                         type="button"
                         onClick={() => setViewMode("nutrition")}
-                        className={`py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                        title={`Nutrición (${nutritionTotals.totalCalories} kcal)`}
+                        aria-label="Nutrición"
+                        className={`py-2 rounded-xl transition-all flex items-center justify-center cursor-pointer ${
                             viewMode === "nutrition"
-                                ? (isLight ? "bg-white text-slate-950 shadow-sm" : "bg-white text-black shadow-md")
-                                : (isLight ? "text-slate-600 hover:text-slate-900" : "text-zinc-400 hover:text-white")
+                                ? (isLight ? "bg-white text-emerald-600 shadow-sm" : "bg-white text-black shadow-md")
+                                : (isLight ? "text-slate-500 hover:text-slate-900" : "text-zinc-400 hover:text-white")
                         }`}
                     >
-                        <Utensils className="w-3.5 h-3.5" />
-                        <span>Nutrición ({nutritionTotals.totalCalories} kcal)</span>
+                        <Utensils className="w-4 h-4" />
                     </button>
                     <button
                         type="button"
                         onClick={() => setViewMode("workout")}
-                        className={`py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                        title={`Entrenamiento (${workoutSummary.totalSets} series)`}
+                        aria-label="Entrenamiento"
+                        className={`py-2 rounded-xl transition-all flex items-center justify-center cursor-pointer ${
                             viewMode === "workout"
-                                ? (isLight ? "bg-white text-slate-950 shadow-sm" : "bg-white text-black shadow-md")
-                                : (isLight ? "text-slate-600 hover:text-slate-900" : "text-zinc-400 hover:text-white")
+                                ? (isLight ? "bg-white text-emerald-600 shadow-sm" : "bg-white text-black shadow-md")
+                                : (isLight ? "text-slate-500 hover:text-slate-900" : "text-zinc-400 hover:text-white")
                         }`}
                     >
-                        <Dumbbell className="w-3.5 h-3.5" />
-                        <span>Entrenamiento ({workoutSummary.totalSets} series)</span>
+                        <Dumbbell className="w-4 h-4" />
                     </button>
                 </div>
 
@@ -456,7 +458,20 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                             </div>
                         </div>
 
-                        {/* Suplementación & Medicamentos (Lista Vertical Debajo del Contador de Calorías) */}
+                        {/* Botón Principal: Escanear Comida */}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setScannerCategory("lunch");
+                                setIsFoodScannerOpen(true);
+                            }}
+                            className="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-98 shadow-md shadow-emerald-500/20 cursor-pointer"
+                        >
+                            <Camera className="w-4 h-4" />
+                            <span>Escanear Comida</span>
+                        </button>
+
+                        {/* Suplementación & Medicamentos (Lista Vertical Debajo de Escanear Comida) */}
                         <div className={`p-3.5 sm:p-4 rounded-2xl border transition-all ${
                             isLight
                                 ? "bg-slate-50/90 border-slate-200/90 shadow-xs"
@@ -645,19 +660,6 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                                 </div>
                             )}
                         </div>
-
-                        {/* Botón Principal: Escanear Comida */}
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setScannerCategory("lunch");
-                                setIsFoodScannerOpen(true);
-                            }}
-                            className="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-98 shadow-md shadow-emerald-500/20 cursor-pointer"
-                        >
-                            <Camera className="w-4 h-4" />
-                            <span>Escanear Comida</span>
-                        </button>
 
                         {/* Desglose en 5 Tiempos */}
                         <div className="space-y-2.5 pt-1">
