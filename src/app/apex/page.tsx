@@ -948,6 +948,7 @@ export default function ApexDashboard() {
                     activeNutritionDate={activeNutritionDate}
                     setActiveNutritionDate={setActiveNutritionDate}
                     dietPlan={dietPlan}
+                    isDietLoading={dietLoading}
                     groceryList={groceryList}
                     restRemaining={restRemaining}
                     handleSkipRest={() => setRestRemaining(null)}

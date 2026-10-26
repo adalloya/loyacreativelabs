@@ -492,8 +492,6 @@ export async function POST(req: NextRequest) {
                     model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
                     generationConfig: {
                         temperature: 0.2,
-                        // @ts-ignore
-                        thinkingConfig: { thinkingBudget: 0 },
                         responseMimeType: "application/json"
                     }
                 });

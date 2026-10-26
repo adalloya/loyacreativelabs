@@ -113,6 +113,7 @@ interface ApexV2ViewProps {
     activeNutritionDate: string;
     setActiveNutritionDate: (date: string) => void;
     dietPlan: any;
+    isDietLoading?: boolean;
     groceryList: any;
     restRemaining: number | null;
     handleSkipRest: () => void;
@@ -182,6 +183,7 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
     activeNutritionDate,
     setActiveNutritionDate,
     dietPlan,
+    isDietLoading,
     groceryList,
     restRemaining,
     handleSkipRest,
@@ -1409,6 +1411,7 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                 activeDate={activeNutritionDate}
                                 onSelectDate={setActiveNutritionDate}
                                 dietPlan={dietPlan}
+                                isDietLoading={isDietLoading}
                                 onOpenDietPlanModal={() => setIsDietPrefModalOpen(true)}
                                 groceryList={groceryList}
                                 onGoToGym={() => setActiveTab("workout")}
