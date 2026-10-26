@@ -21,7 +21,7 @@ import {
     EyeOff,
     Trash2
 } from "lucide-react";
-import { ExerciseItem, formatPlatesSummary } from "@/lib/hypertrophy-engine";
+import { ExerciseItem, formatPlatesSummary, isBodyweightExercise } from "@/lib/hypertrophy-engine";
 import { ExerciseMotionViewer } from "@/components/apex/ExerciseMotionViewer";
 import { translateExerciseNameToSpanish } from "@/lib/spanish-exercise-translator";
 import { Drawer } from "vaul";
@@ -38,6 +38,7 @@ interface ApexV2ExerciseCardProps {
         targetRir: number;
     };
     weightUnit: "lbs" | "kg";
+    userBodyweight?: number;
     completedSets: Record<string, boolean>;
     setInputs: Record<string, { weight: number | string; reps: number | string }>;
     onSetInputChange: (key: string, field: "weight" | "reps", value: any) => void;
@@ -62,6 +63,7 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
     memory,
     target,
     weightUnit,
+    userBodyweight,
     completedSets,
     setInputs,
     onSetInputChange,
@@ -110,15 +112,26 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
 
     const isLight = isLightProp ?? isLightState;
     const displayName = translateExerciseNameToSpanish(exercise.name);
+    const isBodyweight = isBodyweightExercise(exercise);
+    const defaultWeight = isBodyweight ? (userBodyweight || (weightUnit === "lbs" ? 165 : 75)) : 0;
 
     // Entrada condensada unificada: Series × Peso × Reps
     const [seriesCount, setSeriesCount] = useState<number>(exercise.default_sets || 3);
     const [unifiedWeight, setUnifiedWeight] = useState<string | number>(() => {
-        return memory.reps > 0 ? memory.weight : (target.suggestedWeight || 0);
+        if (memory.reps > 0 && Number(memory.weight) > 0) return memory.weight;
+        if (target.suggestedWeight > 0) return target.suggestedWeight;
+        return isBodyweight ? defaultWeight : 0;
     });
     const [unifiedReps, setUnifiedReps] = useState<string | number>(() => {
         return memory.reps > 0 ? memory.reps : (target.suggestedReps || exercise.rep_range_min || 8);
     });
+
+    // Sincronizar peso predeterminado si es peso corporal y está en 0
+    useEffect(() => {
+        if (isBodyweight && (Number(unifiedWeight) === 0 || !unifiedWeight)) {
+            setUnifiedWeight(defaultWeight);
+        }
+    }, [isBodyweight, defaultWeight]);
 
     // Calcular cuántas series están completadas
     const completedCount = Array.from({ length: seriesCount }).filter((_, sIdx) => {
@@ -129,7 +142,7 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
     // Completar o alternar todas las series en un solo clic
     const handleToggleAllSets = () => {
         const nextState = !isAllCompleted;
-        const w = Number(unifiedWeight) || 0;
+        const w = Number(unifiedWeight) || (isBodyweight ? defaultWeight : 0);
         const r = Number(unifiedReps) || 0;
 
         for (let i = 0; i < seriesCount; i++) {
@@ -272,9 +285,17 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                                     }`}>
                                         {exercise.anatomical_subdivision}
                                     </span>
-                                    <span className={`text-[10px] capitalize hidden xs:inline ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
-                                        • {exercise.equipment}
-                                    </span>
+                                    {isBodyweight ? (
+                                        <span className={`text-[9px] sm:text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                                            isLight ? "bg-emerald-50 text-emerald-800 border-emerald-200" : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                        }`}>
+                                            Peso Propio ({defaultWeight}{weightUnit})
+                                        </span>
+                                    ) : (
+                                        <span className={`text-[10px] capitalize hidden xs:inline ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
+                                            • {exercise.equipment}
+                                        </span>
+                                    )}
                                 </div>
 
                                 <h3 className={`text-sm sm:text-base font-bold tracking-tight truncate leading-tight ${
@@ -335,13 +356,17 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                     <div className={`px-1 border-r ${isLight ? "border-slate-200" : "border-white/[0.06]"}`}>
                         <span className={`text-[9px] uppercase block font-sans ${isLight ? "text-slate-500 font-medium" : "text-zinc-500"}`}>Último</span>
                         <span className={`text-xs font-semibold truncate block ${isLight ? "text-slate-800" : "text-zinc-300"}`}>
-                            {memory.reps > 0 ? `${memory.weight}${weightUnit}×${memory.reps}` : `0×0`}
+                            {memory.reps > 0
+                                ? `${memory.weight || defaultWeight}${weightUnit}×${memory.reps}`
+                                : (isBodyweight ? `PC (${defaultWeight}${weightUnit})` : `0×0`)}
                         </span>
                     </div>
                     <div className={`px-1 border-r ${isLight ? "border-slate-200" : "border-white/[0.06]"}`}>
                         <span className={`text-[9px] uppercase block font-sans ${isLight ? "text-emerald-700 font-semibold" : "text-emerald-400/80"}`}>Meta Hoy</span>
                         <span className={`text-xs font-bold truncate block ${isLight ? "text-slate-950 font-bold" : "text-white"}`}>
-                            {target.suggestedReps > 0 ? `${target.suggestedWeight}${weightUnit}×${target.suggestedReps}` : `${exercise.rep_range_min}-${exercise.rep_range_max}`}
+                            {isBodyweight
+                                ? `PC (${target.suggestedWeight || defaultWeight}${weightUnit})×${target.suggestedReps || `${exercise.rep_range_min}-${exercise.rep_range_max}`}`
+                                : (target.suggestedReps > 0 ? `${target.suggestedWeight}${weightUnit}×${target.suggestedReps}` : `${exercise.rep_range_min}-${exercise.rep_range_max}`)}
                         </span>
                     </div>
                     <div className={`px-1 border-r ${isLight ? "border-slate-200" : "border-white/[0.06]"}`}>
@@ -414,17 +439,23 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                                             onSetInputChange(`${exercise.id}_${i}`, "weight", val);
                                         }
                                     }}
-                                    placeholder="0"
-                                    className={`w-full h-9 rounded-xl text-center text-xs sm:text-sm font-mono font-bold focus:outline-none transition-colors pr-6 border ${
+                                    placeholder={isBodyweight ? String(defaultWeight) : "0"}
+                                    className={`w-full h-9 rounded-xl text-center text-xs sm:text-sm font-mono font-bold focus:outline-none transition-colors pr-7 border ${
                                         isLight
-                                            ? "bg-white border-slate-200 text-slate-900 focus:border-slate-400 placeholder:text-slate-400"
-                                            : "bg-black/60 border-white/10 text-white focus:border-white/40 placeholder:text-zinc-600"
+                                            ? isBodyweight
+                                                ? "bg-emerald-50/70 border-emerald-300 text-emerald-950 focus:border-emerald-500 placeholder:text-emerald-700/60"
+                                                : "bg-white border-slate-200 text-slate-900 focus:border-slate-400 placeholder:text-slate-400"
+                                            : isBodyweight
+                                                ? "bg-emerald-950/30 border-emerald-500/30 text-emerald-300 focus:border-emerald-400 placeholder:text-emerald-500/60"
+                                                : "bg-black/60 border-white/10 text-white focus:border-white/40 placeholder:text-zinc-600"
                                     }`}
                                 />
-                                <span className={`absolute right-1.5 top-2.5 text-[9px] font-mono pointer-events-none uppercase ${
-                                    isLight ? "text-slate-500" : "text-zinc-500"
+                                <span className={`absolute right-1.5 top-2.5 text-[9px] font-mono pointer-events-none uppercase font-semibold ${
+                                    isBodyweight
+                                        ? (isLight ? "text-emerald-700" : "text-emerald-400")
+                                        : (isLight ? "text-slate-500" : "text-zinc-500")
                                 }`}>
-                                    {weightUnit}
+                                    {isBodyweight ? "PC" : weightUnit}
                                 </span>
                             </div>
 
@@ -500,7 +531,7 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                                 const key = `${exercise.id}_${sIdx}`;
                                 const isCompleted = Boolean(completedSets[key]);
                                 const currentInput = setInputs[key] || {
-                                    weight: unifiedWeight,
+                                    weight: unifiedWeight !== "" ? unifiedWeight : (isBodyweight ? defaultWeight : ""),
                                     reps: unifiedReps
                                 };
 
@@ -519,10 +550,15 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                                                 type="number"
                                                 value={currentInput.weight ?? ""}
                                                 onChange={(e) => onSetInputChange(key, "weight", e.target.value)}
+                                                placeholder={isBodyweight ? String(defaultWeight) : "0"}
                                                 className={`w-14 h-7 rounded-lg text-center text-xs font-mono font-bold focus:outline-none border ${
                                                     isLight
-                                                        ? "bg-white border-slate-300 text-slate-900 focus:border-slate-500"
-                                                        : "bg-black/60 border-white/10 text-white focus:border-white/40"
+                                                        ? isBodyweight
+                                                            ? "bg-emerald-50/70 border-emerald-300 text-emerald-950 focus:border-emerald-500"
+                                                            : "bg-white border-slate-300 text-slate-900 focus:border-slate-500"
+                                                        : isBodyweight
+                                                            ? "bg-emerald-950/30 border-emerald-500/30 text-emerald-300 focus:border-emerald-400"
+                                                            : "bg-black/60 border-white/10 text-white focus:border-white/40"
                                                 }`}
                                             />
                                             <span className={`font-mono text-[10px] ${isLight ? "text-slate-400" : "text-zinc-600"}`}>×</span>
@@ -539,7 +575,7 @@ export const ApexV2ExerciseCard: React.FC<ApexV2ExerciseCardProps> = ({
                                         </div>
                                         <button
                                             type="button"
-                                            onClick={() => onCompleteSet(exercise, sIdx, Number(currentInput.weight), Number(currentInput.reps))}
+                                            onClick={() => onCompleteSet(exercise, sIdx, Number(currentInput.weight) || (isBodyweight ? defaultWeight : 0), Number(currentInput.reps))}
                                             className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
                                                 isCompleted
                                                     ? (isLight ? "bg-emerald-600 text-white" : "bg-emerald-500 text-black")

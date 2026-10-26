@@ -551,6 +551,37 @@ export function exerciseMatchesEnvironment(
     return true;
 }
 
+/**
+ * Determina si un ejercicio es de peso propio / peso corporal (calistenia, lagartijas, dominadas, fondos, etc.)
+ */
+export function isBodyweightExercise(exercise?: { equipment?: string; rawEquipment?: string; name?: string } | null): boolean {
+    if (!exercise) return false;
+    const eq = (exercise.equipment || "").toLowerCase().trim();
+    const raw = (exercise.rawEquipment || "").toLowerCase().trim();
+    const n = (exercise.name || "").toLowerCase().trim();
+
+    if (eq === "bodyweight" || raw === "body only" || raw === "bodyweight" || raw === "none") {
+        return true;
+    }
+    if (n.includes("barbell") || n.includes("dumbbell") || n.includes("cable") || n.includes("machine") || n.includes("weighted")) {
+        return false;
+    }
+    if (
+        n.includes("bodyweight") ||
+        n.includes("push-up") || n.includes("pushup") || n.includes("lagartija") ||
+        n.includes("pull-up") || n.includes("pullup") || n.includes("dominada") ||
+        n.includes("chin-up") || n.includes("chinup") ||
+        n.includes("dip") || n.includes("fondo") ||
+        n.includes("crunch") || n.includes("plank") || n.includes("plancha") ||
+        n.includes("sit-up") || n.includes("situp") || n.includes("abdominal") ||
+        n.includes("burpee") || n.includes("jumping jack") ||
+        n.includes("air squat") || n.includes("sentadilla libre")
+    ) {
+        return true;
+    }
+    return eq === "bodyweight";
+}
+
 export function generateWeeklyProgram(
     daysPerWeek: number = 5,
     sessionDurationMins: number = 60,

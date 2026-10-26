@@ -26,7 +26,8 @@ import {
     ReadinessState,
     EXERCISE_DATABASE,
     CardioType,
-    DailyCardioEntry
+    DailyCardioEntry,
+    isBodyweightExercise
 } from "@/lib/hypertrophy-engine";
 import { translateExerciseNameToSpanish } from "@/lib/spanish-exercise-translator";
 import { getInitialTheme, Theme } from "@/lib/theme";
@@ -603,6 +604,15 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
         onBatchActions: handleBatchVoiceActions
     });
 
+    // Peso corporal del usuario (convertido a unidad activa)
+    const userBodyweight = useMemo(() => {
+        const rawKg = Number(profile?.weightKg) || 75;
+        if (weightUnit === "lbs") {
+            return Math.round(rawKg * 2.20462);
+        }
+        return Math.round(rawKg * 10) / 10;
+    }, [profile?.weightKg, weightUnit]);
+
     // Estadísticas y agrupamiento de ejercicios por realizados vs pendientes
     const routineStats = useMemo(() => {
         let totalSets = 0;
@@ -632,6 +642,9 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
         const pending = items.filter((i) => !i.isAllDone);
         const completed = items.filter((i) => i.isAllDone);
         const percent = items.length > 0 ? Math.round((completedExercisesCount / items.length) * 100) : 0;
+        const rawKg = Number(profile?.weightKg) || 75;
+        // Gasto calórico estimado en hipertrofia (ACSM): ~0.075 kcal/kg por serie efectiva completada
+        const burnedKcal = Math.round(completedSetsCount * (rawKg * 0.075));
 
         return {
             items,
@@ -641,9 +654,10 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
             completedSetsCount,
             completedExercisesCount,
             percent,
+            burnedKcal,
             isFinished: items.length > 0 && completedExercisesCount === items.length
         };
-    }, [activeExercises, completedSets]);
+    }, [activeExercises, completedSets, profile?.weightKg]);
 
     const checkExerciseAllDone = (item: ExerciseItem, overrideSetIdx?: number) => {
         const tSets = (item as any).target_sets || item.default_sets || 3;
@@ -663,7 +677,13 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
         const isSelected = selectedExerciseIndex === exIdx;
 
         if (isSelected) {
-            const memory = exerciseMemory[ex.id] || { weight: 0, reps: 0 };
+            const isBodyweight = isBodyweightExercise(ex);
+            const defaultExWeight = isBodyweight ? userBodyweight : 0;
+            const rawMemory = exerciseMemory[ex.id];
+            const memory = {
+                weight: rawMemory && rawMemory.weight > 0 ? rawMemory.weight : defaultExWeight,
+                reps: rawMemory ? rawMemory.reps : 0
+            };
             const target = calculateTodayTarget(
                 memory.weight,
                 memory.reps,
@@ -672,6 +692,9 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                 readiness,
                 weightUnit
             );
+            if (isBodyweight && target.suggestedWeight === 0) {
+                target.suggestedWeight = userBodyweight;
+            }
             const isNewBlock = !!(ex.blockId && (exIdx === 0 || activeExercises[exIdx - 1]?.blockId !== ex.blockId));
 
             return (
@@ -739,6 +762,7 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                         memory={memory}
                         target={target}
                         weightUnit={weightUnit}
+                        userBodyweight={userBodyweight}
                         completedSets={completedSets}
                         setInputs={setInputs}
                         onSetInputChange={handleSetInputChange}
@@ -845,10 +869,17 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                         }`}>
                             {translateExerciseNameToSpanish(ex.name)}
                         </h4>
-                        <p className={`text-[10px] truncate leading-tight ${
+                        <p className={`text-[10px] truncate leading-tight flex items-center gap-1.5 flex-wrap ${
                             isLight ? "text-slate-500" : "text-zinc-400"
                         }`}>
-                            {ex.anatomical_subdivision} • Tier {ex.hypertrophy_tier || "S"} • {ex.equipment}
+                            <span>{ex.anatomical_subdivision} • Tier {ex.hypertrophy_tier || "S"} • {ex.equipment}</span>
+                            {isBodyweightExercise(ex) && (
+                                <span className={`px-1.5 py-0.2 rounded font-mono text-[9px] font-semibold border ${
+                                    isLight ? "bg-emerald-50 text-emerald-800 border-emerald-200" : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                }`}>
+                                    Peso Propio ({userBodyweight}{weightUnit})
+                                </span>
+                            )}
                         </p>
                     </div>
                 </div>
@@ -1065,8 +1096,19 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                                         </span>
                                                     )}
                                                 </div>
-                                                <p className={`text-[11px] font-mono ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
-                                                    {routineStats.completedExercisesCount} de {activeExercises.length} ejercicios completados • {routineStats.completedSetsCount}/{routineStats.totalSets} sets
+                                                <p className={`text-[11px] font-mono flex items-center gap-1.5 flex-wrap ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
+                                                    <span>{routineStats.completedExercisesCount} de {activeExercises.length} ejercicios completados</span>
+                                                    <span>•</span>
+                                                    <span>{routineStats.completedSetsCount}/{routineStats.totalSets} sets</span>
+                                                    {routineStats.completedSetsCount > 0 && (
+                                                        <>
+                                                            <span>•</span>
+                                                            <span className="inline-flex items-center gap-1 text-amber-500 font-semibold">
+                                                                <Flame className="w-3 h-3 text-amber-500 fill-amber-500/20" />
+                                                                ~{routineStats.burnedKcal} kcal quemadas
+                                                            </span>
+                                                        </>
+                                                    )}
                                                 </p>
                                             </div>
                                         </div>
