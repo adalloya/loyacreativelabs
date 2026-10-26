@@ -129,10 +129,10 @@ export const ApexV2SettingsView: React.FC<ApexV2SettingsViewProps> = ({
                     <h2 className={`text-lg sm:text-xl font-bold tracking-tight ${
                         isLight ? "text-slate-950" : "text-white"
                     }`}>
-                        Centro de Control & Ajustes
+                        Buenos días, {profile?.firstName || pdfProfile?.firstName || "Atleta"}
                     </h2>
                     <p className={`text-xs ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
-                        Biometría, inteligencia artificial, entorno y preferencias
+                        Centro de Control & Ajustes • Biometría y preferencias
                     </p>
                 </div>
 

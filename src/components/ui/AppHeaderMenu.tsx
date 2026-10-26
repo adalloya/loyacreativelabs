@@ -140,6 +140,24 @@ export function AppHeaderMenu({
     };
   }, [isOpen]);
 
+  const userName = pdfProfile?.firstName || (() => {
+    if (typeof window === 'undefined') return 'Atleta';
+    try {
+      const raw = localStorage.getItem('apex_user_profile');
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (p?.firstName) return p.firstName;
+      }
+    } catch {}
+    return 'Atleta';
+  })();
+
+  useEffect(() => {
+    if (isOpen && menuRef.current) {
+      menuRef.current.scrollTop = 0;
+    }
+  }, [isOpen]);
+
   const handleToggleTheme = (newTheme: Theme) => {
     setTheme(newTheme);
     setSiteTheme(newTheme);
@@ -179,44 +197,54 @@ export function AppHeaderMenu({
 
           <div 
             ref={menuRef}
-            className={`absolute right-0 mt-3 w-[calc(100vw-2rem)] sm:w-80 max-h-[88vh] overflow-y-auto backdrop-blur-2xl rounded-3xl p-5 shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-200 font-sans border ${
+            className={`fixed top-0 right-0 bottom-0 z-50 h-full w-full sm:w-96 max-w-full overflow-y-auto backdrop-blur-2xl p-5 sm:p-6 shadow-2xl animate-in slide-in-from-right duration-250 font-sans border-l ${
               isLight
                 ? "bg-white/95 border-slate-200 text-slate-900 shadow-slate-900/15"
                 : "bg-[#121214]/95 border-white/[0.12] text-white"
             }`}
           >
             
-            {/* Cabecera del Menú con Logo APEX y Cruz de Cierre */}
-            <div className={`flex items-center justify-between pb-3 mb-4 border-b ${
+            {/* Cabecera del Menú con Saludo Personalizado, Logo APEX y Cruz de Cierre */}
+            <div className={`flex items-center justify-between pb-3.5 mb-4 border-b ${
               isLight ? "border-slate-200" : "border-white/[0.08]"
             }`}>
-              <div className="flex items-center gap-2.5">
-                <div className={`relative w-6 h-6 rounded-lg overflow-hidden border shrink-0 ${
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`relative w-8 h-8 rounded-xl overflow-hidden border shrink-0 ${
                   isLight ? "border-slate-300 bg-slate-100" : "border-white/10 bg-black"
                 }`}>
                   <Image
                     src="/apex-logo.png"
                     alt="APEX"
-                    width={24}
-                    height={24}
+                    width={32}
+                    height={32}
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <span className={`text-xs font-mono tracking-widest uppercase font-bold ${
-                  isLight ? "text-slate-950" : "text-white"
-                }`}>APEX</span>
-                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
-                  isLight
-                    ? "text-slate-500 bg-slate-100 border-slate-200"
-                    : "text-zinc-500 bg-white/[0.04] border-white/[0.06]"
-                }`}>
-                  SISTEMA
-                </span>
+                <div className="min-w-0">
+                  <h3 className={`text-sm sm:text-base font-bold tracking-tight truncate ${
+                    isLight ? "text-slate-950" : "text-white"
+                  }`}>
+                    Buenos días, {userName}
+                  </h3>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className={`text-[10px] font-mono tracking-wider uppercase font-semibold ${
+                      isLight ? "text-slate-500" : "text-zinc-400"
+                    }`}>APEX</span>
+                    <span className="text-[10px] text-zinc-500">•</span>
+                    <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded-full border ${
+                      isLight
+                        ? "text-slate-500 bg-slate-100 border-slate-200"
+                        : "text-zinc-500 bg-white/[0.04] border-white/[0.06]"
+                    }`}>
+                      SISTEMA
+                    </span>
+                  </div>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className={`w-7 h-7 rounded-xl border flex items-center justify-center transition-all active:scale-90 ${
+                className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-all active:scale-90 shrink-0 cursor-pointer ${
                   isLight
                     ? "bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 border-slate-200"
                     : "bg-white/[0.06] hover:bg-white/[0.15] text-zinc-400 hover:text-white border-white/[0.08]"

@@ -199,6 +199,11 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
         setSelectedExerciseIndex(0);
     }, [activeDayIndex]);
 
+    // Scroll hasta arriba al cambiar de pestaña / abrir menú de ajustes
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: "instant" });
+    }, [activeTab]);
+
     useEffect(() => {
         setTheme(getInitialTheme());
         const handleThemeChange = (e: Event) => {
