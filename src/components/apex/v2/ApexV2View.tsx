@@ -207,6 +207,25 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
     const [isLoadEvolutionOpen, setIsLoadEvolutionOpen] = useState<boolean>(false);
     const [evolutionTargetExerciseId, setEvolutionTargetExerciseId] = useState<string>("");
 
+    // Modo de dictado por voz activado / desactivado (default: false / desactivado)
+    const [isVoiceEnabled, setIsVoiceEnabled] = useState<boolean>(() => {
+        if (typeof window === "undefined") return false;
+        try {
+            return localStorage.getItem("apex_voice_dictation_enabled") === "true";
+        } catch {
+            return false;
+        }
+    });
+
+    const handleToggleVoiceEnabled = (enabled: boolean) => {
+        setIsVoiceEnabled(enabled);
+        try {
+            localStorage.setItem("apex_voice_dictation_enabled", String(enabled));
+        } catch {
+            // ignore
+        }
+    };
+
     const handleOpenLoadEvolution = (exerciseId?: string) => {
         if (exerciseId) {
             setEvolutionTargetExerciseId(exerciseId);
@@ -1433,6 +1452,8 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                 onEnvironmentChange={setEnvironmentMode}
                                 readiness={readiness}
                                 onReadinessChange={setReadiness}
+                                isVoiceEnabled={isVoiceEnabled}
+                                onToggleVoiceEnabled={handleToggleVoiceEnabled}
                                 onOpenRoutineImporter={() => setIsRoutineImporterOpen(true)}
                                 onOpenDietPlanModal={() => setIsDietPrefModalOpen(true)}
                                 onOpenSpotifyModal={() => setIsSpotifyModalOpen(true)}
@@ -1468,6 +1489,7 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                 isSpotifyConnected={isSpotifyLinked}
                 restRemaining={restRemaining}
                 onSkipRest={handleSkipRest}
+                isVoiceEnabled={isVoiceEnabled}
                 isVoiceListening={isVoiceListening}
                 isVoiceProcessing={isVoiceProcessing}
                 voiceLiveTranscript={voiceTranscript}

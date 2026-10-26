@@ -24,7 +24,8 @@ import {
     MessageSquareHeart,
     ChevronRight,
     Activity,
-    Lock
+    Lock,
+    Mic
 } from "lucide-react";
 import { DownloadPDFButton } from "@/components/pdf/DownloadPDFButton";
 import { getInitialTheme, setSiteTheme, Theme } from "@/lib/theme";
@@ -41,6 +42,8 @@ interface ApexV2SettingsViewProps {
     onEnvironmentChange: (mode: string) => void;
     readiness?: ReadinessState;
     onReadinessChange?: (r: ReadinessState) => void;
+    isVoiceEnabled?: boolean;
+    onToggleVoiceEnabled?: (enabled: boolean) => void;
     onOpenRoutineImporter?: () => void;
     onOpenDietPlanModal?: () => void;
     onOpenSpotifyModal?: () => void;
@@ -68,6 +71,8 @@ export const ApexV2SettingsView: React.FC<ApexV2SettingsViewProps> = ({
     onEnvironmentChange,
     readiness = "normal",
     onReadinessChange,
+    isVoiceEnabled = false,
+    onToggleVoiceEnabled,
     onOpenRoutineImporter,
     onOpenDietPlanModal,
     onOpenSpotifyModal,
@@ -312,6 +317,62 @@ export const ApexV2SettingsView: React.FC<ApexV2SettingsViewProps> = ({
                         IA
                     </span>
                 </div>
+
+                {/* Toggle: Modo de Dictado por Voz (IA) */}
+                {onToggleVoiceEnabled && (
+                    <div className={`w-full p-3 sm:p-3.5 rounded-2xl border flex items-center justify-between text-left transition-all ${
+                        isLight
+                            ? "bg-slate-50/80 border-slate-200 text-slate-800"
+                            : "bg-white/[0.04] border-white/10 text-white"
+                    }`}>
+                        <div className="flex items-center gap-3 pr-2 min-w-0">
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border transition-all ${
+                                isVoiceEnabled
+                                    ? (isLight ? "bg-rose-50 border-rose-200 text-rose-600 shadow-xs" : "bg-rose-500/20 border-rose-500/40 text-rose-400 shadow-xs")
+                                    : (isLight ? "bg-slate-100 border-slate-200 text-slate-400" : "bg-white/[0.04] border-white/10 text-zinc-500")
+                            }`}>
+                                <Mic className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0">
+                                <div className="text-xs font-bold flex items-center gap-2 flex-wrap">
+                                    <span className="truncate">Modo de Dictado por Voz</span>
+                                    <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full border shrink-0 ${
+                                        isVoiceEnabled
+                                            ? (isLight ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-rose-500/15 text-rose-400 border-rose-500/30")
+                                            : (isLight ? "bg-slate-100 text-slate-500 border-slate-200" : "bg-white/[0.06] text-zinc-400 border-white/10")
+                                    }`}>
+                                        {isVoiceEnabled ? "ACTIVADO" : "DESACTIVADO"}
+                                    </span>
+                                </div>
+                                <div className={`text-[10px] mt-0.5 leading-tight ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
+                                    {isVoiceEnabled
+                                        ? "Micrófono visible en la barra inferior para dictar entrenamientos y comidas"
+                                        : "Micrófono oculto en la barra inferior (modo minimalista)"}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Switch Toggle */}
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked={isVoiceEnabled}
+                            onClick={() => onToggleVoiceEnabled(!isVoiceEnabled)}
+                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                isVoiceEnabled
+                                    ? "bg-[#FF2A2A]"
+                                    : (isLight ? "bg-slate-300" : "bg-zinc-700")
+                            }`}
+                            title={isVoiceEnabled ? "Desactivar modo de dictado" : "Activar modo de dictado"}
+                        >
+                            <span
+                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                    isVoiceEnabled ? "translate-x-5" : "translate-x-0"
+                                }`}
+                            />
+                        </button>
+                    </div>
+                )}
 
                 {/* Generar Dieta con Gemini AI */}
                 {onOpenDietPlanModal && (

@@ -34,6 +34,7 @@ interface ApexV2BottomNavProps {
     restRemaining?: number | null;
     onSkipRest?: () => void;
     // Voice Agent Props
+    isVoiceEnabled?: boolean;
     isVoiceListening?: boolean;
     isVoiceProcessing?: boolean;
     onVoicePointerDown?: (e: React.PointerEvent) => void;
@@ -54,6 +55,7 @@ export const ApexV2BottomNav: React.FC<ApexV2BottomNavProps> = ({
     isSpotifyConnected: propIsSpotifyConnected = false,
     restRemaining,
     onSkipRest,
+    isVoiceEnabled = false,
     isVoiceListening = false,
     isVoiceProcessing = false,
     onVoicePointerDown,
@@ -325,173 +327,218 @@ export const ApexV2BottomNav: React.FC<ApexV2BottomNavProps> = ({
                 <div className={`flex items-center flex-1 justify-around ${
                     isSpotifyActive ? "gap-1" : "sm:justify-evenly w-full px-1"
                 }`}>
-                    {/* 1. Lado Izquierdo: Entrenar y Nutrición */}
-                    {navItems.slice(0, 2).map((item) => {
-                        const Icon = item.icon;
-                        const isActive = activeTab === item.id;
+                    {!isVoiceEnabled ? (
+                        /* Modo Dictado Desactivado: Muestra únicamente los iconos de navegación */
+                        navItems.map((item) => {
+                            const Icon = item.icon;
+                            const isActive = activeTab === item.id;
 
-                        return (
-                            <button
-                                key={item.id}
-                                type="button"
-                                onClick={() => onTabChange(item.id)}
-                                className={`relative flex items-center justify-center p-2.5 sm:p-3 rounded-full transition-all cursor-pointer group select-none active:scale-90 ${
-                                    isActive
-                                        ? (isLight ? "text-slate-950" : "text-white")
-                                        : (isLight ? "text-slate-500 hover:text-slate-950" : "text-zinc-400 hover:text-white")
-                                }`}
-                                title={item.label}
-                                aria-label={item.label}
-                            >
-                                {isActive && (
-                                    <motion.div
-                                        layoutId="v2ActiveTabPill"
-                                        transition={{ type: "spring", stiffness: 450, damping: 32 }}
-                                        className={`absolute inset-0 rounded-full ${
-                                            isLight
-                                                ? "bg-slate-900/10 border border-slate-900/15 shadow-sm shadow-slate-900/5 backdrop-blur-md"
-                                                : "bg-white/20 border border-white/30 shadow-md shadow-white/10 backdrop-blur-md"
-                                        }`}
-                                    />
-                                )}
-                                <Icon className={`w-6 h-6 sm:w-6.5 sm:h-6.5 relative z-10 transition-transform ${
-                                    isActive ? "scale-110" : "group-hover:scale-105"
-                                } ${
-                                    isActive
-                                        ? (isLight ? "text-slate-950 stroke-[2.5]" : "text-white stroke-[2.5]")
-                                        : (isLight ? "text-slate-500 stroke-[1.8]" : "text-zinc-400 stroke-[1.8]")
-                                }`} />
-                            </button>
-                        );
-                    })}
+                            return (
+                                <button
+                                    key={item.id}
+                                    type="button"
+                                    onClick={() => onTabChange(item.id)}
+                                    className={`relative flex items-center justify-center p-2.5 sm:p-3 rounded-full transition-all cursor-pointer group select-none active:scale-90 ${
+                                        isActive
+                                            ? (isLight ? "text-slate-950" : "text-white")
+                                            : (isLight ? "text-slate-500 hover:text-slate-950" : "text-zinc-400 hover:text-white")
+                                    }`}
+                                    title={item.label}
+                                    aria-label={item.label}
+                                >
+                                    {isActive && (
+                                        <motion.div
+                                            layoutId="v2ActiveTabPill"
+                                            transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                                            className={`absolute inset-0 rounded-full ${
+                                                isLight
+                                                    ? "bg-slate-900/10 border border-slate-900/15 shadow-sm shadow-slate-900/5 backdrop-blur-md"
+                                                    : "bg-white/20 border border-white/30 shadow-md shadow-white/10 backdrop-blur-md"
+                                            }`}
+                                        />
+                                    )}
+                                    <Icon className={`w-6 h-6 sm:w-6.5 sm:h-6.5 relative z-10 transition-transform ${
+                                        isActive ? "scale-110" : "group-hover:scale-105"
+                                    } ${
+                                        isActive
+                                            ? (isLight ? "text-slate-950 stroke-[2.5]" : "text-white stroke-[2.5]")
+                                            : (isLight ? "text-slate-500 stroke-[1.8]" : "text-zinc-400 stroke-[1.8]")
+                                    }`} />
+                                </button>
+                            );
+                        })
+                    ) : (
+                        /* Modo Dictado Activado: Con botón central de micrófono */
+                        <>
+                            {/* 1. Lado Izquierdo: Entrenar y Nutrición */}
+                            {navItems.slice(0, 2).map((item) => {
+                                const Icon = item.icon;
+                                const isActive = activeTab === item.id;
 
-                    {/* 2. Centro Absoluto: Botón Circular Micrófono AI con Hold-to-Talk y Tooltip Dinámico */}
-                    <div className="relative shrink-0 flex items-center justify-center mx-1">
-                        {/* Tooltip Contextual Dinámico (Promocional o mientras procesa) */}
-                        {!isVoiceListening && (showPromoTooltip || isVoiceProcessing) && contextualTooltipText && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 8, scale: 0.92 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: 5, scale: 0.92 }}
-                                className={`absolute -top-12 sm:-top-13 left-1/2 -translate-x-1/2 z-50 whitespace-nowrap px-3 sm:px-3.5 py-1.5 rounded-full text-[10.5px] sm:text-[11px] font-semibold border backdrop-blur-2xl shadow-2xl flex items-center gap-1.5 pointer-events-auto select-none ${
-                                    isVoiceListening
-                                        ? "bg-rose-950/95 border-rose-500/60 text-rose-200 shadow-[0_0_20px_rgba(244,63,94,0.35)]"
-                                        : isVoiceProcessing
-                                        ? "bg-amber-950/95 border-amber-500/60 text-amber-200 shadow-xl"
-                                        : isLight
-                                        ? "bg-white/95 border-slate-300 text-slate-800 shadow-lg"
-                                        : "bg-zinc-950/95 border-white/20 text-white shadow-xl"
-                                }`}
-                            >
-                                {isVoiceProcessing ? (
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400 shrink-0" />
-                                ) : isVoiceListening ? (
-                                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping shrink-0" />
-                                ) : (
-                                    <Mic className="w-3 h-3 text-[#FF2A2A] shrink-0" />
-                                )}
-                                <span className="max-w-[210px] sm:max-w-[320px] truncate">
-                                    {contextualTooltipText}
-                                </span>
-                                {showPromoTooltip && !isVoiceListening && !isVoiceProcessing && onDismissPromoTooltip && (
+                                return (
                                     <button
+                                        key={item.id}
                                         type="button"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onDismissPromoTooltip();
-                                        }}
-                                        className="p-0.5 hover:opacity-100 opacity-60 rounded-full cursor-pointer ml-0.5"
-                                        title="Ocultar"
-                                    >
-                                        <X className="w-3 h-3" />
-                                    </button>
-                                )}
-                                {/* Flecha del tooltip */}
-                                <div className={`absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent ${
-                                    isVoiceListening
-                                        ? "border-t-rose-950/95"
-                                        : isVoiceProcessing
-                                        ? "border-t-amber-950/95"
-                                        : isLight
-                                        ? "border-t-white/95"
-                                        : "border-t-zinc-950/95"
-                                }`} />
-                            </motion.div>
-                        )}
-
-                        {/* Botón Circular Elevado con Pulso Líquido */}
-                        <button
-                            type="button"
-                            onPointerDown={onVoicePointerDown}
-                            onPointerUp={onVoicePointerUp}
-                            onPointerCancel={onVoicePointerCancel}
-                            className={`relative w-12 h-12 sm:w-13 sm:h-13 rounded-full -translate-y-2 sm:-translate-y-2.5 flex items-center justify-center transition-all duration-200 cursor-pointer select-none active:scale-95 touch-none group ${
-                                isVoiceListening
-                                    ? "bg-gradient-to-tr from-rose-600 via-[#FF2A2A] to-rose-500 scale-110 shadow-[0_0_35px_rgba(255,42,42,0.85)] border-2 border-white ring-4 ring-rose-500/40"
-                                    : isVoiceProcessing
-                                    ? "bg-gradient-to-tr from-amber-600 to-amber-500 shadow-[0_0_25px_rgba(245,158,11,0.6)] border-2 border-white/60 animate-pulse"
-                                    : "bg-gradient-to-tr from-[#D90429] via-[#FF2A2A] to-[#FF5C5C] hover:scale-105 border-2 border-white/40 shadow-[0_10px_25px_rgba(255,42,42,0.45),inset_0_2px_4px_rgba(255,255,255,0.4)]"
-                            }`}
-                            title="Mantén presionado para dictar (ejercicio, comida o búsqueda)"
-                            aria-label="Dictado por voz APEX"
-                        >
-                            {/* Ondas expansivas radiantes cuando está escuchando */}
-                            {isVoiceListening && (
-                                <>
-                                    <span className="absolute inset-0 rounded-full border-2 border-rose-500 animate-ping opacity-75 pointer-events-none" />
-                                    <span className="absolute -inset-1.5 rounded-full border border-rose-400/50 animate-pulse pointer-events-none" />
-                                </>
-                            )}
-
-                            {isVoiceProcessing ? (
-                                <Loader2 className="w-5 h-5 text-white animate-spin" />
-                            ) : (
-                                <Mic className={`w-5 h-5 sm:w-5.5 sm:h-5.5 text-white stroke-[2.3] transition-transform ${
-                                    isVoiceListening ? "scale-110" : "group-hover:scale-105"
-                                }`} />
-                            )}
-                        </button>
-                    </div>
-
-                    {/* 3. Lado Derecho: Ejercicios (Anatomía) y Ajustes */}
-                    {navItems.slice(2, 4).map((item) => {
-                        const Icon = item.icon;
-                        const isActive = activeTab === item.id;
-
-                        return (
-                            <button
-                                key={item.id}
-                                type="button"
-                                onClick={() => onTabChange(item.id)}
-                                className={`relative flex items-center justify-center p-2.5 sm:p-3 rounded-full transition-all cursor-pointer group select-none active:scale-90 ${
-                                    isActive
-                                        ? (isLight ? "text-slate-950" : "text-white")
-                                        : (isLight ? "text-slate-500 hover:text-slate-950" : "text-zinc-400 hover:text-white")
-                                }`}
-                                title={item.label}
-                                aria-label={item.label}
-                            >
-                                {isActive && (
-                                    <motion.div
-                                        layoutId="v2ActiveTabPill"
-                                        transition={{ type: "spring", stiffness: 450, damping: 32 }}
-                                        className={`absolute inset-0 rounded-full ${
-                                            isLight
-                                                ? "bg-slate-900/10 border border-slate-900/15 shadow-sm shadow-slate-900/5 backdrop-blur-md"
-                                                : "bg-white/20 border border-white/30 shadow-md shadow-white/10 backdrop-blur-md"
+                                        onClick={() => onTabChange(item.id)}
+                                        className={`relative flex items-center justify-center p-2.5 sm:p-3 rounded-full transition-all cursor-pointer group select-none active:scale-90 ${
+                                            isActive
+                                                ? (isLight ? "text-slate-950" : "text-white")
+                                                : (isLight ? "text-slate-500 hover:text-slate-950" : "text-zinc-400 hover:text-white")
                                         }`}
-                                    />
+                                        title={item.label}
+                                        aria-label={item.label}
+                                    >
+                                        {isActive && (
+                                            <motion.div
+                                                layoutId="v2ActiveTabPill"
+                                                transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                                                className={`absolute inset-0 rounded-full ${
+                                                    isLight
+                                                        ? "bg-slate-900/10 border border-slate-900/15 shadow-sm shadow-slate-900/5 backdrop-blur-md"
+                                                        : "bg-white/20 border border-white/30 shadow-md shadow-white/10 backdrop-blur-md"
+                                                }`}
+                                            />
+                                        )}
+                                        <Icon className={`w-6 h-6 sm:w-6.5 sm:h-6.5 relative z-10 transition-transform ${
+                                            isActive ? "scale-110" : "group-hover:scale-105"
+                                        } ${
+                                            isActive
+                                                ? (isLight ? "text-slate-950 stroke-[2.5]" : "text-white stroke-[2.5]")
+                                                : (isLight ? "text-slate-500 stroke-[1.8]" : "text-zinc-400 stroke-[1.8]")
+                                        }`} />
+                                    </button>
+                                );
+                            })}
+
+                            {/* 2. Centro Absoluto: Botón Circular Micrófono AI con Hold-to-Talk y Tooltip Dinámico */}
+                            <div className="relative shrink-0 flex items-center justify-center mx-1">
+                                {/* Tooltip Contextual Dinámico (Promocional o mientras procesa) */}
+                                {!isVoiceListening && (showPromoTooltip || isVoiceProcessing) && contextualTooltipText && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 8, scale: 0.92 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 5, scale: 0.92 }}
+                                        className={`absolute -top-12 sm:-top-13 left-1/2 -translate-x-1/2 z-50 whitespace-nowrap px-3 sm:px-3.5 py-1.5 rounded-full text-[10.5px] sm:text-[11px] font-semibold border backdrop-blur-2xl shadow-2xl flex items-center gap-1.5 pointer-events-auto select-none ${
+                                            isVoiceListening
+                                                ? "bg-rose-950/95 border-rose-500/60 text-rose-200 shadow-[0_0_20px_rgba(244,63,94,0.35)]"
+                                                : isVoiceProcessing
+                                                ? "bg-amber-950/95 border-amber-500/60 text-amber-200 shadow-xl"
+                                                : isLight
+                                                ? "bg-white/95 border-slate-300 text-slate-800 shadow-lg"
+                                                : "bg-zinc-950/95 border-white/20 text-white shadow-xl"
+                                        }`}
+                                    >
+                                        {isVoiceProcessing ? (
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400 shrink-0" />
+                                        ) : isVoiceListening ? (
+                                            <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping shrink-0" />
+                                        ) : (
+                                            <Mic className="w-3 h-3 text-[#FF2A2A] shrink-0" />
+                                        )}
+                                        <span className="max-w-[210px] sm:max-w-[320px] truncate">
+                                            {contextualTooltipText}
+                                        </span>
+                                        {showPromoTooltip && !isVoiceListening && !isVoiceProcessing && onDismissPromoTooltip && (
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onDismissPromoTooltip();
+                                                }}
+                                                className="p-0.5 hover:opacity-100 opacity-60 rounded-full cursor-pointer ml-0.5"
+                                                title="Ocultar"
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        )}
+                                        {/* Flecha del tooltip */}
+                                        <div className={`absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent ${
+                                            isVoiceListening
+                                                ? "border-t-rose-950/95"
+                                                : isVoiceProcessing
+                                                ? "border-t-amber-950/95"
+                                                : isLight
+                                                ? "border-t-white/95"
+                                                : "border-t-zinc-950/95"
+                                        }`} />
+                                    </motion.div>
                                 )}
-                                <Icon className={`w-6 h-6 sm:w-6.5 sm:h-6.5 relative z-10 transition-transform ${
-                                    isActive ? "scale-110" : "group-hover:scale-105"
-                                } ${
-                                    isActive
-                                        ? (isLight ? "text-slate-950 stroke-[2.5]" : "text-white stroke-[2.5]")
-                                        : (isLight ? "text-slate-500 stroke-[1.8]" : "text-zinc-400 stroke-[1.8]")
-                                }`} />
-                            </button>
-                        );
-                    })}
+
+                                {/* Botón Circular Elevado con Pulso Líquido */}
+                                <button
+                                    type="button"
+                                    onPointerDown={onVoicePointerDown}
+                                    onPointerUp={onVoicePointerUp}
+                                    onPointerCancel={onVoicePointerCancel}
+                                    className={`relative w-12 h-12 sm:w-13 sm:h-13 rounded-full -translate-y-2 sm:-translate-y-2.5 flex items-center justify-center transition-all duration-200 cursor-pointer select-none active:scale-95 touch-none group ${
+                                        isVoiceListening
+                                            ? "bg-gradient-to-tr from-rose-600 via-[#FF2A2A] to-rose-500 scale-110 shadow-[0_0_35px_rgba(255,42,42,0.85)] border-2 border-white ring-4 ring-rose-500/40"
+                                            : isVoiceProcessing
+                                            ? "bg-gradient-to-tr from-amber-600 to-amber-500 shadow-[0_0_25px_rgba(245,158,11,0.6)] border-2 border-white/60 animate-pulse"
+                                            : "bg-gradient-to-tr from-[#D90429] via-[#FF2A2A] to-[#FF5C5C] hover:scale-105 border-2 border-white/40 shadow-[0_10px_25px_rgba(255,42,42,0.45),inset_0_2px_4px_rgba(255,255,255,0.4)]"
+                                    }`}
+                                    title="Mantén presionado para dictar (ejercicio, comida o búsqueda)"
+                                    aria-label="Dictado por voz APEX"
+                                >
+                                    {/* Ondas expansivas radiantes cuando está escuchando */}
+                                    {isVoiceListening && (
+                                        <>
+                                            <span className="absolute inset-0 rounded-full border-2 border-rose-500 animate-ping opacity-75 pointer-events-none" />
+                                            <span className="absolute -inset-1.5 rounded-full border border-rose-400/50 animate-pulse pointer-events-none" />
+                                        </>
+                                    )}
+
+                                    {isVoiceProcessing ? (
+                                        <Loader2 className="w-5 h-5 text-white animate-spin" />
+                                    ) : (
+                                        <Mic className={`w-5 h-5 sm:w-5.5 sm:h-5.5 text-white stroke-[2.3] transition-transform ${
+                                            isVoiceListening ? "scale-110" : "group-hover:scale-105"
+                                        }`} />
+                                    )}
+                                </button>
+                            </div>
+
+                            {/* 3. Lado Derecho: Ejercicios (Anatomía) y Ajustes */}
+                            {navItems.slice(2, 4).map((item) => {
+                                const Icon = item.icon;
+                                const isActive = activeTab === item.id;
+
+                                return (
+                                    <button
+                                        key={item.id}
+                                        type="button"
+                                        onClick={() => onTabChange(item.id)}
+                                        className={`relative flex items-center justify-center p-2.5 sm:p-3 rounded-full transition-all cursor-pointer group select-none active:scale-90 ${
+                                            isActive
+                                                ? (isLight ? "text-slate-950" : "text-white")
+                                                : (isLight ? "text-slate-500 hover:text-slate-950" : "text-zinc-400 hover:text-white")
+                                        }`}
+                                        title={item.label}
+                                        aria-label={item.label}
+                                    >
+                                        {isActive && (
+                                            <motion.div
+                                                layoutId="v2ActiveTabPill"
+                                                transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                                                className={`absolute inset-0 rounded-full ${
+                                                    isLight
+                                                        ? "bg-slate-900/10 border border-slate-900/15 shadow-sm shadow-slate-900/5 backdrop-blur-md"
+                                                        : "bg-white/20 border border-white/30 shadow-md shadow-white/10 backdrop-blur-md"
+                                                }`}
+                                            />
+                                        )}
+                                        <Icon className={`w-6 h-6 sm:w-6.5 sm:h-6.5 relative z-10 transition-transform ${
+                                            isActive ? "scale-110" : "group-hover:scale-105"
+                                        } ${
+                                            isActive
+                                                ? (isLight ? "text-slate-950 stroke-[2.5]" : "text-white stroke-[2.5]")
+                                                : (isLight ? "text-slate-500 stroke-[1.8]" : "text-zinc-400 stroke-[1.8]")
+                                        }`} />
+                                    </button>
+                                );
+                            })}
+                        </>
+                    )}
                 </div>
 
             </div>
