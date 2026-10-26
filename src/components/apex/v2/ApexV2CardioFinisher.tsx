@@ -21,12 +21,14 @@ import {
 interface ApexV2CardioFinisherProps {
     todayCardio: DailyCardioEntry;
     onUpdateCardio: (updates: Partial<DailyCardioEntry> & { type?: CardioType }) => void;
+    onClose?: () => void;
     isLight: boolean;
 }
 
 export const ApexV2CardioFinisher: React.FC<ApexV2CardioFinisherProps> = ({
     todayCardio,
     onUpdateCardio,
+    onClose,
     isLight
 }) => {
     const activeProtocol = CARDIO_PROTOCOLS[todayCardio.type] || CARDIO_PROTOCOLS.incline_treadmill;
@@ -80,7 +82,13 @@ export const ApexV2CardioFinisher: React.FC<ApexV2CardioFinisherProps> = ({
                 {todayCardio.type !== "none" && (
                     <button
                         type="button"
-                        onClick={() => onUpdateCardio({ completed: !todayCardio.completed })}
+                        onClick={() => {
+                            const nextCompleted = !todayCardio.completed;
+                            onUpdateCardio({ completed: nextCompleted });
+                            if (nextCompleted && onClose) {
+                                onClose();
+                            }
+                        }}
                         className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer active:scale-95 border ${
                             todayCardio.completed
                                 ? (isLight
@@ -505,7 +513,12 @@ export const ApexV2CardioFinisher: React.FC<ApexV2CardioFinisherProps> = ({
 
                         <button
                             type="button"
-                            onClick={() => onUpdateCardio({ completed: true })}
+                            onClick={() => {
+                                onUpdateCardio({ completed: true });
+                                if (onClose) {
+                                    onClose();
+                                }
+                            }}
                             className={`w-full sm:w-auto px-5 py-2.5 rounded-full text-xs font-bold transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer border ${
                                 isLight
                                     ? "bg-slate-900 hover:bg-black text-white border-slate-900 shadow-md shadow-slate-900/10"

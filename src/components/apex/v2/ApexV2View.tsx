@@ -18,8 +18,10 @@ import {
     ChevronDown,
     ChevronUp,
     CheckCircle2,
-    Sliders
+    Sliders,
+    X
 } from "lucide-react";
+import { Drawer } from "vaul";
 import {
     calculateTodayTarget,
     ExerciseItem,
@@ -27,7 +29,8 @@ import {
     EXERCISE_DATABASE,
     CardioType,
     DailyCardioEntry,
-    isBodyweightExercise
+    isBodyweightExercise,
+    CARDIO_PROTOCOLS
 } from "@/lib/hypertrophy-engine";
 import { translateExerciseNameToSpanish } from "@/lib/spanish-exercise-translator";
 import { getInitialTheme, Theme } from "@/lib/theme";
@@ -197,6 +200,7 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
     const [theme, setTheme] = useState<Theme>("dark");
     const [selectedExerciseIndex, setSelectedExerciseIndex] = useState<number>(0);
     const [isCompletedSectionOpen, setIsCompletedSectionOpen] = useState<boolean>(true);
+    const [isCardioModalOpen, setIsCardioModalOpen] = useState<boolean>(false);
 
     // Resetear al primer ejercicio pendiente al cambiar de día
     useEffect(() => {
@@ -641,23 +645,39 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
 
         const pending = items.filter((i) => !i.isAllDone);
         const completed = items.filter((i) => i.isAllDone);
-        const percent = items.length > 0 ? Math.round((completedExercisesCount / items.length) * 100) : 0;
+
+        // Integrar cardio activo como ejercicio y set de la rutina
+        const isCardioActive = Boolean(todayCardio && todayCardio.type !== "none");
+        const isCardioDone = Boolean(isCardioActive && todayCardio?.completed);
+
+        const totalExercisesCount = activeExercises.length + (isCardioActive ? 1 : 0);
+        const totalCompletedExercisesCount = completedExercisesCount + (isCardioDone ? 1 : 0);
+
+        const grandTotalSets = totalSets + (isCardioActive ? 1 : 0);
+        const grandCompletedSets = completedSetsCount + (isCardioDone ? 1 : 0);
+
+        const percent = grandTotalSets > 0 ? Math.round((grandCompletedSets / grandTotalSets) * 100) : 0;
         const rawKg = Number(profile?.weightKg) || 75;
-        // Gasto calórico estimado en hipertrofia (ACSM): ~0.075 kcal/kg por serie efectiva completada
-        const burnedKcal = Math.round(completedSetsCount * (rawKg * 0.075));
+        // Gasto calórico estimado en fuerza (ACSM): ~0.075 kcal/kg por serie + cardio si fue completado
+        const strengthBurned = Math.round(completedSetsCount * (rawKg * 0.075));
+        const cardioBurned = isCardioDone ? (todayCardio?.caloriesBurned || 0) : 0;
+        const burnedKcal = strengthBurned + cardioBurned;
 
         return {
             items,
             pending,
             completed,
-            totalSets,
-            completedSetsCount,
-            completedExercisesCount,
+            totalSets: grandTotalSets,
+            completedSetsCount: grandCompletedSets,
+            totalExercisesCount,
+            completedExercisesCount: totalCompletedExercisesCount,
             percent,
             burnedKcal,
-            isFinished: items.length > 0 && completedExercisesCount === items.length
+            isCardioActive,
+            isCardioDone,
+            isFinished: totalExercisesCount > 0 && totalCompletedExercisesCount === totalExercisesCount
         };
-    }, [activeExercises, completedSets, profile?.weightKg]);
+    }, [activeExercises, completedSets, profile?.weightKg, todayCardio]);
 
     const checkExerciseAllDone = (item: ExerciseItem, overrideSetIdx?: number) => {
         const tSets = (item as any).target_sets || item.default_sets || 3;
@@ -1097,7 +1117,7 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                                     )}
                                                 </div>
                                                 <p className={`text-[11px] font-mono flex items-center gap-1.5 flex-wrap ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
-                                                    <span>{routineStats.completedExercisesCount} de {activeExercises.length} ejercicios completados</span>
+                                                    <span>{routineStats.completedExercisesCount} de {routineStats.totalExercisesCount} ejercicios completados</span>
                                                     <span>•</span>
                                                     <span>{routineStats.completedSetsCount}/{routineStats.totalSets} sets</span>
                                                     {routineStats.completedSetsCount > 0 && (
@@ -1198,16 +1218,69 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                                 </p>
                                             </div>
                                         ) : (
-                                            routineStats.pending.map((item) =>
-                                                renderExerciseItem(item.ex, item.exIdx, item.totalSets, item.completedCount, item.isAllDone)
-                                            )
+                                            <>
+                                                {routineStats.pending.map((item) =>
+                                                    renderExerciseItem(item.ex, item.exIdx, item.totalSets, item.completedCount, item.isAllDone)
+                                                )}
+
+                                                {/* Cardio Finisher pendiente en Por Realizar */}
+                                                {routineStats.isCardioActive && !routineStats.isCardioDone && todayCardio && (
+                                                    <motion.div
+                                                        layout
+                                                        initial={{ opacity: 0, y: 4 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -4 }}
+                                                        onClick={() => setIsCardioModalOpen(true)}
+                                                        className={`w-full p-2.5 sm:p-3 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-3 cursor-pointer group active:scale-[0.99] select-none ${
+                                                            isLight
+                                                                ? "bg-rose-50/60 hover:bg-rose-50/90 border-rose-200/90 shadow-xs hover:shadow-sm"
+                                                                : "bg-rose-950/20 hover:bg-rose-950/30 border-rose-500/20 hover:border-rose-500/40 backdrop-blur-xl"
+                                                        }`}
+                                                        title="Toca para abrir y completar tu sesión de cardio"
+                                                    >
+                                                        <div className="flex items-center gap-2.5 min-w-0">
+                                                            <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-mono font-bold text-[11px] shrink-0 border ${
+                                                                isLight ? "bg-rose-100 text-rose-700 border-rose-200" : "bg-rose-500/15 text-rose-400 border-rose-500/30"
+                                                            }`}>
+                                                                <HeartPulse className="w-3.5 h-3.5 text-rose-500" />
+                                                            </span>
+
+                                                            <div className="min-w-0">
+                                                                <h4 className={`text-xs sm:text-sm font-bold tracking-tight truncate ${
+                                                                    isLight ? "text-slate-900 group-hover:text-rose-700" : "text-white group-hover:text-rose-400"
+                                                                }`}>
+                                                                    Cardio Zona 2 • {CARDIO_PROTOCOLS[todayCardio.type]?.label || "Caminadora Inclinada"}
+                                                                </h4>
+                                                                <p className={`text-[10px] truncate leading-tight flex items-center gap-1.5 ${
+                                                                    isLight ? "text-slate-500" : "text-zinc-400"
+                                                                }`}>
+                                                                    <span>Finisher metabólico • {todayCardio.minutes} min</span>
+                                                                    {todayCardio.incline > 0 && <span>• {todayCardio.incline}% inc</span>}
+                                                                    {todayCardio.speed > 0 && <span>• {todayCardio.speed} km/h</span>}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex items-center gap-2 shrink-0">
+                                                            <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border font-semibold ${
+                                                                isLight ? "bg-rose-100 text-rose-700 border-rose-200" : "bg-rose-500/15 text-rose-400 border-rose-500/30"
+                                                            }`}>
+                                                                0/1 set • {todayCardio.minutes}m
+                                                            </span>
+                                                            <ChevronRight className={`w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 ${
+                                                                isLight ? "text-slate-400 group-hover:text-slate-800" : "text-zinc-500 group-hover:text-white"
+                                                            }`} />
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </>
                                         )}
                                     </>
                                 )}
                             </div>
 
                             {/* CLASIFICACIÓN 2: EJERCICIOS YA REALIZADOS / COMPLETADOS */}
-                            {routineStats.completed.length > 0 && (
+                            {(routineStats.completed.length > 0 || (routineStats.isCardioActive && routineStats.isCardioDone)) && (
                                 <div className="space-y-2 pt-3 border-t border-dashed border-white/10 dark:border-white/10 border-slate-200">
                                     <button
                                         type="button"
@@ -1221,7 +1294,7 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                         <div className="flex items-center gap-2">
                                             <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
                                             <span className="text-xs font-bold uppercase tracking-wider font-mono">
-                                                Ya Realizados ({routineStats.completed.length})
+                                                Ya Realizados ({routineStats.completed.length + (routineStats.isCardioActive && routineStats.isCardioDone ? 1 : 0)})
                                             </span>
                                         </div>
 
@@ -1236,20 +1309,102 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                             {routineStats.completed.map((item) =>
                                                 renderExerciseItem(item.ex, item.exIdx, item.totalSets, item.completedCount, item.isAllDone)
                                             )}
+
+                                            {/* Cardio Finisher Completado en Ya Realizados */}
+                                            {routineStats.isCardioActive && routineStats.isCardioDone && todayCardio && (
+                                                <motion.div
+                                                    layout
+                                                    initial={{ opacity: 0, y: 4 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, y: -4 }}
+                                                    onClick={() => setIsCardioModalOpen(true)}
+                                                    className={`w-full p-2.5 sm:p-3 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-3 cursor-pointer group active:scale-[0.99] select-none ${
+                                                        isLight
+                                                            ? "bg-slate-50/80 hover:bg-slate-100 border-slate-200 text-slate-700 opacity-80"
+                                                            : "bg-white/[0.02] hover:bg-white/[0.05] border-white/[0.06] text-zinc-400 opacity-75"
+                                                    }`}
+                                                    title="Toca para ver o modificar los datos de cardio completado"
+                                                >
+                                                    <div className="flex items-center gap-2.5 min-w-0">
+                                                        <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-mono font-bold text-[11px] shrink-0 border ${
+                                                            isLight ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                                        }`}>
+                                                            ✓
+                                                        </span>
+                                                        <div className="min-w-0">
+                                                            <h4 className={`text-xs sm:text-sm font-bold tracking-tight truncate ${
+                                                                isLight ? "text-slate-400 line-through" : "text-zinc-500 line-through"
+                                                            }`}>
+                                                                Cardio Zona 2 • {CARDIO_PROTOCOLS[todayCardio.type]?.label || "Caminadora Inclinada"}
+                                                            </h4>
+                                                            <p className={`text-[10px] truncate leading-tight flex items-center gap-1.5 ${
+                                                                isLight ? "text-slate-500" : "text-zinc-400"
+                                                            }`}>
+                                                                <span>{todayCardio.minutes} min</span>
+                                                                {todayCardio.caloriesBurned ? <span>• ~{todayCardio.caloriesBurned} kcal</span> : null}
+                                                                {todayCardio.distanceKm ? <span>• {todayCardio.distanceKm} km</span> : null}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border font-semibold ${
+                                                            isLight ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                                        }`}>
+                                                            ✓ 1/1 set
+                                                        </span>
+                                                        <ChevronDown className={`w-3.5 h-3.5 transition-transform group-hover:translate-y-0.5 ${
+                                                            isLight ? "text-slate-400 group-hover:text-slate-800" : "text-zinc-500 group-hover:text-white"
+                                                        }`} />
+                                                    </div>
+                                                </motion.div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
                             )}
 
-                            {/* Cardio Finisher al final de la rutina diaria */}
+                            {/* Modal / Drawer Dedicado de Cardio Finisher con Vaul */}
                             {todayCardio && onUpdateCardio && (
-                                <div className="mt-4 sm:mt-5">
-                                    <ApexV2CardioFinisher
-                                        todayCardio={todayCardio}
-                                        onUpdateCardio={onUpdateCardio}
-                                        isLight={isLight}
-                                    />
-                                </div>
+                                <Drawer.Root open={isCardioModalOpen} onOpenChange={setIsCardioModalOpen}>
+                                    <Drawer.Portal>
+                                        <Drawer.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 transition-opacity" />
+                                        <Drawer.Content className={`backdrop-blur-2xl border-t flex flex-col rounded-t-[32px] fixed bottom-0 left-0 right-0 max-h-[92vh] z-50 p-4 sm:p-6 pb-8 max-w-xl mx-auto shadow-2xl overflow-y-auto ${
+                                            isLight ? "bg-white/95 border-slate-200 text-slate-900" : "bg-zinc-950/95 border-white/15 text-white"
+                                        }`}>
+                                            <Drawer.Handle className={`mx-auto w-12 h-1.5 rounded-full mb-3 shrink-0 ${isLight ? "bg-slate-300" : "bg-zinc-700"}`} />
+                                            <div className="flex items-center justify-between pb-3 mb-2 border-b border-white/10 dark:border-white/10 border-slate-200">
+                                                <div className="flex items-center gap-2">
+                                                    <HeartPulse className="w-5 h-5 text-rose-500" />
+                                                    <div>
+                                                        <h4 className="font-bold text-sm tracking-tight leading-tight">CARDIO FINISHER ZONA 2</h4>
+                                                        <p className={`text-[11px] font-mono ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
+                                                            {CARDIO_PROTOCOLS[todayCardio.type]?.label || "Ajuste de sesión"}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsCardioModalOpen(false)}
+                                                    className={`w-7 h-7 rounded-full flex items-center justify-center cursor-pointer transition-colors ${
+                                                        isLight ? "bg-slate-100 hover:bg-slate-200 text-slate-700" : "bg-white/10 hover:bg-white/20 text-zinc-400 hover:text-white"
+                                                    }`}
+                                                    title="Cerrar ventana"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                            <div className="pt-1">
+                                                <ApexV2CardioFinisher
+                                                    todayCardio={todayCardio}
+                                                    onUpdateCardio={onUpdateCardio}
+                                                    onClose={() => setIsCardioModalOpen(false)}
+                                                    isLight={isLight}
+                                                />
+                                            </div>
+                                        </Drawer.Content>
+                                    </Drawer.Portal>
+                                </Drawer.Root>
                             )}
                         </motion.div>
                     )}
