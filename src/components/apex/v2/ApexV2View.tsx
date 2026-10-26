@@ -1,7 +1,7 @@
 // src/components/apex/v2/ApexV2View.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -16,6 +16,8 @@ import {
     ChevronRight,
     ChevronLeft,
     ChevronDown,
+    ChevronUp,
+    CheckCircle2,
     Sliders
 } from "lucide-react";
 import {
@@ -193,10 +195,22 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
     const [activeTab, setActiveTab] = useState<ApexV2Tab>("workout");
     const [theme, setTheme] = useState<Theme>("dark");
     const [selectedExerciseIndex, setSelectedExerciseIndex] = useState<number>(0);
+    const [isCompletedSectionOpen, setIsCompletedSectionOpen] = useState<boolean>(true);
 
-    // Resetear al primer ejercicio al cambiar de día
+    // Resetear al primer ejercicio pendiente al cambiar de día
     useEffect(() => {
-        setSelectedExerciseIndex(0);
+        if (!activeExercises || activeExercises.length === 0) {
+            setSelectedExerciseIndex(0);
+            return;
+        }
+        const firstPending = activeExercises.findIndex((ex) => {
+            const ts = (ex as any).target_sets || ex.default_sets || 3;
+            const cc = Array.from({ length: ts }).filter(
+                (_, sIdx) => completedSets[`${ex.id}_${sIdx}`]
+            ).length;
+            return cc < ts;
+        });
+        setSelectedExerciseIndex(firstPending !== -1 ? firstPending : (activeExercises.length > 0 ? -1 : 0));
     }, [activeDayIndex]);
 
     // Scroll hasta arriba al cambiar de pestaña / abrir menú de ajustes
@@ -589,6 +603,275 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
         onBatchActions: handleBatchVoiceActions
     });
 
+    // Estadísticas y agrupamiento de ejercicios por realizados vs pendientes
+    const routineStats = useMemo(() => {
+        let totalSets = 0;
+        let completedSetsCount = 0;
+        let completedExercisesCount = 0;
+
+        const items = activeExercises.map((ex, exIdx) => {
+            const tSets = (ex as any).target_sets || ex.default_sets || 3;
+            const cCount = Array.from({ length: tSets }).filter(
+                (_, sIdx) => completedSets[`${ex.id}_${sIdx}`]
+            ).length;
+            const isAllDone = cCount >= tSets && tSets > 0;
+
+            totalSets += tSets;
+            completedSetsCount += cCount;
+            if (isAllDone) completedExercisesCount += 1;
+
+            return {
+                ex,
+                exIdx,
+                totalSets: tSets,
+                completedCount: cCount,
+                isAllDone
+            };
+        });
+
+        const pending = items.filter((i) => !i.isAllDone);
+        const completed = items.filter((i) => i.isAllDone);
+        const percent = items.length > 0 ? Math.round((completedExercisesCount / items.length) * 100) : 0;
+
+        return {
+            items,
+            pending,
+            completed,
+            totalSets,
+            completedSetsCount,
+            completedExercisesCount,
+            percent,
+            isFinished: items.length > 0 && completedExercisesCount === items.length
+        };
+    }, [activeExercises, completedSets]);
+
+    const checkExerciseAllDone = (item: ExerciseItem, overrideSetIdx?: number) => {
+        const tSets = (item as any).target_sets || item.default_sets || 3;
+        const cCount = Array.from({ length: tSets }).filter(
+            (_, sIdx) => overrideSetIdx === sIdx || completedSets[`${item.id}_${sIdx}`]
+        ).length;
+        return cCount >= tSets && tSets > 0;
+    };
+
+    const renderExerciseItem = (
+        ex: ExerciseItem,
+        exIdx: number,
+        totalSets: number,
+        completedCount: number,
+        isAllDone: boolean
+    ) => {
+        const isSelected = selectedExerciseIndex === exIdx;
+
+        if (isSelected) {
+            const memory = exerciseMemory[ex.id] || { weight: 0, reps: 0 };
+            const target = calculateTodayTarget(
+                memory.weight,
+                memory.reps,
+                ex.rep_range_min,
+                ex.rep_range_max,
+                readiness,
+                weightUnit
+            );
+            const isNewBlock = !!(ex.blockId && (exIdx === 0 || activeExercises[exIdx - 1]?.blockId !== ex.blockId));
+
+            return (
+                <motion.div
+                    key={`${ex.id}_${exIdx}_active`}
+                    layout
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-2 pt-1"
+                >
+                    {/* Barra Superior de Navegación entre Pestañas de Ejercicio */}
+                    <div className="flex items-center justify-between px-2 text-xs">
+                        <button
+                            type="button"
+                            disabled={exIdx === 0}
+                            onClick={() => setSelectedExerciseIndex(Math.max(0, exIdx - 1))}
+                            className={`flex items-center gap-1 font-semibold text-[11px] transition-all cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed ${
+                                isLight ? "text-slate-700 hover:text-slate-950" : "text-zinc-300 hover:text-white"
+                            }`}
+                        >
+                            <ChevronLeft className="w-3.5 h-3.5" />
+                            <span>Anterior</span>
+                        </button>
+
+                        <div className="flex items-center gap-2">
+                            <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${
+                                isLight ? "text-slate-600" : "text-zinc-400"
+                            }`}>
+                                EJERCICIO {exIdx + 1} DE {activeExercises.length}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedExerciseIndex(-1)}
+                                className={`text-[10px] font-mono px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
+                                    isLight
+                                        ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"
+                                        : "bg-white/[0.08] hover:bg-white/[0.14] text-zinc-300 border-white/10"
+                                }`}
+                                title="Plegar este ejercicio para ver todos en lista"
+                            >
+                                Plegar
+                            </button>
+                        </div>
+
+                        <button
+                            type="button"
+                            disabled={exIdx === activeExercises.length - 1}
+                            onClick={() => setSelectedExerciseIndex(Math.min(activeExercises.length - 1, exIdx + 1))}
+                            className={`flex items-center gap-1 font-semibold text-[11px] transition-all cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed ${
+                                isLight ? "text-slate-700 hover:text-slate-950" : "text-zinc-300 hover:text-white"
+                            }`}
+                        >
+                            <span>Siguiente</span>
+                            <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+
+                    {/* Tarjeta de Ejercicio Expandida en Grande */}
+                    <ApexV2ExerciseCard
+                        exercise={ex}
+                        exerciseIndex={exIdx}
+                        isNewBlock={isNewBlock}
+                        memory={memory}
+                        target={target}
+                        weightUnit={weightUnit}
+                        completedSets={completedSets}
+                        setInputs={setInputs}
+                        onSetInputChange={handleSetInputChange}
+                        onCompleteSet={(item, sIdx, customW, customR) => {
+                            const restSecs = item.rest_seconds || (trainingMethodology === "cycled_circuits" ? 45 : 90);
+                            handleCompleteSet(item.id, sIdx, restSecs, customW, customR);
+
+                            // Si con este set se completa el ejercicio actual:
+                            const willBeDone = checkExerciseAllDone(item, sIdx);
+                            if (willBeDone) {
+                                // Buscar el siguiente ejercicio pendiente posterior
+                                const nextPendingIdx = activeExercises.findIndex(
+                                    (otherEx, otherIdx) => otherIdx > exIdx && !checkExerciseAllDone(otherEx)
+                                );
+                                if (nextPendingIdx !== -1) {
+                                    setSelectedExerciseIndex(nextPendingIdx);
+                                } else {
+                                    // Si no hay posterior, buscar el primer pendiente anterior
+                                    const prevPendingIdx = activeExercises.findIndex(
+                                        (otherEx, otherIdx) => otherIdx !== exIdx && !checkExerciseAllDone(otherEx)
+                                    );
+                                    if (prevPendingIdx !== -1) {
+                                        setSelectedExerciseIndex(prevPendingIdx);
+                                    } else {
+                                        // Todos completados
+                                        setSelectedExerciseIndex(-1);
+                                    }
+                                }
+                            }
+                        }}
+                        tempoActive={Boolean(tempoActive[ex.id])}
+                        onToggleTempo={() => {
+                            const nextState = !tempoActive[ex.id];
+                            setTempoActive((prev) => ({ ...prev, [ex.id]: nextState }));
+                            if (nextState) {
+                                startTempoLoop(ex.id);
+                            } else {
+                                stopTempoLoop(ex.id);
+                            }
+                        }}
+                        onOpenVbt={() => {
+                            setVbtExerciseName(ex.name);
+                            setIsVbtModalOpen(true);
+                        }}
+                        onRandomSwap={() => handleRandomSwapExercise(exIdx)}
+                        onOpenSwapModal={() => setSwapTargetIndex(exIdx)}
+                        onOpenPlateModal={(w) => {
+                            setPlateModalWeight(w);
+                            setIsPlateModalOpen(true);
+                        }}
+                        isPlateLoaded={isPlateLoadedExercise(ex.equipment, ex.name)}
+                        notes={exerciseNotes[ex.id] || ""}
+                        onSaveNotes={(n) => setExerciseNotes((prev) => ({ ...prev, [ex.id]: n }))}
+                        onRemoveExercise={onRemoveExercise ? () => {
+                            if (tempoActive[ex.id]) {
+                                setTempoActive((prev) => ({ ...prev, [ex.id]: false }));
+                                stopTempoLoop(ex.id);
+                            }
+                            onRemoveExercise(exIdx);
+                            const remaining = activeExercises.length - 1;
+                            setSelectedExerciseIndex(remaining <= 0 ? -1 : Math.min(exIdx, remaining - 1));
+                        } : undefined}
+                        isLight={isLight}
+                    />
+                </motion.div>
+            );
+        }
+
+        // Pestaña compacta plegada
+        return (
+            <motion.div
+                key={`${ex.id}_${exIdx}_collapsed`}
+                layout
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                onClick={() => setSelectedExerciseIndex(exIdx)}
+                className={`w-full p-2.5 sm:p-3 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-3 cursor-pointer group active:scale-[0.99] select-none ${
+                    isLight
+                        ? isAllDone
+                            ? "bg-slate-50/80 hover:bg-slate-100 border-slate-200 text-slate-700 opacity-80"
+                            : "bg-white/80 hover:bg-white border-slate-200/90 shadow-xs hover:shadow-sm"
+                        : isAllDone
+                            ? "bg-white/[0.02] hover:bg-white/[0.05] border-white/[0.06] text-zinc-400 opacity-75"
+                            : "bg-zinc-950/45 hover:bg-white/[0.06] border-white/[0.08] hover:border-white/20 backdrop-blur-xl"
+                }`}
+                title={`Toca para abrir ${translateExerciseNameToSpanish(ex.name)} en grande`}
+            >
+                {/* Izquierda: Número o Check + Nombre + Músculo */}
+                <div className="flex items-center gap-2.5 min-w-0">
+                    <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-mono font-bold text-[11px] shrink-0 border ${
+                        isAllDone
+                            ? (isLight ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30")
+                            : (isLight ? "bg-slate-100 text-slate-600 border-slate-200" : "bg-white/[0.06] text-zinc-400 border-white/10")
+                    }`}>
+                        {isAllDone ? "✓" : exIdx + 1}
+                    </span>
+
+                    <div className="min-w-0">
+                        <h4 className={`text-xs sm:text-sm font-bold tracking-tight truncate ${
+                            isAllDone
+                                ? (isLight ? "text-slate-400 line-through" : "text-zinc-500 line-through")
+                                : (isLight ? "text-slate-900 group-hover:text-emerald-700" : "text-white group-hover:text-emerald-400")
+                        }`}>
+                            {translateExerciseNameToSpanish(ex.name)}
+                        </h4>
+                        <p className={`text-[10px] truncate leading-tight ${
+                            isLight ? "text-slate-500" : "text-zinc-400"
+                        }`}>
+                            {ex.anatomical_subdivision} • Tier {ex.hypertrophy_tier || "S"} • {ex.equipment}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Derecha: Badge de Progreso de Series + Chevron */}
+                <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border font-semibold ${
+                        isAllDone
+                            ? (isLight ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30")
+                            : completedCount > 0
+                            ? (isLight ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-amber-400/15 text-amber-400 border-amber-400/30")
+                            : (isLight ? "bg-slate-100 text-slate-600 border-slate-200" : "bg-white/[0.04] text-zinc-400 border-white/10")
+                    }`}>
+                        {isAllDone ? `✓ ${completedCount}/${totalSets}` : `${completedCount}/${totalSets} sets`}
+                    </span>
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform group-hover:translate-y-0.5 ${
+                        isLight ? "text-slate-400 group-hover:text-slate-800" : "text-zinc-500 group-hover:text-white"
+                    }`} />
+                </div>
+            </motion.div>
+        );
+    };
+
     return (
         <div className={`min-h-screen font-sans antialiased selection:bg-slate-900 selection:text-white dark:selection:bg-white dark:selection:text-slate-900 pb-32 w-full max-w-full overflow-x-hidden relative transition-colors duration-200 ${
             isLight ? "bg-[#f8fafc] text-slate-900" : "bg-[#0c0e14] text-[#EAEAEA]"
@@ -755,7 +1038,69 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                 );
                             })()}
 
-                            {/* Lista de Ejercicios en Modo Pestañas / Retiradas Cero Scroll */}
+                            {/* Barra de Progreso de la Rutina Diaria */}
+                            {activeExercises.length > 0 && (
+                                <div className={`p-3.5 sm:p-4 rounded-3xl border transition-all ${
+                                    isLight
+                                        ? "bg-white/90 border-slate-200/90 shadow-xs"
+                                        : "bg-zinc-950/60 border-white/10 backdrop-blur-xl shadow-lg"
+                                }`}>
+                                    <div className="flex items-center justify-between gap-2 mb-2">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
+                                                routineStats.isFinished
+                                                    ? (isLight ? "bg-emerald-100 text-emerald-700 border-emerald-300" : "bg-emerald-500/20 text-emerald-400 border-emerald-500/40")
+                                                    : (isLight ? "bg-slate-100 text-slate-700 border-slate-200" : "bg-white/[0.06] text-zinc-300 border-white/10")
+                                            }`}>
+                                                {routineStats.isFinished ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Activity className="w-4 h-4 text-emerald-500" />}
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className={`text-xs font-bold ${isLight ? "text-slate-900" : "text-white"}`}>
+                                                        {routineStats.isFinished ? "¡Rutina Completada!" : "Progreso de la Rutina"}
+                                                    </span>
+                                                    {routineStats.isFinished && (
+                                                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
+                                                            100%
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className={`text-[11px] font-mono ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
+                                                    {routineStats.completedExercisesCount} de {activeExercises.length} ejercicios completados • {routineStats.completedSetsCount}/{routineStats.totalSets} sets
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="text-right">
+                                            <span className={`text-base sm:text-lg font-mono font-bold ${
+                                                routineStats.isFinished
+                                                    ? "text-emerald-500"
+                                                    : (isLight ? "text-slate-900" : "text-white")
+                                            }`}>
+                                                {routineStats.percent}%
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Barra de Progreso Visual */}
+                                    <div className={`w-full h-2 rounded-full overflow-hidden ${
+                                        isLight ? "bg-slate-100 border border-slate-200" : "bg-black/50 border border-white/[0.08]"
+                                    }`}>
+                                        <motion.div
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${routineStats.percent}%` }}
+                                            transition={{ duration: 0.4, ease: "easeOut" }}
+                                            className={`h-full rounded-full transition-all ${
+                                                routineStats.isFinished
+                                                    ? "bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300"
+                                                    : "bg-gradient-to-r from-emerald-600 to-emerald-400"
+                                            }`}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* CLASIFICACIÓN 1: EJERCICIOS POR REALIZAR / PENDIENTES */}
                             <div className="space-y-2">
                                 {activeExercises.length === 0 ? (
                                     <div className={`p-8 text-center rounded-3xl border ${
@@ -765,199 +1110,94 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                         <p className="text-xs font-semibold">No hay ejercicios asignados para esta sesión.</p>
                                     </div>
                                 ) : (
-                                    activeExercises.map((ex, exIdx) => {
-                                        const isSelected = selectedExerciseIndex === exIdx;
-                                        const totalSets = (ex as any).target_sets || ex.default_sets || 3;
-                                        const completedCount = Array.from({ length: totalSets }).filter(
-                                            (_, sIdx) => completedSets[`${ex.id}_${sIdx}`]
-                                        ).length;
-                                        const isAllDone = completedCount >= totalSets && totalSets > 0;
+                                    <>
+                                        <div className="flex items-center justify-between px-1 pt-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`text-[11px] font-mono uppercase font-bold tracking-wider ${
+                                                    isLight ? "text-slate-700" : "text-zinc-300"
+                                                }`}>
+                                                    Por Realizar
+                                                </span>
+                                                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border font-bold ${
+                                                    routineStats.pending.length > 0
+                                                        ? (isLight ? "bg-amber-50 text-amber-800 border-amber-200" : "bg-amber-400/10 text-amber-400 border-amber-400/20")
+                                                        : (isLight ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20")
+                                                }`}>
+                                                    {routineStats.pending.length} {routineStats.pending.length === 1 ? "pendiente" : "pendientes"}
+                                                </span>
+                                            </div>
 
-                                        // Si está seleccionado, se muestra en grande
-                                        if (isSelected) {
-                                            const memory = exerciseMemory[ex.id] || { weight: 0, reps: 0 };
-                                            const target = calculateTodayTarget(
-                                                memory.weight,
-                                                memory.reps,
-                                                ex.rep_range_min,
-                                                ex.rep_range_max,
-                                                readiness,
-                                                weightUnit
-                                            );
-                                            const isNewBlock = !!(ex.blockId && (exIdx === 0 || activeExercises[exIdx - 1]?.blockId !== ex.blockId));
-
-                                            return (
-                                                <motion.div
-                                                    key={`${ex.id}_${exIdx}_active`}
-                                                    layout
-                                                    initial={{ opacity: 0, y: 8 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    exit={{ opacity: 0, y: -8 }}
-                                                    transition={{ duration: 0.2 }}
-                                                    className="space-y-2 pt-1"
+                                            {routineStats.pending.length > 0 && selectedExerciseIndex !== -1 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSelectedExerciseIndex(-1)}
+                                                    className={`text-[10px] font-mono px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
+                                                        isLight
+                                                            ? "bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-300"
+                                                            : "bg-white/[0.06] hover:bg-white/[0.12] text-zinc-400 border-white/10"
+                                                    }`}
+                                                    title="Plegar ejercicio abierto"
                                                 >
-                                                    {/* Barra Superior de Navegación entre Pestañas de Ejercicio */}
-                                                    <div className="flex items-center justify-between px-2 text-xs">
-                                                        <button
-                                                            type="button"
-                                                            disabled={exIdx === 0}
-                                                            onClick={() => setSelectedExerciseIndex(Math.max(0, exIdx - 1))}
-                                                            className={`flex items-center gap-1 font-semibold text-[11px] transition-all cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed ${
-                                                                isLight ? "text-slate-700 hover:text-slate-950" : "text-zinc-300 hover:text-white"
-                                                            }`}
-                                                        >
-                                                            <ChevronLeft className="w-3.5 h-3.5" />
-                                                            <span>Anterior</span>
-                                                        </button>
+                                                    Ver todos plegados
+                                                </button>
+                                            )}
+                                        </div>
 
-                                                        <div className="flex items-center gap-2">
-                                                            <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${
-                                                                isLight ? "text-slate-600" : "text-zinc-400"
-                                                            }`}>
-                                                                EJERCICIO {exIdx + 1} DE {activeExercises.length}
-                                                            </span>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setSelectedExerciseIndex(-1)}
-                                                                className={`text-[10px] font-mono px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
-                                                                    isLight
-                                                                        ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"
-                                                                        : "bg-white/[0.08] hover:bg-white/[0.14] text-zinc-300 border-white/10"
-                                                                }`}
-                                                                title="Plegar este ejercicio para ver todos retirados"
-                                                            >
-                                                                Plegar
-                                                            </button>
-                                                        </div>
-
-                                                        <button
-                                                            type="button"
-                                                            disabled={exIdx === activeExercises.length - 1}
-                                                            onClick={() => setSelectedExerciseIndex(Math.min(activeExercises.length - 1, exIdx + 1))}
-                                                            className={`flex items-center gap-1 font-semibold text-[11px] transition-all cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed ${
-                                                                isLight ? "text-slate-700 hover:text-slate-950" : "text-zinc-300 hover:text-white"
-                                                            }`}
-                                                        >
-                                                            <span>Siguiente</span>
-                                                            <ChevronRight className="w-3.5 h-3.5" />
-                                                        </button>
-                                                    </div>
-
-                                                    {/* Tarjeta de Ejercicio Expandida en Grande */}
-                                                    <ApexV2ExerciseCard
-                                                        exercise={ex}
-                                                        exerciseIndex={exIdx}
-                                                        isNewBlock={isNewBlock}
-                                                        memory={memory}
-                                                        target={target}
-                                                        weightUnit={weightUnit}
-                                                        completedSets={completedSets}
-                                                        setInputs={setInputs}
-                                                        onSetInputChange={handleSetInputChange}
-                                                        onCompleteSet={(item, sIdx, customW, customR) => {
-                                                            const restSecs = item.rest_seconds || (trainingMethodology === "cycled_circuits" ? 45 : 90);
-                                                            handleCompleteSet(item.id, sIdx, restSecs, customW, customR);
-                                                        }}
-                                                        tempoActive={Boolean(tempoActive[ex.id])}
-                                                        onToggleTempo={() => {
-                                                            const nextState = !tempoActive[ex.id];
-                                                            setTempoActive((prev) => ({ ...prev, [ex.id]: nextState }));
-                                                            if (nextState) {
-                                                                startTempoLoop(ex.id);
-                                                            } else {
-                                                                stopTempoLoop(ex.id);
-                                                            }
-                                                        }}
-                                                        onOpenVbt={() => {
-                                                            setVbtExerciseName(ex.name);
-                                                            setIsVbtModalOpen(true);
-                                                        }}
-                                                        onRandomSwap={() => handleRandomSwapExercise(exIdx)}
-                                                        onOpenSwapModal={() => setSwapTargetIndex(exIdx)}
-                                                        onOpenPlateModal={(w) => {
-                                                            setPlateModalWeight(w);
-                                                            setIsPlateModalOpen(true);
-                                                        }}
-                                                        isPlateLoaded={isPlateLoadedExercise(ex.equipment, ex.name)}
-                                                        notes={exerciseNotes[ex.id] || ""}
-                                                        onSaveNotes={(n) => setExerciseNotes((prev) => ({ ...prev, [ex.id]: n }))}
-                                                        onRemoveExercise={onRemoveExercise ? () => {
-                                                            if (tempoActive[ex.id]) {
-                                                                setTempoActive((prev) => ({ ...prev, [ex.id]: false }));
-                                                                stopTempoLoop(ex.id);
-                                                            }
-                                                            onRemoveExercise(exIdx);
-                                                            const remaining = activeExercises.length - 1;
-                                                            setSelectedExerciseIndex(remaining <= 0 ? -1 : Math.min(exIdx, remaining - 1));
-                                                        } : undefined}
-                                                        isLight={isLight}
-                                                    />
-                                                </motion.div>
-                                            );
-                                        }
-
-                                        // Si no está seleccionado, se ve "retirado" como pestaña compacta
-                                        return (
-                                            <motion.div
-                                                key={`${ex.id}_${exIdx}_collapsed`}
-                                                layout
-                                                initial={{ opacity: 0, y: 4 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0, y: -4 }}
-                                                onClick={() => setSelectedExerciseIndex(exIdx)}
-                                                className={`w-full p-2.5 sm:p-3 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-3 cursor-pointer group active:scale-[0.99] select-none ${
-                                                    isLight
-                                                        ? "bg-white/80 hover:bg-white border-slate-200/90 shadow-xs hover:shadow-sm"
-                                                        : "bg-zinc-950/45 hover:bg-white/[0.06] border-white/[0.08] hover:border-white/20 backdrop-blur-xl"
-                                                }`}
-                                                title={`Toca para abrir ${translateExerciseNameToSpanish(ex.name)} en grande`}
-                                            >
-                                                {/* Izquierda: Número + Nombre + Músculo */}
-                                                <div className="flex items-center gap-2.5 min-w-0">
-                                                    <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-mono font-bold text-[11px] shrink-0 border ${
-                                                        isAllDone
-                                                            ? (isLight ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30")
-                                                            : (isLight ? "bg-slate-100 text-slate-600 border-slate-200" : "bg-white/[0.06] text-zinc-400 border-white/10")
-                                                    }`}>
-                                                        {isAllDone ? "✓" : exIdx + 1}
-                                                    </span>
-
-                                                    <div className="min-w-0">
-                                                        <h4 className={`text-xs sm:text-sm font-bold tracking-tight truncate ${
-                                                            isAllDone
-                                                                ? (isLight ? "text-slate-400 line-through" : "text-zinc-500 line-through")
-                                                                : (isLight ? "text-slate-900 group-hover:text-emerald-700" : "text-white group-hover:text-emerald-400")
-                                                        }`}>
-                                                            {translateExerciseNameToSpanish(ex.name)}
-                                                        </h4>
-                                                        <p className={`text-[10px] truncate leading-tight ${
-                                                            isLight ? "text-slate-500" : "text-zinc-400"
-                                                        }`}>
-                                                            {ex.anatomical_subdivision} • Tier {ex.hypertrophy_tier || "S"} • {ex.equipment}
-                                                        </p>
-                                                    </div>
-                                                </div>
-
-                                                {/* Derecha: Badge de Progreso + Chevron */}
-                                                <div className="flex items-center gap-2 shrink-0">
-                                                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border font-semibold ${
-                                                        isAllDone
-                                                            ? (isLight ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30")
-                                                            : completedCount > 0
-                                                            ? (isLight ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-amber-400/15 text-amber-400 border-amber-400/30")
-                                                            : (isLight ? "bg-slate-100 text-slate-600 border-slate-200" : "bg-white/[0.04] text-zinc-400 border-white/10")
-                                                    }`}>
-                                                        {isAllDone ? `✓ ${completedCount}/${totalSets}` : `${completedCount}/${totalSets} sets`}
-                                                    </span>
-                                                    <ChevronDown className={`w-3.5 h-3.5 transition-transform group-hover:translate-y-0.5 ${
-                                                        isLight ? "text-slate-400 group-hover:text-slate-800" : "text-zinc-500 group-hover:text-white"
-                                                    }`} />
-                                                </div>
-                                            </motion.div>
-                                        );
-                                    })
+                                        {routineStats.pending.length === 0 ? (
+                                            <div className={`p-6 text-center rounded-3xl border transition-all ${
+                                                isLight
+                                                    ? "bg-emerald-50/60 border-emerald-200 text-emerald-950"
+                                                    : "bg-emerald-500/10 border-emerald-500/20 text-emerald-300"
+                                            }`}>
+                                                <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-500" />
+                                                <p className="text-xs font-bold">¡Has completado todos los ejercicios pendientes!</p>
+                                                <p className={`text-[11px] mt-0.5 ${isLight ? "text-emerald-800/80" : "text-emerald-400/80"}`}>
+                                                    Puedes revisar o editar tus series en la sección de completados abajo.
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            routineStats.pending.map((item) =>
+                                                renderExerciseItem(item.ex, item.exIdx, item.totalSets, item.completedCount, item.isAllDone)
+                                            )
+                                        )}
+                                    </>
                                 )}
                             </div>
+
+                            {/* CLASIFICACIÓN 2: EJERCICIOS YA REALIZADOS / COMPLETADOS */}
+                            {routineStats.completed.length > 0 && (
+                                <div className="space-y-2 pt-3 border-t border-dashed border-white/10 dark:border-white/10 border-slate-200">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsCompletedSectionOpen(!isCompletedSectionOpen)}
+                                        className={`w-full flex items-center justify-between p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer ${
+                                            isLight
+                                                ? "bg-slate-100/80 hover:bg-slate-200/80 border-slate-200 text-slate-800"
+                                                : "bg-white/[0.04] hover:bg-white/[0.07] border-white/10 text-zinc-300"
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                                            <span className="text-xs font-bold uppercase tracking-wider font-mono">
+                                                Ya Realizados ({routineStats.completed.length})
+                                            </span>
+                                        </div>
+
+                                        <div className="flex items-center gap-1.5 text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
+                                            <span>{isCompletedSectionOpen ? "Ocultar" : "Ver completados"}</span>
+                                            {isCompletedSectionOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                        </div>
+                                    </button>
+
+                                    {isCompletedSectionOpen && (
+                                        <div className="space-y-2">
+                                            {routineStats.completed.map((item) =>
+                                                renderExerciseItem(item.ex, item.exIdx, item.totalSets, item.completedCount, item.isAllDone)
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Cardio Finisher al final de la rutina diaria */}
                             {todayCardio && onUpdateCardio && (
