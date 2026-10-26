@@ -1,12 +1,14 @@
 // src/components/apex/ExerciseLibraryModal.tsx
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
     X,
     Search,
     Plus,
     Check,
+    CheckCircle2,
     Dumbbell,
     Layers,
     Sparkles,
@@ -186,6 +188,15 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
     const [displayLimit, setDisplayLimit] = useState(48);
     // Equipment AI Scanner modal state
     const [isScannerOpen, setIsScannerOpen] = useState(false);
+    // Modal avisando que el ejercicio se agregó a la rutina
+    const [addedModalExercise, setAddedModalExercise] = useState<ExerciseItem | null>(null);
+    const addedTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (addedTimerRef.current) clearTimeout(addedTimerRef.current);
+        };
+    }, []);
 
     useEffect(() => {
         if (initialSearchQuery) {
@@ -253,10 +264,19 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
         return list;
     }, [selectedMuscle, equipmentFilter, searchQuery]);
 
-    // Handle adding an exercise to the active session
+    // Handle adding an exercise to the active session (keeps search window open and displays confirmation modal)
     const handleAdd = (ex: ExerciseItem) => {
         onAddExercise(ex);
         setLastAddedId(ex.id);
+        setAddedModalExercise(ex);
+
+        if (addedTimerRef.current) {
+            clearTimeout(addedTimerRef.current);
+        }
+        addedTimerRef.current = setTimeout(() => {
+            setAddedModalExercise(null);
+        }, 3200);
+
         setTimeout(() => {
             setLastAddedId(null);
         }, 1800);
@@ -707,6 +727,76 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
                 onAddExerciseToSession={onAddExercise}
                 activeExerciseIds={activeExerciseIds}
             />
+
+            {/* Modal de confirmación: Ejercicio agregado a la rutina sin cerrar la ventana de búsqueda */}
+            <AnimatePresence>
+                {addedModalExercise && (
+                    <div
+                        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+                        onClick={() => setAddedModalExercise(null)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 12 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 12 }}
+                            transition={{ type: "spring", damping: 25, stiffness: 350 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className={`w-full max-w-sm rounded-3xl p-6 shadow-2xl border text-center flex flex-col items-center ${
+                                isLight
+                                    ? "bg-white border-slate-200 text-slate-900 shadow-slate-950/20"
+                                    : "bg-[#141416] border-white/10 text-white shadow-2xl"
+                            }`}
+                        >
+                            <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mb-3 text-emerald-500 shadow-sm">
+                                <CheckCircle2 className="w-8 h-8 stroke-[2.5]" />
+                            </div>
+
+                            <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/25 mb-2">
+                                Agregado a la rutina
+                            </span>
+
+                            <h3 className="text-base sm:text-lg font-bold tracking-tight">
+                                {addedModalExercise.name}
+                            </h3>
+
+                            <p className={`text-xs mt-2 leading-relaxed max-w-xs ${
+                                isLight ? "text-slate-500" : "text-zinc-400"
+                            }`}>
+                                Se ha añadido a tu rutina de hoy. La ventana sigue abierta para que puedas seguir buscando y eligiendo más ejercicios.
+                            </p>
+
+                            <div className="w-full grid grid-cols-2 gap-2.5 mt-5">
+                                <button
+                                    type="button"
+                                    onClick={() => setAddedModalExercise(null)}
+                                    className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border active:scale-95 shadow-sm ${
+                                        isLight
+                                            ? "bg-slate-900 hover:bg-black text-white border-slate-900"
+                                            : "bg-white hover:bg-zinc-200 text-black border-white"
+                                    }`}
+                                >
+                                    Seguir eligiendo
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setAddedModalExercise(null);
+                                        onClose();
+                                    }}
+                                    className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border active:scale-95 ${
+                                        isLight
+                                            ? "bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300"
+                                            : "bg-white/[0.08] hover:bg-white/[0.14] text-zinc-300 hover:text-white border-white/10"
+                                    }`}
+                                >
+                                    Ver rutina
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

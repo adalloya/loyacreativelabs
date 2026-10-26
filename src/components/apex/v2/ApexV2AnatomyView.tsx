@@ -76,15 +76,29 @@ export const ApexV2AnatomyView: React.FC<ApexV2AnatomyViewProps> = ({
 
     return (
         <div className="w-full min-h-[calc(100dvh-150px)] sm:min-h-[calc(100vh-130px)] flex flex-col justify-between space-y-3 sm:space-y-4 select-none">
-            {/* 1. Selector CENTRADO Adelante / Atrás (Cero texto arriba) */}
-            <div className="flex items-center justify-center shrink-0">
-                <div className={`flex items-center gap-1.5 p-1 rounded-full border shadow-sm backdrop-blur-xl transition-all ${
+            {/* 1. Header Principal: Igual que las otras secciones (Entrenamiento & Nutrición) */}
+            <div className="flex items-center justify-between gap-3 px-1 shrink-0">
+                <div className="min-w-0">
+                    <h2 className={`text-lg sm:text-xl font-bold tracking-tight truncate ${
+                        isLight ? "text-slate-950" : "text-white"
+                    }`}>
+                        Biblioteca de Ejercicios
+                    </h2>
+                    <p className={`text-xs truncate ${
+                        isLight ? "text-slate-500" : "text-zinc-400"
+                    }`}>
+                        {catalogCount} ejercicios disponibles • Mapa muscular 3D
+                    </p>
+                </div>
+
+                {/* Selector Adelante / Atrás */}
+                <div className={`flex items-center gap-1 p-1 rounded-full border shadow-sm backdrop-blur-xl shrink-0 ${
                     isLight ? "bg-slate-100/90 border-slate-200" : "bg-zinc-950/80 border-white/10"
                 }`}>
                     <button
                         type="button"
                         onClick={() => setAnatomyView("anterior")}
-                        className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer active:scale-95 ${
+                        className={`px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer active:scale-95 ${
                             anatomyView === "anterior"
                                 ? (isLight ? "bg-white text-slate-950 shadow-sm" : "bg-white text-black shadow-md")
                                 : (isLight ? "text-slate-600 hover:text-slate-950" : "text-zinc-400 hover:text-white")
@@ -95,7 +109,7 @@ export const ApexV2AnatomyView: React.FC<ApexV2AnatomyViewProps> = ({
                     <button
                         type="button"
                         onClick={() => setAnatomyView("posterior")}
-                        className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer active:scale-95 ${
+                        className={`px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer active:scale-95 ${
                             anatomyView === "posterior"
                                 ? (isLight ? "bg-white text-slate-950 shadow-sm" : "bg-white text-black shadow-md")
                                 : (isLight ? "text-slate-600 hover:text-slate-950" : "text-zinc-400 hover:text-white")

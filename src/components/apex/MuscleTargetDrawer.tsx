@@ -1,11 +1,12 @@
 // src/components/apex/MuscleTargetDrawer.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { MuscleGroup, ExerciseItem, EXERCISE_DATABASE } from "@/lib/hypertrophy-engine";
 import { ExerciseMotionViewer } from "./ExerciseMotionViewer";
 import { MUSCLE_PALETTE } from "./AnatomyVisualizer";
-import { X, Plus, Sparkles, Check, Play, ExternalLink } from "lucide-react";
+import { X, Plus, Sparkles, Check, CheckCircle2, Play, ExternalLink } from "lucide-react";
 
 interface MuscleTargetDrawerProps {
     selectedMuscle: MuscleGroup | null;
@@ -46,6 +47,14 @@ export function MuscleTargetDrawer({
 }: MuscleTargetDrawerProps) {
     const [equipmentFilter, setEquipmentFilter] = useState<string>("ALL");
     const [addedId, setAddedId] = useState<string | null>(null);
+    const [addedModalExercise, setAddedModalExercise] = useState<ExerciseItem | null>(null);
+    const addedTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (addedTimerRef.current) clearTimeout(addedTimerRef.current);
+        };
+    }, []);
 
     if (!selectedMuscle) return null;
 
@@ -60,6 +69,15 @@ export function MuscleTargetDrawer({
     const handleAdd = (ex: ExerciseItem) => {
         onInjectExercise(ex);
         setAddedId(ex.id);
+        setAddedModalExercise(ex);
+
+        if (addedTimerRef.current) {
+            clearTimeout(addedTimerRef.current);
+        }
+        addedTimerRef.current = setTimeout(() => {
+            setAddedModalExercise(null);
+        }, 3200);
+
         setTimeout(() => setAddedId(null), 1500);
     };
 
@@ -238,6 +256,62 @@ export function MuscleTargetDrawer({
                     )}
                 </div>
             </div>
+
+            {/* Modal de confirmación: Ejercicio agregado a la rutina sin cerrar la ventana */}
+            <AnimatePresence>
+                {addedModalExercise && (
+                    <div
+                        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+                        onClick={() => setAddedModalExercise(null)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 12 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 12 }}
+                            transition={{ type: "spring", damping: 25, stiffness: 350 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full max-w-sm rounded-3xl p-6 shadow-2xl border text-center flex flex-col items-center bg-[#141416] border-white/10 text-white"
+                        >
+                            <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mb-3 text-emerald-500 shadow-sm">
+                                <CheckCircle2 className="w-8 h-8 stroke-[2.5]" />
+                            </div>
+
+                            <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 mb-2">
+                                Agregado a la rutina
+                            </span>
+
+                            <h3 className="text-base sm:text-lg font-bold tracking-tight">
+                                {addedModalExercise.name}
+                            </h3>
+
+                            <p className="text-xs mt-2 leading-relaxed max-w-xs text-zinc-400">
+                                Se ha añadido a tu rutina de hoy. La ventana sigue abierta para que puedas seguir explorando y eligiendo más ejercicios.
+                            </p>
+
+                            <div className="w-full grid grid-cols-2 gap-2.5 mt-5">
+                                <button
+                                    type="button"
+                                    onClick={() => setAddedModalExercise(null)}
+                                    className="py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border active:scale-95 shadow-sm bg-white hover:bg-zinc-200 text-black border-white"
+                                >
+                                    Seguir eligiendo
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setAddedModalExercise(null);
+                                        onClose();
+                                    }}
+                                    className="py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border active:scale-95 bg-white/[0.08] hover:bg-white/[0.14] text-zinc-300 hover:text-white border-white/10"
+                                >
+                                    Ver rutina
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

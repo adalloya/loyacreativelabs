@@ -644,12 +644,16 @@ export default function ApexDashboard() {
         }
     });
 
-    // Inject exercise into today's session
+    // Inject exercise into today's session (allows user to keep picking more exercises)
     const handleInjectExercise = (ex: ExerciseItem) => {
-        if (!activeExercises.some(e => e.id === ex.id)) {
-            setActiveExercises(prev => [...prev, ex]);
-        }
-        setSelectedMuscle(null);
+        const translated: ExerciseItem = {
+            ...ex,
+            name: translateExerciseNameToSpanish(ex.name)
+        };
+        setActiveExercises(prev => {
+            if (prev.some(e => e.id === translated.id)) return prev;
+            return [...prev, translated];
+        });
     };
 
     // Exercise Random Swap (Acción Instantánea)
