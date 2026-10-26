@@ -39,6 +39,7 @@ import { ApexV2ExerciseCard } from "./ApexV2ExerciseCard";
 import { ApexV2NutritionCalendarHub } from "./ApexV2NutritionCalendarHub";
 import { ApexV2AnatomyView } from "./ApexV2AnatomyView";
 import { ApexV2CardioFinisher } from "./ApexV2CardioFinisher";
+import { ApexV2WorkoutDashboard } from "./ApexV2WorkoutDashboard";
 import { ApexV2SettingsView } from "./ApexV2SettingsView";
 import { ApexV2Footer } from "./ApexV2Footer";
 import { useApexVoiceAgent, VoiceAgentActionResult, VoiceAgentWorkoutResult } from "@/hooks/useApexVoiceAgent";
@@ -679,6 +680,29 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
         };
     }, [activeExercises, completedSets, profile?.weightKg, todayCardio]);
 
+    // Tonelaje / Volumen total levantado en la sesión de hoy (kg o lbs)
+    const totalVolume = useMemo(() => {
+        let volume = 0;
+        const items = activeExercises || [];
+        items.forEach((ex) => {
+            const isBodyweight = isBodyweightExercise(ex);
+            const defaultExWeight = isBodyweight ? userBodyweight : 0;
+            const tSets = (ex as any).target_sets || ex.default_sets || 3;
+            for (let sIdx = 0; sIdx < tSets; sIdx++) {
+                const key = `${ex.id}_${sIdx}`;
+                if (completedSets[key]) {
+                    const input = setInputs[key];
+                    const rawW = input?.weight !== undefined && input?.weight !== "" ? Number(input.weight) : (exerciseMemory[ex.id]?.weight || defaultExWeight);
+                    const rawR = input?.reps !== undefined && input?.reps !== "" ? Number(input.reps) : (exerciseMemory[ex.id]?.reps || ex.rep_range_min || 10);
+                    const w = Math.max(0, Number(rawW) || 0);
+                    const r = Math.max(0, Number(rawR) || 0);
+                    volume += (w * r);
+                }
+            }
+        });
+        return Math.round(volume);
+    }, [activeExercises, completedSets, setInputs, exerciseMemory, userBodyweight]);
+
     const checkExerciseAllDone = (item: ExerciseItem, overrideSetIdx?: number) => {
         const tSets = (item as any).target_sets || item.default_sets || 3;
         const cCount = Array.from({ length: tSets }).filter(
@@ -1019,7 +1043,7 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                 </div>
                             </div>
 
-                            {/* Encabezado de Sesión Centrado (Fuera de Contenedor, Cero Repetición de Día) */}
+                            {/* Dashboard de Estado de la Rutina Diaria (Círculo de Progreso & KPIs del Día) */}
                             {(() => {
                                 const rawTitle = currentRoutine?.title || "Rutina Activa";
                                 let cleanTitle = rawTitle;
@@ -1037,130 +1061,26 @@ export const ApexV2View: React.FC<ApexV2ViewProps> = ({
                                 }
 
                                 return (
-                                    <div className="py-2.5 text-center space-y-2">
-                                        <div>
-                                            <h2 className={`text-base sm:text-xl font-bold tracking-tight uppercase ${
-                                                isLight ? "text-slate-950" : "text-white"
-                                            }`}>
-                                                {cleanTitle || "Entrenamiento de Hoy"}
-                                            </h2>
-                                            <p className={`text-xs mt-0.5 ${
-                                                isLight ? "text-slate-600 font-normal" : "text-zinc-400"
-                                            }`}>
-                                                {currentRoutine?.focus || "Hipertrofia Miofibrilar & Tensión Mecánica"} • {activeExercises.length} ejercicios
-                                            </p>
-                                        </div>
-
-                                        {/* Selector Rápido de Readiness / Fatiga & Acceso a Dieta Gemini (Centrados) */}
-                                        <div className="flex items-center justify-center gap-2 pt-0.5 flex-wrap">
-                                            <div className={`inline-flex items-center gap-1 rounded-2xl p-1 border ${
-                                                isLight ? "bg-slate-100 border-slate-200" : "bg-black/50 border-white/10"
-                                            }`}>
-                                                {(["optimal", "normal", "fatigued"] as ReadinessState[]).map((r) => {
-                                                    const isSel = readiness === r;
-                                                    const labels = {
-                                                        optimal: "Óptimo",
-                                                        normal: "Normal",
-                                                        fatigued: "Fatigado"
-                                                    };
-
-                                                    return (
-                                                        <button
-                                                            key={r}
-                                                            type="button"
-                                                            onClick={() => setReadiness(r)}
-                                                            className={`px-3 py-1 rounded-xl text-[10px] font-mono uppercase font-bold transition-all cursor-pointer ${
-                                                                 isSel
-                                                                    ? r === "optimal"
-                                                                        ? (isLight ? "bg-emerald-600 text-white shadow-xs" : "bg-emerald-500 text-black shadow-sm")
-                                                                        : r === "normal"
-                                                                        ? (isLight ? "bg-amber-500 text-white shadow-xs" : "bg-amber-500 text-black shadow-sm")
-                                                                        : "bg-red-500 text-white shadow-sm"
-                                                                    : (isLight ? "text-slate-600 hover:text-slate-900" : "text-zinc-500 hover:text-zinc-300")
-                                                            }`}
-                                                        >
-                                                            {labels[r]}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <ApexV2WorkoutDashboard
+                                        routineTitle={cleanTitle || "Entrenamiento de Hoy"}
+                                        routineFocus={currentRoutine?.focus || "Hipertrofia Miofibrilar & Tensión Mecánica"}
+                                        completedExercisesCount={routineStats.completedExercisesCount}
+                                        totalExercisesCount={routineStats.totalExercisesCount}
+                                        completedSetsCount={routineStats.completedSetsCount}
+                                        totalSets={routineStats.totalSets}
+                                        percent={routineStats.percent}
+                                        burnedKcal={routineStats.burnedKcal}
+                                        totalVolume={totalVolume}
+                                        weightUnit={weightUnit}
+                                        isFinished={routineStats.isFinished}
+                                        todayCardio={todayCardio}
+                                        onOpenCardioModal={() => setIsCardioModalOpen(true)}
+                                        readiness={readiness}
+                                        onChangeReadiness={setReadiness}
+                                        isLight={isLight}
+                                    />
                                 );
                             })()}
-
-                            {/* Barra de Progreso de la Rutina Diaria */}
-                            {activeExercises.length > 0 && (
-                                <div className={`p-3.5 sm:p-4 rounded-3xl border transition-all ${
-                                    isLight
-                                        ? "bg-white/90 border-slate-200/90 shadow-xs"
-                                        : "bg-zinc-950/60 border-white/10 backdrop-blur-xl shadow-lg"
-                                }`}>
-                                    <div className="flex items-center justify-between gap-2 mb-2">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
-                                                routineStats.isFinished
-                                                    ? (isLight ? "bg-emerald-100 text-emerald-700 border-emerald-300" : "bg-emerald-500/20 text-emerald-400 border-emerald-500/40")
-                                                    : (isLight ? "bg-slate-100 text-slate-700 border-slate-200" : "bg-white/[0.06] text-zinc-300 border-white/10")
-                                            }`}>
-                                                {routineStats.isFinished ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Activity className="w-4 h-4 text-emerald-500" />}
-                                            </div>
-                                            <div>
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className={`text-xs font-bold ${isLight ? "text-slate-900" : "text-white"}`}>
-                                                        {routineStats.isFinished ? "¡Rutina Completada!" : "Progreso de la Rutina"}
-                                                    </span>
-                                                    {routineStats.isFinished && (
-                                                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
-                                                            100%
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <p className={`text-[11px] font-mono flex items-center gap-1.5 flex-wrap ${isLight ? "text-slate-500" : "text-zinc-400"}`}>
-                                                    <span>{routineStats.completedExercisesCount} de {routineStats.totalExercisesCount} ejercicios completados</span>
-                                                    <span>•</span>
-                                                    <span>{routineStats.completedSetsCount}/{routineStats.totalSets} sets</span>
-                                                    {routineStats.completedSetsCount > 0 && (
-                                                        <>
-                                                            <span>•</span>
-                                                            <span className="inline-flex items-center gap-1 text-amber-500 font-semibold">
-                                                                <Flame className="w-3 h-3 text-amber-500 fill-amber-500/20" />
-                                                                ~{routineStats.burnedKcal} kcal quemadas
-                                                            </span>
-                                                        </>
-                                                    )}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div className="text-right">
-                                            <span className={`text-base sm:text-lg font-mono font-bold ${
-                                                routineStats.isFinished
-                                                    ? "text-emerald-500"
-                                                    : (isLight ? "text-slate-900" : "text-white")
-                                            }`}>
-                                                {routineStats.percent}%
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Barra de Progreso Visual */}
-                                    <div className={`w-full h-2 rounded-full overflow-hidden ${
-                                        isLight ? "bg-slate-100 border border-slate-200" : "bg-black/50 border border-white/[0.08]"
-                                    }`}>
-                                        <motion.div
-                                            initial={{ width: 0 }}
-                                            animate={{ width: `${routineStats.percent}%` }}
-                                            transition={{ duration: 0.4, ease: "easeOut" }}
-                                            className={`h-full rounded-full transition-all ${
-                                                routineStats.isFinished
-                                                    ? "bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300"
-                                                    : "bg-gradient-to-r from-emerald-600 to-emerald-400"
-                                            }`}
-                                        />
-                                    </div>
-                                </div>
-                            )}
 
                             {/* CLASIFICACIÓN 1: EJERCICIOS POR REALIZAR / PENDIENTES */}
                             <div className="space-y-2">
