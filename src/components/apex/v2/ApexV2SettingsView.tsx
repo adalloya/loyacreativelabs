@@ -833,15 +833,6 @@ export const ApexV2SettingsView: React.FC<ApexV2SettingsViewProps> = ({
                 )}
             </div>
 
-            {/* Footer Minimalista de APEX */}
-            <div className="py-4 text-center">
-                <p className={`text-[11px] font-mono tracking-wider ${
-                    isLight ? "text-slate-500" : "text-zinc-500"
-                }`}>
-                    © 2026 APEX // Loya Creative Lab
-                </p>
-            </div>
-
         </div>
     );
 };
