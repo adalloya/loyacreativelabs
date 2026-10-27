@@ -28,7 +28,8 @@ import {
     Square,
     Copy,
     RotateCcw,
-    CalendarPlus
+    CalendarPlus,
+    Undo2
 } from "lucide-react";
 import {
     DailyNutritionLog,
@@ -45,6 +46,104 @@ import { FoodCameraScannerModal } from "@/components/nutrition/FoodCameraScanner
 import { ApexCalendarSyncModal } from "./ApexCalendarSyncModal";
 import { Drawer } from "vaul";
 import { getInitialTheme, Theme } from "@/lib/theme";
+
+/**
+ * Calcula una porción o medida casera estimada según el tipo de ingrediente y su gramaje clínico.
+ */
+function getHouseholdPortionEstimate(itemName: string, grams?: number | null): string | null {
+    if (!grams || grams <= 0) return null;
+    const lower = itemName.toLowerCase();
+
+    // Huevos enteros
+    if (/huevo/.test(lower) && !/clara/.test(lower)) {
+        const count = Math.max(1, Math.round(grams / 55));
+        return count === 1 ? "~1 pza" : `~${count} pzas`;
+    }
+    // Claras de huevo
+    if (/clara/.test(lower)) {
+        const count = Math.max(1, Math.round(grams / 35));
+        return `~${count} claras`;
+    }
+    // Aceites / Ghee / Mantequilla
+    if (/aceite|ghee|mantequilla/.test(lower)) {
+        if (grams <= 7) return "~1 cdita";
+        if (grams <= 12) return "~2 cditas";
+        if (grams <= 18) return "~1 cda sopera";
+        const cdas = (grams / 14).toFixed(1).replace(/\.0$/, "");
+        return `~${cdas} cdas`;
+    }
+    // Aguacate
+    if (/aguacate/.test(lower)) {
+        if (grams <= 70) return "~¼ pza";
+        if (grams <= 140) return "~½ pza";
+        if (grams <= 220) return "~1 pza entera";
+        return `~${(grams / 180).toFixed(1)} pzas`;
+    }
+    // Avena en hojuelas
+    if (/avena/.test(lower)) {
+        if (grams <= 45) return "~½ taza";
+        if (grams <= 65) return "~⅔ taza";
+        if (grams <= 90) return "~1 taza";
+        return `~${(grams / 80).toFixed(1)} tazas`;
+    }
+    // Arroz o pasta cocida
+    if (/arroz|pasta|quinoa/.test(lower)) {
+        if (grams <= 100) return "~½ taza";
+        if (grams <= 160) return "~¾ taza";
+        if (grams <= 220) return "~1 taza";
+        return `~${(grams / 180).toFixed(1)} tazas`;
+    }
+    // Proteína en polvo / Whey
+    if (/whey|proteína|proteina/.test(lower) && /polvo|isolate|scoop/.test(lower)) {
+        const scoops = Math.max(1, Math.round(grams / 30));
+        return scoops === 1 ? "~1 scoop" : `~${scoops} scoops`;
+    }
+    // Frutos secos (almendras, nueces, cacahuates)
+    if (/nuez|nueces|almendra|cacahuate|pistache/.test(lower)) {
+        if (grams <= 18) return "~½ puñado";
+        if (grams <= 35) return "~1 puñado";
+        return "~1-2 puñados";
+    }
+    // Semillas (chía, linaza, calabaza)
+    if (/chía|chia|linaza|semilla/.test(lower)) {
+        if (grams <= 8) return "~1 cdita";
+        if (grams <= 18) return "~1 cda sopera";
+        return "~2 cdas";
+    }
+    // Frutos rojos (arándanos, fresas, frambuesas)
+    if (/arándano|arandano|frambuesa|fresa|mora|frutos rojos/.test(lower)) {
+        if (grams <= 80) return "~½ taza";
+        if (grams <= 130) return "~¾ taza";
+        return "~1 taza";
+    }
+    // Yogur griego
+    if (/yogur|yoghurt/.test(lower)) {
+        if (grams <= 130) return "~½ taza";
+        if (grams <= 180) return "~¾ taza (1 envase)";
+        return "~1 taza";
+    }
+    // Carnes magras, pollo, res, pescado, salmón
+    if (/pollo|pechuga|res|ternera|salmón|salmon|atún|atun|pescado|tilapia/.test(lower)) {
+        if (grams <= 130) return "~1 filete chico";
+        if (grams <= 190) return "~1 filete mediano";
+        if (grams <= 250) return "~1 filete grande";
+        return `~${(grams / 150).toFixed(1)} filetes`;
+    }
+    // Vegetales al vapor / ensaladas (brócoli, espinacas, espárragos)
+    if (/brócoli|brocoli|espinaca|espárrago|esparrago|lechuga/.test(lower)) {
+        if (grams <= 80) return "~1 taza";
+        if (grams <= 160) return "~1.5 tazas";
+        return "~2 tazas";
+    }
+    // Camote / Batata / Papa
+    if (/camote|batata|papa/.test(lower)) {
+        if (grams <= 120) return "~½ pza mediana";
+        if (grams <= 190) return "~1 pza mediana";
+        return "~1 pza grande";
+    }
+
+    return null;
+}
 
 interface ApexV2NutritionCalendarHubProps {
     targetCalories: number;
@@ -129,6 +228,7 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
     });
     const [dietActionToast, setDietActionToast] = useState<string | null>(null);
     const [isCalendarSyncOpen, setIsCalendarSyncOpen] = useState(false);
+    const [registeredDietMeals, setRegisteredDietMeals] = useState<Record<string, { foodId: string; catKey: MealCategory }>>({});
 
     const handleToggleShoppingItem = (key: string) => {
         setShoppingChecked((prev) => {
@@ -291,8 +391,9 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
         }
     };
 
-    // Cargar comida de Gemini directamente al registro de comidas del día activo
+    // Cargar comida de Gemini directamente al registro de comidas del día activo con control de duplicados
     const handleLoadDietMealToLog = (meal: any, defaultIndex: number) => {
+        const mealKey = `${activeDate}_d${selectedDietDayIndex}_m${defaultIndex}`;
         const nameLower = (meal.mealName || meal.name || "").toLowerCase();
         let catKey: MealCategory = "lunch";
         if (/desayuno|comida 1/.test(nameLower) || defaultIndex === 0) catKey = "breakfast";
@@ -308,8 +409,9 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
 
         const itemsSummary = meal.items || (meal.ingredients?.map((i: any) => `${i.grams ? i.grams + "g " : ""}${i.item}`).join(" + ")) || meal.mealName || meal.name;
 
+        const foodId = `food_gemini_${mealKey}_${Date.now()}`;
         const newItem = {
-            id: `food_gemini_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            id: foodId,
             name: itemsSummary,
             calories: Number(calories) || 0,
             proteinG: Number(proteinG) || 0,
@@ -330,6 +432,13 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
         };
 
         onSaveNutritionLog(activeDate, updated);
+
+        // Actualizar mapa de comidas registradas
+        setRegisteredDietMeals((prev) => ({
+            ...prev,
+            [mealKey]: { foodId, catKey }
+        }));
+
         const catLabels: Record<MealCategory, string> = {
             breakfast: "Desayuno",
             snack1: "Colación 1",
@@ -339,6 +448,36 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
         };
         setDietActionToast(`✓ Cargado a ${catLabels[catKey] || "tu registro"}`);
         setTimeout(() => setDietActionToast(null), 2500);
+    };
+
+    // Deshacer carga de comida del plan semanal
+    const handleUndoDietMealLog = (mealKey: string, catKey: MealCategory) => {
+        const currentMeals = currentLog.meals || {};
+        const catItems = currentMeals[catKey] || [];
+        const entry = registeredDietMeals[mealKey];
+
+        const updated = {
+            ...currentLog,
+            meals: {
+                ...currentMeals,
+                [catKey]: catItems.filter((i) => {
+                    if (entry && i.id === entry.foodId) return false;
+                    if (i.id.includes(`gemini_${mealKey}`)) return false;
+                    return true;
+                })
+            }
+        };
+
+        onSaveNutritionLog(activeDate, updated);
+
+        setRegisteredDietMeals((prev) => {
+            const next = { ...prev };
+            delete next[mealKey];
+            return next;
+        });
+
+        setDietActionToast("Registro removido del día");
+        setTimeout(() => setDietActionToast(null), 2000);
     };
 
     // Workout logs from Dexie for activeDate
@@ -558,9 +697,9 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                         <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
                             <Sparkles className="w-4 h-4" />
                         </div>
-                        <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <h3 className={`text-xs sm:text-sm font-bold tracking-tight uppercase truncate ${
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap mb-0.5">
+                                <h3 className={`text-xs sm:text-sm font-bold tracking-tight uppercase leading-snug ${
                                     isLight ? "text-slate-950" : "text-white"
                                 }`}>
                                     {dietPlan?.dietaryTitle || "Plan Nutricional Clínico (7 Días)"}
@@ -569,13 +708,27 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                                     {isDietLoading ? "Calculando..." : dietPlan ? "Gemini IA" : "Sin Generar"}
                                 </span>
                             </div>
-                            <p className={`text-[10px] sm:text-[11px] font-mono truncate ${
-                                isLight ? "text-slate-500" : "text-zinc-400"
-                            }`}>
-                                {dietPlan
-                                    ? `${dietPlan.caloriesTarget || targetCalories} kcal/día • ${dietPlan.macros?.protein || targetProteinG}g Proteína • Menú & Compras`
-                                    : "Genera tu menú adaptativo de 7 días y lista de supermercado"}
-                            </p>
+                            {dietPlan ? (
+                                <div className={`text-[10px] sm:text-[11px] font-mono flex items-center gap-1 sm:gap-1.5 flex-wrap ${
+                                    isLight ? "text-slate-600" : "text-zinc-400"
+                                }`}>
+                                    <span className="font-bold text-emerald-400">
+                                        {dietPlan.caloriesTarget || targetCalories} kcal
+                                    </span>
+                                    <span>•</span>
+                                    <span>{dietPlan.macros?.protein || targetProteinG}g P</span>
+                                    <span>•</span>
+                                    <span>{dietPlan.macros?.carbs || targetCarbsG}g C</span>
+                                    <span>•</span>
+                                    <span>{dietPlan.macros?.fats || targetFatsG}g G</span>
+                                </div>
+                            ) : (
+                                <p className={`text-[10px] sm:text-[11px] font-mono ${
+                                    isLight ? "text-slate-500" : "text-zinc-400"
+                                }`}>
+                                    Genera tu menú adaptativo de 7 días y lista de supermercado
+                                </p>
+                            )}
                         </div>
                     </div>
 
@@ -731,19 +884,19 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                                 </div>
 
                                 {/* Barra de Acción Rápida: Agregar Día a Calendario Personal (Gmail / Outlook) */}
-                                <div className={`flex items-center justify-between gap-2 p-2.5 rounded-2xl border transition-all ${
+                                <div className={`flex items-center justify-between gap-2 p-2 sm:p-2.5 rounded-2xl border transition-all ${
                                     isLight ? "bg-slate-50 border-slate-200/90" : "bg-white/[0.03] border-white/5"
                                 }`}>
-                                    <div className="flex items-center gap-1.5 text-[11px] font-mono min-w-0">
+                                    <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-mono min-w-0">
                                         <CalendarIcon className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                                        <span className={`truncate ${isLight ? "text-slate-600" : "text-zinc-400"}`}>
-                                            Agendar comidas en tu calendario
+                                        <span className={`whitespace-nowrap ${isLight ? "text-slate-600" : "text-zinc-300"}`}>
+                                            Sincronizar comidas
                                         </span>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={() => setIsCalendarSyncOpen(true)}
-                                        className="px-2.5 py-1 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs shrink-0"
+                                        className="px-2.5 py-1 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[10px] sm:text-[11px] font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs shrink-0"
                                     >
                                         <CalendarPlus className="w-3 h-3" />
                                         <span>Gmail / Outlook</span>
@@ -777,6 +930,31 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                                                 const fatsG = meal.fatsG || meal.macros?.fatsG || 0;
                                                 const ings = Array.isArray(meal.ingredients) ? meal.ingredients : [];
 
+                                                // Inferencia de categoría y estado de registro
+                                                const nameLower = (meal.mealName || meal.name || "").toLowerCase();
+                                                let inferredCatKey: MealCategory = "lunch";
+                                                if (/desayuno|comida 1/.test(nameLower) || mIdx === 0) inferredCatKey = "breakfast";
+                                                else if (/colación 1|snack 1|media mañana|pre-entreno/.test(nameLower) || mIdx === 1) inferredCatKey = "snack1";
+                                                else if (/almuerzo|comida 2/.test(nameLower) || mIdx === 2) inferredCatKey = "lunch";
+                                                else if (/merienda|snack 2|colación 2|media tarde|recuperación/.test(nameLower) || mIdx === 3) inferredCatKey = "snack2";
+                                                else if (/cena|comida 4|comida 3/.test(nameLower)) inferredCatKey = "dinner";
+
+                                                const catLabels: Record<MealCategory, string> = {
+                                                    breakfast: "Desayuno",
+                                                    snack1: "Colación 1",
+                                                    lunch: "Comida",
+                                                    snack2: "Colación 2",
+                                                    dinner: "Cena"
+                                                };
+
+                                                const mealKey = `${activeDate}_d${selectedDietDayIndex}_m${mIdx}`;
+                                                const isRegistered = Boolean(
+                                                    registeredDietMeals[mealKey] ||
+                                                    (currentLog.meals[inferredCatKey] || []).some(
+                                                        (it) => it.id === registeredDietMeals[mealKey]?.foodId || it.id.includes(`gemini_${mealKey}`)
+                                                    )
+                                                );
+
                                                 return (
                                                     <div
                                                         key={`diet_meal_${selectedDietDayIndex}_${mIdx}`}
@@ -797,45 +975,53 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                                                                     </span>
                                                                 )}
                                                             </div>
+
+                                                            {/* Badges de Macros Simétricos y Armónicos */}
                                                             <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                                                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+                                                                {/* Calorías Principal */}
+                                                                <span className="text-[10px] sm:text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold shadow-xs shrink-0">
                                                                     {calories} kcal
                                                                 </span>
-                                                                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
-                                                                    isLight ? "bg-slate-200/80 border-slate-300 text-slate-800" : "bg-white/10 border-white/15 text-zinc-200"
+
+                                                                {/* Cápsula Unificada de Macros: P • C • G simétrica */}
+                                                                <div className={`flex items-center divide-x text-[10px] font-mono px-2 py-0.5 rounded-full border shrink-0 ${
+                                                                    isLight
+                                                                        ? "bg-slate-100 border-slate-200/90 divide-slate-300 text-slate-700"
+                                                                        : "bg-white/[0.06] border-white/10 divide-white/10 text-zinc-300"
                                                                 }`}>
-                                                                    {proteinG}g P
-                                                                </span>
-                                                                {carbsG > 0 && (
-                                                                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md ${
-                                                                        isLight ? "text-slate-600" : "text-zinc-400"
-                                                                    }`}>
-                                                                        {carbsG}g C
-                                                                    </span>
-                                                                )}
-                                                                {fatsG > 0 && (
-                                                                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md ${
-                                                                        isLight ? "text-slate-600" : "text-zinc-400"
-                                                                    }`}>
-                                                                        {fatsG}g G
-                                                                    </span>
-                                                                )}
+                                                                    <span className="pr-1.5 font-bold text-emerald-400">{proteinG}g P</span>
+                                                                    <span className="px-1.5 font-medium">{carbsG}g C</span>
+                                                                    <span className="pl-1.5 font-medium">{fatsG}g G</span>
+                                                                </div>
                                                             </div>
                                                         </div>
 
-                                                        {/* Ingredientes con Gramos */}
+                                                        {/* Ingredientes con Gramos y Medidas Caseras Estimadas */}
                                                         {ings.length > 0 ? (
-                                                            <div className={`space-y-1 mb-2.5 p-2 rounded-xl text-[11px] font-mono ${
+                                                            <div className={`space-y-1.5 mb-2.5 p-2 sm:p-2.5 rounded-xl text-[11px] font-mono ${
                                                                 isLight ? "bg-white/80 border border-slate-200/80 text-slate-700" : "bg-black/30 border border-white/5 text-zinc-300"
                                                             }`}>
                                                                 {ings.map((ing: any, iIdx: number) => {
                                                                     const itemText = typeof ing === "string" ? ing : ing.item || ing.name || "";
                                                                     const grams = typeof ing === "object" && ing.grams ? ing.grams : null;
+                                                                    const householdEstimate = getHouseholdPortionEstimate(itemText, grams);
+
                                                                     return (
                                                                         <div key={`ing_${iIdx}`} className="flex items-center justify-between gap-2">
-                                                                            <span className="truncate">• {itemText}</span>
+                                                                            <div className="min-w-0 flex items-center gap-1.5 flex-wrap">
+                                                                                <span className="truncate">• {itemText}</span>
+                                                                                {householdEstimate && (
+                                                                                    <span className={`text-[10px] font-sans px-1.5 py-0.2 rounded-md ${
+                                                                                        isLight
+                                                                                            ? "bg-slate-100 text-slate-500 border border-slate-200/60"
+                                                                                            : "bg-white/5 text-zinc-400 border border-white/10"
+                                                                                    }`}>
+                                                                                        ({householdEstimate})
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
                                                                             {grams && (
-                                                                                <span className="font-bold shrink-0 text-emerald-500">
+                                                                                <span className="font-bold shrink-0 text-emerald-500 font-mono">
                                                                                     {grams}g
                                                                                 </span>
                                                                             )}
@@ -849,20 +1035,47 @@ export const ApexV2NutritionCalendarHub: React.FC<ApexV2NutritionCalendarHubProp
                                                             </p>
                                                         ) : null}
 
-                                                        {/* Botón: Cargar a mi Registro de Hoy */}
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleLoadDietMealToLog(meal, mIdx)}
-                                                            className={`w-full py-1.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-98 cursor-pointer border ${
+                                                        {/* Botón: Cargar a mi Registro con Feedback de Estado y Deshacer */}
+                                                        {isRegistered ? (
+                                                            <div className={`w-full py-1.5 px-3 rounded-xl text-xs flex items-center justify-between gap-2 border transition-all ${
                                                                 isLight
-                                                                    ? "bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-800"
-                                                                    : "bg-white/5 hover:bg-white/10 border-white/10 text-zinc-300 hover:text-white"
-                                                            }`}
-                                                            title="Agregar los alimentos y macros de esta comida a tu registro diario"
-                                                        >
-                                                            <Plus className="w-3.5 h-3.5 text-emerald-500" />
-                                                            <span>Cargar a mi Registro del Día</span>
-                                                        </button>
+                                                                    ? "bg-emerald-50 border-emerald-300 text-emerald-900"
+                                                                    : "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
+                                                            }`}>
+                                                                <div className="flex items-center gap-1.5 font-semibold text-[11px]">
+                                                                    <Check className="w-3.5 h-3.5 stroke-[3] text-emerald-400 shrink-0" />
+                                                                    <span>Registrado en {catLabels[inferredCatKey]}</span>
+                                                                </div>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleUndoDietMealLog(mealKey, inferredCatKey);
+                                                                    }}
+                                                                    className={`text-[10px] font-mono underline underline-offset-2 transition-colors cursor-pointer flex items-center gap-1 ${
+                                                                        isLight ? "text-slate-500 hover:text-rose-600" : "text-zinc-400 hover:text-rose-400"
+                                                                    }`}
+                                                                    title="Deshacer registro para no duplicar"
+                                                                >
+                                                                    <Undo2 className="w-3 h-3" />
+                                                                    <span>Deshacer</span>
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleLoadDietMealToLog(meal, mIdx)}
+                                                                className={`w-full py-1.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-98 cursor-pointer border ${
+                                                                    isLight
+                                                                        ? "bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-800"
+                                                                        : "bg-white/5 hover:bg-white/10 border-white/10 text-zinc-300 hover:text-white"
+                                                                }`}
+                                                                title="Agregar los alimentos y macros de esta comida a tu registro diario"
+                                                            >
+                                                                <Plus className="w-3.5 h-3.5 text-emerald-500" />
+                                                                <span>Cargar a mi Registro del Día</span>
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 );
                                             })}
