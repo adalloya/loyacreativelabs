@@ -44,6 +44,10 @@ export default function GuitarTunerModal({
   const currentStrings = GUITAR_TUNINGS[tuningKey];
   const targetStringData = currentStrings.find((s) => s.stringNum === selectedString) || currentStrings[5];
 
+  const [smoothedCents, setSmoothedCents] = useState<number>(0);
+  const [isInTuneStable, setIsInTuneStable] = useState<boolean>(false);
+  const inTuneTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
   // Encontrar la cuerda más cercana a la frecuencia que está sonando en el micrófono
   useEffect(() => {
     if (!currentPitch || currentPitch.clarity < 0.7) return;
@@ -58,19 +62,46 @@ export default function GuitarTunerModal({
         closest = s;
       }
     }
-    // Si la diferencia es menor a 25 Hz, auto-seleccionamos esa cuerda
+    // Si la diferencia es menor a 22 Hz, auto-seleccionamos esa cuerda
     if (minDiff < 22) {
       setSelectedString(closest.stringNum);
     }
-  }, [currentPitch, currentStrings]);
+
+    // Suavizado exponencial para evitar saltos bruscos
+    setSmoothedCents((prev) => {
+      const alpha = 0.35;
+      return Math.round((prev * (1 - alpha) + currentPitch.cents * alpha) * 10) / 10;
+    });
+
+    // Histéresis de afinación para evitar parpadeos visuales (glitches)
+    const freqDiff = Math.abs(currentPitch.frequency - targetStringData.freq);
+    const rawCentsAbs = Math.abs(currentPitch.cents);
+
+    if (freqDiff < 2.8 && rawCentsAbs <= 8) {
+      if (inTuneTimeoutRef.current) {
+        clearTimeout(inTuneTimeoutRef.current);
+        inTuneTimeoutRef.current = null;
+      }
+      setIsInTuneStable(true);
+    } else if (freqDiff > 4.5 || rawCentsAbs > 13) {
+      if (!inTuneTimeoutRef.current) {
+        inTuneTimeoutRef.current = setTimeout(() => {
+          setIsInTuneStable(false);
+          inTuneTimeoutRef.current = null;
+        }, 300);
+      }
+    }
+  }, [currentPitch, currentStrings, targetStringData]);
+
+  useEffect(() => {
+    return () => {
+      if (inTuneTimeoutRef.current) clearTimeout(inTuneTimeoutRef.current);
+    };
+  }, []);
 
   if (!isOpen) return null;
 
-  const cents = currentPitch ? currentPitch.cents : 0;
-  const isSelectedStringInTune =
-    currentPitch &&
-    Math.abs(currentPitch.frequency - targetStringData.freq) < 2.5 &&
-    Math.abs(cents) <= 8;
+  const cents = currentPitch ? smoothedCents : 0;
 
   const playReferenceNote = (midi: number) => {
     vocalSynth.playNote(midi, 1.5, 0.3);
@@ -140,8 +171,8 @@ export default function GuitarTunerModal({
           {/* Nota Gigante */}
           <div className="my-3 flex flex-col items-center">
             <div
-              className={`text-7xl font-bold tracking-tight transition-colors ${
-                isSelectedStringInTune
+              className={`text-7xl font-bold tracking-tight transition-colors duration-200 ${
+                isInTuneStable
                   ? "text-[#30D158] drop-shadow-[0_0_25px_rgba(48,209,88,0.4)]"
                   : "text-white"
               }`}
@@ -152,7 +183,7 @@ export default function GuitarTunerModal({
             <div className="mt-2 flex items-center gap-3 text-xs font-mono text-zinc-400">
               <span>{currentPitch ? `${currentPitch.frequency} Hz` : `${targetStringData.freq} Hz (Meta)`}</span>
               <span>•</span>
-              <span className={isSelectedStringInTune ? "text-[#30D158] font-bold" : "text-amber-400"}>
+              <span className={isInTuneStable ? "text-[#30D158] font-bold" : "text-amber-400"}>
                 {currentPitch ? `${cents > 0 ? `+${cents}` : cents} cents` : "Toca la cuerda"}
               </span>
             </div>
@@ -164,22 +195,30 @@ export default function GuitarTunerModal({
               <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-[24%] bg-[#30D158]/20 border-x border-[#30D158]/40" />
               {currentPitch && (
                 <div
-                  className="absolute top-0 bottom-0 w-2 rounded-full transition-all duration-75"
+                  className="absolute top-0 bottom-0 w-2.5 rounded-full transition-all duration-100 ease-out"
                   style={{
-                    left: `calc(${Math.min(96, Math.max(4, 50 + cents))}% - 4px)`,
-                    backgroundColor: isSelectedStringInTune ? "#30D158" : "#FFD60A",
-                    boxShadow: `0 0 10px ${isSelectedStringInTune ? "#30D158" : "#FFD60A"}`,
+                    left: `calc(${Math.min(96, Math.max(4, 50 + cents))}% - 5px)`,
+                    backgroundColor: isInTuneStable ? "#30D158" : "#FFD60A",
+                    boxShadow: `0 0 10px ${isInTuneStable ? "#30D158" : "#FFD60A"}`,
                   }}
                 />
               )}
             </div>
           </div>
 
-          {isSelectedStringInTune && (
-            <div className="flex items-center gap-1.5 text-xs text-[#30D158] font-bold animate-bounce">
-              <CheckCircle className="w-4 h-4" /> ¡Cuerda Perfectamente Afinada!
+          {/* Contenedor fijo de estado (sin saltos de altura ni glitch) */}
+          <div className="h-7 w-full flex items-center justify-center">
+            <div
+              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border transition-all duration-300 ${
+                isInTuneStable
+                  ? "opacity-100 scale-100 bg-[#30D158]/15 text-[#30D158] border-[#30D158]/30 shadow-[0_0_12px_rgba(48,209,88,0.25)]"
+                  : "opacity-0 scale-95 pointer-events-none"
+              }`}
+            >
+              <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+              <span>¡Cuerda Afinada con Precisión!</span>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Botones de las 6 Cuerdas de la Guitarra (Tocar para escuchar referencia o fijar objetivo) */}

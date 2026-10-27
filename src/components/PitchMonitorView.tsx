@@ -205,9 +205,57 @@ export default function PitchMonitorView({
     return () => cancelAnimationFrame(animationId);
   }, [pitchHistory, currentPitch, targetMidi]);
 
-  const cents = currentPitch ? currentPitch.cents : 0;
-  const isInTune = currentPitch && Math.abs(cents) <= 14;
-  const isClose = currentPitch && Math.abs(cents) > 14 && Math.abs(cents) <= 28;
+  // Suavizado y desparasitado de parpadeos en afinación y diagnóstico
+  const [smoothedCents, setSmoothedCents] = useState<number>(0);
+  const [stableInTune, setStableInTune] = useState<boolean>(false);
+  const [diagnosticMsg, setDiagnosticMsg] = useState<string>("Esperando entrada vocal...");
+  const diagTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (!currentPitch) {
+      setStableInTune(false);
+      setDiagnosticMsg("Esperando entrada vocal...");
+      return;
+    }
+
+    const rawCents = currentPitch.cents;
+    setSmoothedCents((prev) => {
+      const alpha = 0.35;
+      return Math.round((prev * (1 - alpha) + rawCents * alpha) * 10) / 10;
+    });
+
+    // Histéresis de afinación: umbral de entrada 12c, de salida 17c
+    const absCents = Math.abs(rawCents);
+    if (absCents <= 12) {
+      setStableInTune(true);
+    } else if (absCents > 17) {
+      setStableInTune(false);
+    }
+
+    // Debounce del mensaje de diagnóstico para que no parpadee a 60 FPS
+    if (!diagTimeoutRef.current) {
+      diagTimeoutRef.current = setTimeout(() => {
+        if (absCents <= 12) {
+          setDiagnosticMsg("Afinación exacta • Mantén el apoyo");
+        } else if (rawCents < -12) {
+          setDiagnosticMsg("Ligeramente bajo • Sube el velo del paladar");
+        } else {
+          setDiagnosticMsg("Ligeramente alto • Relaja garganta y mandíbula");
+        }
+        diagTimeoutRef.current = null;
+      }, 220);
+    }
+  }, [currentPitch]);
+
+  useEffect(() => {
+    return () => {
+      if (diagTimeoutRef.current) clearTimeout(diagTimeoutRef.current);
+    };
+  }, []);
+
+  const cents = currentPitch ? smoothedCents : 0;
+  const isInTune = stableInTune;
+  const isClose = currentPitch && Math.abs(cents) > 12 && Math.abs(cents) <= 26;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -250,10 +298,10 @@ export default function PitchMonitorView({
             <div className="relative h-3 w-full bg-zinc-900/90 rounded-full border border-white/10 overflow-hidden">
               {/* Zona verde central de tolerancia */}
               <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-[26%] bg-[#30D158]/20 border-x border-[#30D158]/40" />
-              {/* Aguja dinámica */}
+              {/* Aguja dinámica con animación suave */}
               {currentPitch && (
                 <div
-                  className="absolute top-0 bottom-0 w-2.5 rounded-full transition-all duration-75"
+                  className="absolute top-0 bottom-0 w-2.5 rounded-full transition-all duration-100 ease-out"
                   style={{
                     left: `calc(${Math.min(96, Math.max(4, 50 + cents))}% - 5px)`,
                     backgroundColor: isInTune ? "#30D158" : isClose ? "#FFD60A" : "#FF453A",
@@ -267,7 +315,7 @@ export default function PitchMonitorView({
           {/* Nota Gigante SF Pro Display */}
           <div className="my-6 flex flex-col items-center">
             <div
-              className={`text-8xl font-bold tracking-tight transition-colors duration-150 ${
+              className={`text-8xl font-bold tracking-tight transition-colors duration-200 ${
                 !currentPitch
                   ? "text-zinc-700"
                   : isInTune
@@ -300,17 +348,15 @@ export default function PitchMonitorView({
             </div>
           </div>
 
-          {/* Estado de retroalimentación rápida */}
-          <div className="w-full py-3 px-4 rounded-2xl bg-white/[0.04] border border-white/[0.07] flex items-center justify-between text-xs">
+          {/* Estado de retroalimentación rápida con transición suave (sin glitch) */}
+          <div className="w-full min-h-[46px] py-3 px-4 rounded-2xl bg-white/[0.04] border border-white/[0.07] flex items-center justify-between text-xs">
             <span className="text-zinc-400">Diagnóstico en vivo:</span>
-            <span className="font-semibold text-zinc-200">
-              {!currentPitch
-                ? "Esperando entrada vocal..."
-                : isInTune
-                ? "Afinación exacta • Mantén el apoyo"
-                : cents < -14
-                ? "Ligeramente bajo • Sube el velo del paladar"
-                : "Ligeramente alto • Relaja garganta y mandíbula"}
+            <span
+              className={`font-semibold transition-colors duration-200 ${
+                isInTune ? "text-[#30D158]" : "text-zinc-200"
+              }`}
+            >
+              {diagnosticMsg}
             </span>
           </div>
         </div>

@@ -10,7 +10,6 @@ import RepertoireCoachView from "@/components/RepertoireCoachView";
 import SessionRecorderView from "@/components/SessionRecorderView";
 import LessonsAcademyView from "@/components/LessonsAcademyView";
 import VocalProfileModal, { UserVocalProfile } from "@/components/VocalProfileModal";
-import BackingTrackBar from "@/components/BackingTrackBar";
 import StudioToolsModal from "@/components/StudioToolsModal";
 import GuitarTunerModal from "@/components/GuitarTunerModal";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -238,6 +237,21 @@ export default function VoxStudioApp() {
     };
   }, []);
 
+  const handleTabChange = (newTab: ActiveTab) => {
+    setActiveTab(newTab);
+    // Si cambiamos a Karaoke o Academia, pausamos el micrófono para que no interfiera ni se acople con la música
+    if ((newTab === "repertoire" || newTab === "lessons") && isListening) {
+      stopMicrophone();
+    }
+  };
+
+  const handleCloseGuitarTuner = () => {
+    setIsGuitarTunerOpen(false);
+    if (activeTab !== "monitor" && isListening) {
+      stopMicrophone();
+    }
+  };
+
   return (
     <main className="min-h-screen px-3 sm:px-6 pt-3 pb-28 md:pb-10 max-w-7xl mx-auto flex flex-col gap-3.5 sm:gap-5">
       {/* Barra de Retorno y Estado del Ecosistema */}
@@ -292,7 +306,7 @@ export default function VoxStudioApp() {
         {/* Navegación Desktop */}
         <nav className="hidden md:flex items-center gap-1 bg-black/50 p-1 rounded-full border border-white/10">
           <button
-            onClick={() => setActiveTab("monitor")}
+            onClick={() => handleTabChange("monitor")}
             className={`px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
               activeTab === "monitor" ? "bg-white text-black shadow-md" : "text-zinc-400 hover:text-white"
             }`}
@@ -302,7 +316,7 @@ export default function VoxStudioApp() {
           </button>
 
           <button
-            onClick={() => setActiveTab("warmup")}
+            onClick={() => handleTabChange("warmup")}
             className={`px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
               activeTab === "warmup" ? "bg-white text-black shadow-md" : "text-zinc-400 hover:text-white"
             }`}
@@ -312,7 +326,7 @@ export default function VoxStudioApp() {
           </button>
 
           <button
-            onClick={() => setActiveTab("lessons")}
+            onClick={() => handleTabChange("lessons")}
             className={`px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
               activeTab === "lessons" ? "bg-white text-black shadow-md" : "text-zinc-400 hover:text-white"
             }`}
@@ -322,7 +336,7 @@ export default function VoxStudioApp() {
           </button>
 
           <button
-            onClick={() => setActiveTab("repertoire")}
+            onClick={() => handleTabChange("repertoire")}
             className={`px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
               activeTab === "repertoire" ? "bg-white text-black shadow-md" : "text-zinc-400 hover:text-white"
             }`}
@@ -332,7 +346,7 @@ export default function VoxStudioApp() {
           </button>
 
           <button
-            onClick={() => setActiveTab("recorder")}
+            onClick={() => handleTabChange("recorder")}
             className={`px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
               activeTab === "recorder" ? "bg-white text-black shadow-md" : "text-zinc-400 hover:text-white"
             }`}
@@ -406,9 +420,6 @@ export default function VoxStudioApp() {
         </div>
       </header>
 
-      {/* Barra Global de Pista de Acompañamiento (MP3 con Loop A-B y Pitch-Preserved Slowdown) */}
-      <BackingTrackBar />
-
       {/* Vista Activa */}
       <section className="flex-1">
         {activeTab === "monitor" && (
@@ -430,7 +441,13 @@ export default function VoxStudioApp() {
 
         {activeTab === "lessons" && <LessonsAcademyView />}
 
-        {activeTab === "repertoire" && <RepertoireCoachView currentPitch={currentPitch} />}
+        {activeTab === "repertoire" && (
+          <RepertoireCoachView
+            currentPitch={currentPitch}
+            isListening={isListening}
+            onToggleMic={handleToggleMic}
+          />
+        )}
 
         {activeTab === "recorder" && (
           <SessionRecorderView
@@ -466,7 +483,7 @@ export default function VoxStudioApp() {
       {/* Modal de Afinador de Guitarra Pro */}
       <GuitarTunerModal
         isOpen={isGuitarTunerOpen}
-        onClose={() => setIsGuitarTunerOpen(false)}
+        onClose={handleCloseGuitarTuner}
         currentPitch={currentPitch}
         isListening={isListening}
         onToggleMic={handleToggleMic}
@@ -475,7 +492,7 @@ export default function VoxStudioApp() {
       {/* Bottom Tab Bar Flotante exclusiva para Mobile */}
       <nav className="md:hidden fixed bottom-3 left-3 right-3 z-40 apple-glass-pill rounded-3xl p-1.5 grid grid-cols-5 gap-1 border border-white/15 shadow-[0_15px_40px_rgba(0,0,0,0.85)]">
         <button
-          onClick={() => setActiveTab("monitor")}
+          onClick={() => handleTabChange("monitor")}
           className={`py-2.5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
             activeTab === "monitor"
               ? "bg-white text-black font-bold shadow-sm"
@@ -487,7 +504,7 @@ export default function VoxStudioApp() {
         </button>
 
         <button
-          onClick={() => setActiveTab("warmup")}
+          onClick={() => handleTabChange("warmup")}
           className={`py-2.5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
             activeTab === "warmup"
               ? "bg-white text-black font-bold shadow-sm"
@@ -499,7 +516,7 @@ export default function VoxStudioApp() {
         </button>
 
         <button
-          onClick={() => setActiveTab("lessons")}
+          onClick={() => handleTabChange("lessons")}
           className={`py-2.5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
             activeTab === "lessons"
               ? "bg-white text-black font-bold shadow-sm"
@@ -511,7 +528,7 @@ export default function VoxStudioApp() {
         </button>
 
         <button
-          onClick={() => setActiveTab("repertoire")}
+          onClick={() => handleTabChange("repertoire")}
           className={`py-2.5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
             activeTab === "repertoire"
               ? "bg-white text-black font-bold shadow-sm"
@@ -523,7 +540,7 @@ export default function VoxStudioApp() {
         </button>
 
         <button
-          onClick={() => setActiveTab("recorder")}
+          onClick={() => handleTabChange("recorder")}
           className={`py-2.5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
             activeTab === "recorder"
               ? "bg-white text-black font-bold shadow-sm"

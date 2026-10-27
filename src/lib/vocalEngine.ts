@@ -238,6 +238,48 @@ class AppleVocalSynth {
     this.activeOscillators.forEach((v) => v.stop());
     this.activeOscillators.clear();
   }
+
+  public playChord(midiNotes: number[], durationSeconds = 2.4, volume = 0.16) {
+    midiNotes.forEach((midi, idx) => {
+      // Arpeggiate notes slightly for a realistic acoustic strum/piano feel
+      setTimeout(() => {
+        this.playNote(midi, durationSeconds, volume);
+      }, idx * 30);
+    });
+  }
+}
+
+export function chordNameToMidi(chordName: string): number[] {
+  const rootMap: Record<string, number> = {
+    C: 48, "C#": 49, Db: 49, D: 50, "D#": 51, Eb: 51,
+    E: 52, F: 53, "F#": 54, Gb: 54, G: 55, "G#": 56, Ab: 56,
+    A: 57, "A#": 58, Bb: 58, B: 59,
+  };
+
+  // Extraer el primer acorde si es una progresión (ej. 'Em → B7')
+  const cleanChord = chordName.split(/[\s→/-]/)[0].trim();
+  const match = cleanChord.match(/^([A-G][#b]?)(.*)$/);
+  if (!match) return [40, 52, 55, 59]; // Em por defecto
+
+  const root = rootMap[match[1]] || 52;
+  const suffix = match[2].trim().toLowerCase();
+
+  if (suffix === "m" || suffix === "min") {
+    return [root - 12, root, root + 3, root + 7, root + 12];
+  } else if (suffix === "m7" || suffix === "min7") {
+    return [root - 12, root, root + 3, root + 7, root + 10];
+  } else if (suffix === "7" || suffix === "dom7") {
+    return [root - 12, root, root + 4, root + 7, root + 10];
+  } else if (suffix === "maj7" || suffix === "m7+") {
+    return [root - 12, root, root + 4, root + 7, root + 11];
+  } else if (suffix === "dim" || suffix === "dim7") {
+    return [root - 12, root, root + 3, root + 6, root + 9];
+  } else if (suffix === "sus4") {
+    return [root - 12, root, root + 5, root + 7, root + 12];
+  } else {
+    // Mayor estándar
+    return [root - 12, root, root + 4, root + 7, root + 12];
+  }
 }
 
 export const vocalSynth = new AppleVocalSynth();

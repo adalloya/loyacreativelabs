@@ -21,6 +21,7 @@ export interface RepertoireSong {
   bpm: number;
   durationSec: number;
   sourceType: "preset" | "lrclib" | "ultrastar" | "chordpro";
+  audioUrl?: string;
   lines: ParsedLyricLine[];
 }
 

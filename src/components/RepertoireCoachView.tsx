@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { PitchData, midiToNoteName, vocalSynth } from "@/lib/vocalEngine";
+import { PitchData, midiToNoteName, vocalSynth, chordNameToMidi } from "@/lib/vocalEngine";
 import {
   RepertoireSong,
   VocalTechnique,
@@ -15,6 +15,7 @@ import {
   Wind,
   Sparkles,
   Volume2,
+  VolumeX,
   Plus,
   Check,
   Search,
@@ -27,10 +28,17 @@ import {
   Loader2,
   X,
   Music2,
+  Upload,
+  Mic,
+  MicOff,
+  Gauge,
+  Radio,
 } from "lucide-react";
 
 interface RepertoireCoachViewProps {
   currentPitch: PitchData | null;
+  isListening?: boolean;
+  onToggleMic?: () => void;
 }
 
 const PRESET_SONGS: RepertoireSong[] = [
@@ -158,7 +166,11 @@ const TECHNIQUE_BADGES: Record<VocalTechnique, { label: string; shortLabel: stri
   },
 };
 
-export default function RepertoireCoachView({ currentPitch }: RepertoireCoachViewProps) {
+export default function RepertoireCoachView({
+  currentPitch,
+  isListening,
+  onToggleMic,
+}: RepertoireCoachViewProps) {
   const [songs, setSongs] = useState<RepertoireSong[]>(PRESET_SONGS);
   const [activeSongId, setActiveSongId] = useState<string>("lamento-boliviano");
   const [selectedLineId, setSelectedLineId] = useState<string>("lb-5");
@@ -166,6 +178,14 @@ export default function RepertoireCoachView({ currentPitch }: RepertoireCoachVie
   // Estado del Teleprompter Sincronizado (Apple Music Sing)
   const [isPlayingPrompter, setIsPlayingPrompter] = useState<boolean>(false);
   const [currentTimeSec, setCurrentTimeSec] = useState<number>(0);
+
+  // Reproductor de Audio y Acompañamiento Acústico
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [customAudioUrls, setCustomAudioUrls] = useState<Record<string, string>>({});
+  const [useSynthAccompaniment, setUseSynthAccompaniment] = useState<boolean>(true);
+  const [volume, setVolume] = useState<number>(0.85);
+  const [playbackRate, setPlaybackRate] = useState<number>(1.0);
+  const lastChordPlayedRef = useRef<string | null>(null);
 
   // Estado del Buscador Open-Source LRCLIB
   const [activeDrawer, setActiveDrawer] = useState<"none" | "lrclib" | "import" | "addLine">("none");
@@ -189,29 +209,127 @@ export default function RepertoireCoachView({ currentPitch }: RepertoireCoachVie
 
   const lineRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const activeSong = songs.find((s) => s.id === activeSongId) || songs[0];
+  const activeAudioUrl = customAudioUrls[activeSong.id] || activeSong.audioUrl || null;
 
-  // Reloj del Teleprompter en vivo
+  // Manejo de carga de archivo de audio MP3 local
+  const handleAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setCustomAudioUrls((prev) => ({ ...prev, [activeSong.id]: url }));
+    setIsPlayingPrompter(false);
+    setCurrentTimeSec(0);
+    lastChordPlayedRef.current = null;
+  };
+
+  // Alternar reproducción general (Audio MP3 o Acompañamiento Sintetizado)
+  const handleTogglePlay = () => {
+    const nextState = !isPlayingPrompter;
+    setIsPlayingPrompter(nextState);
+
+    if (activeAudioUrl && audioRef.current) {
+      if (nextState) {
+        audioRef.current.volume = volume;
+        audioRef.current.playbackRate = playbackRate;
+        audioRef.current.currentTime = currentTimeSec;
+        audioRef.current.play().catch(() => {});
+      } else {
+        audioRef.current.pause();
+      }
+    }
+
+    if (!nextState) {
+      vocalSynth.stopAll();
+      lastChordPlayedRef.current = null;
+    }
+  };
+
+  const handleSeek = (newTime: number) => {
+    setCurrentTimeSec(newTime);
+    if (activeAudioUrl && audioRef.current) {
+      audioRef.current.currentTime = newTime;
+    }
+    const activeLine = activeSong.lines.find(
+      (l) => newTime >= l.startTimeSec && newTime < l.startTimeSec + l.durationSec
+    );
+    if (activeLine) {
+      setSelectedLineId(activeLine.id);
+      if (useSynthAccompaniment && !activeAudioUrl && activeLine.chord) {
+        vocalSynth.playChord(chordNameToMidi(activeLine.chord), Math.max(2.0, activeLine.durationSec), volume * 0.22);
+      }
+    }
+  };
+
+  // Reloj del Teleprompter en vivo (sincronizado con Audio o Sintetizador)
   useEffect(() => {
     if (!isPlayingPrompter) return;
+
+    // Si hay audio real, sincronizar con timeupdate del elemento de audio
+    if (activeAudioUrl && audioRef.current) {
+      const audioEl = audioRef.current;
+      const handleAudioTimeUpdate = () => {
+        const now = audioEl.currentTime;
+        setCurrentTimeSec(now);
+
+        const activeLine = activeSong.lines.find(
+          (l) => now >= l.startTimeSec && now < l.startTimeSec + l.durationSec
+        );
+        if (activeLine && activeLine.id !== selectedLineId) {
+          setSelectedLineId(activeLine.id);
+          const el = lineRefs.current[activeLine.id];
+          if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      };
+
+      const handleAudioEnded = () => {
+        setIsPlayingPrompter(false);
+        setCurrentTimeSec(0);
+        lastChordPlayedRef.current = null;
+      };
+
+      audioEl.addEventListener("timeupdate", handleAudioTimeUpdate);
+      audioEl.addEventListener("ended", handleAudioEnded);
+      return () => {
+        audioEl.removeEventListener("timeupdate", handleAudioTimeUpdate);
+        audioEl.removeEventListener("ended", handleAudioEnded);
+      };
+    }
+
+    // Modo Acompañamiento Sintetizado (Acordes de piano en tiempo real)
     const interval = setInterval(() => {
       setCurrentTimeSec((prev) => {
         const next = Math.round((prev + 0.2) * 10) / 10;
         const activeLine = activeSong.lines.find(
           (l) => next >= l.startTimeSec && next < l.startTimeSec + l.durationSec
         );
-        if (activeLine && activeLine.id !== selectedLineId) {
-          setSelectedLineId(activeLine.id);
-          const el = lineRefs.current[activeLine.id];
-          if (el) {
-            el.scrollIntoView({ behavior: "smooth", block: "center" });
+        if (activeLine) {
+          if (activeLine.id !== selectedLineId) {
+            setSelectedLineId(activeLine.id);
+            const el = lineRefs.current[activeLine.id];
+            if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+
+          // Disparar acordes acústicos en tiempo real para que el usuario SIEMPRE escuche música
+          if (useSynthAccompaniment && activeLine.chord && activeLine.chord !== lastChordPlayedRef.current) {
+            lastChordPlayedRef.current = activeLine.chord;
+            const notes = chordNameToMidi(activeLine.chord);
+            vocalSynth.playChord(notes, Math.max(2.4, activeLine.durationSec), volume * 0.22);
           }
         }
+
+        if (next >= activeSong.durationSec) {
+          setIsPlayingPrompter(false);
+          vocalSynth.stopAll();
+          lastChordPlayedRef.current = null;
+          return 0;
+        }
+
         return next;
       });
     }, 200);
 
     return () => clearInterval(interval);
-  }, [isPlayingPrompter, activeSong, selectedLineId]);
+  }, [isPlayingPrompter, activeSong, selectedLineId, activeAudioUrl, useSynthAccompaniment, volume]);
 
   const handleSearchLrcLib = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -606,56 +724,158 @@ export default function RepertoireCoachView({ currentPitch }: RepertoireCoachVie
 
       {/* Teleprompter Principal Estilo Apple Music Sing */}
       <div className="apple-glass rounded-3xl p-4 sm:p-7 flex flex-col gap-4">
-        {/* Cabecera + Controles de Auto-Scroll (Play/Pause Teleprompter) */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#30D158]/20 text-[#30D158]">
-                {activeSong.keySignature}
-              </span>
-              <span className="text-xs text-zinc-400">{activeSong.bpm} BPM</span>
+        {/* Elemento de Audio Nativo para Reproducción de Pistas */}
+        <audio ref={audioRef} src={activeAudioUrl || undefined} preload="auto" />
+
+        {/* Cabecera + Reproductor de Pista Karaoke y Acompañamiento */}
+        <div className="flex flex-col gap-3.5 border-b border-white/10 pb-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#30D158]/20 text-[#30D158]">
+                  {activeSong.keySignature}
+                </span>
+                <span className="text-xs text-zinc-400">{activeSong.bpm} BPM</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                  {activeAudioUrl ? "Pista MP3 Cargada" : "Acompañamiento Acústico Sintetizado"}
+                </span>
+              </div>
+              <h2 className="text-lg sm:text-2xl font-bold text-white mt-1">
+                {activeSong.title}{" "}
+                <span className="text-zinc-400 font-normal text-sm sm:text-lg">— {activeSong.artist}</span>
+              </h2>
             </div>
-            <h2 className="text-lg sm:text-2xl font-bold text-white mt-0.5">
-              {activeSong.title} <span className="text-zinc-400 font-normal text-sm sm:text-lg">— {activeSong.artist}</span>
-            </h2>
+
+            {/* Selector de Micrófono de Evaluación (Aislado para Karaoke) */}
+            {onToggleMic && (
+              <button
+                type="button"
+                onClick={onToggleMic}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border ${
+                  isListening
+                    ? "bg-[#30D158]/20 text-[#30D158] border-[#30D158]/40 shadow-[0_0_12px_rgba(48,209,88,0.3)]"
+                    : "bg-white/10 text-zinc-300 border-white/10 hover:bg-white/15"
+                }`}
+                title="Activar/desactivar micrófono exclusivo para evaluación de afinación en karaoke"
+              >
+                {isListening ? <Mic className="w-3.5 h-3.5 text-[#30D158]" /> : <MicOff className="w-3.5 h-3.5 text-zinc-400" />}
+                <span>{isListening ? "Mic On (Evaluando)" : "Mic en Pausa (Pura Pista)"}</span>
+              </button>
+            )}
           </div>
 
-          {/* Controles del Teleprompter Sincronizado */}
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end bg-black/40 p-2 rounded-2xl border border-white/10">
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setIsPlayingPrompter(!isPlayingPrompter)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
-                  isPlayingPrompter
-                    ? "bg-amber-400 text-black"
-                    : "bg-[#30D158] text-black shadow-[0_0_15px_rgba(48,209,88,0.4)]"
-                }`}
-              >
-                {isPlayingPrompter ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current" />}
-                <span>{isPlayingPrompter ? "Pausar" : "Auto-Scroll"}</span>
-              </button>
+          {/* Consola de Control de Audio Karaoke: Play/Pausa, Scrubber, Volumen y Carga MP3 */}
+          <div className="bg-black/50 p-3 sm:p-4 rounded-2xl border border-white/10 flex flex-col gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              {/* Botones de Transporte */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleTogglePlay}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
+                    isPlayingPrompter
+                      ? "bg-amber-400 text-black shadow-[0_0_18px_rgba(251,191,36,0.4)]"
+                      : "bg-[#30D158] text-black shadow-[0_0_20px_rgba(48,209,88,0.5)] hover:brightness-105"
+                  }`}
+                >
+                  {isPlayingPrompter ? (
+                    <Pause className="w-4 h-4 fill-current" />
+                  ) : (
+                    <Play className="w-4 h-4 fill-current" />
+                  )}
+                  <span>{isPlayingPrompter ? "Pausar Pista" : "Reproducir Pista & Letra"}</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setIsPlayingPrompter(false);
-                  setCurrentTimeSec(0);
-                  if (activeSong.lines[0]) setSelectedLineId(activeSong.lines[0].id);
-                }}
-                className="p-2 rounded-xl bg-white/10 text-zinc-300 hover:text-white cursor-pointer"
-                title="Reiniciar canción"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPlayingPrompter(false);
+                    handleSeek(0);
+                    vocalSynth.stopAll();
+                    if (activeSong.lines[0]) setSelectedLineId(activeSong.lines[0].id);
+                  }}
+                  className="p-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-zinc-200 transition cursor-pointer"
+                  title="Reiniciar canción al inicio"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+
+                {/* Subir MP3 de Karaoke */}
+                <label className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-zinc-200 text-xs font-semibold flex items-center gap-1.5 border border-white/10 transition cursor-pointer">
+                  <Upload className="w-3.5 h-3.5 text-[#0A84FF]" />
+                  <span className="hidden sm:inline">Subir Pista MP3</span>
+                  <span className="sm:hidden">MP3</span>
+                  <input
+                    type="file"
+                    accept="audio/*"
+                    onChange={handleAudioUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              {/* Controles de Sonido: Acompañamiento Sintetizado y Volumen */}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !useSynthAccompaniment;
+                    setUseSynthAccompaniment(next);
+                    if (!next) vocalSynth.stopAll();
+                  }}
+                  className={`px-2.5 py-1.5 rounded-xl text-[11px] font-semibold flex items-center gap-1.5 transition cursor-pointer border ${
+                    useSynthAccompaniment
+                      ? "bg-[#0A84FF]/20 text-[#0A84FF] border-[#0A84FF]/40"
+                      : "bg-white/5 text-zinc-500 border-transparent"
+                  }`}
+                  title="Genera acordes de piano y armonía acústica en tiempo real para canciones sin MP3"
+                >
+                  <Radio className="w-3 h-3" />
+                  <span>Piano Acordes</span>
+                </button>
+
+                {/* Volumen */}
+                <div className="flex items-center gap-1.5 bg-white/5 px-2.5 py-1.5 rounded-xl border border-white/10">
+                  {volume === 0 ? (
+                    <VolumeX className="w-3.5 h-3.5 text-zinc-500" />
+                  ) : (
+                    <Volume2 className="w-3.5 h-3.5 text-zinc-300" />
+                  )}
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={volume}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value);
+                      setVolume(v);
+                      if (audioRef.current) audioRef.current.volume = v;
+                    }}
+                    className="w-16 accent-[#0A84FF] cursor-pointer"
+                    title="Volumen de la pista"
+                  />
+                </div>
+              </div>
             </div>
 
-            <div className="px-2.5 text-right">
-              <div className="text-[10px] text-zinc-400 uppercase">Tiempo / Voz</div>
-              <div className="text-xs font-mono font-bold text-white">
-                {formatSeconds(currentTimeSec)} •{" "}
-                <span className="text-[#0A84FF]">{currentPitch ? currentPitch.noteName : "—"}</span>
-              </div>
+            {/* Barra de Progreso y Tiempo (Scrubber) */}
+            <div className="flex items-center gap-3 w-full">
+              <span className="text-[11px] font-mono text-zinc-400 min-w-[36px]">
+                {formatSeconds(currentTimeSec)}
+              </span>
+              <input
+                type="range"
+                min="0"
+                max={activeSong.durationSec || 60}
+                step="0.2"
+                value={currentTimeSec}
+                onChange={(e) => handleSeek(parseFloat(e.target.value))}
+                className="flex-1 accent-[#30D158] h-1.5 bg-zinc-800 rounded-full cursor-pointer"
+              />
+              <span className="text-[11px] font-mono text-zinc-500 min-w-[36px] text-right">
+                {formatSeconds(activeSong.durationSec)}
+              </span>
             </div>
           </div>
         </div>
