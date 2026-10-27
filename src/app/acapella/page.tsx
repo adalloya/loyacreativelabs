@@ -7,6 +7,7 @@ import PitchMonitorView from "@/components/PitchMonitorView";
 import WarmupStudioView from "@/components/WarmupStudioView";
 import RepertoireCoachView from "@/components/RepertoireCoachView";
 import SessionRecorderView from "@/components/SessionRecorderView";
+import LessonsAcademyView from "@/components/LessonsAcademyView";
 import VocalProfileModal, { UserVocalProfile } from "@/components/VocalProfileModal";
 import BackingTrackBar from "@/components/BackingTrackBar";
 import StudioToolsModal from "@/components/StudioToolsModal";
@@ -24,9 +25,10 @@ import {
   Sparkles,
   Sliders,
   Database,
+  GraduationCap,
 } from "lucide-react";
 
-type ActiveTab = "monitor" | "warmup" | "repertoire" | "recorder";
+type ActiveTab = "monitor" | "warmup" | "lessons" | "repertoire" | "recorder";
 
 const DEFAULT_PROFILE: UserVocalProfile = {
   lowestMidi: 45, // A2
@@ -299,6 +301,16 @@ export default function VoxStudioApp() {
           </button>
 
           <button
+            onClick={() => setActiveTab("lessons")}
+            className={`px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+              activeTab === "lessons" ? "bg-white text-black shadow-md" : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            <GraduationCap className="w-3.5 h-3.5" />
+            <span>Academia</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab("repertoire")}
             className={`px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
               activeTab === "repertoire" ? "bg-white text-black shadow-md" : "text-zinc-400 hover:text-white"
@@ -397,6 +409,8 @@ export default function VoxStudioApp() {
           />
         )}
 
+        {activeTab === "lessons" && <LessonsAcademyView />}
+
         {activeTab === "repertoire" && <RepertoireCoachView currentPitch={currentPitch} />}
 
         {activeTab === "recorder" && (
@@ -431,7 +445,7 @@ export default function VoxStudioApp() {
       />
 
       {/* Bottom Tab Bar Flotante exclusiva para Mobile */}
-      <nav className="md:hidden fixed bottom-3 left-3 right-3 z-40 apple-glass-pill rounded-3xl p-1.5 grid grid-cols-4 gap-1 border border-white/15 shadow-[0_15px_40px_rgba(0,0,0,0.85)]">
+      <nav className="md:hidden fixed bottom-3 left-3 right-3 z-40 apple-glass-pill rounded-3xl p-1.5 grid grid-cols-5 gap-1 border border-white/15 shadow-[0_15px_40px_rgba(0,0,0,0.85)]">
         <button
           onClick={() => setActiveTab("monitor")}
           className={`py-2.5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
@@ -441,7 +455,7 @@ export default function VoxStudioApp() {
           }`}
         >
           <Activity className="w-4 h-4" />
-          <span className="text-[10px]">Afinador</span>
+          <span className="text-[9px]">Afinador</span>
         </button>
 
         <button
@@ -453,7 +467,19 @@ export default function VoxStudioApp() {
           }`}
         >
           <Music className="w-4 h-4" />
-          <span className="text-[10px]">Escalas</span>
+          <span className="text-[9px]">Escalas</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("lessons")}
+          className={`py-2.5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+            activeTab === "lessons"
+              ? "bg-white text-black font-bold shadow-sm"
+              : "text-zinc-400 hover:text-white"
+          }`}
+        >
+          <GraduationCap className="w-4 h-4" />
+          <span className="text-[9px]">Academia</span>
         </button>
 
         <button
@@ -465,7 +491,7 @@ export default function VoxStudioApp() {
           }`}
         >
           <BookOpen className="w-4 h-4" />
-          <span className="text-[10px]">Karaoke LRC</span>
+          <span className="text-[9px]">Karaoke</span>
         </button>
 
         <button
@@ -477,7 +503,7 @@ export default function VoxStudioApp() {
           }`}
         >
           <Disc className="w-4 h-4" />
-          <span className="text-[10px]">Grabadora</span>
+          <span className="text-[9px]">Bitácora</span>
         </button>
       </nav>
     </main>
