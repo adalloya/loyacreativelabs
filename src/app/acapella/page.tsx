@@ -9,6 +9,7 @@ import RepertoireCoachView from "@/components/RepertoireCoachView";
 import SessionRecorderView from "@/components/SessionRecorderView";
 import VocalProfileModal, { UserVocalProfile } from "@/components/VocalProfileModal";
 import BackingTrackBar from "@/components/BackingTrackBar";
+import StudioToolsModal from "@/components/StudioToolsModal";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import {
   Activity,
@@ -22,6 +23,7 @@ import {
   Cloud,
   Sparkles,
   Sliders,
+  Database,
 } from "lucide-react";
 
 type ActiveTab = "monitor" | "warmup" | "repertoire" | "recorder";
@@ -32,6 +34,22 @@ const DEFAULT_PROFILE: UserVocalProfile = {
   passaggioMidi: 62, // D4
   voiceType: "Barítono / Tenor Ligero",
 };
+
+// Generador sintético de respuesta al impulso acústico para Reverb de sala de concierto
+function createConcertHallReverb(ctx: AudioContext, duration = 2.4, decay = 2.0): AudioBuffer {
+  const sampleRate = ctx.sampleRate;
+  const length = Math.floor(sampleRate * duration);
+  const impulse = ctx.createBuffer(2, length, sampleRate);
+  const left = impulse.getChannelData(0);
+  const right = impulse.getChannelData(1);
+
+  for (let i = 0; i < length; i++) {
+    const factor = Math.pow((length - i) / length, decay);
+    left[i] = (Math.random() * 2 - 1) * factor;
+    right[i] = (Math.random() * 2 - 1) * factor;
+  }
+  return impulse;
+}
 
 export default function VoxStudioApp() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("monitor");
@@ -44,9 +62,14 @@ export default function VoxStudioApp() {
 
   // Perfil Vocal Persistente y Wake Lock (Modo Atril)
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
+  const [isToolsOpen, setIsToolsOpen] = useState<boolean>(false);
   const [vocalProfile, setVocalProfile] = useState<UserVocalProfile>(DEFAULT_PROFILE);
   const [wakeLockEnabled, setWakeLockEnabled] = useState<boolean>(false);
   const wakeLockSentinelRef = useRef<{ release: () => Promise<void> } | null>(null);
+
+  // Reverb de Monitoreo en Tiempo Real
+  const [isMonitoringReverb, setIsMonitoringReverb] = useState<boolean>(false);
+  const reverbGainRef = useRef<GainNode | null>(null);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -70,6 +93,18 @@ export default function VoxStudioApp() {
       localStorage.setItem("voxstudio_vocal_profile", JSON.stringify(newProf));
     } catch {
       // Ignorar
+    }
+  };
+
+  // Alternar Reverb de Monitoreo
+  const handleToggleReverb = () => {
+    const nextState = !isMonitoringReverb;
+    setIsMonitoringReverb(nextState);
+    if (reverbGainRef.current && audioCtxRef.current) {
+      reverbGainRef.current.gain.setValueAtTime(
+        nextState ? 0.35 : 0,
+        audioCtxRef.current.currentTime
+      );
     }
   };
 
@@ -109,6 +144,7 @@ export default function VoxStudioApp() {
     setMediaStream(null);
     setIsListening(false);
     setCurrentPitch(null);
+    reverbGainRef.current = null;
   }, [mediaStream]);
 
   const startMicrophone = async () => {
@@ -129,6 +165,21 @@ export default function VoxStudioApp() {
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 2048;
       source.connect(analyser);
+
+      // Crear Reverb espacial por convolución para monitoreo vocal con audífonos
+      try {
+        const convolver = audioCtx.createConvolver();
+        convolver.buffer = createConcertHallReverb(audioCtx, 2.2, 2.0);
+        const reverbGain = audioCtx.createGain();
+        reverbGain.gain.setValueAtTime(isMonitoringReverb ? 0.35 : 0, audioCtx.currentTime);
+
+        source.connect(convolver);
+        convolver.connect(reverbGain);
+        reverbGain.connect(audioCtx.destination);
+        reverbGainRef.current = reverbGain;
+      } catch (revErr) {
+        console.warn("[VoxStudio] Reverb setup skipped:", revErr);
+      }
 
       audioCtxRef.current = audioCtx;
       analyserRef.current = analyser;
@@ -268,7 +319,7 @@ export default function VoxStudioApp() {
           </button>
         </nav>
 
-        {/* Píldora en Vivo + Botón de Perfil Vocal y Metrónomo */}
+        {/* Píldora en Vivo + Botones de Herramientas Studio y Perfil Vocal */}
         <div className="flex items-center gap-1.5 sm:gap-2">
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 border border-white/10 text-xs font-mono">
             <span
@@ -293,6 +344,14 @@ export default function VoxStudioApp() {
               </span>
             )}
           </div>
+
+          <button
+            onClick={() => setIsToolsOpen(true)}
+            className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-[#BF5AF2] border border-white/10 transition cursor-pointer"
+            title="Herramientas Pro: Backup JSON, Reverb de Monitoreo y Diagnóstico IA"
+          >
+            <Database className="w-4 h-4" />
+          </button>
 
           <button
             onClick={() => setIsProfileOpen(true)}
@@ -361,6 +420,14 @@ export default function VoxStudioApp() {
         onUpdateProfile={handleUpdateProfile}
         wakeLockEnabled={wakeLockEnabled}
         onToggleWakeLock={handleToggleWakeLock}
+      />
+
+      {/* Modal de Herramientas Pro: Backup JSON, Diagnóstico IA y Reverb de Monitoreo */}
+      <StudioToolsModal
+        isOpen={isToolsOpen}
+        onClose={() => setIsToolsOpen(false)}
+        isMonitoringReverb={isMonitoringReverb}
+        onToggleReverb={handleToggleReverb}
       />
 
       {/* Bottom Tab Bar Flotante exclusiva para Mobile */}
