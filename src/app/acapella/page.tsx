@@ -7,6 +7,8 @@ import PitchMonitorView from "@/components/PitchMonitorView";
 import WarmupStudioView from "@/components/WarmupStudioView";
 import RepertoireCoachView from "@/components/RepertoireCoachView";
 import SessionRecorderView from "@/components/SessionRecorderView";
+import VocalProfileModal, { UserVocalProfile } from "@/components/VocalProfileModal";
+import BackingTrackBar from "@/components/BackingTrackBar";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import {
   Activity,
@@ -19,9 +21,17 @@ import {
   ArrowLeft,
   Cloud,
   Sparkles,
+  Sliders,
 } from "lucide-react";
 
 type ActiveTab = "monitor" | "warmup" | "repertoire" | "recorder";
+
+const DEFAULT_PROFILE: UserVocalProfile = {
+  lowestMidi: 45, // A2
+  highestMidi: 64, // E4
+  passaggioMidi: 62, // D4
+  voiceType: "Barítono / Tenor Ligero",
+};
 
 export default function VoxStudioApp() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("monitor");
@@ -32,9 +42,61 @@ export default function VoxStudioApp() {
   >([]);
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
 
+  // Perfil Vocal Persistente y Wake Lock (Modo Atril)
+  const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
+  const [vocalProfile, setVocalProfile] = useState<UserVocalProfile>(DEFAULT_PROFILE);
+  const [wakeLockEnabled, setWakeLockEnabled] = useState<boolean>(false);
+  const wakeLockSentinelRef = useRef<{ release: () => Promise<void> } | null>(null);
+
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const rafRef = useRef<number | null>(null);
+
+  // Cargar perfil vocal guardado en localStorage al iniciar
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("voxstudio_vocal_profile");
+      if (saved) {
+        setVocalProfile(JSON.parse(saved));
+      }
+    } catch {
+      // Ignorar errores de almacenamiento privado
+    }
+  }, []);
+
+  const handleUpdateProfile = (newProf: UserVocalProfile) => {
+    setVocalProfile(newProf);
+    try {
+      localStorage.setItem("voxstudio_vocal_profile", JSON.stringify(newProf));
+    } catch {
+      // Ignorar
+    }
+  };
+
+  // Controlar Screen Wake Lock para que no se apague el celular al cantar
+  const handleToggleWakeLock = async () => {
+    if (wakeLockEnabled) {
+      if (wakeLockSentinelRef.current) {
+        await wakeLockSentinelRef.current.release();
+        wakeLockSentinelRef.current = null;
+      }
+      setWakeLockEnabled(false);
+    } else {
+      try {
+        if ("wakeLock" in navigator) {
+          const navWithWake = navigator as unknown as {
+            wakeLock: { request: (type: "screen") => Promise<{ release: () => Promise<void> }> };
+          };
+          wakeLockSentinelRef.current = await navWithWake.wakeLock.request("screen");
+          setWakeLockEnabled(true);
+        } else {
+          setWakeLockEnabled(true);
+        }
+      } catch {
+        setWakeLockEnabled(true);
+      }
+    }
+  };
 
   const stopMicrophone = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -113,11 +175,14 @@ export default function VoxStudioApp() {
   useEffect(() => {
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (wakeLockSentinelRef.current) {
+        wakeLockSentinelRef.current.release().catch(() => {});
+      }
     };
   }, []);
 
   return (
-    <main className="min-h-screen px-3 sm:px-6 pt-3 pb-28 md:pb-10 max-w-7xl mx-auto flex flex-col gap-4 sm:gap-6">
+    <main className="min-h-screen px-3 sm:px-6 pt-3 pb-28 md:pb-10 max-w-7xl mx-auto flex flex-col gap-3.5 sm:gap-5">
       {/* Barra de Retorno y Estado del Ecosistema */}
       <div className="flex items-center justify-between px-1 text-xs text-zinc-400">
         <Link
@@ -145,8 +210,7 @@ export default function VoxStudioApp() {
       </div>
 
       {/* Top Header / Dynamic Island HUD para Mobile & Desktop */}
-      <header className="apple-glass-pill rounded-full px-3.5 sm:px-5 py-2.5 flex items-center justify-between gap-2 sticky top-2 z-50">
-        {/* Identidad */}
+      <header className="apple-glass-pill rounded-full px-3.5 sm:px-5 py-2.5 flex items-center justify-between gap-2 sticky top-2 z-40">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-tr from-[#0A84FF] via-[#BF5AF2] to-[#30D158] flex items-center justify-center shadow-[0_0_20px_rgba(10,132,255,0.5)] shrink-0">
             <Waves className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
@@ -156,12 +220,12 @@ export default function VoxStudioApp() {
               VoxStudio Pro
             </h1>
             <p className="text-[10px] text-zinc-400 hidden sm:block">
-              Apple Vocal Coach • LRCLIB & UltraStar Ready
+              {vocalProfile.voiceType} ({vocalProfile.lowestMidi}–{vocalProfile.highestMidi} MIDI)
             </p>
           </div>
         </div>
 
-        {/* Navegación Desktop (Oculta en móvil porque móvil usa Bottom Tab Bar estilo iOS) */}
+        {/* Navegación Desktop */}
         <nav className="hidden md:flex items-center gap-1 bg-black/50 p-1 rounded-full border border-white/10">
           <button
             onClick={() => setActiveTab("monitor")}
@@ -204,8 +268,8 @@ export default function VoxStudioApp() {
           </button>
         </nav>
 
-        {/* Píldora en Vivo estilo Dynamic Island (Siempre visible en móvil y desktop) */}
-        <div className="flex items-center gap-2">
+        {/* Píldora en Vivo + Botón de Perfil Vocal y Metrónomo */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 border border-white/10 text-xs font-mono">
             <span
               className={`w-2 h-2 rounded-full ${
@@ -231,6 +295,14 @@ export default function VoxStudioApp() {
           </div>
 
           <button
+            onClick={() => setIsProfileOpen(true)}
+            className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-zinc-200 border border-white/10 transition cursor-pointer"
+            title="Calibrar Rango Vocal, Metrónomo y Modo Atril"
+          >
+            <Sliders className="w-4 h-4" />
+          </button>
+
+          <button
             onClick={handleToggleMic}
             className={`p-2.5 rounded-full transition-all border cursor-pointer ${
               isListening
@@ -243,6 +315,9 @@ export default function VoxStudioApp() {
           </button>
         </div>
       </header>
+
+      {/* Barra Global de Pista de Acompañamiento (MP3 con Loop A-B y Pitch-Preserved Slowdown) */}
+      <BackingTrackBar />
 
       {/* Vista Activa */}
       <section className="flex-1">
@@ -275,8 +350,21 @@ export default function VoxStudioApp() {
         )}
       </section>
 
-      {/* Bottom Tab Bar Flotante exclusiva para Mobile (iOS 18 Liquid Glass Dock) */}
-      <nav className="md:hidden fixed bottom-3 left-3 right-3 z-50 apple-glass-pill rounded-3xl p-1.5 grid grid-cols-4 gap-1 border border-white/15 shadow-[0_15px_40px_rgba(0,0,0,0.8)]">
+      {/* Modal de Calibración de Tesitura, Metrónomo y Pantalla Activa */}
+      <VocalProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        currentPitch={currentPitch}
+        isListening={isListening}
+        onToggleMic={handleToggleMic}
+        profile={vocalProfile}
+        onUpdateProfile={handleUpdateProfile}
+        wakeLockEnabled={wakeLockEnabled}
+        onToggleWakeLock={handleToggleWakeLock}
+      />
+
+      {/* Bottom Tab Bar Flotante exclusiva para Mobile */}
+      <nav className="md:hidden fixed bottom-3 left-3 right-3 z-40 apple-glass-pill rounded-3xl p-1.5 grid grid-cols-4 gap-1 border border-white/15 shadow-[0_15px_40px_rgba(0,0,0,0.85)]">
         <button
           onClick={() => setActiveTab("monitor")}
           className={`py-2.5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
