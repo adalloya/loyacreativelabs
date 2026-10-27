@@ -1,6 +1,9 @@
 "use client";
 
+import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
+import { Waves } from "lucide-react";
 import { Container } from "./ui/Container";
 import { Button } from "./ui/Button";
 import { useLanguage } from "@/context/LanguageContext";
@@ -65,6 +68,41 @@ export function Hero() {
                                 <span className="text-[10px] opacity-80 uppercase tracking-widest">Consultor IA • 24/7</span>
                             </div>
                         </Button>
+                    </motion.div>
+
+                    {/* Apps & Software Labs Dock */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 1.2, duration: 0.8 }}
+                        className="mt-6 flex flex-wrap items-center justify-center gap-2 sm:gap-2.5"
+                    >
+                        <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-500">
+                            Apps en Vivo:
+                        </span>
+                        <Link
+                            href="/acapella"
+                            className="px-3.5 py-1.5 rounded-full bg-blue-950/50 border border-blue-500/40 text-blue-300 hover:text-white hover:border-blue-400 text-xs font-semibold flex items-center gap-1.5 shadow-[0_0_15px_rgba(10,132,255,0.25)] transition-all group"
+                        >
+                            <span className="w-2 h-2 rounded-full bg-[#30D158] animate-pulse" />
+                            <Waves className="w-3.5 h-3.5 text-blue-400 group-hover:scale-110 transition-transform" />
+                            <span>VoxStudio Acapella</span>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-500/30 text-blue-200 font-bold uppercase">Nuevo</span>
+                        </Link>
+                        <Link
+                            href="/apex"
+                            className="px-3.5 py-1.5 rounded-full bg-red-950/40 border border-red-500/40 text-red-300 hover:text-white hover:border-red-400 text-xs font-semibold flex items-center gap-1.5 transition-all group"
+                        >
+                            <Image src="/apex-logo.png" alt="APEX" width={14} height={14} className="rounded object-cover" />
+                            <span>APEX</span>
+                        </Link>
+                        <Link
+                            href="/arco-maestro"
+                            className="px-3.5 py-1.5 rounded-full bg-yellow-950/40 border border-yellow-500/40 text-yellow-300 hover:text-white hover:border-yellow-400 text-xs font-semibold flex items-center gap-1.5 transition-all group"
+                        >
+                            <Image src="/logo-arco-maestro.png" alt="Arco Maestro" width={14} height={14} className="rounded object-cover" />
+                            <span>Arco Maestro</span>
+                        </Link>
                     </motion.div>
                 </motion.div>
             </Container>

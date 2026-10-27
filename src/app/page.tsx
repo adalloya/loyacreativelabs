@@ -18,14 +18,14 @@ export default function Home() {
       <main className="bg-black min-h-screen text-white selection:bg-purple-500/30 selection:text-purple-200">
         <Navbar />
         <Hero />
+        <AcapellaPromo />
+        <ApexPromo />
+        <ArcoMaestroPromo />
         <div className="space-y-0">
           <TechStack />
           <ProblemSolution />
         </div>
         <ChatbotPromo />
-        <ApexPromo />
-        <ArcoMaestroPromo />
-        <AcapellaPromo />
         <Portfolio />
         <Services />
         <Contact />
