@@ -11,6 +11,7 @@ import LessonsAcademyView from "@/components/LessonsAcademyView";
 import VocalProfileModal, { UserVocalProfile } from "@/components/VocalProfileModal";
 import BackingTrackBar from "@/components/BackingTrackBar";
 import StudioToolsModal from "@/components/StudioToolsModal";
+import GuitarTunerModal from "@/components/GuitarTunerModal";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import {
   Activity,
@@ -26,6 +27,7 @@ import {
   Sliders,
   Database,
   GraduationCap,
+  Guitar,
 } from "lucide-react";
 
 type ActiveTab = "monitor" | "warmup" | "lessons" | "repertoire" | "recorder";
@@ -65,6 +67,7 @@ export default function VoxStudioApp() {
   // Perfil Vocal Persistente y Wake Lock (Modo Atril)
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
   const [isToolsOpen, setIsToolsOpen] = useState<boolean>(false);
+  const [isGuitarTunerOpen, setIsGuitarTunerOpen] = useState<boolean>(false);
   const [vocalProfile, setVocalProfile] = useState<UserVocalProfile>(DEFAULT_PROFILE);
   const [wakeLockEnabled, setWakeLockEnabled] = useState<boolean>(false);
   const wakeLockSentinelRef = useRef<{ release: () => Promise<void> } | null>(null);
@@ -358,6 +361,14 @@ export default function VoxStudioApp() {
           </div>
 
           <button
+            onClick={() => setIsGuitarTunerOpen(true)}
+            className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-[#30D158] border border-white/10 transition cursor-pointer"
+            title="Afinador de Guitarra Pro (Estándar & Drop D)"
+          >
+            <Guitar className="w-4 h-4" />
+          </button>
+
+          <button
             onClick={() => setIsToolsOpen(true)}
             className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-[#BF5AF2] border border-white/10 transition cursor-pointer"
             title="Herramientas Pro: Backup JSON, Reverb de Monitoreo y Diagnóstico IA"
@@ -442,6 +453,15 @@ export default function VoxStudioApp() {
         onClose={() => setIsToolsOpen(false)}
         isMonitoringReverb={isMonitoringReverb}
         onToggleReverb={handleToggleReverb}
+      />
+
+      {/* Modal de Afinador de Guitarra Pro */}
+      <GuitarTunerModal
+        isOpen={isGuitarTunerOpen}
+        onClose={() => setIsGuitarTunerOpen(false)}
+        currentPitch={currentPitch}
+        isListening={isListening}
+        onToggleMic={handleToggleMic}
       />
 
       {/* Bottom Tab Bar Flotante exclusiva para Mobile */}
