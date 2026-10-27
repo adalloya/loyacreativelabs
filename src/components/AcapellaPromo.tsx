@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Waves, Sparkles, Activity, Music, ArrowRight, Disc, Mic, CheckCircle2 } from "lucide-react";
 
 export default function AcapellaPromo() {
@@ -13,18 +14,25 @@ export default function AcapellaPromo() {
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Header Badge & Title */}
         <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-          <div className="flex justify-center mb-2">
-            <div className="relative w-16 h-16 rounded-2xl overflow-hidden border border-blue-400/30 bg-gradient-to-tr from-[#0A84FF] via-[#BF5AF2] to-[#30D158] shadow-2xl shadow-blue-500/20 flex items-center justify-center">
-              <Waves className="w-8 h-8 text-white" />
+          <div className="flex justify-center mb-3">
+            <div className="relative w-20 h-20 rounded-3xl overflow-hidden border border-blue-400/30 bg-black/70 shadow-[0_0_40px_rgba(10,132,255,0.4)] flex items-center justify-center p-3">
+              <Image
+                src="/acapella-logo.png"
+                alt="Acapella Logo"
+                width={64}
+                height={64}
+                className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(10,132,255,0.6)]"
+                priority
+              />
             </div>
           </div>
 
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-blue-950/40 border border-blue-500/30 text-blue-400 text-xs font-mono font-bold tracking-widest uppercase">
-            <Sparkles size={14} className="text-[#BF5AF2]" /> NUEVA SECCIÓN INDEPENDIENTE // VOXSTUDIO PRO
+            <Sparkles size={14} className="text-[#BF5AF2]" /> NUEVA SECCIÓN INDEPENDIENTE // ACAPELLA
           </div>
 
           <h2 className="text-4xl md:text-6xl font-black tracking-tight text-white leading-tight">
-            VoxStudio Pro <span className="bg-gradient-to-r from-[#0A84FF] via-[#BF5AF2] to-[#30D158] bg-clip-text text-transparent">· Vocal Suite</span>
+            Acapella <span className="bg-gradient-to-r from-[#0A84FF] via-[#BF5AF2] to-[#30D158] bg-clip-text text-transparent">· Vocal Suite</span>
           </h2>
 
           <p className="text-base sm:text-lg text-gray-400 font-normal leading-relaxed">
@@ -119,7 +127,7 @@ export default function AcapellaPromo() {
                 href="/acapella"
                 className="mt-2 w-full py-4 rounded-2xl bg-gradient-to-r from-[#0A84FF] via-[#BF5AF2] to-[#30D158] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(10,132,255,0.4)] hover:brightness-110 active:scale-95 transition-all"
               >
-                <span>Abrir VoxStudio Pro</span>
+                <span>Abrir Acapella</span>
                 <ArrowRight size={16} />
               </Link>
             </div>

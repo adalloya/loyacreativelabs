@@ -85,8 +85,14 @@ export function Hero() {
                             className="px-3.5 py-1.5 rounded-full bg-blue-950/50 border border-blue-500/40 text-blue-300 hover:text-white hover:border-blue-400 text-xs font-semibold flex items-center gap-1.5 shadow-[0_0_15px_rgba(10,132,255,0.25)] transition-all group"
                         >
                             <span className="w-2 h-2 rounded-full bg-[#30D158] animate-pulse" />
-                            <Waves className="w-3.5 h-3.5 text-blue-400 group-hover:scale-110 transition-transform" />
-                            <span>VoxStudio Acapella</span>
+                            <Image
+                                src="/acapella-logo.png"
+                                alt="Acapella"
+                                width={14}
+                                height={14}
+                                className="w-3.5 h-3.5 object-contain group-hover:scale-110 transition-transform"
+                            />
+                            <span>Acapella</span>
                             <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-500/30 text-blue-200 font-bold uppercase">Nuevo</span>
                         </Link>
                         <Link

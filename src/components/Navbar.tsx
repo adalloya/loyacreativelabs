@@ -141,7 +141,13 @@ export function Navbar() {
                                 />
                             )}
                             {item.label === "ACAPELLA" && (
-                                <Waves className="w-4 h-4 text-blue-400" />
+                                <Image
+                                    src="/acapella-logo.png"
+                                    alt="Acapella"
+                                    width={16}
+                                    height={16}
+                                    className="w-4 h-4 object-contain"
+                                />
                             )}
                             {item.label}
                         </Link>
@@ -263,7 +269,13 @@ export function Navbar() {
                                         />
                                     )}
                                     {item.label === "ACAPELLA" && (
-                                        <Waves className="w-5 h-5 text-blue-400" />
+                                        <Image
+                                            src="/acapella-logo.png"
+                                            alt="Acapella"
+                                            width={20}
+                                            height={20}
+                                            className="w-5 h-5 object-contain"
+                                        />
                                     )}
                                     {item.label}
                                 </Link>
