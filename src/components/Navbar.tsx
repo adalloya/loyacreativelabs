@@ -6,7 +6,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Container } from "./ui/Container";
 import { Button } from "./ui/Button";
-import { Menu, X, Globe, Sun, Moon } from "lucide-react";
+import { Menu, X, Globe, Sun, Moon, Waves } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { getInitialTheme, setSiteTheme, Theme } from "@/lib/theme";
 
@@ -108,6 +108,7 @@ export function Navbar() {
                         { label: t.nav.about, href: "#about" },
                         { label: "APEX", href: "/apex" },
                         { label: "ARCO MAESTRO", href: "/arco-maestro" },
+                        { label: "ACAPELLA", href: "/acapella" },
                     ].map((item) => (
                         <Link
                             key={item.label}
@@ -116,6 +117,8 @@ export function Navbar() {
                                 ? "text-red-400 font-mono font-bold hover:text-red-300 px-2.5 py-1 rounded-full bg-red-950/30 border border-red-500/20"
                                 : item.label === "ARCO MAESTRO"
                                 ? "text-yellow-400 font-mono font-bold hover:text-yellow-300 px-2.5 py-1 rounded-full bg-yellow-950/30 border border-yellow-500/20"
+                                : item.label === "ACAPELLA"
+                                ? "text-blue-400 font-mono font-bold hover:text-blue-300 px-2.5 py-1 rounded-full bg-blue-950/30 border border-blue-500/20"
                                 : "text-gray-300 hover:text-white"
                                 }`}
                         >
@@ -136,6 +139,9 @@ export function Navbar() {
                                     height={16}
                                     className="w-4 h-4 rounded-md object-cover"
                                 />
+                            )}
+                            {item.label === "ACAPELLA" && (
+                                <Waves className="w-4 h-4 text-blue-400" />
                             )}
                             {item.label}
                         </Link>
@@ -223,6 +229,7 @@ export function Navbar() {
                                 { label: t.nav.about, href: "#about" },
                                 { label: "APEX", href: "/apex" },
                                 { label: "ARCO MAESTRO", href: "/arco-maestro" },
+                                { label: "ACAPELLA", href: "/acapella" },
                             ].map((item) => (
                                 <Link
                                     key={item.label}
@@ -231,6 +238,8 @@ export function Navbar() {
                                         ? "text-red-400 font-mono font-bold"
                                         : item.label === "ARCO MAESTRO"
                                         ? "text-yellow-400 font-mono font-bold"
+                                        : item.label === "ACAPELLA"
+                                        ? "text-blue-400 font-mono font-bold"
                                         : "text-gray-300 hover:text-white"
                                         }`}
                                     onClick={() => setIsMobileMenuOpen(false)}
@@ -252,6 +261,9 @@ export function Navbar() {
                                             height={20}
                                             className="w-5 h-5 rounded-md object-cover"
                                         />
+                                    )}
+                                    {item.label === "ACAPELLA" && (
+                                        <Waves className="w-5 h-5 text-blue-400" />
                                     )}
                                     {item.label}
                                 </Link>

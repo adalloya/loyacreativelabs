@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { Waves } from "lucide-react";
 import { Container } from "./ui/Container";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -50,6 +51,15 @@ export function Footer() {
                                 />
                             </div>
                             <span className="text-yellow-400 font-bold group-hover:text-yellow-300">ARCO MAESTRO</span>
+                        </Link>
+                        <Link 
+                            href="/acapella" 
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 hover:border-blue-500/40 text-white font-mono text-xs transition-all group"
+                        >
+                            <div className="relative w-4 h-4 rounded-full bg-gradient-to-tr from-[#0A84FF] to-[#30D158] flex items-center justify-center">
+                                <Waves className="w-2.5 h-2.5 text-white" />
+                            </div>
+                            <span className="text-blue-400 font-bold group-hover:text-blue-300">VOXSTUDIO</span>
                         </Link>
                         <Link href="#" className="hover:text-white transition-colors">Instagram</Link>
                         <Link href="#" className="hover:text-white transition-colors">LinkedIn</Link>

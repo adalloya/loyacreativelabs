@@ -9,6 +9,7 @@ import { Footer } from "@/components/Footer";
 import ChatbotPromo from "@/components/ChatbotPromo";
 import ApexPromo from "@/components/ApexPromo";
 import ArcoMaestroPromo from "@/components/ArcoMaestroPromo";
+import AcapellaPromo from "@/components/AcapellaPromo";
 import Providers from "./providers";
 
 export default function Home() {
@@ -24,6 +25,7 @@ export default function Home() {
         <ChatbotPromo />
         <ApexPromo />
         <ArcoMaestroPromo />
+        <AcapellaPromo />
         <Portfolio />
         <Services />
         <Contact />
