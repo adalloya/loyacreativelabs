@@ -430,31 +430,8 @@ export default function VoxStudioApp() {
           </button>
         </nav>
 
-        {/* Píldora en Vivo + Botones de Herramientas Studio y Perfil Vocal */}
+        {/* Botones de Herramientas Studio, Guitarra y Perfil Vocal */}
         <div className="flex items-center gap-1.5 sm:gap-2">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 border border-white/10 text-xs font-mono">
-            <span
-              className={`w-2 h-2 rounded-full ${
-                !isListening
-                  ? "bg-zinc-600"
-                  : currentPitch && Math.abs(currentPitch.cents) <= 15
-                  ? "bg-[#30D158] shadow-[0_0_8px_#30D158]"
-                  : "bg-[#0A84FF]"
-              }`}
-            />
-            <span className="font-bold text-white">
-              {currentPitch ? currentPitch.noteName : isListening ? "..." : "OFF"}
-            </span>
-            {currentPitch && (
-              <span
-                className={`text-[10px] ${
-                  Math.abs(currentPitch.cents) <= 15 ? "text-[#30D158]" : "text-amber-400"
-                }`}
-              >
-                {currentPitch.cents > 0 ? `+${currentPitch.cents}c` : `${currentPitch.cents}c`}
-              </span>
-            )}
-          </div>
 
           <button
             onClick={() => setIsGuitarTunerOpen(true)}
