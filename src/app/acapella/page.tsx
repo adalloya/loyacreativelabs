@@ -12,6 +12,7 @@ import LessonsAcademyView from "@/components/LessonsAcademyView";
 import VocalProfileModal, { UserVocalProfile } from "@/components/VocalProfileModal";
 import StudioToolsModal from "@/components/StudioToolsModal";
 import GuitarTunerModal from "@/components/GuitarTunerModal";
+import VocalTrainerSuite from "@/components/VocalTrainerSuite";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import {
   Activity,
@@ -68,6 +69,8 @@ export default function VoxStudioApp() {
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
   const [isToolsOpen, setIsToolsOpen] = useState<boolean>(false);
   const [isGuitarTunerOpen, setIsGuitarTunerOpen] = useState<boolean>(false);
+  const [isCoachModalOpen, setIsCoachModalOpen] = useState<boolean>(false);
+  const [warmupMode, setWarmupMode] = useState<"suite" | "scales">("suite");
   const [vocalProfile, setVocalProfile] = useState<UserVocalProfile>(DEFAULT_PROFILE);
   const [wakeLockEnabled, setWakeLockEnabled] = useState<boolean>(false);
   const wakeLockSentinelRef = useRef<{ release: () => Promise<void> } | null>(null);
@@ -432,6 +435,13 @@ export default function VoxStudioApp() {
 
         {/* Botones de Herramientas Studio, Guitarra y Perfil Vocal */}
         <div className="flex items-center gap-1.5 sm:gap-2">
+          <button
+            onClick={() => setIsCoachModalOpen(true)}
+            className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-[#0A84FF] border border-white/10 transition cursor-pointer"
+            title="Vocal Coach Suite: Escalas, Respiración 4-4-8 y Cuerda Acapella"
+          >
+            <Sparkles className="w-4 h-4" />
+          </button>
 
           <button
             onClick={() => setIsGuitarTunerOpen(true)}
@@ -483,11 +493,48 @@ export default function VoxStudioApp() {
         )}
 
         {activeTab === "warmup" && (
-          <WarmupStudioView
-            currentPitch={currentPitch}
-            isListening={isListening}
-            onToggleMic={handleToggleMic}
-          />
+          <div className="flex flex-col gap-6">
+            {/* Selector de Modo de Vocalización */}
+            <div className="flex items-center justify-center">
+              <div className="flex items-center gap-1 bg-black/60 p-1.5 rounded-full border border-white/10 text-xs font-semibold">
+                <button
+                  onClick={() => setWarmupMode("suite")}
+                  className={`px-4 py-2 rounded-full transition-all cursor-pointer flex items-center gap-1.5 ${
+                    warmupMode === "suite"
+                      ? "bg-white text-black shadow-md font-bold"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-[#0A84FF]" />
+                  <span>Vocal Coach Suite (5 Motores)</span>
+                </button>
+                <button
+                  onClick={() => setWarmupMode("scales")}
+                  className={`px-4 py-2 rounded-full transition-all cursor-pointer flex items-center gap-1.5 ${
+                    warmupMode === "scales"
+                      ? "bg-white text-black shadow-md font-bold"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  <Music className="w-3.5 h-3.5 text-[#30D158]" />
+                  <span>Escalador de Semitonos</span>
+                </button>
+              </div>
+            </div>
+
+            {warmupMode === "suite" ? (
+              <VocalTrainerSuite
+                vocalProfile={vocalProfile}
+                onUpdateProfile={handleUpdateProfile}
+              />
+            ) : (
+              <WarmupStudioView
+                currentPitch={currentPitch}
+                isListening={isListening}
+                onToggleMic={handleToggleMic}
+              />
+            )}
+          </div>
         )}
 
         {activeTab === "lessons" && <LessonsAcademyView />}
@@ -539,6 +586,20 @@ export default function VoxStudioApp() {
         isListening={isListening}
         onToggleMic={handleToggleMic}
       />
+
+      {/* Modal Independiente de Vocal Coach Suite */}
+      {isCoachModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+          <div className="relative w-full max-w-5xl">
+            <VocalTrainerSuite
+              vocalProfile={vocalProfile}
+              onUpdateProfile={handleUpdateProfile}
+              isModal={true}
+              onClose={() => setIsCoachModalOpen(false)}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Bottom Tab Bar Flotante exclusiva para Mobile */}
       <nav className="md:hidden fixed bottom-3 left-3 right-3 z-40 apple-glass-pill rounded-3xl p-1.5 grid grid-cols-5 gap-1 border border-white/15 shadow-[0_15px_40px_rgba(0,0,0,0.85)]">
