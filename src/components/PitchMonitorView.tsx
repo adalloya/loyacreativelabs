@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { PitchData, midiToNoteName, vocalSynth } from "@/lib/vocalEngine";
+import { PitchData, midiToNoteName, vocalSynth, getVocalRegister } from "@/lib/vocalEngine";
 import { Mic, MicOff, Target, Sparkles, Volume2, Award, RotateCcw } from "lucide-react";
 
 interface PitchMonitorViewProps {
@@ -12,18 +12,18 @@ interface PitchMonitorViewProps {
 }
 
 const REFERENCE_NOTES = [
-  { midi: 48, label: "C3" },
-  { midi: 50, label: "D3" },
-  { midi: 52, label: "E3" },
-  { midi: 53, label: "F3" },
-  { midi: 55, label: "G3" },
-  { midi: 57, label: "A3" },
-  { midi: 59, label: "B3" },
-  { midi: 60, label: "C4" },
-  { midi: 62, label: "D4" },
-  { midi: 64, label: "E4" },
-  { midi: 65, label: "F4" },
-  { midi: 67, label: "G4" },
+  { midi: 48, label: "Do3", anglo: "C3" },
+  { midi: 50, label: "Re3", anglo: "D3" },
+  { midi: 52, label: "Mi3", anglo: "E3" },
+  { midi: 53, label: "Fa3", anglo: "F3" },
+  { midi: 55, label: "Sol3", anglo: "G3" },
+  { midi: 57, label: "La3", anglo: "A3" },
+  { midi: 59, label: "Si3", anglo: "B3" },
+  { midi: 60, label: "Do4", anglo: "C4" },
+  { midi: 62, label: "Re4", anglo: "D4" },
+  { midi: 64, label: "Mi4", anglo: "E4" },
+  { midi: 65, label: "Fa4", anglo: "F4" },
+  { midi: 67, label: "Sol4", anglo: "G4" },
 ];
 
 export default function PitchMonitorView({
@@ -33,7 +33,7 @@ export default function PitchMonitorView({
   pitchHistory,
 }: PitchMonitorViewProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [targetMidi, setTargetMidi] = useState<number | null>(52); // E3 por defecto (ideal voz masculina/media)
+  const [targetMidi, setTargetMidi] = useState<number | null>(52); // Mi3 por defecto
   const [isPlayingDrone, setIsPlayingDrone] = useState<boolean>(false);
   const [sustainScore, setSustainScore] = useState<number>(0); // 0 a 100% (meta 5 segundos)
   const [bestSustainStreak, setBestSustainStreak] = useState<number>(0);
@@ -85,7 +85,7 @@ export default function PitchMonitorView({
     return () => vocalSynth.stopAll();
   }, []);
 
-  // Renderizado del Canvas Piano Roll a 60 FPS
+  // Renderizado del Canvas Piano Roll a 60 FPS con Zonas de Registros Vocales y Escala Solfeo
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -107,44 +107,93 @@ export default function PitchMonitorView({
       const width = rect.width;
       const height = rect.height;
 
-      // Fondo oscuro translúcido
+      // Fondo oscuro
       ctx.clearRect(0, 0, width, height);
 
-      // Rango de visualización MIDI: de C2 (45) a A4 (69) o centrado en targetMidi
+      // Rango de visualización MIDI centrado en targetMidi o en tono actual
       const centerMidi = targetMidi || (currentPitch ? currentPitch.midi : 55);
       const minMidi = centerMidi - 7;
       const maxMidi = centerMidi + 7;
       const midiRange = maxMidi - minMidi;
 
-      // Dibujar carriles horizontales de notas
+      // 1. Dibujar Zonas de Registros Vocales en el fondo (Pecho, Mixta, Cabeza)
+      const drawRegisterZone = (
+        fromMidi: number,
+        toMidi: number,
+        fillColor: string,
+        label: string,
+        labelColor: string
+      ) => {
+        const clampedFrom = Math.max(minMidi, fromMidi);
+        const clampedTo = Math.min(maxMidi, toMidi);
+        if (clampedFrom >= clampedTo) return;
+
+        const yTop = height - ((clampedTo - minMidi) / midiRange) * height;
+        const yBottom = height - ((clampedFrom - minMidi) / midiRange) * height;
+        const zoneHeight = Math.max(1, yBottom - yTop);
+
+        ctx.fillStyle = fillColor;
+        ctx.fillRect(52, yTop, width - 52, zoneHeight);
+
+        // Etiqueta lateral sutil del registro vocal
+        ctx.fillStyle = labelColor;
+        ctx.font = "600 9px -apple-system, sans-serif";
+        ctx.textAlign = "right";
+        ctx.textBaseline = "top";
+        ctx.fillText(label.toUpperCase(), width - 12, yTop + 5);
+      };
+
+      // Zonas vocales estándar:
+      // Pecho: hasta Fa3 (53)
+      drawRegisterZone(minMidi, 53.5, "rgba(94, 92, 230, 0.08)", "Voz de Pecho", "rgba(163, 160, 251, 0.4)");
+      // Mixta: Fa#3 a Fa4 (54 a 65)
+      drawRegisterZone(53.5, 65.5, "rgba(191, 90, 242, 0.09)", "Voz Mixta (Passaggio)", "rgba(224, 151, 255, 0.45)");
+      // Cabeza / Falsete: desde Fa#4 (66 en adelante)
+      drawRegisterZone(65.5, maxMidi, "rgba(255, 159, 10, 0.08)", "Voz de Cabeza / Falsete", "rgba(255, 208, 128, 0.4)");
+
+      // 2. Dibujar carriles horizontales de notas en Sistema Do-Re-Mi
       for (let m = minMidi; m <= maxMidi; m++) {
         const y = height - ((m - minMidi) / midiRange) * height;
         const isTarget = m === targetMidi;
+        const isDoNote = ((m % 12) + 12) % 12 === 0;
 
         if (isTarget) {
-          ctx.fillStyle = "rgba(48, 209, 88, 0.11)";
+          ctx.fillStyle = "rgba(48, 209, 88, 0.12)";
           const laneHeight = height / midiRange;
           ctx.fillRect(0, y - laneHeight / 2, width, laneHeight);
         }
 
         ctx.beginPath();
-        ctx.strokeStyle = isTarget ? "rgba(48, 209, 88, 0.45)" : "rgba(255, 255, 255, 0.06)";
-        ctx.lineWidth = isTarget ? 1.5 : 1;
-        ctx.moveTo(48, y);
+        ctx.strokeStyle = isTarget
+          ? "rgba(48, 209, 88, 0.5)"
+          : isDoNote
+          ? "rgba(255, 255, 255, 0.15)"
+          : "rgba(255, 255, 255, 0.05)";
+        ctx.lineWidth = isTarget ? 1.5 : isDoNote ? 1.2 : 0.8;
+        ctx.moveTo(52, y);
         ctx.lineTo(width, y);
         ctx.stroke();
 
-        // Etiqueta de la nota a la izquierda
-        ctx.fillStyle = isTarget ? "#30D158" : "rgba(235, 235, 245, 0.4)";
-        ctx.font = isTarget ? "600 11px -apple-system, sans-serif" : "400 10px -apple-system, sans-serif";
+        // Etiqueta de la nota a la izquierda en Solfeo (Do, Re, Mi...)
+        const noteText = isDoNote ? midiToNoteName(m, "both") : midiToNoteName(m, "solfege");
+        ctx.fillStyle = isTarget
+          ? "#30D158"
+          : isDoNote
+          ? "rgba(255, 255, 255, 0.9)"
+          : "rgba(235, 235, 245, 0.45)";
+        ctx.font = isTarget
+          ? "600 11px -apple-system, sans-serif"
+          : isDoNote
+          ? "600 10px -apple-system, sans-serif"
+          : "400 9.5px -apple-system, sans-serif";
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
-        ctx.fillText(midiToNoteName(m), 12, y);
+        ctx.fillText(noteText, 8, y);
       }
 
-      // Dibujar curva de voz histórica (últimos 5 segundos)
+      // 3. Dibujar curva de voz histórica (últimos 8.2 segundos a velocidad relajada)
       const now = performance.now();
-      const timeWindow = 5000;
+      const timeWindow = 8000;
 
       if (pitchHistory.length > 1) {
         ctx.lineCap = "round";
@@ -154,13 +203,13 @@ export default function PitchMonitorView({
           const prev = pitchHistory[i - 1];
           const curr = pitchHistory[i];
 
-          // Cortar línea si hubo una pausa larga entre muestras
-          if (curr.timestamp - prev.timestamp > 180) continue;
+          // Cortar trazo si hubo una pausa vocal
+          if (curr.timestamp - prev.timestamp > 220) continue;
 
-          const x1 = 55 + ((timeWindow - (now - prev.timestamp)) / timeWindow) * (width - 75);
-          const x2 = 55 + ((timeWindow - (now - curr.timestamp)) / timeWindow) * (width - 75);
+          const x1 = 56 + ((timeWindow - (now - prev.timestamp)) / timeWindow) * (width - 76);
+          const x2 = 56 + ((timeWindow - (now - curr.timestamp)) / timeWindow) * (width - 76);
 
-          if (x2 < 55) continue;
+          if (x2 < 56) continue;
 
           const y1 = height - ((prev.midiFloat - minMidi) / midiRange) * height;
           const y2 = height - ((curr.midiFloat - minMidi) / midiRange) * height;
@@ -182,17 +231,17 @@ export default function PitchMonitorView({
         ctx.shadowBlur = 0;
       }
 
-      // Dibujar cabeza lectora actual (Orbe brillante)
-      if (currentPitch && currentPitch.clarity > 0.65) {
+      // 4. Dibujar cabeza lectora actual (Orbe brillante con resonancia)
+      if (currentPitch && currentPitch.clarity > 0.63) {
         const currentY = height - ((currentPitch.midiFloat - minMidi) / midiRange) * height;
         const headX = width - 20;
         const isInTune = Math.abs(currentPitch.cents) <= 15;
 
         ctx.beginPath();
-        ctx.arc(headX, currentY, 7, 0, Math.PI * 2);
+        ctx.arc(headX, currentY, 7.5, 0, Math.PI * 2);
         ctx.fillStyle = isInTune ? "#30D158" : "#0A84FF";
         ctx.shadowColor = isInTune ? "#30D158" : "#0A84FF";
-        ctx.shadowBlur = 16;
+        ctx.shadowBlur = 18;
         ctx.fill();
         ctx.shadowBlur = 0;
       }
@@ -313,7 +362,7 @@ export default function PitchMonitorView({
           </div>
 
           {/* Nota Gigante SF Pro Display */}
-          <div className="my-6 flex flex-col items-center">
+          <div className="my-5 flex flex-col items-center">
             <div
               className={`text-8xl font-bold tracking-tight transition-colors duration-200 ${
                 !currentPitch
@@ -330,6 +379,35 @@ export default function PitchMonitorView({
                 <span className="text-4xl font-medium text-zinc-400 ml-1">{currentPitch.octave}</span>
               )}
             </div>
+
+            {/* Referencia Anglosajona Secundaria */}
+            {currentPitch?.angloName && (
+              <div className="mt-1 text-xs font-semibold text-zinc-400">
+                Notación Anglosajona: <span className="text-zinc-200 font-mono">{currentPitch.angloName}</span>
+              </div>
+            )}
+
+            {/* Indicador de Registro Vocal en Vivo */}
+            {currentPitch ? (() => {
+              const reg = getVocalRegister(currentPitch.midi);
+              return (
+                <div
+                  className="mt-3 px-3.5 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 border transition-all"
+                  style={{
+                    backgroundColor: reg.badgeBg,
+                    color: reg.textColor,
+                    borderColor: reg.borderColor,
+                  }}
+                >
+                  <span className="w-2 h-2 rounded-full shadow-[0_0_8px_currentColor]" style={{ backgroundColor: reg.color }} />
+                  <span className="font-semibold">{reg.name}</span>
+                </div>
+              );
+            })() : (
+              <div className="mt-3 px-3.5 py-1 rounded-full text-xs text-zinc-500 bg-white/[0.03] border border-white/[0.06]">
+                Registros: Pecho • Voz Mixta • Cabeza / Falsete
+              </div>
+            )}
 
             <div className="mt-3 flex items-center gap-4 text-sm text-zinc-400 font-mono">
               <span>{currentPitch ? `${currentPitch.frequency} Hz` : "0.0 Hz"}</span>
@@ -396,18 +474,31 @@ export default function PitchMonitorView({
         </div>
       </div>
 
-      {/* Columna Derecha: Piano Roll en Vivo 60FPS + Teclado Guía */}
+      {/* Columna Derecha: Piano Roll en Vivo con Registros + Teclado Guía */}
       <div className="lg:col-span-7 flex flex-col gap-6">
         <div className="apple-glass rounded-3xl p-5 sm:p-6 flex flex-col flex-1 min-h-[360px]">
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
               <h2 className="text-base font-semibold text-white flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-[#0A84FF]" />
-                Curva de Afinación en Tiempo Real (60 FPS)
+                Curva de Tono y Registros Vocales
               </h2>
               <p className="text-xs text-zinc-400">
-                La franja verde indica tu nota objetivo ({targetMidi ? midiToNoteName(targetMidi) : "Libre"})
+                Visualización continua a 8 seg con zonas de Pecho, Voz Mixta y Cabeza
               </p>
+            </div>
+
+            {/* Píldoras de Registros Vocales */}
+            <div className="flex items-center gap-1.5 text-[10px] font-medium">
+              <span className="px-2 py-0.5 rounded-full bg-[#5E5CE6]/15 text-[#A3A0FB] border border-[#5E5CE6]/30">
+                Pecho (≤Fa3)
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-[#BF5AF2]/15 text-[#E097FF] border border-[#BF5AF2]/30">
+                Voz Mixta (Fa#3–Fa4)
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-[#FF9F0A]/15 text-[#FFD080] border border-[#FF9F0A]/30">
+                Cabeza (≥Fa#4)
+              </span>
             </div>
 
             {targetMidi && (
@@ -432,13 +523,13 @@ export default function PitchMonitorView({
           </div>
         </div>
 
-        {/* Selector de Nota Guía (Teclado de Referencia Rápida) */}
+        {/* Selector de Nota Guía (Teclado de Referencia Rápida en Solfeo) */}
         <div className="apple-glass rounded-3xl p-5 sm:p-6">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Target className="w-4 h-4 text-[#30D158]" />
               <span className="text-xs font-semibold uppercase tracking-wider text-zinc-300">
-                Teclado de Referencia Vocal (Toca para escuchar y fijar meta)
+                Teclado de Referencia Vocal (Do - Re - Mi)
               </span>
             </div>
             <button
@@ -461,7 +552,7 @@ export default function PitchMonitorView({
                 <button
                   key={note.midi}
                   onClick={() => handleSelectTarget(note.midi)}
-                  className={`py-3.5 rounded-2xl font-semibold text-xs flex flex-col items-center justify-center gap-1 transition-all border cursor-pointer ${
+                  className={`py-2.5 rounded-2xl font-semibold text-xs flex flex-col items-center justify-center gap-0.5 transition-all border cursor-pointer ${
                     isSelected
                       ? "bg-[#30D158] text-black border-[#30D158] shadow-[0_0_20px_rgba(48,209,88,0.4)] scale-105"
                       : isUserSingingThis
@@ -469,8 +560,8 @@ export default function PitchMonitorView({
                       : "bg-white/[0.05] text-zinc-300 border-white/10 hover:bg-white/10 active:scale-95"
                   }`}
                 >
-                  <span>{note.label}</span>
-                  <span className="text-[9px] opacity-70">{Math.round(440 * Math.pow(2, (note.midi - 69) / 12))}Hz</span>
+                  <span className="text-xs font-bold">{note.label}</span>
+                  <span className="text-[9px] opacity-60 font-mono">{note.anglo}</span>
                 </button>
               );
             })}

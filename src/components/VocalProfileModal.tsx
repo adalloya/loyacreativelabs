@@ -210,8 +210,8 @@ export default function VocalProfileModal({
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="p-3 rounded-xl bg-black/50 border border-white/10">
               <div className="text-[10px] text-zinc-400">Nota Más Grave</div>
-              <div className="text-lg font-bold text-white mt-0.5">
-                {midiToNoteName(profile.lowestMidi)}
+              <div className="text-base sm:text-lg font-bold text-white mt-0.5">
+                {midiToNoteName(profile.lowestMidi, "both")}
               </div>
               <button
                 type="button"
@@ -224,16 +224,16 @@ export default function VocalProfileModal({
 
             <div className="p-3 rounded-xl bg-black/50 border border-[#BF5AF2]/40">
               <div className="text-[10px] text-[#BF5AF2] font-semibold">Puente (Passaggio)</div>
-              <div className="text-lg font-bold text-white mt-0.5">
-                {midiToNoteName(profile.passaggioMidi)}
+              <div className="text-base sm:text-lg font-bold text-white mt-0.5">
+                {midiToNoteName(profile.passaggioMidi, "both")}
               </div>
               <span className="text-[10px] text-zinc-400 block mt-1">Cambiar a Mixta</span>
             </div>
 
             <div className="p-3 rounded-xl bg-black/50 border border-white/10">
               <div className="text-[10px] text-zinc-400">Nota Más Aguda</div>
-              <div className="text-lg font-bold text-white mt-0.5">
-                {midiToNoteName(profile.highestMidi)}
+              <div className="text-base sm:text-lg font-bold text-white mt-0.5">
+                {midiToNoteName(profile.highestMidi, "both")}
               </div>
               <button
                 type="button"

@@ -6,6 +6,8 @@ export interface PitchData {
   midiFloat: number;
   noteName: string;
   noteLetter: string;
+  angloName?: string;
+  angloLetter?: string;
   octave: number;
   cents: number;
   clarity: number;
@@ -14,6 +16,73 @@ export interface PitchData {
 }
 
 export const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+export const SOLFEGE_NAMES = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
+
+export const SOLFEGE_TO_ANGLO: Record<string, string> = {
+  Do: "C",
+  "Do#": "C#",
+  Re: "D",
+  "Re#": "D#",
+  Mi: "E",
+  Fa: "F",
+  "Fa#": "F#",
+  Sol: "G",
+  "Sol#": "G#",
+  La: "A",
+  "La#": "A#",
+  Si: "B",
+};
+
+export interface VocalRegisterInfo {
+  id: "chest" | "mixed" | "head";
+  name: string;
+  shortName: string;
+  description: string;
+  color: string;
+  badgeBg: string;
+  textColor: string;
+  borderColor: string;
+}
+
+export function getVocalRegister(midi: number): VocalRegisterInfo {
+  if (midi < 54) {
+    // Menor a F#3 (hasta Fa3): Voz de Pecho
+    return {
+      id: "chest",
+      name: "Voz de Pecho",
+      shortName: "Pecho",
+      description: "Resonancia pectoral y graves con apoyo de diafragma.",
+      color: "#5E5CE6", // Indigo Apple
+      badgeBg: "rgba(94, 92, 230, 0.16)",
+      textColor: "#A3A0FB",
+      borderColor: "rgba(94, 92, 230, 0.35)",
+    };
+  } else if (midi <= 65) {
+    // F#3 (54) a F4 (65): Voz Mixta / Passaggio
+    return {
+      id: "mixed",
+      name: "Voz Mixta (Passaggio)",
+      shortName: "Voz Mixta",
+      description: "Puente vocal y mezcla equilibrada de resonadores.",
+      color: "#BF5AF2", // Purple Apple
+      badgeBg: "rgba(191, 90, 242, 0.16)",
+      textColor: "#E097FF",
+      borderColor: "rgba(191, 90, 242, 0.35)",
+    };
+  } else {
+    // Mayor a F4 (desde F#4 en adelante): Voz de Cabeza / Falsete
+    return {
+      id: "head",
+      name: "Voz de Cabeza / Falsete",
+      shortName: "Cabeza / Falsete",
+      description: "Resonancia craneal, paladar blando elevado y agudos.",
+      color: "#FF9F0A", // Amber Apple
+      badgeBg: "rgba(255, 159, 10, 0.16)",
+      textColor: "#FFD080",
+      borderColor: "rgba(255, 159, 10, 0.35)",
+    };
+  }
+}
 
 export function freqToPitchData(frequency: number, clarity: number, rms: number): PitchData {
   const midiFloat = 69 + 12 * Math.log2(frequency / 440);
@@ -21,8 +90,10 @@ export function freqToPitchData(frequency: number, clarity: number, rms: number)
   const cents = Math.round((midiFloat - midi) * 100);
   const noteIndex = ((midi % 12) + 12) % 12;
   const octave = Math.floor(midi / 12) - 1;
-  const noteLetter = NOTE_NAMES[noteIndex];
+  const noteLetter = SOLFEGE_NAMES[noteIndex];
+  const angloLetter = NOTE_NAMES[noteIndex];
   const noteName = `${noteLetter}${octave}`;
+  const angloName = `${angloLetter}${octave}`;
 
   return {
     frequency: Math.round(frequency * 10) / 10,
@@ -30,6 +101,8 @@ export function freqToPitchData(frequency: number, clarity: number, rms: number)
     midiFloat,
     noteName,
     noteLetter,
+    angloName,
+    angloLetter,
     octave,
     cents,
     clarity: Math.round(clarity * 100) / 100,
@@ -42,10 +115,14 @@ export function midiToFreq(midi: number): number {
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
-export function midiToNoteName(midi: number): string {
+export function midiToNoteName(midi: number, notation: "solfege" | "anglo" | "both" = "solfege"): string {
   const noteIndex = ((midi % 12) + 12) % 12;
   const octave = Math.floor(midi / 12) - 1;
-  return `${NOTE_NAMES[noteIndex]}${octave}`;
+  const solf = `${SOLFEGE_NAMES[noteIndex]}${octave}`;
+  const anglo = `${NOTE_NAMES[noteIndex]}${octave}`;
+  if (notation === "anglo") return anglo;
+  if (notation === "both") return `${solf} (${anglo})`;
+  return solf;
 }
 
 /**

@@ -12,22 +12,22 @@ interface GuitarTunerModalProps {
   onToggleMic: () => void;
 }
 
-const GUITAR_TUNINGS: Record<string, Array<{ stringNum: number; note: string; midi: number; freq: number }>> = {
+const GUITAR_TUNINGS: Record<string, Array<{ stringNum: number; note: string; solfege: string; midi: number; freq: number }>> = {
   standard: [
-    { stringNum: 6, note: "E2", midi: 40, freq: 82.41 },
-    { stringNum: 5, note: "A2", midi: 45, freq: 110.0 },
-    { stringNum: 4, note: "D3", midi: 50, freq: 146.83 },
-    { stringNum: 3, note: "G3", midi: 55, freq: 196.0 },
-    { stringNum: 2, note: "B3", midi: 59, freq: 246.94 },
-    { stringNum: 1, note: "E4", midi: 64, freq: 329.63 },
+    { stringNum: 6, note: "E2", solfege: "Mi2", midi: 40, freq: 82.41 },
+    { stringNum: 5, note: "A2", solfege: "La2", midi: 45, freq: 110.0 },
+    { stringNum: 4, note: "D3", solfege: "Re3", midi: 50, freq: 146.83 },
+    { stringNum: 3, note: "G3", solfege: "Sol3", midi: 55, freq: 196.0 },
+    { stringNum: 2, note: "B3", solfege: "Si3", midi: 59, freq: 246.94 },
+    { stringNum: 1, note: "E4", solfege: "Mi4", midi: 64, freq: 329.63 },
   ],
   dropD: [
-    { stringNum: 6, note: "D2", midi: 38, freq: 73.42 },
-    { stringNum: 5, note: "A2", midi: 45, freq: 110.0 },
-    { stringNum: 4, note: "D3", midi: 50, freq: 146.83 },
-    { stringNum: 3, note: "G3", midi: 55, freq: 196.0 },
-    { stringNum: 2, note: "B3", midi: 59, freq: 246.94 },
-    { stringNum: 1, note: "E4", midi: 64, freq: 329.63 },
+    { stringNum: 6, note: "D2", solfege: "Re2", midi: 38, freq: 73.42 },
+    { stringNum: 5, note: "A2", solfege: "La2", midi: 45, freq: 110.0 },
+    { stringNum: 4, note: "D3", solfege: "Re3", midi: 50, freq: 146.83 },
+    { stringNum: 3, note: "G3", solfege: "Sol3", midi: 55, freq: 196.0 },
+    { stringNum: 2, note: "B3", solfege: "Si3", midi: 59, freq: 246.94 },
+    { stringNum: 1, note: "E4", solfege: "Mi4", midi: 64, freq: 329.63 },
   ],
 };
 
@@ -165,7 +165,7 @@ export default function GuitarTunerModal({
         <div className="p-6 rounded-3xl bg-black/60 border border-white/15 flex flex-col items-center justify-center gap-4 relative overflow-hidden">
           <div className="absolute top-3 left-4 flex items-center gap-1.5 text-xs text-zinc-400">
             <Sparkles className="w-3.5 h-3.5 text-[#0A84FF]" />
-            <span>Cuerda Objetivo: <strong className="text-white">#{targetStringData.stringNum} — {targetStringData.note}</strong></span>
+            <span>Cuerda Objetivo: <strong className="text-white">#{targetStringData.stringNum} — {targetStringData.solfege} ({targetStringData.note})</strong></span>
           </div>
 
           {/* Nota Gigante */}
@@ -177,7 +177,11 @@ export default function GuitarTunerModal({
                   : "text-white"
               }`}
             >
-              {currentPitch ? currentPitch.noteName : targetStringData.note}
+              {currentPitch ? currentPitch.noteName : targetStringData.solfege}
+            </div>
+
+            <div className="text-xs font-semibold text-zinc-400 mt-1">
+              Notación: <span className="text-zinc-200 font-mono">{currentPitch?.angloName || targetStringData.note}</span>
             </div>
 
             <div className="mt-2 flex items-center gap-3 text-xs font-mono text-zinc-400">
@@ -232,14 +236,14 @@ export default function GuitarTunerModal({
                   setSelectedString(s.stringNum);
                   playReferenceNote(s.midi);
                 }}
-                className={`py-3.5 rounded-2xl flex flex-col items-center justify-center gap-1 transition border cursor-pointer ${
+                className={`py-2.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition border cursor-pointer ${
                   isSelected
                     ? "bg-[#0A84FF] text-white border-white shadow-[0_0_20px_rgba(10,132,255,0.4)] scale-105"
                     : "bg-white/[0.05] text-zinc-300 border-white/10 hover:bg-white/10"
                 }`}
               >
-                <span className="text-xs font-bold">{s.note}</span>
-                <span className="text-[9px] opacity-70">#{s.stringNum}</span>
+                <span className="text-xs font-bold">{s.solfege}</span>
+                <span className="text-[9px] opacity-70 font-mono">{s.note}</span>
                 <Volume2 className="w-3 h-3 opacity-60 mt-0.5" />
               </button>
             );

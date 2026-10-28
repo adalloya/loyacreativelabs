@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { detectPitchMcLeod, freqToPitchData, PitchData } from "@/lib/vocalEngine";
+import { detectPitchMcLeod, freqToPitchData, PitchData, SOLFEGE_NAMES, NOTE_NAMES } from "@/lib/vocalEngine";
 import PitchMonitorView from "@/components/PitchMonitorView";
 import WarmupStudioView from "@/components/WarmupStudioView";
 import RepertoireCoachView from "@/components/RepertoireCoachView";
@@ -193,21 +193,95 @@ export default function VoxStudioApp() {
 
       const buffer = new Float32Array(analyser.fftSize);
 
+      let lastValidPitch: PitchData | null = null;
+      let lastValidTime = 0;
+      let stableNoteMidi: number | null = null;
+      let candidateMidi: number | null = null;
+      let candidateFirstSeen = 0;
+      let lastHistoryPush = 0;
+      let smoothedFreq = 0;
+
       const updatePitch = () => {
         if (!analyserRef.current) return;
         analyserRef.current.getFloatTimeDomainData(buffer);
         const { freq, clarity, rms } = detectPitchMcLeod(buffer, audioCtx.sampleRate);
+        const now = performance.now();
 
-        if (freq > 60 && freq < 1100 && clarity >= 0.65) {
-          const data = freqToPitchData(freq, clarity, rms);
-          setCurrentPitch(data);
-          setPitchHistory((prev) => {
-            const now = performance.now();
-            const filtered = prev.filter((item) => now - item.timestamp < 5200);
-            return [...filtered, { midiFloat: data.midiFloat, clarity: data.clarity, timestamp: now }];
-          });
+        if (freq > 62 && freq < 1050 && clarity >= 0.63) {
+          // Suavizado exponencial ligero de frecuencia para eliminar micro-jitter
+          if (smoothedFreq === 0 || Math.abs(freq - smoothedFreq) > 35) {
+            smoothedFreq = freq;
+          } else {
+            smoothedFreq = smoothedFreq * 0.7 + freq * 0.3;
+          }
+
+          const rawData = freqToPitchData(smoothedFreq, clarity, rms);
+
+          // Estabilizador temporal de nota (Hysteresis & Note-Switch Delay ~125ms):
+          // Si el cantante cambia de nota, exigimos que se mantenga por al menos 125ms
+          // antes de cambiar el texto de la nota para no parpadear con el vibrato
+          if (stableNoteMidi === null) {
+            stableNoteMidi = rawData.midi;
+            candidateMidi = rawData.midi;
+            candidateFirstSeen = now;
+          } else if (rawData.midi !== stableNoteMidi) {
+            if (candidateMidi !== rawData.midi) {
+              candidateMidi = rawData.midi;
+              candidateFirstSeen = now;
+            } else if (now - candidateFirstSeen >= 125) {
+              stableNoteMidi = rawData.midi;
+            }
+          } else {
+            candidateMidi = rawData.midi;
+            candidateFirstSeen = now;
+          }
+
+          // Armar datos con la nota estable si el candidato aún no vence el delay
+          let finalData = rawData;
+          if (stableNoteMidi !== null && stableNoteMidi !== rawData.midi) {
+            const stableFreq = 440 * Math.pow(2, (stableNoteMidi - 69) / 12);
+            const stableCents = Math.round(1200 * Math.log2(smoothedFreq / stableFreq));
+            if (Math.abs(stableCents) <= 65) {
+              const noteIndex = ((stableNoteMidi % 12) + 12) % 12;
+              const octave = Math.floor(stableNoteMidi / 12) - 1;
+              finalData = {
+                ...rawData,
+                midi: stableNoteMidi,
+                noteName: `${SOLFEGE_NAMES[noteIndex]}${octave}`,
+                noteLetter: SOLFEGE_NAMES[noteIndex],
+                angloName: `${NOTE_NAMES[noteIndex]}${octave}`,
+                angloLetter: NOTE_NAMES[noteIndex],
+                octave,
+                cents: stableCents,
+              };
+            }
+          }
+
+          lastValidPitch = finalData;
+          lastValidTime = now;
+          setCurrentPitch(finalData);
+
+          // Muestreo controlado a ~30 FPS para la gráfica de registro (evita sobrecarga y trazo brusco)
+          if (now - lastHistoryPush >= 32) {
+            lastHistoryPush = now;
+            setPitchHistory((prev) => {
+              // Ventana de 8.2 segundos para una visualización relajada y fácil de seguir
+              const filtered = prev.filter((item) => now - item.timestamp < 8200);
+              return [...filtered, { midiFloat: rawData.midiFloat, clarity: rawData.clarity, timestamp: now }];
+            });
+          }
         } else {
-          setCurrentPitch(null);
+          // Ventana de gracia de silencio (~260ms):
+          // Durante consonantes o pausas cortas de respiración, mantenemos la nota para evitar parpadeos
+          if (lastValidPitch && now - lastValidTime < 260) {
+            // Se mantiene el último tono en pantalla
+          } else {
+            lastValidPitch = null;
+            stableNoteMidi = null;
+            candidateMidi = null;
+            smoothedFreq = 0;
+            setCurrentPitch(null);
+          }
         }
 
         rafRef.current = requestAnimationFrame(updatePitch);
