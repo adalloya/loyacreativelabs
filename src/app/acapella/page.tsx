@@ -13,6 +13,7 @@ import VocalProfileModal, { UserVocalProfile } from "@/components/VocalProfileMo
 import StudioToolsModal from "@/components/StudioToolsModal";
 import GuitarTunerModal from "@/components/GuitarTunerModal";
 import VocalTrainerSuite from "@/components/VocalTrainerSuite";
+import SongStudioView from "@/components/SongStudioView";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import {
   Activity,
@@ -29,9 +30,10 @@ import {
   Database,
   GraduationCap,
   Guitar,
+  Layers,
 } from "lucide-react";
 
-type ActiveTab = "monitor" | "warmup" | "lessons" | "repertoire" | "recorder";
+type ActiveTab = "monitor" | "warmup" | "studio" | "lessons" | "repertoire" | "recorder";
 
 const DEFAULT_PROFILE: UserVocalProfile = {
   lowestMidi: 45, // A2
@@ -316,8 +318,8 @@ export default function VoxStudioApp() {
 
   const handleTabChange = (newTab: ActiveTab) => {
     setActiveTab(newTab);
-    // Si cambiamos a Karaoke o Academia, pausamos el micrófono para que no interfiera ni se acople con la música
-    if ((newTab === "repertoire" || newTab === "lessons") && isListening) {
+    // Si cambiamos a Karaoke, Academia o Estudio MP3, pausamos el micrófono para que no interfiera ni se acople con la música
+    if ((newTab === "repertoire" || newTab === "lessons" || newTab === "studio") && isListening) {
       stopMicrophone();
     }
   };
@@ -330,37 +332,11 @@ export default function VoxStudioApp() {
   };
 
   return (
-    <main className="min-h-screen px-3 sm:px-6 pt-3 pb-28 md:pb-10 max-w-7xl mx-auto flex flex-col gap-3.5 sm:gap-5">
-      {/* Barra de Retorno y Estado del Ecosistema */}
-      <div className="flex items-center justify-between px-1 text-xs text-zinc-400">
-        <Link
-          href="/"
-          className="flex items-center gap-1.5 hover:text-white transition group py-1"
-        >
-          <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" />
-          <span>Loya Creative Lab</span>
-        </Link>
-
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="flex items-center gap-1.5 text-[11px] text-zinc-400 bg-white/[0.05] px-2.5 py-1 rounded-full border border-white/10">
-            <Cloud className={`w-3 h-3 ${isSupabaseConfigured ? "text-[#30D158]" : "text-amber-400"}`} />
-            <span className="hidden sm:inline">Supabase:</span>
-            <span className={isSupabaseConfigured ? "text-zinc-200" : "text-amber-300"}>
-              {isSupabaseConfigured ? "Cloud" : "Local"}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1.5 text-[11px] text-purple-300 bg-purple-500/10 px-2.5 py-1 rounded-full border border-purple-500/20">
-            <Sparkles className="w-3 h-3 text-[#BF5AF2]" />
-            <span className="hidden sm:inline">Gemini AI</span> Coach
-          </div>
-        </div>
-      </div>
-
+    <main className="min-h-screen px-3 sm:px-6 pt-3 pb-28 md:pb-10 max-w-7xl mx-auto flex flex-col gap-4">
       {/* Top Header / Dynamic Island HUD para Mobile & Desktop */}
-      <header className="apple-glass-pill rounded-full px-3.5 sm:px-5 py-2.5 flex items-center justify-between gap-2 sticky top-2 z-40">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-black/60 border border-white/15 flex items-center justify-center shadow-[0_0_15px_rgba(10,132,255,0.35)] shrink-0 p-1">
+      <header className="apple-glass-pill rounded-full px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 sticky top-2 z-40">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-black/60 border border-white/15 flex items-center justify-center shadow-md shrink-0 p-1">
             <Image
               src="/acapella-logo.png"
               alt="Acapella Logo"
@@ -370,13 +346,13 @@ export default function VoxStudioApp() {
               priority
             />
           </div>
-          <div className="truncate">
-            <h1 className="text-xs sm:text-sm font-bold tracking-tight text-white truncate">
+          <div className="flex items-center gap-2">
+            <h1 className="text-sm sm:text-base font-bold tracking-tight text-white">
               Acapella
             </h1>
-            <p className="text-[10px] text-zinc-400 hidden sm:block">
-              {vocalProfile.voiceType} ({vocalProfile.lowestMidi}–{vocalProfile.highestMidi} MIDI)
-            </p>
+            <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-white/10 text-zinc-300 border border-white/10">
+              v1.0
+            </span>
           </div>
         </div>
 
@@ -384,8 +360,8 @@ export default function VoxStudioApp() {
         <nav className="hidden md:flex items-center gap-1 bg-black/50 p-1 rounded-full border border-white/10">
           <button
             onClick={() => handleTabChange("monitor")}
-            className={`px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-              activeTab === "monitor" ? "bg-white text-black shadow-md" : "text-zinc-400 hover:text-white"
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+              activeTab === "monitor" ? "bg-white text-black shadow-md font-bold" : "text-zinc-400 hover:text-white"
             }`}
           >
             <Activity className="w-3.5 h-3.5" />
@@ -394,8 +370,8 @@ export default function VoxStudioApp() {
 
           <button
             onClick={() => handleTabChange("warmup")}
-            className={`px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-              activeTab === "warmup" ? "bg-white text-black shadow-md" : "text-zinc-400 hover:text-white"
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+              activeTab === "warmup" ? "bg-white text-black shadow-md font-bold" : "text-zinc-400 hover:text-white"
             }`}
           >
             <Music className="w-3.5 h-3.5" />
@@ -403,9 +379,19 @@ export default function VoxStudioApp() {
           </button>
 
           <button
+            onClick={() => handleTabChange("studio")}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+              activeTab === "studio" ? "bg-white text-black shadow-md font-bold" : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            <Disc className="w-3.5 h-3.5" />
+            <span>Estudio MP3</span>
+          </button>
+
+          <button
             onClick={() => handleTabChange("lessons")}
-            className={`px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-              activeTab === "lessons" ? "bg-white text-black shadow-md" : "text-zinc-400 hover:text-white"
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+              activeTab === "lessons" ? "bg-white text-black shadow-md font-bold" : "text-zinc-400 hover:text-white"
             }`}
           >
             <GraduationCap className="w-3.5 h-3.5" />
@@ -414,8 +400,8 @@ export default function VoxStudioApp() {
 
           <button
             onClick={() => handleTabChange("repertoire")}
-            className={`px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-              activeTab === "repertoire" ? "bg-white text-black shadow-md" : "text-zinc-400 hover:text-white"
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+              activeTab === "repertoire" ? "bg-white text-black shadow-md font-bold" : "text-zinc-400 hover:text-white"
             }`}
           >
             <BookOpen className="w-3.5 h-3.5" />
@@ -424,11 +410,11 @@ export default function VoxStudioApp() {
 
           <button
             onClick={() => handleTabChange("recorder")}
-            className={`px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-              activeTab === "recorder" ? "bg-white text-black shadow-md" : "text-zinc-400 hover:text-white"
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+              activeTab === "recorder" ? "bg-white text-black shadow-md font-bold" : "text-zinc-400 hover:text-white"
             }`}
           >
-            <Disc className="w-3.5 h-3.5" />
+            <Layers className="w-3.5 h-3.5" />
             <span>Bitácora A/B</span>
           </button>
         </nav>
@@ -453,15 +439,15 @@ export default function VoxStudioApp() {
 
           <button
             onClick={() => setIsToolsOpen(true)}
-            className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-[#BF5AF2] border border-white/10 transition cursor-pointer"
-            title="Herramientas Pro: Backup JSON, Reverb de Monitoreo y Diagnóstico IA"
+            className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 border border-white/10 transition cursor-pointer"
+            title="Herramientas de Estudio: Backup JSON, Reverb de Monitoreo y Diagnóstico"
           >
             <Database className="w-4 h-4" />
           </button>
 
           <button
             onClick={() => setIsProfileOpen(true)}
-            className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-zinc-200 border border-white/10 transition cursor-pointer"
+            className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 border border-white/10 transition cursor-pointer"
             title="Calibrar Rango Vocal, Metrónomo y Modo Atril"
           >
             <Sliders className="w-4 h-4" />
@@ -537,6 +523,8 @@ export default function VoxStudioApp() {
           </div>
         )}
 
+        {activeTab === "studio" && <SongStudioView />}
+
         {activeTab === "lessons" && <LessonsAcademyView />}
 
         {activeTab === "repertoire" && (
@@ -602,65 +590,77 @@ export default function VoxStudioApp() {
       )}
 
       {/* Bottom Tab Bar Flotante exclusiva para Mobile */}
-      <nav className="md:hidden fixed bottom-3 left-3 right-3 z-40 apple-glass-pill rounded-3xl p-1.5 grid grid-cols-5 gap-1 border border-white/15 shadow-[0_15px_40px_rgba(0,0,0,0.85)]">
+      <nav className="md:hidden fixed bottom-3 left-2.5 right-2.5 z-40 apple-glass-pill rounded-3xl p-1.5 grid grid-cols-6 gap-1 border border-white/15 shadow-[0_15px_40px_rgba(0,0,0,0.85)]">
         <button
           onClick={() => handleTabChange("monitor")}
-          className={`py-2.5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+          className={`py-2 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${
             activeTab === "monitor"
               ? "bg-white text-black font-bold shadow-sm"
               : "text-zinc-400 hover:text-white"
           }`}
         >
-          <Activity className="w-4 h-4" />
-          <span className="text-[9px]">Afinador</span>
+          <Activity className="w-3.5 h-3.5" />
+          <span className="text-[8.5px]">Afinador</span>
         </button>
 
         <button
           onClick={() => handleTabChange("warmup")}
-          className={`py-2.5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+          className={`py-2 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${
             activeTab === "warmup"
               ? "bg-white text-black font-bold shadow-sm"
               : "text-zinc-400 hover:text-white"
           }`}
         >
-          <Music className="w-4 h-4" />
-          <span className="text-[9px]">Escalas</span>
+          <Music className="w-3.5 h-3.5" />
+          <span className="text-[8.5px]">Escalas</span>
+        </button>
+
+        <button
+          onClick={() => handleTabChange("studio")}
+          className={`py-2 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${
+            activeTab === "studio"
+              ? "bg-white text-black font-bold shadow-sm"
+              : "text-zinc-400 hover:text-white"
+          }`}
+        >
+          <Disc className="w-3.5 h-3.5" />
+          <span className="text-[8.5px]">Estudio</span>
         </button>
 
         <button
           onClick={() => handleTabChange("lessons")}
-          className={`py-2.5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+          className={`py-2 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${
             activeTab === "lessons"
               ? "bg-white text-black font-bold shadow-sm"
               : "text-zinc-400 hover:text-white"
           }`}
         >
-          <GraduationCap className="w-4 h-4" />
-          <span className="text-[9px]">Academia</span>
+          <GraduationCap className="w-3.5 h-3.5" />
+          <span className="text-[8.5px]">Academia</span>
         </button>
 
         <button
           onClick={() => handleTabChange("repertoire")}
-          className={`py-2.5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+          className={`py-2 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${
             activeTab === "repertoire"
               ? "bg-white text-black font-bold shadow-sm"
               : "text-zinc-400 hover:text-white"
           }`}
         >
-          <BookOpen className="w-4 h-4" />
-          <span className="text-[9px]">Karaoke</span>
+          <BookOpen className="w-3.5 h-3.5" />
+          <span className="text-[8.5px]">Karaoke</span>
         </button>
 
         <button
           onClick={() => handleTabChange("recorder")}
-          className={`py-2.5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+          className={`py-2 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${
             activeTab === "recorder"
               ? "bg-white text-black font-bold shadow-sm"
               : "text-zinc-400 hover:text-white"
           }`}
         >
-          <Disc className="w-4 h-4" />
-          <span className="text-[9px]">Bitácora</span>
+          <Layers className="w-3.5 h-3.5" />
+          <span className="text-[8.5px]">Bitácora</span>
         </button>
       </nav>
     </main>

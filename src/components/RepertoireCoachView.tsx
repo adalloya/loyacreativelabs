@@ -920,7 +920,7 @@ export default function RepertoireCoachView({
                       }`}
                     >
                       <Wind className="w-3 h-3" />
-                      <span>{line.breatheBefore ? "💨 Aire" : "Seguido"}</span>
+                      <span>{line.breatheBefore ? "Respirar" : "Continuo"}</span>
                     </button>
 
                     {/* Acorde */}

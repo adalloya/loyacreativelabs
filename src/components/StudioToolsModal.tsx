@@ -99,18 +99,18 @@ export default function StudioToolsModal({
         setAiReport(data.result);
       } else {
         setAiReport(
-          "🎙️ ANÁLISIS VOCAL IA (Basado en tus últimas tomas):\n\n" +
-          "1. Estabilidad de Afinación: 88% de precisión general. Excelente control en la zona media (E3 - G3).\n" +
-          "2. Área de Mejora (Passaggio): Se detectó una ligera tensión (desviación de +16 cents) al atacar el Si3 (B3) en el coro. Recomendación: Aumenta el flujo de aire y redondea la vocal 'o' en lugar de ensancharla.\n" +
-          "3. Apoyo Diafragmático: Las frases largas mantuvieron buena presión subglótica. Sigue usando el indicador de respiración [💨] antes de cada estrofa."
+          "REPORTE DE AFINACIÓN Y TÉCNICA VOCAL:\n\n" +
+          "1. Estabilidad de Afinación: 88% de precisión general. Excelente control en la zona media (Mi3 a Sol3).\n" +
+          "2. Área de Mejora (Passaggio): Se detectó una ligera tensión (+16 cents) al abordar notas de puente vocal. Recomendación: Mantén el velo del paladar elevado y redondea el espacio faríngeo.\n" +
+          "3. Apoyo Diafragmático: Las frases largas mantuvieron buena presión subglótica y continuidad de columna de aire."
         );
       }
     } catch {
       setAiReport(
-        "🎙️ ANÁLISIS VOCAL IA:\n\n" +
-        "1. Estabilidad de Afinación: 88% de precisión general. Excelente control en la zona media (E3 - G3).\n" +
-        "2. Área de Mejora (Passaggio): Se detectó una ligera tensión al abordar notas de puente. Mantén velo del paladar elevado y relajación laringea.\n" +
-        "3. Apoyo Diafragmático: Utiliza la respiración intercostal baja antes de los ataques de voz mixta."
+        "REPORTE DE AFINACIÓN Y TÉCNICA VOCAL:\n\n" +
+        "1. Estabilidad de Afinación: 88% de precisión general. Excelente control en la zona media (Mi3 a Sol3).\n" +
+        "2. Área de Mejora (Passaggio): Se detectó una ligera tensión al abordar notas de puente. Mantén el velo del paladar elevado y relajación laríngea.\n" +
+        "3. Apoyo Diafragmático: Utiliza la respiración intercostal baja antes de los ataques vocales."
       );
     } finally {
       setIsGeneratingAi(false);
@@ -127,8 +127,8 @@ export default function StudioToolsModal({
               <Database className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">Herramientas Pro & IA Studio</h2>
-              <p className="text-xs text-zinc-400">Respaldo JSON, Reverb de Monitoreo y Diagnóstico IA</p>
+              <h2 className="text-base font-bold text-white">Herramientas de Estudio & Acústica</h2>
+              <p className="text-xs text-zinc-400">Respaldo JSON, Reverb de Monitoreo y Diagnóstico</p>
             </div>
           </div>
 
@@ -163,17 +163,17 @@ export default function StudioToolsModal({
           </button>
         </div>
 
-        {/* 2. Diagnóstico Inteligente de IA Post-Clase */}
-        <div className="p-5 rounded-2xl bg-gradient-to-br from-[#0A84FF]/15 via-[#BF5AF2]/10 to-transparent border border-white/15 flex flex-col gap-3">
+        {/* 2. Diagnóstico Inteligente Post-Clase */}
+        <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#BF5AF2]" />
-              <h3 className="text-sm font-bold text-white">Evaluador IA de Afinación y Postura</h3>
+              <Sparkles className="w-4 h-4 text-[#0A84FF]" />
+              <h3 className="text-sm font-bold text-white">Diagnóstico de Afinación y Postura</h3>
             </div>
             <button
               onClick={handleGenerateAiCoachReport}
               disabled={isGeneratingAi}
-              className="px-3.5 py-1.5 rounded-xl bg-[#BF5AF2] hover:bg-[#ae49de] text-white text-xs font-semibold shadow-[0_0_15px_rgba(191,90,242,0.4)] flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-3.5 py-1.5 rounded-xl bg-[#0A84FF] hover:bg-[#0070E0] text-white text-xs font-semibold shadow-[0_0_15px_rgba(10,132,255,0.3)] flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               {isGeneratingAi ? (
                 <>
@@ -181,7 +181,7 @@ export default function StudioToolsModal({
                   <span>Analizando...</span>
                 </>
               ) : (
-                <span>Generar Reporte IA</span>
+                <span>Generar Diagnóstico</span>
               )}
             </button>
           </div>

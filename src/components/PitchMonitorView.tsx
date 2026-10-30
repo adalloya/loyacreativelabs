@@ -320,7 +320,7 @@ export default function PitchMonitorView({
                 }`}
               />
               <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">
-                {isListening ? "Motor Neural Activo" : "Micrófono en Espera"}
+                {isListening ? "Micrófono Activo" : "Micrófono en Espera"}
               </span>
             </div>
 
