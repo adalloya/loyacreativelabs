@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { PitchData, vocalSynth } from "@/lib/vocalEngine";
+import { grandPiano } from "@/audio/grandPianoEngine";
 import { Guitar, Mic, MicOff, Volume2, CheckCircle, X, Sparkles } from "lucide-react";
 
 interface GuitarTunerModalProps {
@@ -104,7 +105,7 @@ export default function GuitarTunerModal({
   const cents = currentPitch ? smoothedCents : 0;
 
   const playReferenceNote = (midi: number) => {
-    vocalSynth.playNote(midi, 1.5, 0.3);
+    grandPiano.playNote(midi, 1.8, 0.85);
   };
 
   return (
