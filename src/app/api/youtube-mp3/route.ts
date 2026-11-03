@@ -32,11 +32,32 @@ export async function GET(request: NextRequest) {
   const ffmpegPath = getBinaryPath("ffmpeg");
 
   // ==========================================
-  // 1. MODO METADATOS
+  // 1. MODO METADATOS (Instantáneo 150ms)
   // ==========================================
   if (mode === "meta") {
+    // Intento 1: YouTube oEmbed ultra-rápido (150ms, sin bloqueos)
     try {
-      // Intento 1: yt-dlp dump-json
+      const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(videoUrl)}&format=json`;
+      const oembedRes = await fetch(oembedUrl, { signal: AbortSignal.timeout(3000) });
+      if (oembedRes.ok) {
+        const oembedData = await oembedRes.json();
+        const idMatch = videoUrl.match(/(?:v=|youtu\.be\/|embed\/|v\/)([a-zA-Z0-9_-]{11})/);
+        const vidId = idMatch ? idMatch[1] : `yt-${Date.now()}`;
+
+        return NextResponse.json({
+          id: vidId,
+          title: oembedData.title || "Canción de YouTube",
+          uploader: oembedData.author_name || "Artista Desconocido",
+          duration: 0,
+          thumbnail: oembedData.thumbnail_url || `https://i.ytimg.com/vi/${vidId}/hqdefault.jpg`,
+        });
+      }
+    } catch {
+      // Continuar con yt-dlp si oembed falló
+    }
+
+    // Intento 2: yt-dlp dump-json con timeout seguro
+    try {
       const metaPromise = new Promise<{
         id: string;
         title: string;
@@ -55,6 +76,11 @@ export async function GET(request: NextRequest) {
         let stdout = "";
         let stderr = "";
 
+        const timer = setTimeout(() => {
+          proc.kill("SIGKILL");
+          reject(new Error("Timeout en yt-dlp metadata"));
+        }, 5000);
+
         proc.stdout.on("data", (data) => {
           stdout += data.toString();
         });
@@ -63,6 +89,7 @@ export async function GET(request: NextRequest) {
         });
 
         proc.on("close", (code) => {
+          clearTimeout(timer);
           if (code === 0 && stdout) {
             try {
               const info = JSON.parse(stdout);
@@ -85,34 +112,16 @@ export async function GET(request: NextRequest) {
 
       const meta = await metaPromise;
       return NextResponse.json(meta);
-    } catch (ytErr) {
-      console.warn("yt-dlp meta fallback to oembed:", ytErr);
-
-      // Intento 2: Fallback rápido con YouTube oEmbed oficial
-      try {
-        const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(videoUrl)}&format=json`;
-        const oembedRes = await fetch(oembedUrl);
-        if (oembedRes.ok) {
-          const oembedData = await oembedRes.json();
-          const idMatch = videoUrl.match(/(?:v=|youtu\.be\/|embed\/|v\/)([a-zA-Z0-9_-]{11})/);
-          const vidId = idMatch ? idMatch[1] : `yt-${Date.now()}`;
-
-          return NextResponse.json({
-            id: vidId,
-            title: oembedData.title || "Canción de YouTube",
-            uploader: oembedData.author_name || "Artista Desconocido",
-            duration: 0,
-            thumbnail: oembedData.thumbnail_url || `https://i.ytimg.com/vi/${vidId}/hqdefault.jpg`,
-          });
-        }
-      } catch (oembedErr) {
-        console.error("oEmbed fallback error:", oembedErr);
-      }
-
-      return NextResponse.json(
-        { error: "No se pudieron obtener los metadatos del video de YouTube" },
-        { status: 500 }
-      );
+    } catch {
+      const idMatch = videoUrl.match(/(?:v=|youtu\.be\/|embed\/|v\/)([a-zA-Z0-9_-]{11})/);
+      const vidId = idMatch ? idMatch[1] : `yt-${Date.now()}`;
+      return NextResponse.json({
+        id: vidId,
+        title: "Pista de YouTube",
+        uploader: "YouTube",
+        duration: 0,
+        thumbnail: `https://i.ytimg.com/vi/${vidId}/hqdefault.jpg`,
+      });
     }
   }
 

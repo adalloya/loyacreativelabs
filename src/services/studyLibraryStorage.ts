@@ -135,7 +135,33 @@ export const studyLibraryStorage = {
       tx.onerror = () => reject(tx.error);
     });
 
-    // Sincronización en la nube (si la tabla 'songs' de Supabase está creada)
+    // 2. Subir el archivo binario MP3 a Supabase Storage (bucket 'songs-audio')
+    let cloudAudioUrl = track.sourceUrl || '';
+    if (isSupabaseConfigured && track.audioBlob) {
+      try {
+        const cleanId = track.id.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const fileName = `${cleanId}.mp3`;
+        const { data: uploadData, error: uploadErr } = await supabase.storage
+          .from('songs-audio')
+          .upload(fileName, track.audioBlob, {
+            contentType: 'audio/mpeg',
+            upsert: true,
+          });
+
+        if (!uploadErr && uploadData) {
+          const { data: pubData } = supabase.storage
+            .from('songs-audio')
+            .getPublicUrl(fileName);
+          if (pubData?.publicUrl) {
+            cloudAudioUrl = pubData.publicUrl;
+          }
+        }
+      } catch (storageErr) {
+        console.warn('[Acapella Storage] MP3 upload fallback:', storageErr);
+      }
+    }
+
+    // 3. Sincronización en la nube (si la tabla 'songs' de Supabase está creada)
     if (isSupabaseConfigured) {
       try {
         await supabase.from('songs').upsert({
@@ -145,7 +171,7 @@ export const studyLibraryStorage = {
           album: track.album || null,
           duration: track.durationSec,
           cover_url: track.thumbnailUrl,
-          audio_url: track.sourceUrl || '',
+          audio_url: cloudAudioUrl,
           synced_lyrics: track.syncedLyrics,
           plain_lyrics: track.plainLyrics || null,
           annotations: track.annotations || null,
