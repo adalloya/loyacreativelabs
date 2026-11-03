@@ -22,6 +22,7 @@ import {
   Sliders,
   PanelLeftClose,
   PanelLeftOpen,
+  Tv,
 } from "lucide-react";
 import { SOLFEGE_NAMES, NOTE_NAMES, midiToNoteName } from "@/lib/vocalEngine";
 
@@ -54,6 +55,8 @@ export default function TopStudioBar() {
     setIsProfilePopoverOpen,
     isDrawerOpen,
     toggleDrawer,
+    teleprompterOpen,
+    toggleTeleprompter,
   } = useVocalSession();
 
   const [showGainSlider, setShowGainSlider] = useState(false);
@@ -275,6 +278,21 @@ export default function TopStudioBar() {
         >
           <Sun size={13} className={wakeLockActive ? "text-cyan-400" : "text-zinc-500"} />
           <span className="text-[11px] hidden xl:inline">Atril</span>
+        </button>
+
+        {/* Teleprompter en Ventana */}
+        <button
+          type="button"
+          onClick={toggleTeleprompter}
+          className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border text-xs font-mono flex items-center gap-1.5 transition cursor-pointer ${
+            teleprompterOpen
+              ? "bg-blue-600 text-white border-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.35)]"
+              : "bg-white/[0.03] border-white/10 text-zinc-400 hover:text-white"
+          }`}
+          title="Abrir Teleprompter en Ventana (Letra Horizontal & Tiempos)"
+        >
+          <Tv size={13} className={teleprompterOpen ? "text-white" : "text-blue-400"} />
+          <span className="text-[11px] hidden md:inline">Teleprompter</span>
         </button>
       </div>
 

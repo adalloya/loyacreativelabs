@@ -147,6 +147,10 @@ interface VocalSessionContextType {
   toggleGuitarTuner: () => void;
   isProfilePopoverOpen: boolean;
   setIsProfilePopoverOpen: (open: boolean) => void;
+  teleprompterOpen: boolean;
+  toggleTeleprompter: () => void;
+  setTeleprompterOpen: (open: boolean) => void;
+  updateActiveSongLyrics: (lyrics: LyricLine[], title?: string, artist?: string) => void;
 }
 
 const VocalSessionContext = createContext<VocalSessionContextType | undefined>(undefined);
@@ -257,6 +261,7 @@ export function VocalSessionProvider({ children }: { children: React.ReactNode }
   const [wakeLockActive, setWakeLockActive] = useState<boolean>(false);
   const wakeLockSentinelRef = useRef<{ release: () => Promise<void> } | null>(null);
   const [guitarTunerOpen, setGuitarTunerOpen] = useState<boolean>(false);
+  const [teleprompterOpen, setTeleprompterOpen] = useState<boolean>(false);
 
   // 1. Cargar datos iniciales de localStorage
   useEffect(() => {
@@ -631,6 +636,32 @@ export function VocalSessionProvider({ children }: { children: React.ReactNode }
     ? `${activeExercise.phonetic} — ${activeExercise.description}`
     : activeLyricCue?.vocalTip || undefined;
 
+  const updateActiveSongLyrics = (newLyrics: LyricLine[], title?: string, artist?: string) => {
+    if (activeSong) {
+      const updated: StudioSong = {
+        ...activeSong,
+        title: title || activeSong.title,
+        artist: artist || activeSong.artist,
+        lyrics: newLyrics,
+        isSynced: newLyrics.some((l) => l.time !== null),
+      };
+      setActiveSong(updated);
+      setSongsLibrary((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+    } else {
+      const newSong: StudioSong = {
+        id: `song-${Date.now()}`,
+        title: title || "Canción Seleccionada",
+        artist: artist || "Artista",
+        audioUrl: "",
+        lyrics: newLyrics,
+        isSynced: newLyrics.some((l) => l.time !== null),
+        createdAt: Date.now(),
+      };
+      setActiveSong(newSong);
+      setSongsLibrary((prev) => [newSong, ...prev]);
+    }
+  };
+
   const comparisonSamples: PitchSample[] = [];
 
   // 5. Grabación de Tomas A/B y Comparador
@@ -851,6 +882,10 @@ export function VocalSessionProvider({ children }: { children: React.ReactNode }
         toggleGuitarTuner: () => setGuitarTunerOpen((prev) => !prev),
         isProfilePopoverOpen,
         setIsProfilePopoverOpen,
+        teleprompterOpen,
+        toggleTeleprompter: () => setTeleprompterOpen((prev) => !prev),
+        setTeleprompterOpen,
+        updateActiveSongLyrics,
       }}
     >
       {/* Audio Element Oculto para sincronizar MP3 / Canciones */}

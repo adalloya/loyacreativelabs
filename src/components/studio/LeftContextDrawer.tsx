@@ -31,6 +31,7 @@ import {
   Award,
   BookOpen,
   Edit3,
+  Tv,
 } from "lucide-react";
 
 export default function LeftContextDrawer() {
@@ -62,7 +63,11 @@ export default function LeftContextDrawer() {
     startRecordingTake,
     isRecordingTake,
     vocalProfile,
+    toggleTeleprompter,
   } = useVocalSession();
+
+  // Subpestaña en la sección de canciones: Buscar Letras LRCLIB vs Importar YouTube
+  const [songSubTab, setSongSubTab] = useState<"search" | "youtube">("search");
 
   // Estados locales para canciones y búsqueda LRCLIB
   const [songSearchQuery, setSongSearchQuery] = useState("");
@@ -480,28 +485,165 @@ export default function LeftContextDrawer() {
                 </div>
               </div>
 
-              {/* Botón Editor de Anotaciones de Clase */}
-              <button
-                type="button"
-                onClick={() => setIsAnnotationEditorOpen(true)}
-                className="w-full py-1.5 px-3 rounded-xl bg-blue-950/40 hover:bg-blue-900/50 border border-blue-500/40 text-blue-300 hover:text-white text-[11px] font-mono font-semibold flex items-center justify-center gap-1.5 transition shadow-sm"
-              >
-                <Edit3 size={13} className="text-blue-400" />
-                <span>Anotaciones de Clase (Acordes & Sílabas)</span>
-              </button>
+              {/* Botones de Acción: Teleprompter en Ventana & Anotaciones */}
+              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-white/5">
+                <button
+                  type="button"
+                  onClick={toggleTeleprompter}
+                  className="py-1.5 px-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-mono font-semibold flex items-center justify-center gap-1.5 transition shadow-sm"
+                  title="Abrir Teleprompter en Ventana"
+                >
+                  <Tv size={12} />
+                  <span>Ver Teleprompter</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsAnnotationEditorOpen(true)}
+                  className="py-1.5 px-2.5 rounded-xl bg-blue-950/40 hover:bg-blue-900/50 border border-blue-500/40 text-blue-300 hover:text-white text-[11px] font-mono font-semibold flex items-center justify-center gap-1.5 transition shadow-sm"
+                  title="Editor de notas estilo profesor"
+                >
+                  <Edit3 size={12} className="text-blue-400" />
+                  <span>Anotaciones</span>
+                </button>
+              </div>
             </div>
           )}
 
-          {/* Importador YouTube a MP3 y Gestor de Librería de Estudio */}
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <YouTubeLibraryImporter
-              tracks={studyTracks}
-              activeTrackId={activeSong?.id}
-              onSelectTrack={handleSelectStudyTrack}
-              onTrackAdded={handleStudyTrackAdded}
-              onTrackDeleted={handleStudyTrackDeleted}
-            />
+          {/* Selector de Modo: Buscar Letras vs Importar YouTube/MP3 */}
+          <div className="px-3.5 pt-2.5 pb-1 bg-[#0E1017] border-b border-white/10 shrink-0">
+            <div className="grid grid-cols-2 gap-1 bg-black/40 p-1 rounded-xl border border-white/10 text-xs font-mono">
+              <button
+                type="button"
+                onClick={() => setSongSubTab("search")}
+                className={`py-1.5 px-2 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition ${
+                  songSubTab === "search"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                <Search size={12} />
+                <span>Buscar Letras</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSongSubTab("youtube")}
+                className={`py-1.5 px-2 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition ${
+                  songSubTab === "youtube"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                <Music size={12} />
+                <span>Librería / YouTube</span>
+              </button>
+            </div>
           </div>
+
+          {/* CONTENIDO 1: BUSCADOR DE LETRAS LRCLIB */}
+          {songSubTab === "search" && (
+            <div className="flex-1 overflow-y-auto p-3.5 space-y-3.5">
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">
+                  Buscar en Catálogo Libre LRCLIB (3M+ Canciones)
+                </span>
+                <div className="flex gap-1.5">
+                  <input
+                    type="text"
+                    value={songSearchQuery}
+                    onChange={(e) => setSongSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSearchLRCLIB()}
+                    placeholder="Ej: Lamento Boliviano - Enanitos Verdes"
+                    className="flex-1 bg-black/50 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSearchLRCLIB}
+                    disabled={isSearchingLyrics || !songSearchQuery.trim()}
+                    className="px-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white font-bold flex items-center justify-center transition shrink-0"
+                    title="Buscar letra"
+                  >
+                    <Search size={13} />
+                  </button>
+                </div>
+              </div>
+
+              {lyricsSearchResult && (
+                <div className="p-3.5 bg-blue-950/40 border border-blue-500/40 rounded-2xl space-y-2.5 animate-in fade-in">
+                  <div className="flex items-center gap-3">
+                    {lyricsSearchResult.coverUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={lyricsSearchResult.coverUrl}
+                        alt={lyricsSearchResult.title}
+                        className="w-12 h-12 rounded-xl object-cover border border-white/10 shrink-0"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center text-blue-400 shrink-0">
+                        <Music size={20} />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <div className="font-bold text-white text-xs truncate">{lyricsSearchResult.title}</div>
+                      <div className="text-[11px] text-zinc-400 truncate">{lyricsSearchResult.artist}</div>
+                      <span className="text-[10px] font-mono text-emerald-400">
+                        ✓ {lyricsSearchResult.lyrics.length} líneas sincronizadas
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      loadSong(lyricsSearchResult);
+                      setLyricsSearchResult(null);
+                      toggleTeleprompter();
+                    }}
+                    className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs font-mono flex items-center justify-center gap-1.5 transition shadow-lg"
+                  >
+                    <Tv size={12} />
+                    <span>Cargar Letra y Abrir Teleprompter</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Lista de Canciones de la Librería */}
+              <div className="space-y-2 pt-2 border-t border-white/5">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                  Canciones en tu Estudio ({songsLibrary.length})
+                </span>
+                {songsLibrary.map((song) => (
+                  <div
+                    key={song.id}
+                    onClick={() => loadSong(song)}
+                    className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition ${
+                      activeSong?.id === song.id
+                        ? "bg-blue-950/30 border-blue-500/40 text-white shadow-sm"
+                        : "bg-[#141620] border-white/10 text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    <div className="truncate mr-2">
+                      <div className="font-semibold text-xs text-white truncate">{song.title}</div>
+                      <div className="text-[10px] text-zinc-500">{song.artist}</div>
+                    </div>
+                    <ChevronRight size={14} className="text-zinc-600 shrink-0" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* CONTENIDO 2: IMPORTADOR YOUTUBE A MP3 Y GESTOR DE LIBRERÍA */}
+          {songSubTab === "youtube" && (
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <YouTubeLibraryImporter
+                tracks={studyTracks}
+                activeTrackId={activeSong?.id}
+                onSelectTrack={handleSelectStudyTrack}
+                onTrackAdded={handleStudyTrackAdded}
+                onTrackDeleted={handleStudyTrackDeleted}
+              />
+            </div>
+          )}
         </div>
       )}
 

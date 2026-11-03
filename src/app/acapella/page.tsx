@@ -7,6 +7,7 @@ import LeftContextDrawer from "@/components/studio/LeftContextDrawer";
 import VocalPitchCanvas from "@/components/studio/VocalPitchCanvas";
 import InteractiveGrandPiano from "@/components/studio/InteractiveGrandPiano";
 import GuitarTunerModal from "@/components/GuitarTunerModal";
+import TeleprompterWindow from "@/components/studio/TeleprompterWindow";
 
 function StudioWorkspace() {
   const {
@@ -23,6 +24,15 @@ function StudioWorkspace() {
     vocalProfile,
     sessionElapsedMs,
     activePhoneticTip,
+    teleprompterOpen,
+    toggleTeleprompter,
+    activeSong,
+    isPlayingSong,
+    songTime,
+    songDuration,
+    togglePlaySong,
+    seekSong,
+    updateActiveSongLyrics,
   } = useVocalSession();
 
   const detectedVoiceMidi = currentPitch && currentPitch.clarity >= 0.65 ? currentPitch.midi : null;
@@ -71,6 +81,19 @@ function StudioWorkspace() {
         currentPitch={currentPitch}
         isListening={isListening}
         onToggleMic={toggleMic}
+      />
+
+      {/* VENTANA DE TELEPROMPTER EN VIVO (LETRA HORIZONTAL & TIEMPOS) */}
+      <TeleprompterWindow
+        isOpen={teleprompterOpen}
+        onClose={toggleTeleprompter}
+        activeSong={activeSong}
+        isPlaying={isPlayingSong}
+        songTime={songTime}
+        songDuration={songDuration}
+        onTogglePlay={togglePlaySong}
+        onSeek={seekSong}
+        onLoadSongLyrics={updateActiveSongLyrics}
       />
     </div>
   );
