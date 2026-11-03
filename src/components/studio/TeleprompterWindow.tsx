@@ -36,7 +36,7 @@ interface TeleprompterWindowProps {
   onLoadSongLyrics?: (lyrics: LyricLine[], title?: string, artist?: string) => void;
 }
 
-export const TeleprompterWindow: React.FC<TeleprompterWindowProps> = ({
+const TeleprompterInner: React.FC<TeleprompterWindowProps> = ({
   isOpen,
   onClose,
   activeSong,
@@ -49,7 +49,7 @@ export const TeleprompterWindow: React.FC<TeleprompterWindowProps> = ({
 }) => {
   const [viewMode, setViewMode] = useState<"horizontal" | "list" | "sync">("horizontal");
   const [fontSizeLevel, setFontSizeLevel] = useState<number>(2); // 1 = normal, 2 = grande, 3 = gigante
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(true);
 
   // Modo Sincronización Tap-to-Sync
   const [syncCursor, setSyncCursor] = useState<number>(0);
@@ -58,17 +58,20 @@ export const TeleprompterWindow: React.FC<TeleprompterWindowProps> = ({
 
   // Sincronizar draftLyrics cuando cambia la canción activa
   useEffect(() => {
-    if (activeSong?.lyrics) {
+    if (Array.isArray(activeSong?.lyrics)) {
       setDraftLyrics(activeSong.lyrics);
-      const firstUnsynced = activeSong.lyrics.findIndex((l) => l.time === null);
+      const firstUnsynced = activeSong.lyrics.findIndex((l) => l && (l.time === null || typeof l.time !== "number"));
       setSyncCursor(firstUnsynced >= 0 ? firstUnsynced : 0);
+    } else {
+      setDraftLyrics([]);
+      setSyncCursor(0);
     }
   }, [activeSong]);
 
   // Manejador para estampar verso en modo Sync
   const handleStampSyncLine = () => {
     if (draftLyrics.length === 0) return;
-    const stampedTime = Number(songTime.toFixed(2));
+    const stampedTime = Number((songTime || 0).toFixed(2));
     const updated = draftLyrics.map((line, idx) =>
       idx === syncCursor ? { ...line, time: stampedTime } : line
     );
@@ -78,7 +81,14 @@ export const TeleprompterWindow: React.FC<TeleprompterWindowProps> = ({
     }
     const nextIdx = Math.min(draftLyrics.length - 1, syncCursor + 1);
     setSyncCursor(nextIdx);
-    syncLineRefs.current[nextIdx]?.scrollIntoView({ behavior: "smooth", block: "center" });
+    try {
+      const targetEl = syncLineRefs.current[nextIdx];
+      if (targetEl && typeof targetEl.scrollIntoView === "function") {
+        targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    } catch {
+      // scroll fallback
+    }
   };
 
   // Escuchar barra espaciadora cuando se está en modo sync
@@ -110,13 +120,13 @@ export const TeleprompterWindow: React.FC<TeleprompterWindowProps> = ({
 
   if (!isOpen) return null;
 
-  const lyrics = activeSong?.lyrics || [];
+  const lyrics = Array.isArray(activeSong?.lyrics) ? activeSong.lyrics : [];
 
   // Calcular índice de la frase activa basada en songTime
   const activeIndex = lyrics.findIndex((line, i) => {
+    if (!line || typeof line.time !== "number") return false;
     const nextLine = lyrics[i + 1];
-    if (line.time === null) return false;
-    if (nextLine && nextLine.time !== null) {
+    if (nextLine && typeof nextLine.time === "number") {
       return songTime >= line.time && songTime < nextLine.time;
     }
     return songTime >= line.time;
@@ -125,9 +135,13 @@ export const TeleprompterWindow: React.FC<TeleprompterWindowProps> = ({
   // Auto-scroll centrado en la vista de lista vertical
   useEffect(() => {
     if (viewMode === "list" && activeIndex >= 0) {
-      const el = lineRefs.current[activeIndex];
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      try {
+        const el = lineRefs.current[activeIndex];
+        if (el && typeof el.scrollIntoView === "function") {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      } catch {
+        // Safe scroll error catch
       }
     }
   }, [activeIndex, viewMode]);
@@ -135,9 +149,13 @@ export const TeleprompterWindow: React.FC<TeleprompterWindowProps> = ({
   // Auto-scroll en el carrusel horizontal
   useEffect(() => {
     if (viewMode === "horizontal" && activeIndex >= 0 && horizontalTrackRef.current) {
-      const activeCard = horizontalTrackRef.current.children[activeIndex] as HTMLElement;
-      if (activeCard) {
-        activeCard.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      try {
+        const activeCard = horizontalTrackRef.current.children[activeIndex] as HTMLElement | undefined;
+        if (activeCard && typeof activeCard.scrollIntoView === "function") {
+          activeCard.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+        }
+      } catch {
+        // Safe scroll error catch
       }
     }
   }, [activeIndex, viewMode]);
@@ -218,7 +236,7 @@ export const TeleprompterWindow: React.FC<TeleprompterWindowProps> = ({
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h3 className="text-xs sm:text-sm font-bold text-white truncate">
-                {activeSong ? `${activeSong.title} — ${activeSong.artist}` : "Teleprompter en Vivo"}
+                {activeSong ? `${activeSong.title || "Pista de Estudio"} — ${activeSong.artist || "Artista"}` : "Teleprompter en Vivo"}
               </h3>
               {activeSong?.isSynced && (
                 <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">
@@ -227,7 +245,7 @@ export const TeleprompterWindow: React.FC<TeleprompterWindowProps> = ({
               )}
             </div>
             <p className="text-[10px] font-mono text-zinc-400">
-              Tiempo: <span className="text-blue-400 font-bold">{formatTime(songTime)}</span> / {formatTime(songDuration)}
+              Tiempo: <span className="text-blue-400 font-bold">{formatTime(songTime || 0)}</span> / {formatTime(songDuration || 0)}
             </p>
           </div>
         </div>
@@ -426,7 +444,7 @@ export const TeleprompterWindow: React.FC<TeleprompterWindowProps> = ({
 
                 return (
                   <div
-                    key={line.id}
+                    key={`${line?.id || "h"}-${idx}`}
                     onClick={() => {
                       if (line.time !== null) onSeek(line.time);
                     }}
@@ -548,7 +566,7 @@ export const TeleprompterWindow: React.FC<TeleprompterWindowProps> = ({
 
                 return (
                   <div
-                    key={line.id}
+                    key={`${line?.id || "h"}-${idx}`}
                     ref={(el) => {
                       syncLineRefs.current[idx] = el;
                     }}
@@ -625,7 +643,7 @@ export const TeleprompterWindow: React.FC<TeleprompterWindowProps> = ({
 
               return (
                 <div
-                  key={line.id}
+                  key={`${line?.id || "list"}-${idx}`}
                   ref={(el) => {
                     lineRefs.current[idx] = el;
                   }}
@@ -709,19 +727,19 @@ export const TeleprompterWindow: React.FC<TeleprompterWindowProps> = ({
         {/* Barra de progreso de la canción */}
         <div className="flex-1 max-w-xl mx-4 flex items-center gap-3">
           <span className="font-mono text-[11px] text-zinc-400 w-10 text-right">
-            {formatTime(songTime)}
+            {formatTime(songTime || 0)}
           </span>
           <input
             type="range"
             min="0"
             max={songDuration || 100}
             step="0.1"
-            value={songTime}
-            onChange={(e) => onSeek(parseFloat(e.target.value))}
+            value={songTime || 0}
+            onChange={(e) => onSeek(parseFloat(e.target.value) || 0)}
             className="flex-1 accent-blue-500 cursor-pointer h-1.5 bg-zinc-800 rounded-lg"
           />
           <span className="font-mono text-[11px] text-zinc-500 w-10">
-            {formatTime(songDuration)}
+            {formatTime(songDuration || 0)}
           </span>
         </div>
 
@@ -734,4 +752,67 @@ export const TeleprompterWindow: React.FC<TeleprompterWindowProps> = ({
   );
 };
 
-export default TeleprompterWindow;
+interface ErrorBoundaryState {
+  hasError: boolean;
+  errorMessage?: string;
+}
+
+class TeleprompterErrorBoundary extends React.Component<
+  TeleprompterWindowProps,
+  ErrorBoundaryState
+> {
+  constructor(props: TeleprompterWindowProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return {
+      hasError: true,
+      errorMessage: error?.message || "Ocurrió una excepción al procesar la letra del teleprompter",
+    };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("[TeleprompterErrorBoundary]", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      if (!this.props.isOpen) return null;
+      return (
+        <div className="fixed inset-0 z-50 bg-[#090A0F]/95 backdrop-blur-xl flex items-center justify-center p-6 text-white select-none">
+          <div className="bg-[#141622] border border-rose-500/30 rounded-3xl p-6 max-w-md w-full shadow-2xl text-center space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 mx-auto flex items-center justify-center font-bold text-xl">
+              ⚠️
+            </div>
+            <h3 className="text-base font-bold text-white">Teleprompter Protegido</h3>
+            <p className="text-xs text-zinc-400">
+              {this.state.errorMessage}
+            </p>
+            <div className="flex gap-2 justify-center pt-2">
+              <button
+                type="button"
+                onClick={() => this.setState({ hasError: false })}
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-mono font-bold transition"
+              >
+                Reintentar
+              </button>
+              <button
+                type="button"
+                onClick={this.props.onClose}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-zinc-300 text-xs font-mono transition"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return <TeleprompterInner {...this.props} />;
+  }
+}
+
+export { TeleprompterErrorBoundary as TeleprompterWindow };
+export default TeleprompterErrorBoundary;

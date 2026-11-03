@@ -8,6 +8,7 @@ import VocalPitchCanvas from "@/components/studio/VocalPitchCanvas";
 import InteractiveGrandPiano from "@/components/studio/InteractiveGrandPiano";
 import GuitarTunerModal from "@/components/GuitarTunerModal";
 import TeleprompterWindow from "@/components/studio/TeleprompterWindow";
+import HorizontalTeleprompterRibbon from "@/components/studio/HorizontalTeleprompterRibbon";
 
 function StudioWorkspace() {
   const {
@@ -48,21 +49,36 @@ function StudioWorkspace() {
         {/* ZONA 2: LEFT CONTEXT DRAWER (320px Colapsable) */}
         <LeftContextDrawer />
 
-        {/* ZONA 3: CENTER STAGE — LIENZO DE CURVA DE TONO & TELEPROMPTER */}
-        <VocalPitchCanvas
-          samplesBuffer={samplesBuffer}
-          comparisonSamples={comparisonSamples}
-          targetBlocks={targetBlocks}
-          activeLyricCue={activeLyricCue}
-          nextLyricCue={nextLyricCue}
-          vocalProfile={{
-            lowestMidi: vocalProfile.lowestMidi,
-            passaggioMidi: vocalProfile.passaggioMidi,
-            highestMidi: vocalProfile.highestMidi,
-          }}
-          sessionElapsedMs={sessionElapsedMs}
-          activePhoneticTip={activePhoneticTip}
-        />
+        {/* ZONA 3: CENTER STAGE — CINTA TELEPROMPTER HORIZONTAL & LIENZO DE AFINACIÓN */}
+        <div className="flex-1 flex flex-col overflow-hidden relative min-w-0">
+          {/* CINTA HORIZONTAL DE TELEPROMPTER CON ACORDES Y PANTALLA COMPLETA (SIEMPRE VISIBLE) */}
+          <HorizontalTeleprompterRibbon
+            activeSong={activeSong}
+            isPlaying={isPlayingSong}
+            songTime={songTime}
+            songDuration={songDuration}
+            onTogglePlay={togglePlaySong}
+            onSeek={seekSong}
+            onOpenFullscreen={toggleTeleprompter}
+            onLoadSongLyrics={updateActiveSongLyrics}
+          />
+
+          {/* LIENZO DE CURVA DE TONO EN TIEMPO REAL A 60 FPS */}
+          <VocalPitchCanvas
+            samplesBuffer={samplesBuffer}
+            comparisonSamples={comparisonSamples}
+            targetBlocks={targetBlocks}
+            activeLyricCue={activeLyricCue}
+            nextLyricCue={nextLyricCue}
+            vocalProfile={{
+              lowestMidi: vocalProfile.lowestMidi,
+              passaggioMidi: vocalProfile.passaggioMidi,
+              highestMidi: vocalProfile.highestMidi,
+            }}
+            sessionElapsedMs={sessionElapsedMs}
+            activePhoneticTip={activePhoneticTip}
+          />
+        </div>
       </div>
 
       {/* ZONA 4: BOTTOM DOCK — GRAND PIANO INTERACTIVO DE ESTUDIO (165px) */}

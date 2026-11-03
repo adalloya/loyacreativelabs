@@ -618,20 +618,21 @@ export function VocalSessionProvider({ children }: { children: React.ReactNode }
     }
   };
 
-  // Líricas activas en tiempo real
-  const activeLyricIndex = activeSong?.lyrics.findIndex((line, i) => {
-    const nextLine = activeSong.lyrics[i + 1];
-    if (line.time === null) return false;
-    if (nextLine && nextLine.time !== null) {
+  // Líricas activas en tiempo real (con validación defensiva contra undefined)
+  const songLyrics = Array.isArray(activeSong?.lyrics) ? activeSong.lyrics : [];
+  const activeLyricIndex = songLyrics.findIndex((line, i) => {
+    if (!line || typeof line.time !== "number") return false;
+    const nextLine = songLyrics[i + 1];
+    if (nextLine && typeof nextLine.time === "number") {
       return songTime >= line.time && songTime < nextLine.time;
     }
     return songTime >= line.time;
-  }) ?? -1;
+  });
 
-  const activeLyricLine = activeLyricIndex >= 0 && activeSong ? activeSong.lyrics[activeLyricIndex] : null;
+  const activeLyricLine = activeLyricIndex >= 0 && activeLyricIndex < songLyrics.length ? songLyrics[activeLyricIndex] : null;
   const nextLyricLine =
-    activeLyricIndex >= 0 && activeSong && activeLyricIndex + 1 < activeSong.lyrics.length
-      ? activeSong.lyrics[activeLyricIndex + 1]
+    activeLyricIndex >= 0 && activeLyricIndex + 1 < songLyrics.length
+      ? songLyrics[activeLyricIndex + 1]
       : null;
 
   const activeLyricCue: LyricCue | null = activeLyricLine
