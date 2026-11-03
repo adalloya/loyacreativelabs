@@ -20,6 +20,8 @@ import {
   Columns,
   Music2,
   Check,
+  Timer,
+  Volume2,
 } from "lucide-react";
 
 interface TeleprompterWindowProps {
@@ -45,9 +47,56 @@ export const TeleprompterWindow: React.FC<TeleprompterWindowProps> = ({
   onSeek,
   onLoadSongLyrics,
 }) => {
-  const [viewMode, setViewMode] = useState<"horizontal" | "list">("horizontal");
+  const [viewMode, setViewMode] = useState<"horizontal" | "list" | "sync">("horizontal");
   const [fontSizeLevel, setFontSizeLevel] = useState<number>(2); // 1 = normal, 2 = grande, 3 = gigante
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+
+  // Modo Sincronización Tap-to-Sync
+  const [syncCursor, setSyncCursor] = useState<number>(0);
+  const [draftLyrics, setDraftLyrics] = useState<LyricLine[]>([]);
+  const syncLineRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Sincronizar draftLyrics cuando cambia la canción activa
+  useEffect(() => {
+    if (activeSong?.lyrics) {
+      setDraftLyrics(activeSong.lyrics);
+      const firstUnsynced = activeSong.lyrics.findIndex((l) => l.time === null);
+      setSyncCursor(firstUnsynced >= 0 ? firstUnsynced : 0);
+    }
+  }, [activeSong]);
+
+  // Manejador para estampar verso en modo Sync
+  const handleStampSyncLine = () => {
+    if (draftLyrics.length === 0) return;
+    const stampedTime = Number(songTime.toFixed(2));
+    const updated = draftLyrics.map((line, idx) =>
+      idx === syncCursor ? { ...line, time: stampedTime } : line
+    );
+    setDraftLyrics(updated);
+    if (onLoadSongLyrics) {
+      onLoadSongLyrics(updated, activeSong?.title, activeSong?.artist);
+    }
+    const nextIdx = Math.min(draftLyrics.length - 1, syncCursor + 1);
+    setSyncCursor(nextIdx);
+    syncLineRefs.current[nextIdx]?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  // Escuchar barra espaciadora cuando se está en modo sync
+  useEffect(() => {
+    if (!isOpen || viewMode !== "sync") return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.code === "Space") {
+        e.preventDefault();
+        if (!isPlaying) onTogglePlay();
+        handleStampSyncLine();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, viewMode, isPlaying, songTime, syncCursor, draftLyrics]);
 
   // Buscador de letras LRCLIB integrado
   const [searchQuery, setSearchQuery] = useState("");
@@ -200,7 +249,7 @@ export const TeleprompterWindow: React.FC<TeleprompterWindowProps> = ({
             <span className="hidden sm:inline">Buscar Letra</span>
           </button>
 
-          {/* Selector de Modo: Horizontal vs Lista */}
+          {/* Selector de Modo: Horizontal vs Lista vs Tap-to-Sync */}
           <div className="flex bg-black/40 border border-white/10 p-0.5 rounded-xl">
             <button
               type="button"
@@ -227,6 +276,19 @@ export const TeleprompterWindow: React.FC<TeleprompterWindowProps> = ({
             >
               <AlignLeft size={12} />
               <span className="hidden md:inline">Lista</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("sync")}
+              className={`px-2 py-1 rounded-lg text-xs font-mono flex items-center gap-1 transition ${
+                viewMode === "sync"
+                  ? "bg-emerald-600 text-white font-bold"
+                  : "text-zinc-400 hover:text-white"
+              }`}
+              title="Sincronizar letra línea por línea (Tap-to-Sync)"
+            >
+              <Timer size={12} />
+              <span className="hidden md:inline">Tap-to-Sync</span>
             </button>
           </div>
 
@@ -436,6 +498,118 @@ export const TeleprompterWindow: React.FC<TeleprompterWindowProps> = ({
                 )}
               </div>
             )}
+          </div>
+        ) : viewMode === "sync" ? (
+          /* ======================================================== */
+          /* MODO TAP-TO-SYNC: MARCAR TIEMPOS LÍNEA POR LÍNEA         */
+          /* ======================================================== */
+          <div className="flex-1 overflow-hidden flex flex-col p-4 sm:p-6 max-w-4xl mx-auto w-full">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10 gap-2 flex-wrap">
+              <div>
+                <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+                  <Timer className="w-4 h-4 text-emerald-400" /> Modo Tap-to-Sync Integrado
+                </h4>
+                <p className="text-xs text-zinc-400">
+                  Pulsa <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-white font-mono text-[10px]">Espacio</kbd> o el botón verde justo al comenzar cada verso.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const reset = draftLyrics.map((l) => ({ ...l, time: null }));
+                    setDraftLyrics(reset);
+                    setSyncCursor(0);
+                    if (onLoadSongLyrics) onLoadSongLyrics(reset, activeSong?.title, activeSong?.artist);
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/10 text-xs font-mono flex items-center gap-1 transition"
+                  title="Reiniciar todos los tiempos"
+                >
+                  <RotateCcw size={12} />
+                  <span>Reiniciar Tiempos</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleStampSyncLine}
+                  className="px-4 py-2 rounded-xl bg-[#30D158] hover:bg-[#28b84d] text-black font-extrabold text-xs font-mono transition shadow-[0_0_20px_rgba(48,209,88,0.35)] active:scale-95 flex items-center gap-1.5"
+                >
+                  <Timer size={14} />
+                  <span>Marcar Verso #{syncCursor + 1}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto py-4 space-y-2 pr-2">
+              {draftLyrics.map((line, idx) => {
+                const isTarget = idx === syncCursor;
+                const hasTime = line.time !== null;
+
+                return (
+                  <div
+                    key={line.id}
+                    ref={(el) => {
+                      syncLineRefs.current[idx] = el;
+                    }}
+                    onClick={() => setSyncCursor(idx)}
+                    className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                      isTarget
+                        ? "bg-[#30D158]/15 border-[#30D158] shadow-[0_0_20px_rgba(48,209,88,0.25)] scale-[1.01]"
+                        : hasTime
+                        ? "bg-black/40 border-white/10 hover:border-white/20"
+                        : "bg-black/20 border-white/5 opacity-50 hover:opacity-80"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span
+                        className={`text-[10px] font-mono w-6 shrink-0 ${
+                          isTarget ? "text-[#30D158] font-bold" : "text-zinc-500"
+                        }`}
+                      >
+                        #{idx + 1}
+                      </span>
+                      <span
+                        className={`text-xs truncate ${
+                          isTarget ? "text-white font-bold text-sm" : "text-zinc-200"
+                        }`}
+                      >
+                        {line.text}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {hasTime && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (line.time !== null) onSeek(line.time);
+                            if (!isPlaying) onTogglePlay();
+                          }}
+                          className="p-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 hover:text-white transition"
+                          title="Escuchar desde aquí"
+                        >
+                          <Volume2 size={12} />
+                        </button>
+                      )}
+
+                      <span
+                        className={`text-xs font-mono px-2 py-0.5 rounded-lg font-bold ${
+                          isTarget
+                            ? "bg-[#30D158] text-black"
+                            : hasTime
+                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                            : "bg-white/[0.04] text-zinc-600"
+                        }`}
+                      >
+                        {hasTime ? formatTime(line.time!) : "--:--"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         ) : (
           /* ======================================================== */

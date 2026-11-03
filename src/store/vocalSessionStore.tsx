@@ -14,6 +14,7 @@ import { grandPiano } from "@/audio/grandPianoEngine";
 import { StudioSong, LyricLine, loadStudioLibrary, saveStudioLibrary } from "@/lib/musicUtils";
 import { AcapellaTakeRecord, loadSavedTakes, persistTake } from "@/lib/acapella-supabase";
 import { VOCAL_EXERCISES, VocalExercise } from "@/components/VocalTrainerSuite";
+import { studyLibraryStorage } from "@/services/studyLibraryStorage";
 import {
   PitchSample,
   TargetNoteBlock as CanvasTargetNoteBlock,
@@ -567,19 +568,38 @@ export function VocalSessionProvider({ children }: { children: React.ReactNode }
     sessionStartRef.current = Date.now();
     if (audioElementRef.current) {
       audioElementRef.current.currentTime = 0;
+      if (song.audioUrl) {
+        audioElementRef.current.src = song.audioUrl;
+        audioElementRef.current.load();
+      }
     }
   };
 
-  const togglePlaySong = () => {
-    if (!audioElementRef.current || !activeSong?.audioUrl) return;
+  const togglePlaySong = async () => {
+    if (!audioElementRef.current) return;
+    if (!activeSong?.audioUrl) {
+      alert("No hay archivo de audio cargado para esta pista. Sube un MP3 o descárgalo desde YouTube.");
+      return;
+    }
 
-    if (isPlayingSong) {
-      audioElementRef.current.pause();
-      setIsPlayingSong(false);
-    } else {
-      audioElementRef.current.play().then(() => {
+    try {
+      if (isPlayingSong) {
+        audioElementRef.current.pause();
+        setIsPlayingSong(false);
+      } else {
+        if (
+          audioElementRef.current.src !== activeSong.audioUrl &&
+          !audioElementRef.current.src.endsWith(activeSong.audioUrl)
+        ) {
+          audioElementRef.current.src = activeSong.audioUrl;
+          audioElementRef.current.load();
+        }
+        await audioElementRef.current.play();
         setIsPlayingSong(true);
-      }).catch((e) => console.warn("Audio play blocked:", e));
+      }
+    } catch (e) {
+      console.warn("Audio play blocked or error:", e);
+      setIsPlayingSong(false);
     }
   };
 
@@ -647,6 +667,13 @@ export function VocalSessionProvider({ children }: { children: React.ReactNode }
       };
       setActiveSong(updated);
       setSongsLibrary((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+
+      // Sincronizar automáticamente con IndexedDB
+      const syncedLines = newLyrics
+        .filter((l) => l.time !== null)
+        .map((l) => ({ timeMs: Math.round((l.time || 0) * 1000), text: l.text }));
+      const plain = newLyrics.map((l) => l.text).join("\n");
+      studyLibraryStorage.updateTrackLyrics(activeSong.id, syncedLines, plain).catch(() => {});
     } else {
       const newSong: StudioSong = {
         id: `song-${Date.now()}`,
@@ -892,10 +919,17 @@ export function VocalSessionProvider({ children }: { children: React.ReactNode }
       <audio
         ref={audioElementRef}
         src={activeSong?.audioUrl || undefined}
+        preload="auto"
+        onPlay={() => setIsPlayingSong(true)}
+        onPause={() => setIsPlayingSong(false)}
         onTimeUpdate={(e) => setSongTime(e.currentTarget.currentTime)}
         onLoadedMetadata={(e) => {
           setSongDuration(e.currentTarget.duration);
           if (audioElementRef.current) audioElementRef.current.playbackRate = playbackRate;
+        }}
+        onError={(e) => {
+          console.warn("Audio element error:", e);
+          setIsPlayingSong(false);
         }}
         onEnded={() => setIsPlayingSong(false)}
         className="hidden"

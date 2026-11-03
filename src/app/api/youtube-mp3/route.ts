@@ -129,47 +129,78 @@ export async function GET(request: NextRequest) {
   // 2. MODO STREAM AUDIO (MP3 REAL)
   // ==========================================
   try {
-    const args: string[] = [
+    const ytArgs: string[] = [
       "-f",
       "ba/b",
       "--no-check-certificates",
       "--no-warnings",
       "-o",
       "-",
+      videoUrl,
     ];
 
+    const ytProc = spawn(ytDlpPath, ytArgs);
+
+    let outputStream = ytProc.stdout;
+    let cleanup = () => {
+      try {
+        ytProc.kill("SIGKILL");
+      } catch {}
+    };
+
     if (ffmpegPath) {
-      args.unshift("--ffmpeg-location", ffmpegPath);
-      args.push("--extract-audio", "--audio-format", "mp3", "--audio-quality", "0");
+      const ffmpegProc = spawn(ffmpegPath, [
+        "-i",
+        "pipe:0",
+        "-f",
+        "mp3",
+        "-acodec",
+        "libmp3lame",
+        "-ab",
+        "192k",
+        "-ar",
+        "44100",
+        "pipe:1",
+      ]);
+
+      ytProc.stdout.pipe(ffmpegProc.stdin);
+      outputStream = ffmpegProc.stdout;
+
+      cleanup = () => {
+        try {
+          ytProc.kill("SIGKILL");
+        } catch {}
+        try {
+          ffmpegProc.kill("SIGKILL");
+        } catch {}
+      };
+
+      ffmpegProc.stderr.on("data", () => {});
     }
 
-    args.push(videoUrl);
-
-    const subprocess = spawn(ytDlpPath, args);
+    ytProc.stderr.on("data", (data) => {
+      const msg = data.toString();
+      if (msg.includes("ERROR:")) {
+        console.warn("[yt-dlp stream]:", msg);
+      }
+    });
 
     const readable = new ReadableStream({
       start(controller) {
-        subprocess.stdout.on("data", (chunk: Buffer) => {
+        outputStream.on("data", (chunk: Buffer) => {
           controller.enqueue(new Uint8Array(chunk));
         });
 
-        subprocess.stdout.on("end", () => {
+        outputStream.on("end", () => {
           controller.close();
         });
 
-        subprocess.stdout.on("error", (err) => {
+        outputStream.on("error", (err) => {
           controller.error(err);
-        });
-
-        subprocess.stderr.on("data", (data) => {
-          const msg = data.toString();
-          if (msg.includes("ERROR:")) {
-            console.warn("[yt-dlp stream]:", msg);
-          }
         });
       },
       cancel() {
-        subprocess.kill("SIGKILL");
+        cleanup();
       },
     });
 

@@ -10,6 +10,8 @@ import {
   Sparkles,
   Trash2,
   Play,
+  Pause,
+  Timer,
 } from 'lucide-react';
 import {
   StudyTrack,
@@ -21,9 +23,12 @@ import {
 interface YouTubeLibraryImporterProps {
   tracks: StudyTrack[];
   activeTrackId?: string;
+  isPlayingSong?: boolean;
+  onTogglePlay?: () => void;
   onSelectTrack: (track: StudyTrack) => void;
   onTrackAdded: (track: StudyTrack) => void;
   onTrackDeleted: (id: string) => void;
+  onOpenTapToSync?: (track: StudyTrack) => void;
 }
 
 type ImportStep = 'idle' | 'fetching-meta' | 'downloading-audio' | 'syncing-lyrics' | 'done' | 'error';
@@ -31,9 +36,12 @@ type ImportStep = 'idle' | 'fetching-meta' | 'downloading-audio' | 'syncing-lyri
 export const YouTubeLibraryImporter: React.FC<YouTubeLibraryImporterProps> = ({
   tracks,
   activeTrackId,
+  isPlayingSong = false,
+  onTogglePlay,
   onSelectTrack,
   onTrackAdded,
   onTrackDeleted,
+  onOpenTapToSync,
 }) => {
   const [ytUrl, setYtUrl] = useState('');
   const [step, setStep] = useState<ImportStep>('idle');
@@ -82,6 +90,9 @@ export const YouTubeLibraryImporter: React.FC<YouTubeLibraryImporterProps> = ({
       }
 
       const audioBlob = new Blob(chunks as unknown as BlobPart[], { type: 'audio/mpeg' });
+      if (audioBlob.size < 1024) {
+        throw new Error('El archivo de audio descargado está vacío o incompleto. Intenta con otro enlace o sube un MP3 directo.');
+      }
 
       // 3. Buscar y sincronizar letras automáticamente en LRCLIB para el Teleprompter
       setStep('syncing-lyrics');
@@ -256,26 +267,56 @@ export const YouTubeLibraryImporter: React.FC<YouTubeLibraryImporterProps> = ({
         ) : (
           tracks.map((track) => {
             const isSelected = track.id === activeTrackId;
+            const isThisPlaying = isSelected && isPlayingSong;
+
             return (
               <div
                 key={track.id}
-                onClick={() => onSelectTrack(track)}
+                onClick={() => {
+                  if (isSelected && onTogglePlay) {
+                    onTogglePlay();
+                  } else {
+                    onSelectTrack(track);
+                  }
+                }}
                 className={`group flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition ${
                   isSelected
                     ? 'bg-blue-600/15 border-blue-500/50 shadow-sm'
                     : 'bg-[#090A0F]/60 border-white/5 hover:border-white/15 hover:bg-white/5'
                 }`}
               >
-                {/* Portada / Thumbnail */}
-                <div className="relative w-11 h-11 rounded-lg bg-slate-800 overflow-hidden shrink-0 flex items-center justify-center">
+                {/* Portada / Thumbnail con Play/Pause interactivo */}
+                <div
+                  className="relative w-11 h-11 rounded-lg bg-slate-800 overflow-hidden shrink-0 flex items-center justify-center cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isSelected && onTogglePlay) {
+                      onTogglePlay();
+                    } else {
+                      onSelectTrack(track);
+                      setTimeout(() => {
+                        onTogglePlay?.();
+                      }, 50);
+                    }
+                  }}
+                  title={isThisPlaying ? 'Pausar pista' : 'Reproducir pista'}
+                >
                   {track.thumbnailUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={track.thumbnailUrl} alt={track.title} className="w-full h-full object-cover" />
                   ) : (
                     <Music2 className="w-5 h-5 text-slate-500" />
                   )}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
-                    <Play className="w-4 h-4 text-white fill-white" />
+                  <div
+                    className={`absolute inset-0 bg-black/50 flex items-center justify-center transition ${
+                      isThisPlaying ? 'opacity-100 bg-emerald-950/70' : 'opacity-0 group-hover:opacity-100'
+                    }`}
+                  >
+                    {isThisPlaying ? (
+                      <Pause className="w-4 h-4 text-emerald-400 fill-emerald-400" />
+                    ) : (
+                      <Play className="w-4 h-4 text-white fill-white ml-0.5" />
+                    )}
                   </div>
                 </div>
 
@@ -289,9 +330,18 @@ export const YouTubeLibraryImporter: React.FC<YouTubeLibraryImporterProps> = ({
                         <Sparkles className="w-2.5 h-2.5" /> Sincronizada ({track.syncedLyrics.length} líneas)
                       </span>
                     ) : (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-amber-500/15 text-amber-300">
-                        Sin LRC • Usar Tap-to-Sync
-                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectTrack(track);
+                          onOpenTapToSync?.(track);
+                        }}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/40 transition"
+                        title="Abrir sincronizador de letra"
+                      >
+                        <Timer className="w-2.5 h-2.5" /> Sincronizar (Tap-to-Sync)
+                      </button>
                     )}
                   </div>
                 </div>

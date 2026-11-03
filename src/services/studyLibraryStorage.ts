@@ -246,4 +246,42 @@ export const studyLibraryStorage = {
       }
     }
   },
+
+  async updateTrackLyrics(
+    id: string,
+    syncedLyrics: SyncedLyricLine[],
+    plainLyrics?: string
+  ): Promise<void> {
+    const db = await openLibraryDB();
+    const track = await new Promise<StudyTrack | undefined>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const req = tx.objectStore(STORE_NAME).get(id);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+
+    if (track) {
+      track.syncedLyrics = syncedLyrics;
+      if (plainLyrics) track.plainLyrics = plainLyrics;
+      delete track.audioObjectUrl;
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).put(track);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+
+      if (isSupabaseConfigured) {
+        try {
+          await supabase.from('songs').update({
+            synced_lyrics: syncedLyrics,
+            plain_lyrics: plainLyrics || track.plainLyrics || null,
+            updated_at: new Date().toISOString(),
+          }).eq('id', id);
+        } catch {
+          // Fallback offline
+        }
+      }
+    }
+  },
 };

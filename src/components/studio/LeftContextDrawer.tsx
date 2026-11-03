@@ -9,6 +9,7 @@ import { midiToNoteName, SOLFEGE_NAMES, NOTE_NAMES } from "@/lib/vocalEngine";
 import YouTubeLibraryImporter from "./YouTubeLibraryImporter";
 import { StudyTrack, studyLibraryStorage } from "@/services/studyLibraryStorage";
 import SongAnnotationEditor, { PhraseLineAnnotation } from "./SongAnnotationEditor";
+import TapToSyncModal from "./TapToSyncModal";
 import {
   Music,
   Disc,
@@ -32,6 +33,7 @@ import {
   BookOpen,
   Edit3,
   Tv,
+  Timer,
 } from "lucide-react";
 
 export default function LeftContextDrawer() {
@@ -64,6 +66,7 @@ export default function LeftContextDrawer() {
     isRecordingTake,
     vocalProfile,
     toggleTeleprompter,
+    updateActiveSongLyrics,
   } = useVocalSession();
 
   // Subpestaña en la sección de canciones: Buscar Letras LRCLIB vs Importar YouTube
@@ -77,6 +80,7 @@ export default function LeftContextDrawer() {
   // Estados locales de Librería de Estudio persistente en IndexedDB
   const [studyTracks, setStudyTracks] = useState<StudyTrack[]>([]);
   const [isAnnotationEditorOpen, setIsAnnotationEditorOpen] = useState(false);
+  const [isTapToSyncOpen, setIsTapToSyncOpen] = useState(false);
 
   useEffect(() => {
     studyLibraryStorage
@@ -485,26 +489,39 @@ export default function LeftContextDrawer() {
                 </div>
               </div>
 
-              {/* Botones de Acción: Teleprompter en Ventana & Anotaciones */}
-              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-white/5">
+              {/* Botones de Acción: Teleprompter en Ventana & Sincronizar & Anotaciones */}
+              <div className="space-y-1.5 pt-1 border-t border-white/5">
                 <button
                   type="button"
                   onClick={toggleTeleprompter}
-                  className="py-1.5 px-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-mono font-semibold flex items-center justify-center gap-1.5 transition shadow-sm"
+                  className="w-full py-1.5 px-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-mono font-semibold flex items-center justify-center gap-1.5 transition shadow-sm"
                   title="Abrir Teleprompter en Ventana"
                 >
                   <Tv size={12} />
                   <span>Ver Teleprompter</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setIsAnnotationEditorOpen(true)}
-                  className="py-1.5 px-2.5 rounded-xl bg-blue-950/40 hover:bg-blue-900/50 border border-blue-500/40 text-blue-300 hover:text-white text-[11px] font-mono font-semibold flex items-center justify-center gap-1.5 transition shadow-sm"
-                  title="Editor de notas estilo profesor"
-                >
-                  <Edit3 size={12} className="text-blue-400" />
-                  <span>Anotaciones</span>
-                </button>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsTapToSyncOpen(true)}
+                    className="py-1.5 px-2 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-500/40 text-emerald-300 hover:text-white text-[10px] font-mono font-semibold flex items-center justify-center gap-1 transition shadow-sm"
+                    title="Sincronizar letra verso por verso con la barra espaciadora"
+                  >
+                    <Timer size={11} className="text-emerald-400" />
+                    <span>Tap-to-Sync</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsAnnotationEditorOpen(true)}
+                    className="py-1.5 px-2 rounded-xl bg-blue-950/40 hover:bg-blue-900/50 border border-blue-500/40 text-blue-300 hover:text-white text-[10px] font-mono font-semibold flex items-center justify-center gap-1 transition shadow-sm"
+                    title="Editor de notas estilo profesor"
+                  >
+                    <Edit3 size={11} className="text-blue-400" />
+                    <span>Anotaciones</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -638,9 +655,16 @@ export default function LeftContextDrawer() {
               <YouTubeLibraryImporter
                 tracks={studyTracks}
                 activeTrackId={activeSong?.id}
+                isPlayingSong={isPlayingSong}
+                onTogglePlay={togglePlaySong}
                 onSelectTrack={handleSelectStudyTrack}
                 onTrackAdded={handleStudyTrackAdded}
                 onTrackDeleted={handleStudyTrackDeleted}
+                onOpenTapToSync={(track) => {
+                  const s = studyTrackToStudioSong(track);
+                  loadSong(s);
+                  setIsTapToSyncOpen(true);
+                }}
               />
             </div>
           )}
@@ -803,6 +827,21 @@ export default function LeftContextDrawer() {
           </div>
         </div>
       )}
+
+      {/* MODAL OVERLAY: MODO TAP-TO-SYNC */}
+      <TapToSyncModal
+        isOpen={isTapToSyncOpen}
+        onClose={() => setIsTapToSyncOpen(false)}
+        song={activeSong}
+        isPlaying={isPlayingSong}
+        currentTime={songTime}
+        duration={songDuration}
+        onTogglePlay={togglePlaySong}
+        onSeek={seekSong}
+        onSaveLyrics={(newLyrics) => {
+          updateActiveSongLyrics(newLyrics);
+        }}
+      />
     </aside>
   );
 }
