@@ -8,6 +8,7 @@ import { StudioSong, fetchSongMetadataAndLyrics, parsePlainLyrics, LyricLine } f
 import { midiToNoteName, SOLFEGE_NAMES, NOTE_NAMES } from "@/lib/vocalEngine";
 import YouTubeLibraryImporter from "./YouTubeLibraryImporter";
 import { StudyTrack, studyLibraryStorage } from "@/services/studyLibraryStorage";
+import SongAnnotationEditor, { PhraseLineAnnotation } from "./SongAnnotationEditor";
 import {
   Music,
   Disc,
@@ -29,6 +30,7 @@ import {
   Clock,
   Award,
   BookOpen,
+  Edit3,
 } from "lucide-react";
 
 export default function LeftContextDrawer() {
@@ -69,6 +71,7 @@ export default function LeftContextDrawer() {
 
   // Estados locales de Librería de Estudio persistente en IndexedDB
   const [studyTracks, setStudyTracks] = useState<StudyTrack[]>([]);
+  const [isAnnotationEditorOpen, setIsAnnotationEditorOpen] = useState(false);
 
   useEffect(() => {
     studyLibraryStorage
@@ -80,6 +83,15 @@ export default function LeftContextDrawer() {
         console.warn("Error cargando pistas de IndexedDB:", err);
       });
   }, []);
+
+  const activeStudyTrack = studyTracks.find((t) => t.id === activeSong?.id);
+
+  const handleSaveAnnotations = async (trackId: string, lines: PhraseLineAnnotation[]) => {
+    await studyLibraryStorage.saveTrackAnnotations(trackId, lines);
+    setStudyTracks((prev) =>
+      prev.map((t) => (t.id === trackId ? { ...t, annotations: lines } : t))
+    );
+  };
 
   const studyTrackToStudioSong = (track: StudyTrack): StudioSong => {
     const lyrics: LyricLine[] =
@@ -467,6 +479,16 @@ export default function LeftContextDrawer() {
                   ))}
                 </div>
               </div>
+
+              {/* Botón Editor de Anotaciones de Clase */}
+              <button
+                type="button"
+                onClick={() => setIsAnnotationEditorOpen(true)}
+                className="w-full py-1.5 px-3 rounded-xl bg-blue-950/40 hover:bg-blue-900/50 border border-blue-500/40 text-blue-300 hover:text-white text-[11px] font-mono font-semibold flex items-center justify-center gap-1.5 transition shadow-sm"
+              >
+                <Edit3 size={13} className="text-blue-400" />
+                <span>Anotaciones de Clase (Acordes & Sílabas)</span>
+              </button>
             </div>
           )}
 
@@ -622,6 +644,21 @@ export default function LeftContextDrawer() {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* MODAL OVERLAY: EDITOR DE ANOTACIONES DE CLASE (ESTILO LIBRETA PROFESOR) */}
+      {isAnnotationEditorOpen && activeSong && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 md:p-6">
+          <div className="w-full max-w-4xl h-[88vh] bg-[#0D1017] border border-white/15 rounded-3xl overflow-hidden shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            <SongAnnotationEditor
+              trackId={activeSong.id}
+              trackTitle={`${activeSong.title} — ${activeSong.artist}`}
+              initialLines={activeStudyTrack?.annotations || []}
+              onSave={(lines) => handleSaveAnnotations(activeSong.id, lines)}
+              onClose={() => setIsAnnotationEditorOpen(false)}
+            />
+          </div>
         </div>
       )}
     </aside>

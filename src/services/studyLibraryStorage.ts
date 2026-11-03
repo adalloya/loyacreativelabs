@@ -1,4 +1,5 @@
 // src/services/studyLibraryStorage.ts
+import type { PhraseLineAnnotation } from '../components/studio/SongAnnotationEditor';
 
 export interface SyncedLyricLine {
   timeMs: number;
@@ -17,6 +18,7 @@ export interface StudyTrack {
   audioObjectUrl?: string; // Generado en memoria al cargar
   syncedLyrics: SyncedLyricLine[];
   plainLyrics?: string;
+  annotations?: PhraseLineAnnotation[]; // Anotaciones compás por compás y sílaba por sílaba del profesor
   createdAt: number;
 }
 
@@ -163,5 +165,26 @@ export const studyLibraryStorage = {
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
+  },
+
+  async saveTrackAnnotations(id: string, annotations: PhraseLineAnnotation[]): Promise<void> {
+    const db = await openLibraryDB();
+    const track = await new Promise<StudyTrack | undefined>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const req = tx.objectStore(STORE_NAME).get(id);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+
+    if (track) {
+      track.annotations = annotations;
+      delete track.audioObjectUrl;
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).put(track);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
   },
 };
