@@ -28,15 +28,15 @@ export default function AcapellaPromo() {
           </div>
 
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/[0.06] border border-white/10 text-zinc-300 text-xs font-mono tracking-widest uppercase">
-            Acapella · Vocal Suite
+            LAB 01 // AUDIO DSP & INTERACTION DESIGN
           </div>
 
           <h2 className="text-4xl md:text-6xl font-bold tracking-tight text-white leading-tight">
-            Acapella <span className="text-zinc-400 font-light">· Vocal Suite</span>
+            Acapella <span className="text-zinc-400 font-light">· Vocal Suite Pro</span>
           </h2>
 
           <p className="text-base sm:text-lg text-gray-400 font-normal leading-relaxed">
-            Suite de entrenamiento vocal profesional inspirada en el lenguaje <strong>Apple Liquid Glass</strong> (iOS 18 / visionOS). Afinación continua por autocorrelación <strong>McLeod (NSDF)</strong>, teleprompter tipo <strong>Apple Music Sing</strong> con catálogo abierto <strong>LRCLIB</strong> y coach vocal inteligente potenciado por <strong>Gemini IA & Supabase</strong>.
+            Plataforma de entrenamiento vocal y afinación en tiempo real inspirada en el estándar visual de <strong>Apple Liquid Glass</strong> (iOS 18 / visionOS). Resuelve el reto de <strong>latencia cero en el navegador</strong> mediante el método <strong>McLeod (NSDF)</strong> sobre Web Audio API puro, teleprompter con catálogo abierto de más de 3M de canciones (<strong>LRCLIB</strong>) y retroalimentación inteligente con <strong>Gemini IA & Supabase</strong>.
           </p>
         </div>
 

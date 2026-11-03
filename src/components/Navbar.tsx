@@ -103,9 +103,10 @@ export function Navbar() {
                 {/* Desktop Nav */}
                 <nav className="hidden md:flex items-center gap-8">
                     {[
-                        { label: t.nav.work, href: "#work" },
                         { label: t.nav.services, href: "#services" },
-                        { label: t.nav.about, href: "#about" },
+                        { label: t.nav.labs || "Software Labs", href: "#software-labs" },
+                        { label: t.nav.work, href: "#work" },
+                        { label: t.nav.contact || "Contacto", href: "#contact" },
                     ].map((item) => (
                         <Link
                             key={item.label}
@@ -193,9 +194,10 @@ export function Navbar() {
                             </div>
 
                             {[
-                                { label: t.nav.work, href: "#work" },
                                 { label: t.nav.services, href: "#services" },
-                                { label: t.nav.about, href: "#about" },
+                                { label: t.nav.labs || "Software Labs", href: "#software-labs" },
+                                { label: t.nav.work, href: "#work" },
+                                { label: t.nav.contact || "Contacto", href: "#contact" },
                             ].map((item) => (
                                 <Link
                                     key={item.label}

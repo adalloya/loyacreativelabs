@@ -28,15 +28,15 @@ export default function ArcoMaestroPromo() {
           </div>
 
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/[0.06] border border-white/10 text-zinc-300 text-xs font-mono tracking-widest uppercase">
-            Arco Maestro · AI Welding
+            LAB 03 // COMPUTER VISION & INDUSTRIAL OPTIMIZATION
           </div>
 
           <h2 className="text-4xl md:text-6xl font-bold tracking-tight text-white leading-tight">
-            Arco Maestro <span className="text-zinc-400 font-light">· AI Welding</span>
+            Arco Maestro <span className="text-zinc-400 font-light">· AI Welding Platform</span>
           </h2>
 
           <p className="text-base sm:text-lg text-gray-400 font-normal leading-relaxed">
-            Plataforma especializada en ingeniería de costos, optimización de cortes de perfiles de 6m, escáner estructural por fotografía con <strong>Gemini Vision</strong> y academia viva para herrería residencial en <strong>Mérida, Yucatán</strong>.
+            Software vertical de ingeniería de costos, optimización matemática de cortes de perfiles de acero y visión artificial con <strong>Gemini Vision</strong> para la industria metalmecánica y de la construcción. Demuestra cómo digitalizamos sectores tradicionales eliminando desperdicio y automatizando presupuestos complejos.
           </p>
         </div>
 

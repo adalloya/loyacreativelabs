@@ -60,9 +60,12 @@ export function Hero() {
                         transition={{ delay: 0.9, duration: 0.8 }}
                         className="mt-12 flex flex-col items-center gap-3"
                     >
-                        <span className="text-[11px] font-medium uppercase tracking-widest text-zinc-500">
-                            Apps
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            <span className="text-[11px] font-mono uppercase tracking-widest text-zinc-400">
+                                Software Labs // 3 Plataformas en Producción
+                            </span>
+                        </div>
                         <div className="flex items-center gap-6 sm:gap-8 px-6 py-3.5 rounded-3xl bg-white/[0.04] backdrop-blur-2xl border border-white/10 shadow-2xl">
                             <Link
                                 href="/acapella"

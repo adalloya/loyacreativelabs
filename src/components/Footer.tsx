@@ -21,25 +21,40 @@ export function Footer() {
                         </p>
                     </div>
 
-                    <div className="flex flex-col md:flex-row gap-6 text-sm text-gray-400 items-start md:items-center">
+                    <div className="flex flex-wrap gap-4 sm:gap-6 text-sm text-zinc-400 items-center">
+                        <Link 
+                            href="/acapella" 
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 hover:border-white/25 text-zinc-300 hover:text-white font-mono text-xs transition-all group"
+                        >
+                            <div className="relative w-4 h-4 rounded overflow-hidden flex items-center justify-center">
+                                <Image
+                                    src="/acapella-icon.png"
+                                    alt="Acapella"
+                                    width={16}
+                                    height={16}
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+                            <span>Acapella</span>
+                        </Link>
                         <Link 
                             href="/apex" 
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 hover:border-red-500/40 text-white font-mono text-xs transition-all group"
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 hover:border-white/25 text-zinc-300 hover:text-white font-mono text-xs transition-all group"
                         >
                             <div className="relative w-4 h-4 rounded overflow-hidden">
                                 <Image
-                                    src="/apex-logo.png"
+                                    src="/apex-icon.png"
                                     alt="APEX"
                                     width={16}
                                     height={16}
                                     className="w-full h-full object-cover"
                                 />
                             </div>
-                            <span className="text-red-400 font-bold group-hover:text-red-300">APEX</span>
+                            <span>APEX</span>
                         </Link>
                         <Link 
                             href="/arco-maestro" 
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 hover:border-yellow-500/40 text-white font-mono text-xs transition-all group"
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 hover:border-white/25 text-zinc-300 hover:text-white font-mono text-xs transition-all group"
                         >
                             <div className="relative w-4 h-4 rounded overflow-hidden">
                                 <Image
@@ -50,26 +65,8 @@ export function Footer() {
                                     className="w-full h-full object-cover"
                                 />
                             </div>
-                            <span className="text-yellow-400 font-bold group-hover:text-yellow-300">ARCO MAESTRO</span>
+                            <span>Arco Maestro</span>
                         </Link>
-                        <Link 
-                            href="/acapella" 
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 hover:border-blue-500/40 text-white font-mono text-xs transition-all group"
-                        >
-                            <div className="relative w-4 h-4 rounded-md overflow-hidden flex items-center justify-center">
-                                <Image
-                                    src="/acapella-logo.png"
-                                    alt="Acapella"
-                                    width={16}
-                                    height={16}
-                                    className="w-full h-full object-contain"
-                                />
-                            </div>
-                            <span className="text-blue-400 font-bold group-hover:text-blue-300">ACAPELLA</span>
-                        </Link>
-                        <Link href="#" className="hover:text-white transition-colors">Instagram</Link>
-                        <Link href="#" className="hover:text-white transition-colors">LinkedIn</Link>
-                        <Link href="#" className="hover:text-white transition-colors">Twitter</Link>
                         <Link href="mailto:hello@loyacreativelab.com" className="hover:text-white transition-colors">hello@loyacreativelab.com</Link>
                     </div>
                 </div>

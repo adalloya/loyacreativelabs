@@ -27,15 +27,15 @@ export default function ApexPromo() {
                     </div>
 
                     <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/[0.06] border border-white/10 text-zinc-300 text-xs font-mono tracking-widest uppercase">
-                        APEX · Autopilot Training
+                        LAB 02 // BIOMECHANICS & HIGH-DENSITY UI
                     </div>
 
-                    <h2 className="text-4xl md:text-6xl font-black tracking-tight text-white leading-tight">
-                        APEX
+                    <h2 className="text-4xl md:text-6xl font-bold tracking-tight text-white leading-tight">
+                        APEX <span className="text-zinc-400 font-light">· Autopilot Training OS</span>
                     </h2>
 
                     <p className="text-base sm:text-lg text-gray-400 font-normal leading-relaxed">
-                        El Autopilot de entrenamiento y recomposición corporal. Diseñado bajo la estética de instrumentación técnica de <strong>Tesla UI</strong> y la ergonomía de <strong>Apple Fitness</strong>.
+                        El sistema operativo móvil de alto rendimiento para entrenamiento físico y recomposición corporal. Diseñado bajo la instrumentación técnica de <strong>Tesla UI</strong> y la ergonomía táctil de <strong>Apple Fitness</strong>, validando nuestra capacidad para crear software de alta densidad que opera a la perfección en el gimnasio.
                     </p>
                 </div>
 

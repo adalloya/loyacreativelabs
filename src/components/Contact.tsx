@@ -8,29 +8,29 @@ import { useLanguage } from "@/context/LanguageContext";
 export function Contact() {
     const { t } = useLanguage();
     return (
-        <section id="contact" className="py-24 md:py-32 relative overflow-hidden">
-            {/* Background Gradients */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-purple-900/10 rounded-full blur-[100px] pointer-events-none" />
-
+        <section id="contact" className="py-24 md:py-32 relative overflow-hidden bg-black border-t border-white/5">
             <Container className="relative z-10 text-center">
                 <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
+                    initial={{ opacity: 0, scale: 0.98 }}
                     whileInView={{ opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
-                    className="max-w-3xl mx-auto"
+                    className="max-w-3xl mx-auto space-y-6"
                 >
-                    <h2 className="text-4xl md:text-6xl font-bold mb-8 text-white">
+                    <span className="inline-block px-3.5 py-1 text-xs font-mono tracking-widest text-zinc-300 uppercase bg-white/[0.06] rounded-full border border-white/10">
+                        {t.contact.badge || "Inicia Tu Transformación"}
+                    </span>
+                    <h2 className="text-3xl md:text-6xl font-bold text-white tracking-tight leading-tight">
                         {t.contact.title}
                     </h2>
-                    <p className="text-xl text-gray-400 mb-10">
+                    <p className="text-base sm:text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed">
                         {t.contact.description}
                     </p>
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <Button href="mailto:hello@loyacreativelab.com" className="px-10 py-4 text-xl">
-                            {t.contact.email}
-                        </Button>
-                        <Button href="https://wa.me/526271231192" variant="outline" className="px-10 py-4 text-xl">
+                    <div className="pt-4 flex flex-col sm:flex-row gap-4 justify-center items-center">
+                        <Button href="https://wa.me/526271231192" className="px-8 py-4 text-base font-semibold w-full sm:w-auto bg-white text-black hover:bg-zinc-200 shadow-xl">
                             {t.contact.whatsapp}
+                        </Button>
+                        <Button href="mailto:hello@loyacreativelab.com" variant="outline" className="px-8 py-4 text-base font-semibold w-full sm:w-auto border-white/20 text-white hover:bg-white/10">
+                            {t.contact.email}
                         </Button>
                     </div>
                 </motion.div>

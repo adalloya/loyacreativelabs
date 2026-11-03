@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageSquare, Zap, Target, Layers } from "lucide-react";
+import { MessageSquare, CheckCircle2 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { content } from "@/data/content";
 
@@ -9,11 +9,7 @@ export default function ChatbotPromo() {
     const t = content[language].chatPromo;
 
     return (
-        <section className="relative py-24 px-4 bg-zinc-950 overflow-hidden">
-            {/* Background Glows */}
-            <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-purple-900/20 blur-[120px] rounded-full pointing-events-none" />
-            <div className="absolute bottom-0 left-0 w-1/2 h-1/2 bg-indigo-900/10 blur-[120px] rounded-full pointing-events-none" />
-
+        <section className="relative py-24 md:py-32 px-4 bg-black border-t border-white/5 overflow-hidden">
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10">
 
                 {/* Left: Copy */}
@@ -29,15 +25,15 @@ export default function ChatbotPromo() {
                         </span>
                     </h2>
 
-                    <p className="text-lg text-gray-400 leading-relaxed max-w-xl">
+                    <p className="text-base sm:text-lg text-zinc-400 leading-relaxed max-w-xl">
                         {t.description}
                     </p>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {t.features.map((feature, i) => (
-                            <div key={i} className="flex items-center gap-3 text-gray-300">
-                                <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
-                                    <Target size={14} className="text-green-400" />
+                            <div key={i} className="flex items-center gap-3 text-zinc-300">
+                                <div className="w-5 h-5 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                                    <CheckCircle2 size={13} className="text-emerald-400" />
                                 </div>
                                 <span className="text-sm font-medium">{feature}</span>
                             </div>
@@ -50,15 +46,14 @@ export default function ChatbotPromo() {
                                 // Trigger Widget Open
                                 const widgetFrame = document.querySelector('iframe[src*="/consultant"]');
                                 if (widgetFrame) {
-                                    // Try to click the custom launcher if possible, or just redirect
                                     window.location.href = "/?chat_open=true";
                                 } else {
                                     window.location.href = "/consultant";
                                 }
                             }}
-                            className="px-8 py-4 bg-white text-black font-bold rounded-full hover:scale-105 transition-transform shadow-[0_0_20px_rgba(255,255,255,0.3)] flex items-center justify-center gap-2"
+                            className="px-8 py-4 bg-white text-black font-semibold rounded-2xl hover:bg-zinc-200 transition-all shadow-xl flex items-center justify-center gap-2 text-sm active:scale-98"
                         >
-                            <MessageSquare size={20} />
+                            <MessageSquare size={18} />
                             {t.cta}
                         </button>
                     </div>

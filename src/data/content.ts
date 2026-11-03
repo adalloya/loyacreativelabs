@@ -1,271 +1,289 @@
 export const content = {
     es: {
         nav: {
-            work: "Portafolio",
             services: "Servicios",
-            about: "Nosotros",
+            labs: "Software Labs",
+            work: "Portafolio",
+            contact: "Contacto",
             start: "Iniciar Proyecto",
         },
         hero: {
-            badge: "Agencia de Experiencias Digitales",
-            title: "Creamos Obras Maestras Digitales",
-            description: "Eleva tu marca con un UX increíble, tecnología de punta y diseños que dejan una impresión duradera.",
+            badge: "Estudio de Ingeniería Digital & Product Design",
+            title: "Diseñamos y programamos software que define marcas.",
+            description: "Desarrollamos aplicaciones web de alta velocidad, sistemas de Inteligencia Artificial y experiencias digitales con estándar Apple que transforman visitantes en clientes leales.",
             ctaWork: "Ver Portafolio",
-            ctaContact: "Contáctanos",
+            ctaContact: "Iniciar Proyecto",
+        },
+        softwareLabs: {
+            badge: "Propiedad Intelectual // Software Labs",
+            title: "No vendemos promesas. Construimos plataformas reales en producción.",
+            description: "La mejor prueba de nuestra capacidad técnica es el software que desarrollamos para nosotros mismos. Tres plataformas independientes que demuestran nuestra maestría en audio DSP en tiempo real, biomecánica y visión artificial para la industria.",
         },
         portfolio: {
-            title: "Trabajos Seleccionados",
-            description: "Una muestra de nuestras mejores experiencias digitales, creadas con precisión y pasión.",
-            visit: "Visitar Sitio",
+            badge: "Casos de Éxito & Clientes",
+            title: "Proyectos Seleccionados",
+            description: "Plataformas y marcas que confían en nuestra arquitectura digital para escalar sus operaciones y ventas.",
+            visit: "Visitar Proyecto",
         },
         services: {
-            badge: "Nuestra Experiencia",
-            title: "Construimos marcas que importan en la era digital.",
-            description: "Loya Creative Lab combina excelencia técnica con visión artística para crear productos que no solo son funcionales, sino inolvidables.",
+            badge: "Soluciones de Ingeniería Digital",
+            title: "Transformamos empresas tradicionales en negocios digitales de alta facturación.",
+            description: "Aplicamos el mismo rigor técnico y diseño de vanguardia de nuestros Software Labs a tu empresa. Creamos productos digitales que eliminan fricción operativa y multiplican tus conversiones.",
             items: [
                 {
-                    title: "Diseño Web",
-                    description: "Diseños visualmente impactantes que cautivan a tu audiencia y se alinean con tu identidad de marca.",
-                    icon: "Layout",
-                },
-                {
-                    title: "Desarrollo",
-                    description: "Sitios web robustos, escalables y de alto rendimiento construidos con las últimas tecnologías.",
+                    title: "Web Apps & Plataformas a Medida",
+                    description: "Desarrollo con Next.js y React. Sin plantillas genéricas: código a medida optimizado para Google SEO, tiempos de carga inferiores a 1 segundo y escalabilidad para millones de visitas.",
                     icon: "Code",
                 },
                 {
-                    title: "Branding",
-                    description: "Identidades visuales completas que cuentan tu historia y te diferencian de la competencia.",
-                    icon: "Palette",
+                    title: "Agentes de IA & Automatización",
+                    description: "Asistentes inteligentes entrenados con tu catálogo y procesos para calificar clientes, resolver dudas complejas y agendar citas en automático en tu web y WhatsApp 24/7.",
+                    icon: "Bot",
                 },
                 {
-                    title: "UX / UI",
-                    description: "Interfaces centradas en el usuario diseñadas para una navegación intuitiva y máxima conversión.",
+                    title: "Diseño de Producto & UX/UI de Alta Conversión",
+                    description: "Interfaces modernas inspiradas en el estándar Apple y Stripe. Cada pantalla, botón y flujo está pensado psicológicamente para reducir el abandono y maximizar tus tasas de cierre.",
                     icon: "MousePointerClick",
+                },
+                {
+                    title: "Bases de Datos & CRM Operativo",
+                    description: "Arquitectura en la nube con Supabase y paneles de control hechos a la medida de tu equipo. Centraliza prospectos, elimina tareas manuales y conecta tus ventas a tus finanzas en tiempo real.",
+                    icon: "Layout",
                 },
             ]
         },
         contact: {
-            title: "¿Listo para iniciar tu próximo proyecto?",
-            description: "Colaboremos para construir algo extraordinario. Contáctanos y hablemos de tu visión.",
-            email: "Contáctanos",
-            whatsapp: "WhatsApp",
+            badge: "Inicia Tu Transformación",
+            title: "¿Listo para construir algo extraordinario?",
+            description: "Hablemos de tus metas, tu modelo de negocio y cómo la tecnología adecuada puede acelerar tu crecimiento. Sin rodeos, directo a soluciones de alto impacto.",
+            email: "Enviar Correo",
+            whatsapp: "Iniciar Conversación por WhatsApp",
         },
         footer: {
-            description: "Creando excelencia digital para marcas visionarias.",
+            description: "Loya Creative Lab · Ingeniería de software, diseño de producto y ecosistemas de Inteligencia Artificial para marcas que lideran.",
             rights: "Todos los derechos reservados.",
             privacy: "Política de Privacidad",
             terms: "Términos de Servicio",
         },
         transformation: {
-            title: "Transformación Digital para Empresas Premium",
-            subtitle: "Propuesta de Implementación Tecnológica | Solución 'Business Tech 2.0'",
+            badge: "Arquitectura vs. Agencias Tradicionales",
+            title: "La diferencia entre una plantilla lenta y una plataforma que factura",
+            subtitle: "Arquitectura de Software vs. Agencias Tradicionales",
             problem: {
                 title: "El Problema de la Empresa Tradicional",
-                description: "La mayoría de las empresas modernas sufren de 'Fricción Digital':",
+                description: "La mayoría de las empresas modernas sufren de fricción digital severa que destruye sus conversiones:",
                 items: [
                     {
-                        title: "Sitios Web Genéricos",
-                        description: "Usan plantillas de Wix o WordPress que se ven iguales a la competencia, son lentas y se rompen en celulares.",
+                        title: "Sitios Obsoletos y Plantillas Lentas",
+                        description: "Plantillas pesadas de WordPress o constructores visuales que tardan más de 4 segundos en cargar, provocando un 60% de rebote y proyectando una imagen amateur.",
                     },
                     {
-                        title: "Caos en el Seguimiento",
-                        description: "Gestionan prospectos en Excel, libretas o chats de WhatsApp dispersos. Se pierden ventas por falta de seguimiento.",
+                        title: "Pérdida Crítica de Prospectos",
+                        description: "Prospectos gestionados en hojas de cálculo, libretas o chats de WhatsApp desordenados. Las ventas se enfrían y se pierden por falta de respuesta oportuna.",
                     },
                     {
-                        title: "Procesos Manuales",
-                        description: "Copiar y pegar datos de formularios a contactos del celular consume horas a la semana.",
+                        title: "Fricción Operativa y Tareas Manuales",
+                        description: "Horas semanales desperdiciadas copiando datos, cotizando a mano y atendiendo preguntas repetitivas que un sistema moderno resuelve en segundos.",
                     }
                 ]
             },
             solution: {
-                title: "Nuestra Solución: 'Ecosistema de Negocios Digitales'",
-                description: "Ofrecemos lo que implementamos exitosamente para líderes de la industria: no es una página web, es una plataforma de operación y ventas hecha a medida.",
-                valueProp: "Convertimos tu presencia digital en tu mejor vendedor activo 24/7.",
+                title: "Nuestra Solución: 'Ecosistema de Conversión y Ventas'",
+                description: "No te entregamos un folleto estático en internet; construimos un activo digital diseñado para operar y vender con eficiencia industrial.",
+                valueProp: "Convertimos tu presencia digital en tu mejor consultor comercial activo 24/7.",
                 items: [
                     {
-                        title: "Experiencia de Usuario (UX) de Lujo",
-                        description: "Tu sitio no parecerá una página informativa, sino una App Nativa fluida (como la app de Airbnb o Uber). Diseño móvil-first: El 80% de tus clientes cotizan desde el celular; tu sitio brillará ahí.",
+                        title: "Experiencia Móvil de Primer Nivel (App-Like)",
+                        description: "Tu plataforma responde con la velocidad y fluidez de una aplicación nativa. Diseñada para que el 80% de tus clientes que navegan desde el teléfono coticen y compren sin la menor fricción.",
                     },
                     {
-                        title: "Automatización Total",
-                        description: "Formulario Web Inteligente ➡️ CRM ➡️ Notificación a tu Celular. Cero captura manual de datos.",
+                        title: "Automatización y Calificación en Tiempo Real",
+                        description: "Captura inteligente de prospectos que filtra datos clave y los entrega listos para cerrar directo a tu WhatsApp y sistema de gestión en milisegundos.",
                     },
                     {
-                        title: "CRM de Bolsillo (Tu Oficina Móvil)",
-                        description: "Panel de control exclusivo para agentes. Visualiza tu 'Embudo de Ventas' (Nuevos, Cotizando, Cerrados). Botón 'Click-to-WhatsApp': Abre chats con clientes directamente desde el sistema sin guardar números.",
+                        title: "Tableros Operativos y Control Total",
+                        description: "Paneles de control exclusivos para tu equipo. Visualiza cada etapa de tu embudo de ventas, inicia conversaciones con un solo toque y toma decisiones con métricas reales.",
                     }
                 ]
             },
             stack: {
-                title: "Stack Tecnológico (Nivel Enterprise)",
-                description: "No usamos constructores visuales baratos. Usamos el mismo código que las startups de Silicon Valley.",
+                title: "Arquitectura de Software de Nivel Silicon Valley",
+                description: "No utilizamos constructores de páginas descartables. Desarrollamos con las mismas tecnologías que sostienen a las compañías tecnológicas más valiosas del mundo:",
                 items: [
                     {
-                        title: "Next.js & React",
-                        description: "La tecnología más rápida del mercado actual. Garantiza tiempos de carga < 1 segundo (Google ama esto para el SEO).",
+                        title: "Next.js & React 19",
+                        description: "La tecnología más rápida y moderna de la web. Cargas instantáneas menores a 1 segundo, navegación ultra fluida y el mejor puntaje de indexación para Google SEO.",
                     },
                     {
-                        title: "Tailwind CSS",
-                        description: "Diseño 100% personalizado. Pixel-perfect, sin las limitaciones de plantillas prefabricadas.",
+                        title: "Tailwind CSS & Liquid Glass",
+                        description: "Sistemas de diseño a medida, inspirados en la estética limpia de Apple. Interfaces pixel-perfect adaptadas a cualquier pantalla sin código innecesario.",
                     },
                     {
-                        title: "Supabase (Backend)",
-                        description: "Base de datos en tiempo real. Escalable a millones de usuarios. Seguridad nivel bancario.",
+                        title: "Supabase & PostgreSQL",
+                        description: "Bases de datos relacionales en la nube con sincronización en tiempo real, seguridad de grado enterprise y escalabilidad para millones de usuarios.",
                     },
                     {
-                        title: "Vercel (Infraestructura)",
-                        description: "Alojamiento en la nube global. Tu sitio nunca se 'cae' por exceso de tráfico.",
+                        title: "Vercel Edge & Cloudflare",
+                        description: "Infraestructura en la nube con distribución global en servidores de borde. Tu plataforma permanece 100% en línea ante cualquier pico de tráfico masivo.",
                     }
                 ]
             }
         },
         chatPromo: {
-            badge: "Nueva Tecnología",
-            title: "Tu Propio Agente de IA: Ventas 24/7",
-            description: "No es un chatbot básico. Es un asistente inteligente entrenado con tu información para calificar prospectos, agendar citas y cerrar ventas mientras duermes.",
+            badge: "Inteligencia Artificial Aplicada",
+            title: "Tu Propio Agente de IA: Ventas y Calificación 24/7",
+            description: "No es un chatbot básico de respuestas fijas. Diseñamos e integramos asistentes inteligentes personalizados con el conocimiento de tu negocio para dialogar naturalmente, calificar prospectos y agendar citas en automático en tu web y WhatsApp.",
             features: [
-                "Respuestas Humanas (No Robot)",
-                "Captura de Leads Automática",
-                "Integración con WhatsApp y CRM",
-                "Personalidad de Marca Única"
+                "Respuestas Naturales y Asertivas",
+                "Calificación Automática de Prospectos",
+                "Integración Directa con WhatsApp y CRM",
+                "Entrenamiento Personalizado con tu Catálogo"
             ],
-            cta: "Pruébalo Ahora",
+            cta: "Probar Agente en Vivo",
             ctaDemo: "Ver Demo"
         }
     },
     en: {
         nav: {
-            work: "Work",
             services: "Services",
-            about: "About",
+            labs: "Software Labs",
+            work: "Portfolio",
+            contact: "Contact",
             start: "Start a Project",
         },
         hero: {
-            badge: "Digital Experience Agency",
-            title: "We Craft Digital Masterpieces",
-            description: "Elevate your brand with incredible UX, cutting-edge technology, and designs that leave a lasting impression.",
-            ctaWork: "View Our Work",
-            ctaContact: "Contact Us",
+            badge: "Digital Product Engineering & AI Studio",
+            title: "We design and code software that defines brands.",
+            description: "We build ultra-fast web apps, Artificial Intelligence systems, and Apple-grade user experiences that turn visitors into loyal customers.",
+            ctaWork: "View Portfolio",
+            ctaContact: "Start a Project",
+        },
+        softwareLabs: {
+            badge: "Intellectual Property // Software Labs",
+            title: "We don't sell promises. We ship real platforms in production.",
+            description: "The best proof of our engineering capabilities is the software we build for ourselves. Three independent platforms showcasing real-time audio DSP, biomechanics, and industrial computer vision.",
         },
         portfolio: {
-            title: "Selected Work",
-            description: "A showcase of our finest digital experiences, crafted with precision and passion.",
-            visit: "Visit Site",
+            badge: "Case Studies & Clients",
+            title: "Selected Client Work",
+            description: "Platforms and brands that trust our digital architecture to scale their operations and revenue.",
+            visit: "View Project",
         },
         services: {
-            badge: "Our Expertise",
-            title: "We build brands that matter in the digital age.",
-            description: "Loya Creative Lab combines technical excellence with artistic vision to create products that are not just functional, but unforgettable.",
+            badge: "Digital Engineering Solutions",
+            title: "Transforming traditional businesses into high-revenue digital leaders.",
+            description: "We bring the same technical rigor and cutting-edge design from our Software Labs to your company. We craft digital products that eliminate operational friction and multiply conversions.",
             items: [
                 {
-                    title: "Web Design",
-                    description: "Visually stunning layouts that captivate your audience and align with your brand identity.",
-                    icon: "Layout",
-                },
-                {
-                    title: "Development",
-                    description: "Robust, scalable, and high-performance websites built with the latest technologies.",
+                    title: "Custom Web Apps & Platforms",
+                    description: "Built with Next.js and React. No generic templates: bespoke code optimized for Google SEO, sub-second load times, and scalability for millions of visits.",
                     icon: "Code",
                 },
                 {
-                    title: "Branding",
-                    description: "Complete visual identities that tell your story and set you apart from the competition.",
-                    icon: "Palette",
+                    title: "AI Agents & Sales Automation",
+                    description: "Intelligent assistants trained on your catalog and workflows to qualify leads, solve complex inquiries, and book appointments 24/7 on your website and WhatsApp.",
+                    icon: "Bot",
                 },
                 {
-                    title: "UX / UI",
-                    description: "User-centric interfaces designed for intuitive navigation and maximum conversion.",
+                    title: "Product Design & High-Conversion UX",
+                    description: "Modern interfaces inspired by Apple and Stripe standards. Every screen, button, and flow is psychologically engineered to minimize drop-off and maximize closing rates.",
                     icon: "MousePointerClick",
+                },
+                {
+                    title: "Cloud Databases & Operational CRM",
+                    description: "Cloud architecture with Supabase and custom dashboards built for your team. Centralize leads, eliminate manual tasks, and connect sales to finances in real time.",
+                    icon: "Layout",
                 },
             ]
         },
         contact: {
-            title: "Ready to start your next project?",
-            description: "Let's collaborate to build something extraordinary. Reach out to us and let's discuss your vision.",
-            email: "Get in Touch",
-            whatsapp: "WhatsApp",
+            badge: "Start Your Transformation",
+            title: "Ready to build something extraordinary?",
+            description: "Let's discuss your business goals and how the right technology architecture can accelerate your growth. Direct, honest, high-impact engineering.",
+            email: "Send Email",
+            whatsapp: "Chat on WhatsApp",
         },
         footer: {
-            description: "Crafting digital excellence for forward-thinking brands.",
+            description: "Loya Creative Lab · Software engineering, product design, and AI ecosystems for forward-thinking brands.",
             rights: "All rights reserved.",
             privacy: "Privacy Policy",
             terms: "Terms of Service",
         },
         transformation: {
-            title: "Digital Transformation for Premium Businesses",
-            subtitle: "Technology Implementation Proposal | 'Business Tech 2.0' Solution",
+            badge: "Architecture vs. Traditional Agencies",
+            title: "The difference between a slow template and a revenue-generating platform",
+            subtitle: "Software Architecture vs. Traditional Agencies",
             problem: {
-                title: "The Problem with Traditional Businesses",
-                description: "Most modern businesses suffer from 'Digital Friction':",
+                title: "The Traditional Business Problem",
+                description: "Most modern businesses suffer from severe digital friction that destroys conversions:",
                 items: [
                     {
-                        title: "Generic Websites",
-                        description: "Using Wix or WordPress templates that look identical to competitors, are slow, and break on mobile devices.",
+                        title: "Outdated Sites & Slow Templates",
+                        description: "Heavy WordPress themes or visual builders that take 4+ seconds to load, triggering a 60% bounce rate and projecting an amateur brand image.",
                     },
                     {
-                        title: "Follow-up Chaos",
-                        description: "Managing leads in Excel, notebooks, or scattered WhatsApp chats. Sales are lost due to lack of follow-up.",
+                        title: "Critical Lead Loss",
+                        description: "Leads managed in spreadsheets, paper notes, or messy WhatsApp chats. High-intent buyers grow cold and are lost due to delayed response times.",
                     },
                     {
-                        title: "Manual Processes",
-                        description: "Copying and pasting data from forms to phone contacts consumes hours every week.",
+                        title: "Operational Friction & Manual Work",
+                        description: "Hours wasted every week copying contact data, manual quotation calculations, and answering repetitive questions that modern software handles in seconds.",
                     }
                 ]
             },
             solution: {
-                title: "Our Solution: 'Digital Business Ecosystem'",
-                description: "We offer what we've successfully implemented for industry leaders: not just a webpage, but a custom operation and sales platform.",
-                valueProp: "We turn your digital presence into your best 24/7 active salesperson.",
+                title: "Our Solution: 'Conversion & Sales Ecosystem'",
+                description: "We don't hand you a static web brochure; we build a high-performance digital asset designed to operate and sell with industrial efficiency.",
+                valueProp: "We turn your digital presence into your best 24/7 active commercial consultant.",
                 items: [
                     {
-                        title: "Luxury User Experience (UX)",
-                        description: "Your site won't look like an informational page, but a fluid Native App (like Airbnb or Uber). Mobile-first design: 80% of your clients quote from their phone; your site will shine there.",
+                        title: "App-Like Native Mobile Experience",
+                        description: "Your platform responds with the speed and smoothness of a native mobile app. Built so that the 80% of clients browsing on mobile can quote and buy with zero friction.",
                     },
                     {
-                        title: "Total Automation",
-                        description: "Smart Web Form ➡️ CRM ➡️ Notification to your Phone. Zero manual data entry.",
+                        title: "Real-Time Lead Qualification & Automation",
+                        description: "Smart capture forms and AI filters deliver qualified leads straight to your WhatsApp and internal management tools in milliseconds.",
                     },
                     {
-                        title: "Pocket CRM (Your Mobile Office)",
-                        description: "Exclusive dashboard for agents. Visualize your 'Sales Funnel' (New, Quoting, Closed). 'Click-to-WhatsApp' button: Open chats with clients directly from the system without saving numbers.",
+                        title: "Custom Dashboards & Total Control",
+                        description: "Dedicated operational panels for your team. Track every stage of your sales funnel, initiate client conversations with one tap, and make decisions with real data.",
                     }
                 ]
             },
             stack: {
-                title: "Enterprise-Level Tech Stack",
-                description: "We don't use cheap visual builders. We use the same code as Silicon Valley startups.",
+                title: "Silicon Valley-Grade Software Architecture",
+                description: "We don't use disposable page builders. We build with the exact technologies powering the world's most valuable tech companies:",
                 items: [
                     {
-                        title: "Next.js & React",
-                        description: "The fastest technology on the market today. Guarantees load times < 1 second (Google loves this for SEO).",
+                        title: "Next.js & React 19",
+                        description: "The fastest, most modern web framework. Sub-second load times, smooth page transitions, and the highest possible Google SEO ranking scores.",
                     },
                     {
-                        title: "Tailwind CSS",
-                        description: "100% custom design. Pixel-perfect, without the limitations of pre-made templates.",
+                        title: "Tailwind CSS & Liquid Glass",
+                        description: "Custom design systems inspired by Apple's clean design principles. Pixel-perfect, responsive interfaces without bloated third-party code.",
                     },
                     {
-                        title: "Supabase (Backend)",
-                        description: "Real-time database. Scalable to millions of users. Bank-level security.",
+                        title: "Supabase & PostgreSQL",
+                        description: "Enterprise-grade cloud relational databases with real-time sync, high security, and seamless scalability to millions of users.",
                     },
                     {
-                        title: "Vercel (Infrastructure)",
-                        description: "Global cloud hosting. Your site never goes 'down' due to excess traffic.",
+                        title: "Vercel Edge & Cloudflare",
+                        description: "Global edge hosting infrastructure. Your application stays 100% online and loads instantly from anywhere in the world during traffic spikes.",
                     }
                 ]
             }
         },
         chatPromo: {
-            badge: "New Technology",
-            title: "Your Own AI Agent: 24/7 Sales",
-            description: "Not a basic chatbot. An intelligent assistant trained on your data to qualify leads, schedule appointments, and close sales while you sleep.",
+            badge: "Applied Artificial Intelligence",
+            title: "Your Own AI Agent: 24/7 Sales & Qualification",
+            description: "Not a basic bot with fixed canned responses. We build and integrate custom AI assistants trained on your business data to converse naturally, qualify prospects, and book appointments 24/7.",
             features: [
-                "Human-like Responses (No Robot)",
-                "Automatic Lead Capture",
-                "WhatsApp & CRM Integration",
-                "Unique Brand Personality"
+                "Natural & Context-Aware Conversations",
+                "Automated Lead Qualification",
+                "Direct WhatsApp & CRM Integration",
+                "Custom Trained on Your Product Knowledge"
             ],
-            cta: "Try It Now",
+            cta: "Test Live Agent",
             ctaDemo: "View Demo"
         }
     },
