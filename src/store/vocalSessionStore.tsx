@@ -222,21 +222,27 @@ export function VocalSessionProvider({ children }: { children: React.ReactNode }
   const [playbackRate, setPlaybackRate] = useState<number>(1.0);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
 
+  // Sincronización eficiente del tiempo de sesión sin bucles continuos de re-renderizado
   useEffect(() => {
-    let animId: number;
-    const tick = () => {
-      if (isPlayingSong && audioElementRef.current) {
-        const cur = audioElementRef.current.currentTime;
-        setSessionElapsedMs(cur * 1000);
-        setSongTime(cur);
-      } else {
+    if (!isPlayingSong && !isListening) return;
+
+    let intervalId: NodeJS.Timeout;
+    if (isPlayingSong) {
+      intervalId = setInterval(() => {
+        if (audioElementRef.current) {
+          const cur = audioElementRef.current.currentTime;
+          setSongTime(cur);
+          setSessionElapsedMs(cur * 1000);
+        }
+      }, 100);
+    } else if (isListening) {
+      intervalId = setInterval(() => {
         setSessionElapsedMs(Date.now() - sessionStartRef.current);
-      }
-      animId = requestAnimationFrame(tick);
-    };
-    animId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(animId);
-  }, [isPlayingSong]);
+      }, 200);
+    }
+
+    return () => clearInterval(intervalId);
+  }, [isPlayingSong, isListening]);
 
   // Bitácora A/B
   const [takesList, setTakesList] = useState<AcapellaTakeRecord[]>([]);
