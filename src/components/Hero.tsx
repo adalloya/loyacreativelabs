@@ -3,7 +3,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Waves } from "lucide-react";
 import { Container } from "./ui/Container";
 import { Button } from "./ui/Button";
 import { useLanguage } from "@/context/LanguageContext";
@@ -35,10 +34,10 @@ export function Hero() {
                     transition={{ duration: 0.8 }}
                     className="text-center max-w-4xl mx-auto"
                 >
-                    <span className="inline-block px-3 py-1 mb-6 text-xs font-semibold tracking-wider text-purple-400 uppercase bg-purple-900/30 rounded-full border border-purple-500/30">
+                    <span className="inline-block px-3.5 py-1 mb-6 text-xs font-medium tracking-wider text-zinc-300 uppercase bg-white/[0.06] rounded-full border border-white/10 backdrop-blur-md">
                         {t.hero.badge}
                     </span>
-                    <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-8 bg-gradient-to-b from-white to-gray-400 bg-clip-text text-transparent pb-2">
+                    <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-8 text-white pb-2">
                         {t.hero.title}
                     </h1>
                     <p className="max-w-2xl mx-auto text-lg md:text-xl text-gray-400 mb-10 leading-relaxed">
@@ -54,61 +53,68 @@ export function Hero() {
                         </Button>
                     </div>
 
-                    {/* AI Consultant CTA */}
+                    {/* Apple Style Apps Dock */}
                     <motion.div
-                        initial={{ opacity: 0, y: 10 }}
+                        initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 1, duration: 1 }}
-                        className="mt-8"
+                        transition={{ delay: 0.9, duration: 0.8 }}
+                        className="mt-12 flex flex-col items-center gap-3"
                     >
-                        <Button href="/consultant" className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white border-none shadow-[0_0_20px_rgba(124,58,237,0.5)] animate-pulse hover:animate-none flex items-center gap-2 px-8 py-4 rounded-full text-lg">
-                            <span className="text-2xl">🤖</span>
-                            <div className="text-left leading-tight">
-                                <span className="block font-bold">Hablar con Adal</span>
-                                <span className="text-[10px] opacity-80 uppercase tracking-widest">Consultor IA • 24/7</span>
-                            </div>
-                        </Button>
-                    </motion.div>
-
-                    {/* Apps & Software Labs Dock */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 1.2, duration: 0.8 }}
-                        className="mt-6 flex flex-wrap items-center justify-center gap-2 sm:gap-2.5"
-                    >
-                        <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-500">
-                            Apps en Vivo:
+                        <span className="text-[11px] font-medium uppercase tracking-widest text-zinc-500">
+                            Apps
                         </span>
-                        <Link
-                            href="/acapella"
-                            className="px-3.5 py-1.5 rounded-full bg-blue-950/50 border border-blue-500/40 text-blue-300 hover:text-white hover:border-blue-400 text-xs font-semibold flex items-center gap-1.5 shadow-[0_0_15px_rgba(10,132,255,0.25)] transition-all group"
-                        >
-                            <span className="w-2 h-2 rounded-full bg-[#30D158] animate-pulse" />
-                            <Image
-                                src="/acapella-logo.png"
-                                alt="Acapella"
-                                width={14}
-                                height={14}
-                                className="w-3.5 h-3.5 object-contain group-hover:scale-110 transition-transform"
-                            />
-                            <span>Acapella</span>
-                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-500/30 text-blue-200 font-bold uppercase">Nuevo</span>
-                        </Link>
-                        <Link
-                            href="/apex"
-                            className="px-3.5 py-1.5 rounded-full bg-red-950/40 border border-red-500/40 text-red-300 hover:text-white hover:border-red-400 text-xs font-semibold flex items-center gap-1.5 transition-all group"
-                        >
-                            <Image src="/apex-logo.png" alt="APEX" width={14} height={14} className="rounded object-cover" />
-                            <span>APEX</span>
-                        </Link>
-                        <Link
-                            href="/arco-maestro"
-                            className="px-3.5 py-1.5 rounded-full bg-yellow-950/40 border border-yellow-500/40 text-yellow-300 hover:text-white hover:border-yellow-400 text-xs font-semibold flex items-center gap-1.5 transition-all group"
-                        >
-                            <Image src="/logo-arco-maestro.png" alt="Arco Maestro" width={14} height={14} className="rounded object-cover" />
-                            <span>Arco Maestro</span>
-                        </Link>
+                        <div className="flex items-center gap-6 sm:gap-8 px-6 py-3.5 rounded-3xl bg-white/[0.04] backdrop-blur-2xl border border-white/10 shadow-2xl">
+                            <Link
+                                href="/acapella"
+                                className="group flex flex-col items-center gap-1.5 transition-transform hover:-translate-y-1 focus:outline-none"
+                            >
+                                <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-[22%] overflow-hidden bg-black/80 border border-white/15 shadow-lg group-hover:border-white/40 group-hover:shadow-[0_8px_20px_rgba(255,255,255,0.12)] transition-all">
+                                    <Image
+                                        src="/acapella-icon.png"
+                                        alt="Acapella"
+                                        fill
+                                        className="object-cover"
+                                    />
+                                </div>
+                                <span className="text-[11px] font-medium text-zinc-400 group-hover:text-white transition-colors">
+                                    Acapella
+                                </span>
+                            </Link>
+
+                            <Link
+                                href="/apex"
+                                className="group flex flex-col items-center gap-1.5 transition-transform hover:-translate-y-1 focus:outline-none"
+                            >
+                                <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-[22%] overflow-hidden bg-black/80 border border-white/15 shadow-lg group-hover:border-white/40 group-hover:shadow-[0_8px_20px_rgba(255,255,255,0.12)] transition-all">
+                                    <Image
+                                        src="/apex-icon.png"
+                                        alt="APEX"
+                                        fill
+                                        className="object-cover"
+                                    />
+                                </div>
+                                <span className="text-[11px] font-medium text-zinc-400 group-hover:text-white transition-colors">
+                                    APEX
+                                </span>
+                            </Link>
+
+                            <Link
+                                href="/arco-maestro"
+                                className="group flex flex-col items-center gap-1.5 transition-transform hover:-translate-y-1 focus:outline-none"
+                            >
+                                <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-[22%] overflow-hidden bg-black/80 border border-white/15 shadow-lg group-hover:border-white/40 group-hover:shadow-[0_8px_20px_rgba(255,255,255,0.12)] transition-all">
+                                    <Image
+                                        src="/logo-arco-maestro.png"
+                                        alt="Arco Maestro"
+                                        fill
+                                        className="object-cover"
+                                    />
+                                </div>
+                                <span className="text-[11px] font-medium text-zinc-400 group-hover:text-white transition-colors">
+                                    Arco Maestro
+                                </span>
+                            </Link>
+                        </div>
                     </motion.div>
                 </motion.div>
             </Container>

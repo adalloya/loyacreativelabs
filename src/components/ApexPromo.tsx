@@ -26,8 +26,8 @@ export default function ApexPromo() {
                         </div>
                     </div>
 
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-950/40 border border-red-500/30 text-red-400 text-xs font-mono font-bold tracking-widest uppercase">
-                        <Zap size={14} className="fill-red-400" /> LOYA LABS SOFTWARE // NUEVA HERRAMIENTA
+                    <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/[0.06] border border-white/10 text-zinc-300 text-xs font-mono tracking-widest uppercase">
+                        APEX · Autopilot Training
                     </div>
 
                     <h2 className="text-4xl md:text-6xl font-black tracking-tight text-white leading-tight">

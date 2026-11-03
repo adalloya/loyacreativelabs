@@ -27,12 +27,12 @@ export default function AcapellaPromo() {
             </div>
           </div>
 
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-blue-950/40 border border-blue-500/30 text-blue-400 text-xs font-mono font-bold tracking-widest uppercase">
-            <Sparkles size={14} className="text-[#BF5AF2]" /> NUEVA SECCIÓN INDEPENDIENTE // ACAPELLA
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/[0.06] border border-white/10 text-zinc-300 text-xs font-mono tracking-widest uppercase">
+            Acapella · Vocal Suite
           </div>
 
-          <h2 className="text-4xl md:text-6xl font-black tracking-tight text-white leading-tight">
-            Acapella <span className="bg-gradient-to-r from-[#0A84FF] via-[#BF5AF2] to-[#30D158] bg-clip-text text-transparent">· Vocal Suite</span>
+          <h2 className="text-4xl md:text-6xl font-bold tracking-tight text-white leading-tight">
+            Acapella <span className="text-zinc-400 font-light">· Vocal Suite</span>
           </h2>
 
           <p className="text-base sm:text-lg text-gray-400 font-normal leading-relaxed">
@@ -125,7 +125,7 @@ export default function AcapellaPromo() {
 
               <Link
                 href="/acapella"
-                className="mt-2 w-full py-4 rounded-2xl bg-gradient-to-r from-[#0A84FF] via-[#BF5AF2] to-[#30D158] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(10,132,255,0.4)] hover:brightness-110 active:scale-95 transition-all"
+                className="mt-2 w-full py-4 rounded-2xl bg-white text-black font-semibold text-sm flex items-center justify-center gap-2 shadow-lg hover:bg-zinc-200 active:scale-95 transition-all"
               >
                 <span>Abrir Acapella</span>
                 <ArrowRight size={16} />

@@ -18,13 +18,13 @@ export default function ChatbotPromo() {
 
                 {/* Left: Copy */}
                 <div className="space-y-8">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-900/30 border border-purple-500/30 text-purple-300 text-xs font-bold tracking-widest uppercase">
-                        <Zap size={14} className="fill-purple-300" /> {t.badge}
+                    <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/[0.06] border border-white/10 text-zinc-300 text-xs font-mono tracking-widest uppercase">
+                        {t.badge}
                     </div>
 
-                    <h2 className="text-4xl md:text-6xl font-black tracking-tight text-white leading-tight">
+                    <h2 className="text-4xl md:text-6xl font-bold tracking-tight text-white leading-tight">
                         {t.title.split(":")[0]}
-                        <span className="block text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
+                        <span className="block text-zinc-400 font-light">
                             {t.title.split(":")[1] ? t.title.split(":")[1] : ""}
                         </span>
                     </h2>
@@ -92,7 +92,7 @@ export default function ChatbotPromo() {
                         <div className="space-y-4 text-sm mb-6">
                             <div className="flex justify-start">
                                 <div className="bg-zinc-800 text-purple-200 p-3 rounded-2xl rounded-tl-sm max-w-[85%] border border-purple-500/20">
-                                    Hola 👋. Vi que estás interesado en rediseñar tu web. ¿Qué presupuesto tienes en mente?
+                                    Hola. Vi que estás interesado en rediseñar tu web. ¿Qué presupuesto tienes en mente?
                                 </div>
                             </div>
                             <div className="flex justify-end">

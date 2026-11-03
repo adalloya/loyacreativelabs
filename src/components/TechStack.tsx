@@ -17,7 +17,7 @@ export function TechStack() {
                     viewport={{ once: true }}
                     className="text-center mb-16"
                 >
-                    <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-500">
+                    <h2 className="text-3xl md:text-5xl font-bold mb-6 text-white">
                         {stack.title}
                     </h2>
                     <p className="text-xl text-gray-400 max-w-2xl mx-auto">

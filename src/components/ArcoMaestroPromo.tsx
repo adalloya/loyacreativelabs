@@ -27,12 +27,12 @@ export default function ArcoMaestroPromo() {
             </div>
           </div>
 
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-yellow-950/40 border border-yellow-500/30 text-yellow-400 text-xs font-mono font-bold tracking-widest uppercase">
-            <Zap size={14} className="fill-yellow-400" /> NUEVA SECCIÓN INDEPENDIENTE // ARCO MAESTRO
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/[0.06] border border-white/10 text-zinc-300 text-xs font-mono tracking-widest uppercase">
+            Arco Maestro · AI Welding
           </div>
 
-          <h2 className="text-4xl md:text-6xl font-black tracking-tight text-white leading-tight">
-            Arco Maestro <span className="text-yellow-400">· AI Welding</span>
+          <h2 className="text-4xl md:text-6xl font-bold tracking-tight text-white leading-tight">
+            Arco Maestro <span className="text-zinc-400 font-light">· AI Welding</span>
           </h2>
 
           <p className="text-base sm:text-lg text-gray-400 font-normal leading-relaxed">
