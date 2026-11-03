@@ -221,7 +221,9 @@ export function VocalSessionProvider({ children }: { children: React.ReactNode }
     let animId: number;
     const tick = () => {
       if (isPlayingSong && audioElementRef.current) {
-        setSessionElapsedMs(audioElementRef.current.currentTime * 1000);
+        const cur = audioElementRef.current.currentTime;
+        setSessionElapsedMs(cur * 1000);
+        setSongTime(cur);
       } else {
         setSessionElapsedMs(Date.now() - sessionStartRef.current);
       }

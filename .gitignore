@@ -48,3 +48,4 @@ test_*.js
 verify_*.js
 replication-prompt.txt
 scripts/translation_cache.json
+/bin/

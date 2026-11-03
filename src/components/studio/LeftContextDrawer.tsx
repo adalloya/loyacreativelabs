@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useVocalSession, DrawerTab } from "@/store/vocalSessionStore";
 import { VOCAL_EXERCISES, VocalExercise } from "@/components/VocalTrainerSuite";
 import { SINGING_SIMPLIFIED_COURSE, LessonItem } from "@/data/singingSimplifiedCourse";
-import { StudioSong, fetchSongMetadataAndLyrics, parsePlainLyrics } from "@/lib/musicUtils";
+import { StudioSong, fetchSongMetadataAndLyrics, parsePlainLyrics, LyricLine } from "@/lib/musicUtils";
 import { midiToNoteName, SOLFEGE_NAMES, NOTE_NAMES } from "@/lib/vocalEngine";
+import YouTubeLibraryImporter from "./YouTubeLibraryImporter";
+import { StudyTrack, studyLibraryStorage } from "@/services/studyLibraryStorage";
 import {
   Music,
   Disc,
@@ -64,6 +66,60 @@ export default function LeftContextDrawer() {
   const [songSearchQuery, setSongSearchQuery] = useState("");
   const [isSearchingLyrics, setIsSearchingLyrics] = useState(false);
   const [lyricsSearchResult, setLyricsSearchResult] = useState<StudioSong | null>(null);
+
+  // Estados locales de Librería de Estudio persistente en IndexedDB
+  const [studyTracks, setStudyTracks] = useState<StudyTrack[]>([]);
+
+  useEffect(() => {
+    studyLibraryStorage
+      .getAllTracks()
+      .then((tracks) => {
+        setStudyTracks(tracks);
+      })
+      .catch((err) => {
+        console.warn("Error cargando pistas de IndexedDB:", err);
+      });
+  }, []);
+
+  const studyTrackToStudioSong = (track: StudyTrack): StudioSong => {
+    const lyrics: LyricLine[] =
+      track.syncedLyrics.length > 0
+        ? track.syncedLyrics.map((sl, idx) => ({
+            id: `line-${idx}`,
+            time: sl.timeMs / 1000,
+            text: sl.text,
+            vocalCue: "Apoyo diafragmático y afinación centrada",
+          }))
+        : parsePlainLyrics(track.plainLyrics || `[00:00.00] ${track.title}\n[00:04.00] ${track.artist}`);
+
+    return {
+      id: track.id,
+      title: track.title,
+      artist: track.artist,
+      album: track.album,
+      coverUrl: track.thumbnailUrl,
+      duration: track.durationSec,
+      audioUrl: track.audioObjectUrl || (track.audioBlob ? URL.createObjectURL(track.audioBlob) : ""),
+      lyrics,
+      isSynced: track.syncedLyrics.length > 0,
+      createdAt: track.createdAt,
+    };
+  };
+
+  const handleSelectStudyTrack = (track: StudyTrack) => {
+    const song = studyTrackToStudioSong(track);
+    loadSong(song);
+  };
+
+  const handleStudyTrackAdded = (track: StudyTrack) => {
+    setStudyTracks((prev) => [track, ...prev.filter((t) => t.id !== track.id)]);
+    const song = studyTrackToStudioSong(track);
+    loadSong(song);
+  };
+
+  const handleStudyTrackDeleted = (id: string) => {
+    setStudyTracks((prev) => prev.filter((t) => t.id !== id));
+  };
 
   // Estados locales para Academia
   const [selectedLesson, setSelectedLesson] = useState<LessonItem | null>(null);
@@ -351,71 +407,25 @@ export default function LeftContextDrawer() {
       )}
 
       {/* ======================================================== */}
-      {/* PESTAÑA 2: CANCIONES & KARAOKE (LRCLIB + MP3)            */}
+      {/* PESTAÑA 2: CANCIONES & KARAOKE (LRCLIB + YOUTUBE MP3)    */}
       {/* ======================================================== */}
       {activeDrawerTab === "songs" && (
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
-          {/* Subir MP3 Local */}
-          <label className="flex flex-col items-center justify-center p-4 border border-dashed border-white/20 hover:border-blue-400 rounded-2xl bg-white/[0.02] hover:bg-blue-950/20 transition cursor-pointer text-center">
-            <Upload size={18} className="text-blue-400 mb-1" />
-            <span className="font-bold text-white text-[11px]">Subir pista MP3</span>
-            <span className="text-[9px] text-zinc-500">Tu audio local se sincroniza al lienzo</span>
-            <input type="file" accept="audio/*" onChange={handleUploadAudio} className="hidden" />
-          </label>
-
-          {/* Buscador LRCLIB */}
-          <div className="space-y-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
-              Buscar en Catálogo LRCLIB (3M+ Canciones)
-            </span>
-            <div className="flex gap-1.5">
-              <input
-                type="text"
-                value={songSearchQuery}
-                onChange={(e) => setSongSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearchLRCLIB()}
-                placeholder="Ej: Lamento Boliviano - Enanitos"
-                className="flex-1 bg-black/50 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
-              />
-              <button
-                onClick={handleSearchLRCLIB}
-                disabled={isSearchingLyrics}
-                className="px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold flex items-center justify-center transition disabled:opacity-50"
-              >
-                <Search size={13} />
-              </button>
-            </div>
-
-            {lyricsSearchResult && (
-              <div className="p-3 bg-blue-950/40 border border-blue-500/40 rounded-xl space-y-2">
-                <div className="font-bold text-white text-xs">{lyricsSearchResult.title}</div>
-                <div className="text-[10px] text-zinc-400">{lyricsSearchResult.artist}</div>
-                <button
-                  onClick={() => {
-                    loadSong(lyricsSearchResult);
-                    setLyricsSearchResult(null);
-                  }}
-                  className="w-full py-1.5 bg-blue-600 text-white font-bold rounded-lg text-[10px]"
-                >
-                  Cargar Letra Sincronizada al Teleprompter
-                </button>
-              </div>
-            )}
-          </div>
-
+        <div className="flex-1 flex flex-col overflow-hidden text-xs">
           {/* Controles de Reproducción de la Canción Activa */}
           {activeSong && (
-            <div className="bg-[#141620] border border-white/10 p-3.5 rounded-2xl space-y-3">
+            <div className="bg-[#141620] border-b border-white/10 p-3.5 space-y-2.5 shrink-0">
               <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-bold text-white text-xs truncate max-w-[180px]">
+                <div className="min-w-0 mr-2">
+                  <div className="font-bold text-white text-xs truncate">
                     {activeSong.title}
                   </div>
-                  <div className="text-[10px] text-zinc-400">{activeSong.artist}</div>
+                  <div className="text-[10px] text-zinc-400 truncate">{activeSong.artist}</div>
                 </div>
                 <button
+                  type="button"
                   onClick={togglePlaySong}
-                  className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center shadow-lg transition"
+                  className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center shadow-lg transition shrink-0"
+                  title={isPlayingSong ? "Pausar pista" : "Reproducir pista"}
                 >
                   {isPlayingSong ? <Pause size={14} /> : <Play size={14} className="ml-0.5" />}
                 </button>
@@ -444,6 +454,7 @@ export default function LeftContextDrawer() {
                   {[0.8, 1.0, 1.1].map((rate) => (
                     <button
                       key={rate}
+                      type="button"
                       onClick={() => setPlaybackRate(rate)}
                       className={`px-2 py-0.5 rounded-md border ${
                         playbackRate === rate
@@ -459,28 +470,15 @@ export default function LeftContextDrawer() {
             </div>
           )}
 
-          {/* Librería de Pistas Disponibles */}
-          <div className="space-y-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
-              Librería Guardada
-            </span>
-            {songsLibrary.map((song) => (
-              <div
-                key={song.id}
-                onClick={() => loadSong(song)}
-                className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition ${
-                  activeSong?.id === song.id
-                    ? "bg-blue-950/30 border-blue-500/40 text-white"
-                    : "bg-[#141620] border-white/10 text-zinc-400 hover:text-white"
-                }`}
-              >
-                <div className="truncate mr-2">
-                  <div className="font-semibold text-xs text-white truncate">{song.title}</div>
-                  <div className="text-[10px] text-zinc-500">{song.artist}</div>
-                </div>
-                <ChevronRight size={14} className="text-zinc-600 shrink-0" />
-              </div>
-            ))}
+          {/* Importador YouTube a MP3 y Gestor de Librería de Estudio */}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <YouTubeLibraryImporter
+              tracks={studyTracks}
+              activeTrackId={activeSong?.id}
+              onSelectTrack={handleSelectStudyTrack}
+              onTrackAdded={handleStudyTrackAdded}
+              onTrackDeleted={handleStudyTrackDeleted}
+            />
           </div>
         </div>
       )}
