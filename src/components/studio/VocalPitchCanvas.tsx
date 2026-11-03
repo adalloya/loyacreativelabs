@@ -122,7 +122,8 @@ export const VocalPitchCanvas: React.FC<VocalPitchCanvasProps> = ({
 
       const width = rect.width;
       const height = rect.height;
-      const leftAxisWidth = 68;
+      const isMobileWidth = width < 640;
+      const leftAxisWidth = isMobileWidth ? 42 : 68;
       const graphWidth = width - leftAxisWidth;
       const midiRange = maxMidi - minMidi;
       const rowHeight = height / midiRange;
@@ -356,9 +357,13 @@ export const VocalPitchCanvas: React.FC<VocalPitchCanvasProps> = ({
           : '#CBD5E1';
         ctx.font = isUserLandmark ? '700 11px "JetBrains Mono", monospace' : '500 10px "JetBrains Mono", monospace';
         ctx.textAlign = 'left';
-        ctx.fillText(`${info.solfege}`, 8, y + 3.5);
-        ctx.fillStyle = '#64748B';
-        ctx.fillText(`${info.scientific}`, 42, y + 3.5);
+        if (isMobileWidth) {
+          ctx.fillText(`${info.solfege}`, 3, y + 3.5);
+        } else {
+          ctx.fillText(`${info.solfege}`, 8, y + 3.5);
+          ctx.fillStyle = '#64748B';
+          ctx.fillText(`${info.scientific}`, 42, y + 3.5);
+        }
       }
 
       ctx.restore();
@@ -433,20 +438,20 @@ export const VocalPitchCanvas: React.FC<VocalPitchCanvasProps> = ({
   return (
     <div className="relative flex-1 flex flex-col bg-[#090A0F] overflow-hidden select-none">
       {/* 1. HUD SUPERIOR DE PRECISIÓN EN VIVO (NOTA, HZ, CENTS Y FONÉTICA) */}
-      <div className="absolute top-3 left-20 right-4 z-10 flex items-center justify-between pointer-events-none">
-        <div className="flex items-center gap-4 bg-[#11131A]/90 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl pointer-events-auto shadow-lg">
-          <div className="flex items-baseline gap-2 min-w-[115px]">
-            <span className="text-2xl font-bold font-mono text-white tracking-tight">
+      <div className="absolute top-2 left-12 right-2 sm:top-3 sm:left-20 sm:right-4 z-10 flex items-center justify-between pointer-events-none">
+        <div className="flex items-center gap-2 sm:gap-4 bg-[#11131A]/90 backdrop-blur-md border border-white/10 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl pointer-events-auto shadow-lg max-w-[85vw]">
+          <div className="flex items-baseline gap-1.5 sm:gap-2 shrink-0">
+            <span className="text-xl sm:text-2xl font-bold font-mono text-white tracking-tight">
               {activeNoteInfo ? activeNoteInfo.solfege : '—'}
             </span>
-            <span className="text-xs font-mono text-slate-400">
-              {activeNoteInfo ? `${activeNoteInfo.scientific} • ${displayedSample?.freq?.toFixed(1)} Hz` : 'Esperando voz'}
+            <span className="text-[10px] sm:text-xs font-mono text-slate-400">
+              {activeNoteInfo ? `${activeNoteInfo.scientific}` : 'Esperando voz'}
             </span>
           </div>
 
           {/* Medidor lineal de desviación en Cents (-50c a +50c) */}
-          <div className="flex flex-col w-44">
-            <div className="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
+          <div className="flex flex-col w-24 sm:w-44">
+            <div className="flex justify-between text-[9px] sm:text-[10px] font-mono text-slate-400 mb-0.5 sm:mb-1">
               <span>-50c</span>
               <span
                 className={
@@ -458,8 +463,8 @@ export const VocalPitchCanvas: React.FC<VocalPitchCanvasProps> = ({
                 }
               >
                 {activeNoteInfo
-                  ? `${displayedSample!.centsOff > 0 ? '+' : ''}${Math.round(displayedSample!.centsOff)} cents`
-                  : 'Centro Exacto'}
+                  ? `${displayedSample!.centsOff > 0 ? '+' : ''}${Math.round(displayedSample!.centsOff)}c`
+                  : 'Centro'}
               </span>
               <span>+50c</span>
             </div>
@@ -491,8 +496,8 @@ export const VocalPitchCanvas: React.FC<VocalPitchCanvasProps> = ({
           )}
         </div>
 
-        {/* Controles de Zoom del Lienzo */}
-        <div className="flex items-center gap-1.5 bg-[#11131A]/90 backdrop-blur-md border border-white/10 px-2.5 py-1.5 rounded-xl pointer-events-auto">
+        {/* Controles de Zoom del Lienzo (Solo Desktop) */}
+        <div className="hidden sm:flex items-center gap-1.5 bg-[#11131A]/90 backdrop-blur-md border border-white/10 px-2.5 py-1.5 rounded-xl pointer-events-auto">
           <button
             onClick={() => setVisibleWindowMs((w) => Math.max(4000, w - 2000))}
             className="p-1 text-slate-400 hover:text-white transition"
@@ -563,20 +568,21 @@ export const VocalPitchCanvas: React.FC<VocalPitchCanvasProps> = ({
       )}
 
       {/* 4. BARRA INFERIOR DE TIME-SCRUBBING (REBOBINAR SESIÓN PARA REVISAR AFINACIÓN) */}
-      <div className="h-10 bg-[#11131A] border-t border-white/10 px-4 flex items-center gap-4 z-20">
+      <div className="h-9 sm:h-10 bg-[#11131A] border-t border-white/10 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 z-20">
         <button
           onClick={() => {
             setIsLive(false);
             setScrubTimeMs((t) => Math.max(0, t - 5000));
           }}
-          className="flex items-center gap-1 text-xs font-mono text-slate-300 hover:text-white px-2 py-1 rounded bg-white/5 hover:bg-white/10 transition"
+          className="flex items-center gap-1 text-[11px] sm:text-xs font-mono text-slate-300 hover:text-white px-1.5 sm:px-2 py-1 rounded bg-white/5 hover:bg-white/10 transition shrink-0"
           title="Retroceder 5 segundos"
         >
-          <Rewind className="w-3.5 h-3.5" /> -5s
+          <Rewind className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+          <span className="hidden sm:inline">-5s</span>
         </button>
 
-        <div className="flex-1 flex items-center gap-3">
-          <span className="text-[11px] font-mono text-slate-400 w-12 text-right">
+        <div className="flex-1 flex items-center gap-2 sm:gap-3 min-w-0">
+          <span className="text-[10px] sm:text-[11px] font-mono text-slate-400 w-9 sm:w-12 text-right shrink-0">
             {(currentPlayheadMs / 1000).toFixed(1)}s
           </span>
           <input
@@ -591,7 +597,7 @@ export const VocalPitchCanvas: React.FC<VocalPitchCanvasProps> = ({
             }}
             className="flex-1 accent-blue-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
           />
-          <span className="text-[11px] font-mono text-slate-500 w-12">
+          <span className="text-[10px] sm:text-[11px] font-mono text-slate-500 w-9 sm:w-12 shrink-0">
             {(sessionElapsedMs / 1000).toFixed(1)}s
           </span>
         </div>
@@ -604,21 +610,23 @@ export const VocalPitchCanvas: React.FC<VocalPitchCanvasProps> = ({
               return next;
             });
           }}
-          className="flex items-center gap-1 text-xs font-mono text-slate-300 hover:text-white px-2 py-1 rounded bg-white/5 hover:bg-white/10 transition"
+          className="flex items-center gap-1 text-[11px] sm:text-xs font-mono text-slate-300 hover:text-white px-1.5 sm:px-2 py-1 rounded bg-white/5 hover:bg-white/10 transition shrink-0"
+          title="Adelantar 5 segundos"
         >
-          +5s <FastForward className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">+5s</span>
+          <FastForward className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
         </button>
 
         <button
           onClick={() => setIsLive(true)}
-          className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-semibold transition ${
+          className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-mono font-semibold transition shrink-0 ${
             isLive
               ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
               : 'bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse'
           }`}
         >
-          <Radio className="w-3.5 h-3.5" />
-          {isLive ? 'EN VIVO' : 'VOLVER A VIVO'}
+          <Radio className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+          <span>{isLive ? 'VIVO' : 'VOLVER'}</span>
         </button>
       </div>
     </div>

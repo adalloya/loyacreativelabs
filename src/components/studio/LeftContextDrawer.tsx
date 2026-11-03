@@ -41,6 +41,7 @@ export default function LeftContextDrawer() {
     activeDrawerTab,
     setActiveDrawerTab,
     isDrawerOpen,
+    toggleDrawer,
     activeExercise,
     exerciseRootMidi,
     setExerciseRootMidi,
@@ -242,7 +243,20 @@ export default function LeftContextDrawer() {
   if (!isDrawerOpen) return null;
 
   return (
-    <aside className="w-80 sm:w-[340px] bg-[#11131A] border-r border-white/[0.08] flex flex-col shrink-0 select-none h-full z-20">
+    <aside className="fixed inset-0 top-14 z-40 bg-[#0E1017] flex flex-col md:relative md:inset-auto md:top-auto md:w-80 lg:w-[340px] md:bg-[#11131A] border-r border-white/[0.08] shrink-0 select-none h-[calc(100dvh-3.5rem)] md:h-full overflow-hidden animate-in fade-in md:animate-none">
+      {/* Barra de cabecera solo visible en móvil para cerrar y volver al lienzo */}
+      <div className="flex md:hidden items-center justify-between px-4 py-2.5 bg-[#141620] border-b border-white/10 shrink-0">
+        <span className="text-xs font-bold text-white font-mono uppercase tracking-wider flex items-center gap-1.5">
+          <Layers size={14} className="text-blue-400" /> Panel de Estudio
+        </span>
+        <button
+          onClick={toggleDrawer}
+          className="px-3 py-1 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-mono font-semibold transition flex items-center gap-1.5 shadow-sm"
+        >
+          <span>Ver Lienzo</span> ✕
+        </button>
+      </div>
+
       {/* Selector de Pestañas Superiores */}
       <div className="p-2 border-b border-white/[0.08] bg-[#0E1017]">
         <div className="grid grid-cols-4 gap-1 bg-black/50 p-1 rounded-2xl border border-white/[0.06]">

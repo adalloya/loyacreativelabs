@@ -206,7 +206,7 @@ export const TeleprompterWindow: React.FC<TeleprompterWindowProps> = ({
       className={`fixed z-50 transition-all select-none ${
         isFullscreen
           ? "inset-0 bg-[#090A0F]"
-          : "inset-4 sm:inset-10 lg:inset-16 bg-[#0B0D14]/95 backdrop-blur-xl border border-white/15 rounded-3xl shadow-2xl overflow-hidden"
+          : "inset-0 sm:inset-6 lg:inset-14 bg-[#090A0F] sm:bg-[#0B0D14]/95 sm:backdrop-blur-xl sm:border sm:border-white/15 sm:rounded-3xl shadow-2xl overflow-hidden"
       } flex flex-col`}
     >
       {/* 1. BARRA SUPERIOR DE LA VENTANA */}

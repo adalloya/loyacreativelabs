@@ -23,6 +23,8 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Tv,
+  MoreHorizontal,
+  X,
 } from "lucide-react";
 import { SOLFEGE_NAMES, NOTE_NAMES, midiToNoteName } from "@/lib/vocalEngine";
 
@@ -60,6 +62,7 @@ export default function TopStudioBar() {
   } = useVocalSession();
 
   const [showGainSlider, setShowGainSlider] = useState(false);
+  const [showMobileTools, setShowMobileTools] = useState(false);
   const [tapTimes, setTapTimes] = useState<number[]>([]);
 
   // Tap Tempo para el metrónomo
@@ -184,8 +187,8 @@ export default function TopStudioBar() {
         </button>
       </div>
 
-      {/* 2. Centro: Barra de Transporte y Herramientas Acústicas */}
-      <div className="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto no-scrollbar">
+      {/* 2. Centro: Barra de Transporte y Herramientas Acústicas (Desktop) */}
+      <div className="hidden md:flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto no-scrollbar">
         {/* Grabación A/B Rápida */}
         <div className="flex items-center bg-black/40 border border-white/10 rounded-xl p-1 gap-1">
           {isRecordingTake ? (
@@ -296,21 +299,75 @@ export default function TopStudioBar() {
         </button>
       </div>
 
-      {/* 3. Derecha: Badge de Rango Vocal & Calibración */}
-      <div className="relative flex items-center gap-2 shrink-0">
+      {/* 2. Centro Mobile: Grabación Rápida */}
+      <div className="flex md:hidden items-center gap-1.5 shrink-0">
+        <div className="flex items-center bg-black/40 border border-white/10 rounded-xl p-0.5">
+          {isRecordingTake ? (
+            <button
+              onClick={() => stopRecordingTake()}
+              className="px-2 py-1 rounded-lg bg-red-600 text-white text-[11px] font-semibold flex items-center gap-1 shadow-md"
+            >
+              <Square size={9} className="fill-white" />
+              <span className="font-mono">
+                {Math.floor(recordingSeconds / 60)}:{(recordingSeconds % 60).toString().padStart(2, "0")}
+              </span>
+            </button>
+          ) : (
+            <button
+              onClick={() => startRecordingTake(recordingTitle)}
+              className="px-2 py-1 rounded-lg bg-red-950/40 border border-red-500/30 text-red-400 text-[11px] font-semibold flex items-center gap-1"
+            >
+              <Circle size={7} className="fill-red-500 text-red-500 animate-pulse" />
+              <span className="font-mono font-bold">REC</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 3. Derecha: Badge de Rango Vocal & Herramientas Mobile */}
+      <div className="relative flex items-center gap-1.5 sm:gap-2 shrink-0">
+        {/* Teleprompter en Ventana (Solo Mobile) */}
+        <button
+          type="button"
+          onClick={toggleTeleprompter}
+          className={`p-1.5 rounded-xl border text-xs font-mono md:hidden transition cursor-pointer ${
+            teleprompterOpen
+              ? "bg-blue-600 text-white border-blue-400"
+              : "bg-white/[0.04] border-white/10 text-zinc-400 hover:text-white"
+          }`}
+          title="Teleprompter en Vivo"
+        >
+          <Tv size={14} className={teleprompterOpen ? "text-white" : "text-blue-400"} />
+        </button>
+
+        {/* Botón de Herramientas Rápidas en Móvil */}
+        <button
+          type="button"
+          onClick={() => setShowMobileTools(true)}
+          className={`p-1.5 rounded-xl border text-xs font-mono md:hidden transition cursor-pointer ${
+            showMobileTools
+              ? "bg-blue-600 text-white border-blue-400"
+              : "bg-white/[0.04] border-white/10 text-zinc-300 hover:text-white"
+          }`}
+          title="Herramientas Acústicas y Metrónomo"
+        >
+          <MoreHorizontal size={15} />
+        </button>
+
+        {/* Badge de Tesitura */}
         <button
           onClick={() => setIsProfilePopoverOpen(!isProfilePopoverOpen)}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-zinc-300 transition cursor-pointer"
+          className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-zinc-300 transition cursor-pointer"
         >
-          <div className="flex items-center gap-1.5 font-mono text-xs">
-            <span className="text-blue-400">{lowestName.split(" ")[0]}</span>
-            <span className="text-zinc-600">•</span>
+          <div className="flex items-center gap-1 sm:gap-1.5 font-mono text-[11px] sm:text-xs">
+            <span className="text-blue-400 hidden sm:inline">{lowestName.split(" ")[0]}</span>
+            <span className="text-zinc-600 hidden sm:inline">•</span>
             <span className="text-purple-400 font-bold">{passaggioName.split(" ")[0]}</span>
-            <span className="text-zinc-600">•</span>
-            <span className="text-amber-400">{highestName.split(" ")[0]}</span>
+            <span className="text-zinc-600 hidden sm:inline">•</span>
+            <span className="text-amber-400 hidden sm:inline">{highestName.split(" ")[0]}</span>
           </div>
           <span className="text-[10px] text-zinc-500 font-mono hidden sm:inline">({octavesRange} Oct)</span>
-          <ChevronDown size={13} className="text-zinc-500" />
+          <ChevronDown size={11} className="text-zinc-500" />
         </button>
 
         {/* Popover de Tesitura y Calibración Rápida */}
@@ -361,6 +418,99 @@ export default function TopStudioBar() {
                   Listo
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL BOTTOM SHEET: HERRAMIENTAS Y TRANSPORTE EN MÓVIL */}
+        {showMobileTools && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex flex-col justify-end md:hidden animate-in fade-in">
+            <div className="bg-[#141620] border-t border-white/15 rounded-t-3xl p-4 space-y-4 max-h-[85vh] overflow-y-auto">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <span className="text-sm font-bold text-white font-mono uppercase tracking-wider flex items-center gap-2">
+                  <Sliders size={16} className="text-blue-400" /> Herramientas de Estudio
+                </span>
+                <button
+                  onClick={() => setShowMobileTools(false)}
+                  className="p-1 rounded-lg bg-white/10 text-zinc-400 hover:text-white"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Metrónomo Mobile */}
+              <div className="p-3 bg-black/40 border border-white/10 rounded-2xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono font-semibold text-zinc-300">Metrónomo</span>
+                  <span className="text-xs font-mono font-bold text-amber-400">{metronomeBpm} BPM</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={toggleMetronome}
+                    className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold flex items-center gap-1.5 ${
+                      metronomePlaying ? "bg-amber-500 text-black" : "bg-white/10 text-white"
+                    }`}
+                  >
+                    {metronomePlaying ? <Pause size={12} /> : <Play size={12} />}
+                    <span>{metronomePlaying ? "Pausar" : "Iniciar"}</span>
+                  </button>
+                  <input
+                    type="range"
+                    min="50"
+                    max="200"
+                    value={metronomeBpm}
+                    onChange={(e) => setMetronomeBpm(parseInt(e.target.value, 10))}
+                    className="flex-1 accent-amber-400 cursor-pointer"
+                  />
+                  <button
+                    onClick={handleTapTempo}
+                    className="px-2.5 py-1.5 rounded-xl bg-white/10 text-xs font-mono text-white font-bold"
+                  >
+                    TAP
+                  </button>
+                </div>
+              </div>
+
+              {/* Fila de Herramientas Acústicas Rápidas */}
+              <div className="grid grid-cols-2 gap-2">
+                {/* Reverb */}
+                <button
+                  onClick={toggleReverb}
+                  className={`p-3 rounded-2xl border flex flex-col items-center gap-1 text-xs font-mono font-semibold transition ${
+                    reverbActive
+                      ? "bg-purple-950/50 border-purple-500/50 text-purple-300"
+                      : "bg-black/40 border-white/10 text-zinc-400"
+                  }`}
+                >
+                  <Waves size={18} className={reverbActive ? "text-purple-400" : "text-zinc-500"} />
+                  <span>Reverb: {reverbActive ? "ON" : "OFF"}</span>
+                </button>
+
+                {/* Modo Atril */}
+                <button
+                  onClick={toggleWakeLock}
+                  className={`p-3 rounded-2xl border flex flex-col items-center gap-1 text-xs font-mono font-semibold transition ${
+                    wakeLockActive
+                      ? "bg-cyan-950/50 border-cyan-500/50 text-cyan-300"
+                      : "bg-black/40 border-white/10 text-zinc-400"
+                  }`}
+                >
+                  <Sun size={18} className={wakeLockActive ? "text-cyan-400" : "text-zinc-500"} />
+                  <span>Modo Atril: {wakeLockActive ? "ON" : "OFF"}</span>
+                </button>
+              </div>
+
+              {/* Afinador de Guitarra */}
+              <button
+                onClick={() => {
+                  toggleGuitarTuner();
+                  setShowMobileTools(false);
+                }}
+                className="w-full p-3 rounded-2xl bg-black/40 border border-white/10 hover:border-amber-500/40 text-amber-300 font-mono text-xs font-semibold flex items-center justify-center gap-2 transition"
+              >
+                <Guitar size={16} />
+                <span>Abrir Afinador de Guitarra Pro</span>
+              </button>
             </div>
           </div>
         )}

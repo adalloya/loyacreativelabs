@@ -138,8 +138,8 @@ export const TapToSyncModal: React.FC<TapToSyncModalProps> = ({
   const syncedCount = lyrics.filter((l) => l.time !== null).length;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-in fade-in select-none">
-      <div className="w-full max-w-3xl bg-[#0F111A] border border-white/15 rounded-3xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-0 sm:p-4 lg:p-6 animate-in fade-in select-none">
+      <div className="w-full h-full sm:h-auto max-w-3xl bg-[#0F111A] border-0 sm:border sm:border-white/15 rounded-none sm:rounded-3xl shadow-2xl flex flex-col max-h-[100dvh] sm:max-h-[92vh] overflow-hidden">
         {/* HEADER */}
         <div className="px-5 py-4 bg-[#141724] border-b border-white/10 flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
