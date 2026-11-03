@@ -84,6 +84,14 @@ class GrandPianoEngine {
     }
   }
 
+  public releaseAll() {
+    if (typeof window === 'undefined') return;
+    if (this.sustainActive) return;
+    this.sampler?.releaseAll();
+    this.activeMidiNotes.clear();
+    this.notifyListeners();
+  }
+
   public async triggerAttack(midi: number, velocity: number = 0.85) {
     if (typeof window === 'undefined') return;
     if (!this.isLoaded) await this.init();

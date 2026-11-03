@@ -36,6 +36,19 @@ export const InteractiveGrandPiano: React.FC<InteractiveGrandPianoProps> = ({
     return unsubscribe;
   }, []);
 
+  // Listener global para soltar el ratón en cualquier parte de la ventana
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      setIsMouseDown(false);
+      if (!sustain) {
+        grandPiano.releaseAll();
+      }
+    };
+
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, [sustain]);
+
   const startMidi = (startOctave + 1) * 12; // C2 = 36
   const endMidi = startMidi + visibleOctaves * 12; // C6 = 84
 
@@ -54,19 +67,33 @@ export const InteractiveGrandPiano: React.FC<InteractiveGrandPianoProps> = ({
 
   const handleKeyEnter = (midi: number) => {
     if (isMouseDown) {
-      grandPiano.triggerAttack(midi, 0.8);
+      grandPiano.triggerAttack(midi, 0.85);
+    }
+  };
+
+  const handleKeyLeave = (midi: number) => {
+    if (isMouseDown && !sustain) {
+      grandPiano.triggerRelease(midi);
     }
   };
 
   const handleKeyUp = (midi: number) => {
-    grandPiano.triggerRelease(midi);
+    if (!sustain) {
+      grandPiano.triggerRelease(midi);
+    }
   };
 
   return (
     <div
       className="h-44 bg-[#0D0F16] border-t border-white/10 flex flex-col select-none z-20 shrink-0"
-      onMouseUp={() => setIsMouseDown(false)}
-      onMouseLeave={() => setIsMouseDown(false)}
+      onMouseUp={() => {
+        setIsMouseDown(false);
+        if (!sustain) grandPiano.releaseAll();
+      }}
+      onMouseLeave={() => {
+        setIsMouseDown(false);
+        if (!sustain) grandPiano.releaseAll();
+      }}
     >
       {/* Barra de control del Grand Piano */}
       <div className="h-9 px-4 bg-[#11131A] border-b border-white/5 flex items-center justify-between text-xs font-mono">
@@ -155,12 +182,14 @@ export const InteractiveGrandPiano: React.FC<InteractiveGrandPianoProps> = ({
               <div
                 onMouseDown={() => handleKeyDown(key.midi)}
                 onMouseEnter={() => handleKeyEnter(key.midi)}
+                onMouseLeave={() => handleKeyLeave(key.midi)}
                 onMouseUp={() => handleKeyUp(key.midi)}
                 onTouchStart={(e) => {
                   e.preventDefault();
                   handleKeyDown(key.midi);
                 }}
                 onTouchEnd={() => handleKeyUp(key.midi)}
+                onTouchCancel={() => handleKeyUp(key.midi)}
                 className={`w-full h-full mx-[1px] rounded-b-md border border-slate-300/80 flex flex-col justify-between items-center pb-1.5 pt-1 cursor-pointer transition-all duration-75 ${
                   isVoiceSinging
                     ? Math.abs(voiceCentsOff) <= 20
@@ -213,6 +242,10 @@ export const InteractiveGrandPiano: React.FC<InteractiveGrandPianoProps> = ({
                       e.stopPropagation();
                       handleKeyEnter(blackKey.midi);
                     }}
+                    onMouseLeave={(e) => {
+                      e.stopPropagation();
+                      handleKeyLeave(blackKey.midi);
+                    }}
                     onMouseUp={(e) => {
                       e.stopPropagation();
                       handleKeyUp(blackKey.midi);
@@ -223,6 +256,10 @@ export const InteractiveGrandPiano: React.FC<InteractiveGrandPianoProps> = ({
                       handleKeyDown(blackKey.midi);
                     }}
                     onTouchEnd={(e) => {
+                      e.stopPropagation();
+                      handleKeyUp(blackKey.midi);
+                    }}
+                    onTouchCancel={(e) => {
                       e.stopPropagation();
                       handleKeyUp(blackKey.midi);
                     }}
