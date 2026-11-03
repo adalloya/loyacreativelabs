@@ -1,5 +1,6 @@
 // src/services/studyLibraryStorage.ts
 import type { PhraseLineAnnotation } from '../components/studio/SongAnnotationEditor';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 export interface SyncedLyricLine {
   timeMs: number;
@@ -134,6 +135,27 @@ export const studyLibraryStorage = {
       tx.onerror = () => reject(tx.error);
     });
 
+    // Sincronización en la nube (si la tabla 'songs' de Supabase está creada)
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from('songs').upsert({
+          id: track.id,
+          title: track.title,
+          artist: track.artist,
+          album: track.album || null,
+          duration: track.durationSec,
+          cover_url: track.thumbnailUrl,
+          audio_url: track.sourceUrl || '',
+          synced_lyrics: track.syncedLyrics,
+          plain_lyrics: track.plainLyrics || null,
+          annotations: track.annotations || null,
+          updated_at: new Date().toISOString(),
+        });
+      } catch {
+        // Fallback offline silencioso si la tabla no está creada
+      }
+    }
+
     return {
       ...track,
       audioObjectUrl: URL.createObjectURL(track.audioBlob),
@@ -185,6 +207,17 @@ export const studyLibraryStorage = {
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
       });
+
+      if (isSupabaseConfigured) {
+        try {
+          await supabase.from('songs').update({
+            annotations: annotations,
+            updated_at: new Date().toISOString(),
+          }).eq('id', id);
+        } catch {
+          // Fallback offline
+        }
+      }
     }
   },
 };
