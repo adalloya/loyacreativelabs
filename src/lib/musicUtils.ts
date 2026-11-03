@@ -5,6 +5,8 @@ export interface LyricLine {
   time: number | null; // Segundos (ej. 14.32) o null si aún no está sincronizado
   text: string;
   vocalCue?: string;
+  chord?: string;
+  targetNote?: string;
 }
 
 export interface StudioSong {

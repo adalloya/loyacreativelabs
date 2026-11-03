@@ -14,6 +14,12 @@ import { grandPiano } from "@/audio/grandPianoEngine";
 import { StudioSong, LyricLine, loadStudioLibrary, saveStudioLibrary } from "@/lib/musicUtils";
 import { AcapellaTakeRecord, loadSavedTakes, persistTake } from "@/lib/acapella-supabase";
 import { VOCAL_EXERCISES, VocalExercise } from "@/components/VocalTrainerSuite";
+import {
+  PitchSample,
+  TargetNoteBlock as CanvasTargetNoteBlock,
+  LyricCue,
+  VocalProfile as CanvasVocalProfile,
+} from "@/components/studio/VocalPitchCanvas";
 
 export type DrawerTab = "vocalize" | "songs" | "academy" | "takes";
 
@@ -63,6 +69,15 @@ interface VocalSessionContextType {
   setScrubOffsetSeconds: (offset: number) => void;
   zoomSeconds: number;
   setZoomSeconds: (zoom: number) => void;
+
+  // 60 FPS Pitch Canvas props
+  samplesBuffer: PitchSample[];
+  comparisonSamples: PitchSample[];
+  targetBlocks: CanvasTargetNoteBlock[];
+  activeLyricCue: LyricCue | null;
+  nextLyricCue: LyricCue | null;
+  sessionElapsedMs: number;
+  activePhoneticTip?: string;
 
   // Perfil Vocal
   vocalProfile: UserVocalProfile;
@@ -170,6 +185,12 @@ export function VocalSessionProvider({ children }: { children: React.ReactNode }
   const [scrubOffsetSeconds, setScrubOffsetSeconds] = useState<number>(0);
   const [zoomSeconds, setZoomSeconds] = useState<number>(10); // 10 segundos visibles en lienzo
 
+  // 60 FPS Pitch Canvas props & time tracking
+  const sessionStartRef = useRef<number>(Date.now());
+  const [sessionElapsedMs, setSessionElapsedMs] = useState<number>(0);
+  const [samplesBuffer, setSamplesBuffer] = useState<PitchSample[]>([]);
+  const [canvasTargetBlocks, setCanvasTargetBlocks] = useState<CanvasTargetNoteBlock[]>([]);
+
   // Perfil Vocal
   const [vocalProfile, setVocalProfile] = useState<UserVocalProfile>(DEFAULT_PROFILE);
   const [isProfilePopoverOpen, setIsProfilePopoverOpen] = useState<boolean>(false);
@@ -195,6 +216,20 @@ export function VocalSessionProvider({ children }: { children: React.ReactNode }
   const [songDuration, setSongDuration] = useState<number>(0);
   const [playbackRate, setPlaybackRate] = useState<number>(1.0);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    let animId: number;
+    const tick = () => {
+      if (isPlayingSong && audioElementRef.current) {
+        setSessionElapsedMs(audioElementRef.current.currentTime * 1000);
+      } else {
+        setSessionElapsedMs(Date.now() - sessionStartRef.current);
+      }
+      animId = requestAnimationFrame(tick);
+    };
+    animId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(animId);
+  }, [isPlayingSong]);
 
   // Bitácora A/B
   const [takesList, setTakesList] = useState<AcapellaTakeRecord[]>([]);
@@ -249,6 +284,9 @@ export function VocalSessionProvider({ children }: { children: React.ReactNode }
 
   const clearHistoryBuffer = () => {
     setPitchHistoryBuffer([]);
+    setSamplesBuffer([]);
+    sessionStartRef.current = Date.now();
+    setSessionElapsedMs(0);
   };
 
   // 2. Control del Micrófono DSP con McLeod Algorithm
@@ -385,6 +423,22 @@ export function VocalSessionProvider({ children }: { children: React.ReactNode }
           // Alimentar buffer continuo del lienzo a ~40 FPS (cada 25ms)
           if (now - lastHistoryPush >= 25) {
             lastHistoryPush = now;
+            const nowSession = Date.now() - sessionStartRef.current;
+            const currentSample: PitchSample = {
+              timestamp: nowSession,
+              freq: finalData.frequency,
+              midiFloat: finalData.midiFloat,
+              centsOff: finalData.cents,
+              rms: finalData.rms,
+            };
+
+            setSamplesBuffer((prev) => {
+              const cutoff = nowSession - 12 * 60 * 1000;
+              const startIdx = prev.findIndex((p) => p.timestamp >= cutoff);
+              const trimmed = startIdx > 0 ? prev.slice(startIdx) : prev;
+              return [...trimmed, currentSample];
+            });
+
             setPitchHistoryBuffer((prev) => {
               // Limitar a los últimos 12 minutos (aprox. 28,000 puntos)
               const cutoff = now - 12 * 60 * 1000;
@@ -440,6 +494,7 @@ export function VocalSessionProvider({ children }: { children: React.ReactNode }
     setIsPlayingExercise(false);
     setActiveStepMidi(null);
     setTargetPianoNotes(new Set());
+    setCanvasTargetBlocks([]);
   };
 
   const startExercise = (exercise: VocalExercise) => {
@@ -453,6 +508,16 @@ export function VocalSessionProvider({ children }: { children: React.ReactNode }
     let currentRoot = exerciseRootMidi;
 
     // Generar bloques objetivo para el canvas
+    const currentSessionTime = Date.now() - sessionStartRef.current;
+    const canvasBlocks: CanvasTargetNoteBlock[] = intervals.map((interval, idx) => ({
+      id: `${exercise.id}-${idx}`,
+      midi: currentRoot + interval,
+      startTimeMs: currentSessionTime + idx * stepDurationMs,
+      durationMs: stepDurationMs,
+      label: exercise.phonetic || exercise.title,
+    }));
+    setCanvasTargetBlocks(canvasBlocks);
+
     const blocks: TargetNoteBlock[] = intervals.map((interval, idx) => ({
       id: `${exercise.id}-${idx}`,
       midi: currentRoot + interval,
@@ -491,6 +556,8 @@ export function VocalSessionProvider({ children }: { children: React.ReactNode }
     setActiveSong(song);
     setIsPlayingSong(false);
     setSongTime(0);
+    setSessionElapsedMs(0);
+    sessionStartRef.current = Date.now();
     if (audioElementRef.current) {
       audioElementRef.current.currentTime = 0;
     }
@@ -511,6 +578,8 @@ export function VocalSessionProvider({ children }: { children: React.ReactNode }
 
   const seekSong = (time: number) => {
     setSongTime(time);
+    setSessionElapsedMs(time * 1000);
+    sessionStartRef.current = Date.now() - time * 1000;
     if (audioElementRef.current) {
       audioElementRef.current.currentTime = time;
     }
@@ -531,6 +600,36 @@ export function VocalSessionProvider({ children }: { children: React.ReactNode }
     activeLyricIndex >= 0 && activeSong && activeLyricIndex + 1 < activeSong.lyrics.length
       ? activeSong.lyrics[activeLyricIndex + 1]
       : null;
+
+  const activeLyricCue: LyricCue | null = activeLyricLine
+    ? {
+        id: activeLyricLine.id,
+        startTimeMs: (activeLyricLine.time || 0) * 1000,
+        endTimeMs: (nextLyricLine?.time || (activeLyricLine.time || 0) + 4) * 1000,
+        text: activeLyricLine.text,
+        chord: activeLyricLine.chord,
+        targetNote: activeLyricLine.chord ? `${activeLyricLine.chord}` : undefined,
+        vocalTip: activeLyricLine.vocalCue || "Voz de pecho y apoyo diafragmático",
+        registerBadge: "Voz de Pecho",
+      }
+    : null;
+
+  const nextLyricCue: LyricCue | null = nextLyricLine
+    ? {
+        id: nextLyricLine.id,
+        startTimeMs: (nextLyricLine.time || 0) * 1000,
+        endTimeMs: ((nextLyricLine.time || 0) + 4) * 1000,
+        text: nextLyricLine.text,
+        chord: nextLyricLine.chord,
+        vocalTip: nextLyricLine.vocalCue,
+      }
+    : null;
+
+  const activePhoneticTip = activeExercise
+    ? `${activeExercise.phonetic} — ${activeExercise.description}`
+    : activeLyricCue?.vocalTip || undefined;
+
+  const comparisonSamples: PitchSample[] = [];
 
   // 5. Grabación de Tomas A/B y Comparador
   const startRecordingTake = (title = "Toma - Práctica") => {
@@ -680,6 +779,14 @@ export function VocalSessionProvider({ children }: { children: React.ReactNode }
         setScrubOffsetSeconds,
         zoomSeconds,
         setZoomSeconds,
+
+        samplesBuffer,
+        comparisonSamples,
+        targetBlocks: canvasTargetBlocks,
+        activeLyricCue,
+        nextLyricCue,
+        sessionElapsedMs,
+        activePhoneticTip,
 
         vocalProfile,
         updateVocalProfile,

@@ -15,7 +15,18 @@ function StudioWorkspace() {
     currentPitch,
     isListening,
     toggleMic,
+    samplesBuffer,
+    comparisonSamples,
+    targetBlocks,
+    activeLyricCue,
+    nextLyricCue,
+    vocalProfile,
+    sessionElapsedMs,
+    activePhoneticTip,
   } = useVocalSession();
+
+  const detectedVoiceMidi = currentPitch && currentPitch.clarity >= 0.65 ? currentPitch.midi : null;
+  const voiceCentsOff = currentPitch ? currentPitch.cents : 0;
 
   return (
     <div className="h-[100dvh] w-full overflow-hidden bg-[#090A0F] text-white flex flex-col font-sans select-none">
@@ -28,11 +39,30 @@ function StudioWorkspace() {
         <LeftContextDrawer />
 
         {/* ZONA 3: CENTER STAGE — LIENZO DE CURVA DE TONO & TELEPROMPTER */}
-        <VocalPitchCanvas />
+        <VocalPitchCanvas
+          samplesBuffer={samplesBuffer}
+          comparisonSamples={comparisonSamples}
+          targetBlocks={targetBlocks}
+          activeLyricCue={activeLyricCue}
+          nextLyricCue={nextLyricCue}
+          vocalProfile={{
+            lowestMidi: vocalProfile.lowestMidi,
+            passaggioMidi: vocalProfile.passaggioMidi,
+            highestMidi: vocalProfile.highestMidi,
+          }}
+          sessionElapsedMs={sessionElapsedMs}
+          activePhoneticTip={activePhoneticTip}
+        />
       </div>
 
       {/* ZONA 4: BOTTOM DOCK — GRAND PIANO INTERACTIVO DE ESTUDIO (165px) */}
-      <InteractiveGrandPiano />
+      <InteractiveGrandPiano
+        detectedVoiceMidi={detectedVoiceMidi}
+        voiceCentsOff={voiceCentsOff}
+        lowestVocalMidi={vocalProfile.lowestMidi}
+        passaggioVocalMidi={vocalProfile.passaggioMidi}
+        highestVocalMidi={vocalProfile.highestMidi}
+      />
 
       {/* MODAL / OVERLAY DE AFINADOR DE GUITARRA PRO */}
       <GuitarTunerModal
