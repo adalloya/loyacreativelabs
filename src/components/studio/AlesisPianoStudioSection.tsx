@@ -282,25 +282,11 @@ export default function AlesisPianoStudioSection({
     60: "orange",
   });
 
-  // Por defecto usamos "guide_vel1": envía la señal confirmada a la tecla objetivo,
-  // mezcla Canal 1+2+3 (Vel=1) para buscar Ámbar/Verde, y enciende en Rojo (Ch1 Vel=1) cuando te equivocas.
+  // Por defecto usamos "guide_vel1": envía un único paquete limpio [0x90, nota, 1]
+  // directamente a la tecla que se debe tocar (y a la tecla equivocada si fallas).
   const [hardwareMode, setHardwareMode] = useState<Tc61HardwareMode>("guide_vel1");
-  const [showCalibrator, setShowCalibrator] = useState<boolean>(true);
-  const [customOrangeCmd, setCustomOrangeCmd] = useState<{ status: number; vel: number } | null>(
-    null
-  );
-  const [customGreenCmd, setCustomGreenCmd] = useState<{ status: number; vel: number } | null>(
-    null
-  );
-  const [lastScannedNote, setLastScannedNote] = useState<{
-    note: number;
-    status: number;
-    vel: number;
-    desc: string;
-  } | null>(null);
-  const activeScanMapRef = useRef<
-    Record<number, { status: number; vel: number; desc: string }>
-  >({});
+  const [showCalibrator, setShowCalibrator] = useState<boolean>(false);
+  const [testVelValue, setTestVelValue] = useState<number>(1);
 
   const [midiConnected, setMidiConnected] = useState<boolean>(false);
   const [midiDeviceName, setMidiDeviceName] = useState<string>("");
@@ -311,27 +297,17 @@ export default function AlesisPianoStudioSection({
   const [forcedLandscape, setForcedLandscape] = useState<boolean>(false);
 
   const [logs, setLogs] = useState<string[]>([
-    `[${new Date().toLocaleTimeString()}] [Sistema] Estudio Alesis Teacher's Choice 61 listo. Escáner de 61 teclas activo para detectar Naranja y Verde.`,
+    `[${new Date().toLocaleTimeString()}] [Sistema] Guía Física Alesis Teacher's Choice 61 activa (Paquete directo [0x90, nota, 1]).`,
   ]);
 
   const midiOutputsRef = useRef<MIDIOutput[]>([]);
   const midiInputsRef = useRef<MIDIInput[]>([]);
   const litHardwareNotesRef = useRef<Set<number>>(new Set());
   const hardwareModeRef = useRef<Tc61HardwareMode>(hardwareMode);
-  const customOrangeRef = useRef<{ status: number; vel: number } | null>(null);
-  const customGreenRef = useRef<{ status: number; vel: number } | null>(null);
 
   useEffect(() => {
     hardwareModeRef.current = hardwareMode;
   }, [hardwareMode]);
-
-  useEffect(() => {
-    customOrangeRef.current = customOrangeCmd;
-  }, [customOrangeCmd]);
-
-  useEffect(() => {
-    customGreenRef.current = customGreenCmd;
-  }, [customGreenCmd]);
 
   const osmdContainerRef = useRef<HTMLDivElement | null>(null);
   const osmdInstanceRef = useRef<{
@@ -512,7 +488,7 @@ export default function AlesisPianoStudioSection({
     }
   }, []);
 
-  // Enviar comando MIDI crudo al teclado físico
+  // Enviar comando MIDI limpio al teclado físico (1 único paquete para encender, sin saturar el buffer USB-MIDI)
   const sendRawMidiToHardware = useCallback(
     (statusByte: number, noteNumber: number, velocity: number) => {
       const outputs = midiOutputsRef.current;
@@ -522,10 +498,8 @@ export default function AlesisPianoStudioSection({
         litHardwareNotesRef.current.delete(noteNumber);
         for (const out of outputs) {
           try {
-            for (let ch = 0; ch < 16; ch++) {
-              out.send([0x80 + ch, noteNumber, 0]);
-              out.send([0x90 + ch, noteNumber, 0]);
-            }
+            out.send([0x80, noteNumber, 0]);
+            out.send([0x90, noteNumber, 0]);
           } catch {}
         }
         return;
@@ -541,7 +515,8 @@ export default function AlesisPianoStudioSection({
     []
   );
 
-  // Control de los 3 colores del LED físico del Alesis Teacher's Choice 61:
+  // Control directo del LED físico del Alesis Teacher's Choice 61:
+  // Envía siempre UN SOLO PAQUETE [0x90, noteNumber, 1] (sin ráfagas multicanal que cancelen la luz).
   const sendHardwareLedMidi = useCallback(
     (noteNumber: number, color: LedColor) => {
       if (color === null) {
@@ -549,83 +524,27 @@ export default function AlesisPianoStudioSection({
         return;
       }
 
-      if (color === "red") {
-        // Rojo confirmado al 100% en tu Alesis Teacher's Choice 61: Canal 1 (0x90) con Velocity = 1
-        sendRawMidiToHardware(0x91, noteNumber, 0);
-        sendRawMidiToHardware(0x92, noteNumber, 0);
-        sendRawMidiToHardware(0x90, noteNumber, 1);
-        return;
-      }
-
-      if (color === "green") {
-        if (customGreenRef.current) {
-          sendRawMidiToHardware(0x90, noteNumber, 0);
-          sendRawMidiToHardware(customGreenRef.current.status, noteNumber, customGreenRef.current.vel);
-          return;
-        }
-        // Apagar Rojo (Canal 1) y encender Verde en Canal 2 (0x91, Vel=1) + Vel=64
-        const outputs = midiOutputsRef.current;
-        for (const out of outputs) {
-          try {
-            out.send([0x80, noteNumber, 0]);
-            out.send([0x90, noteNumber, 0]);
-            out.send([0x91, noteNumber, 1]);
-            out.send([0x90, noteNumber, 64]);
-          } catch {}
-        }
-        litHardwareNotesRef.current.add(noteNumber);
-        return;
-      }
-
-      // color === "orange" (Tecla objetivo a presionar)
-      if (customOrangeRef.current) {
-        sendRawMidiToHardware(0x90, noteNumber, 0);
-        sendRawMidiToHardware(customOrangeRef.current.status, noteNumber, customOrangeRef.current.vel);
-        return;
-      }
-
       const mode = hardwareModeRef.current;
 
+      if (mode === "guide_vel1") {
+        if (color === "orange" || color === "red") {
+          // Envía exactamente [0x90, noteNumber, 1] (confirmado que enciende el LED en el Alesis Teacher's Choice 61)
+          sendRawMidiToHardware(0x90, noteNumber, 1);
+        } else {
+          // Al acertar ("green"), apaga la nota actual para encender enseguida la siguiente nota a tocar
+          sendRawMidiToHardware(0x90, noteNumber, 0);
+        }
+        return;
+      }
+
       if (mode === "channels_123") {
-        // Solo Canal 3 (0x92) con Velocity = 1 (sin enviar Canal 1 Rojo)
-        const outputs = midiOutputsRef.current;
-        for (const out of outputs) {
-          try {
-            out.send([0x90, noteNumber, 0]);
-            out.send([0x91, noteNumber, 0]);
-            out.send([0x92, noteNumber, 1]);
-          } catch {}
-        }
-        litHardwareNotesRef.current.add(noteNumber);
+        const status = color === "orange" ? 0x92 : color === "green" ? 0x91 : 0x90;
+        sendRawMidiToHardware(status, noteNumber, 1);
         return;
       }
 
-      if (mode === "vel_123") {
-        // Solo Canal 2 (0x91) con Velocity = 1 (sin enviar Canal 1 Rojo)
-        const outputs = midiOutputsRef.current;
-        for (const out of outputs) {
-          try {
-            out.send([0x90, noteNumber, 0]);
-            out.send([0x92, noteNumber, 0]);
-            out.send([0x91, noteNumber, 1]);
-          } catch {}
-        }
-        litHardwareNotesRef.current.add(noteNumber);
-        return;
-      }
-
-      // Modo por defecto "guide_vel1":
-      // Envía Canal 1 (0x90, Vel=1) + Canal 2 (0x91, Vel=1) + Canal 3 (0x92, Vel=1)
-      // Así garantiza que la tecla a tocar SIEMPRE se ilumine y mezcla Rojo+Verde=Ámbar si el teclado lo soporta
-      const outputs = midiOutputsRef.current;
-      for (const out of outputs) {
-        try {
-          out.send([0x90, noteNumber, 1]);
-          out.send([0x91, noteNumber, 1]);
-          out.send([0x92, noteNumber, 1]);
-        } catch {}
-      }
-      litHardwareNotesRef.current.add(noteNumber);
+      const vel = color === "orange" ? 3 : color === "green" ? 2 : 1;
+      sendRawMidiToHardware(0x90, noteNumber, vel);
     },
     [sendRawMidiToHardware]
   );
@@ -633,7 +552,6 @@ export default function AlesisPianoStudioSection({
   // Encender en el piano físico y en pantalla la nota objetivo actual
   const syncSequenceLeds = useCallback(
     (sequence: LessonStep[], stepIdx: number) => {
-      activeScanMapRef.current = {};
       const previouslyLit = Array.from(litHardwareNotesRef.current);
       for (const prevNote of previouslyLit) {
         sendRawMidiToHardware(0x90, prevNote, 0);
@@ -649,6 +567,9 @@ export default function AlesisPianoStudioSection({
           centerKeyInVirtualKeyboard(targetNote);
           sendHardwareLedMidi(targetNote, "orange");
         }, 45);
+        setTimeout(() => {
+          sendHardwareLedMidi(targetNote, "orange");
+        }, 180);
       } else {
         setKeyColors({});
       }
@@ -662,8 +583,6 @@ export default function AlesisPianoStudioSection({
     activeSequence,
     currentIndex,
     hardwareMode,
-    customOrangeCmd,
-    customGreenCmd,
     isNaturalLandscape,
     forcedLandscape,
     syncSequenceLeds,
@@ -712,22 +631,6 @@ export default function AlesisPianoStudioSection({
     (playedNote: number) => {
       grandPiano.playNote(playedNote, 0.85);
 
-      // Si el usuario acaba de ejecutar un Escaneo de 61 teclas y toca en su piano una tecla que prendió en Naranja o Verde:
-      const scannedInfo = activeScanMapRef.current[playedNote];
-      if (scannedInfo) {
-        setLastScannedNote({
-          note: playedNote,
-          status: scannedInfo.status,
-          vel: scannedInfo.vel,
-          desc: scannedInfo.desc,
-        });
-        addLog(
-          `🎯 Detectada tecla física MIDI ${playedNote} (${
-            SOLFEGE_LABELS[playedNote] || NOTE_LABELS[playedNote] || playedNote
-          }): ${scannedInfo.desc}`
-        );
-      }
-
       const sequence = activeSequenceRef.current;
       const idx = stepIndexRef.current;
 
@@ -746,9 +649,10 @@ export default function AlesisPianoStudioSection({
         const nextIdx = idx + 1;
         stepIndexRef.current = nextIdx;
 
-        // 1. En pantalla y en el piano físico enviamos la señal de VERDE
+        // 1. En pantalla mostramos Verde de confirmación
         setKeyColors({ [expectedNote]: "green" });
-        sendHardwareLedMidi(expectedNote, "green");
+        // 2. En el piano físico apagamos la nota que acaba de tocar bien
+        sendRawMidiToHardware(0x90, expectedNote, 0);
 
         addLog(`✓ Correcto: ${sequence[idx].name} con Dedo ${sequence[idx].finger}`);
         if (osmdInstanceRef.current?.cursor) {
@@ -757,9 +661,8 @@ export default function AlesisPianoStudioSection({
           } catch {}
         }
 
-        // 2. Tras 240ms apagamos la nota anterior y encendemos la SIGUIENTE tecla objetivo
+        // 3. Encender inmediatamente la SIGUIENTE nota a tocar en el piano físico con [0x90, nextNote, 1]
         setTimeout(() => {
-          sendHardwareLedMidi(expectedNote, null);
           setCurrentIndex(nextIdx);
           if (nextIdx < sequence.length) {
             const nextNote = sequence[nextIdx].note;
@@ -767,11 +670,11 @@ export default function AlesisPianoStudioSection({
             centerKeyInVirtualKeyboard(nextNote);
             sendHardwareLedMidi(nextNote, "orange");
           }
-        }, 240);
+        }, 200);
       } else {
         // Si tocó una tecla equivocada:
-        // 1. En pantalla y en el piano físico encendemos en ROJO ([0x90, playedNote, 1]) la tecla equivocada
-        // y mantenemos encendida la tecla correcta (expectedNote)
+        // En pantalla mostramos Rojo en la equivocada y Naranja en la correcta.
+        // En el piano físico encendemos también en Rojo ([0x90, playedNote, 1]) la tecla equivocada durante 380ms y luego la apagamos.
         setKeyColors({
           [expectedNote]: "orange",
           [playedNote]: "red",
@@ -779,15 +682,11 @@ export default function AlesisPianoStudioSection({
         centerKeyInVirtualKeyboard(expectedNote);
 
         sendHardwareLedMidi(playedNote, "red");
-        sendHardwareLedMidi(expectedNote, "orange");
 
         addLog(
-          `✕ Incorrecto (${NOTE_LABELS[playedNote] || playedNote} en Rojo). Toca ${
-            sequence[idx].name
-          }.`
+          `✕ Tocaste ${NOTE_LABELS[playedNote] || playedNote}. Toca ${sequence[idx].name}.`
         );
 
-        // 2. A los 380ms apagamos el Rojo de la tecla equivocada y dejamos encendida la tecla objetivo
         setTimeout(() => {
           setKeyColors((prev) => {
             const copy = { ...prev };
@@ -798,13 +697,13 @@ export default function AlesisPianoStudioSection({
             return copy;
           });
           if (playedNote !== expectedNote) {
-            sendHardwareLedMidi(playedNote, null);
+            sendRawMidiToHardware(0x90, playedNote, 0);
           }
           sendHardwareLedMidi(expectedNote, "orange");
         }, 380);
       }
     },
-    [addLog, centerKeyInVirtualKeyboard, sendHardwareLedMidi]
+    [addLog, centerKeyInVirtualKeyboard, sendHardwareLedMidi, sendRawMidiToHardware]
   );
 
   const evaluateUserNoteRef = useRef(evaluateUserNote);
@@ -885,15 +784,13 @@ export default function AlesisPianoStudioSection({
           if (command === 9 && velocity > 0) {
             evaluateUserNoteRef.current(note);
           } else if (command === 8 || (command === 9 && velocity === 0)) {
-            if (Object.keys(activeScanMapRef.current).length === 0) {
-              const seq = activeSequenceRef.current;
-              const idx = stepIndexRef.current;
-              if (idx < seq.length) {
-                const targetNote = seq[idx].note;
-                setTimeout(() => {
-                  sendHardwareLedMidi(targetNote, "orange");
-                }, 30);
-              }
+            const seq = activeSequenceRef.current;
+            const idx = stepIndexRef.current;
+            if (idx < seq.length) {
+              const targetNote = seq[idx].note;
+              setTimeout(() => {
+                sendHardwareLedMidi(targetNote, "orange");
+              }, 30);
             }
           }
         };
@@ -910,7 +807,7 @@ export default function AlesisPianoStudioSection({
 
       if (isConnected) {
         addLog(
-          `Alesis conectado (${activeInputs.length} IN / ${activeOutputs.length} OUT): ${deviceLabel}.`
+          `Alesis conectado (${activeInputs.length} IN / ${activeOutputs.length} OUT): ${deviceLabel}. Luz enviada a la tecla a tocar.`
         );
       } else {
         addLog("Acceso MIDI concedido, pero no se detectó el cable USB-C del teclado.");
@@ -923,99 +820,17 @@ export default function AlesisPianoStudioSection({
     }
   };
 
-  // Apagar todas las 61 teclas del piano físico
-  const clearAll61Keys = useCallback(() => {
-    const outputs = midiOutputsRef.current;
-    for (const out of outputs) {
-      try {
-        for (let note = 36; note <= 96; note++) {
-          out.send([0x80, note, 0]);
-          out.send([0x90, note, 0]);
-          out.send([0x91, note, 0]);
-          out.send([0x92, note, 0]);
-        }
-      } catch {}
-    }
-    litHardwareNotesRef.current.clear();
-  }, []);
-
-  // ESCANEO 1: Prueba los 16 Canales MIDI (1..16) con Velocity=1 en las teclas 48..63 (Do3 a Re#4)
-  const runChannelScan16 = () => {
-    clearAll61Keys();
-    const scanMap: Record<number, { status: number; vel: number; desc: string }> = {};
-    const outputs = midiOutputsRef.current;
-    for (let ch = 0; ch < 16; ch++) {
-      const note = 48 + ch; // Do3 (48) = Canal 1, Do#3 (49) = Canal 2, Re3 (50) = Canal 3...
-      const status = 0x90 + ch;
-      scanMap[note] = {
-        status,
-        vel: 1,
-        desc: `Canal ${ch + 1} (0x${status.toString(16).toUpperCase()}) • Vel 1`,
-      };
-      for (const out of outputs) {
-        try {
-          out.send([status, note, 1]);
-        } catch {}
-      }
-      litHardwareNotesRef.current.add(note);
-    }
-    activeScanMapRef.current = scanMap;
-    addLog(
-      "🌈 Scan 1 enviado: Teclas Do3(48) a Re#4(63) tienen Canales 1 al 16 con Vel=1. ¡Mira tu piano y presiona cualquier tecla que haya prendido en Naranja o Verde!"
-    );
-  };
-
-  // ESCANEO 2: Prueba las Velocidades 1 a 61 simultáneamente en las 61 teclas del piano (36..96) en Canal 1 (0x90)
-  const runVelocityScan1To61 = () => {
-    clearAll61Keys();
-    const scanMap: Record<number, { status: number; vel: number; desc: string }> = {};
-    const outputs = midiOutputsRef.current;
-    for (let i = 0; i < 61; i++) {
-      const note = 36 + i; // 36 (Do2) a 96 (Do7)
-      const vel = 1 + i; // Vel 1 a 61
-      scanMap[note] = {
-        status: 0x90,
-        vel,
-        desc: `Canal 1 (0x90) • Velocidad ${vel}`,
-      };
-      for (const out of outputs) {
-        try {
-          out.send([0x90, note, vel]);
-        } catch {}
-      }
-      litHardwareNotesRef.current.add(note);
-    }
-    activeScanMapRef.current = scanMap;
-    addLog(
-      "🌈 Scan 2 enviado: Las 61 teclas tienen Velocidades 1 a 61 (Do2=Vel 1). ¡Mira tu piano y presiona cualquier tecla que brille en Naranja o Verde!"
-    );
-  };
-
-  // ESCANEO 3: Prueba las Velocidades 62 a 127 simultáneamente en las 61 teclas del piano (36..96) en Canal 1 (0x90)
-  const runVelocityScan62To127 = () => {
-    clearAll61Keys();
-    const scanMap: Record<number, { status: number; vel: number; desc: string }> = {};
-    const outputs = midiOutputsRef.current;
-    for (let i = 0; i < 61; i++) {
-      const note = 36 + i; // 36 a 96
-      const vel = Math.min(127, 62 + i + (i >= 5 ? 5 : 0)); // Cubre 62..66 y 72..127 (incluyendo 64 y 127)
-      const exactVel = i === 2 ? 64 : i === 60 ? 127 : Math.min(127, 62 + i);
-      scanMap[note] = {
-        status: 0x90,
-        vel: exactVel,
-        desc: `Canal 1 (0x90) • Velocidad ${exactVel}`,
-      };
-      for (const out of outputs) {
-        try {
-          out.send([0x90, note, exactVel]);
-        } catch {}
-      }
-      litHardwareNotesRef.current.add(note);
-    }
-    activeScanMapRef.current = scanMap;
-    addLog(
-      "🌈 Scan 3 enviado: Las 61 teclas tienen Velocidades 62 a 127 (incluyendo 64 y 127). ¡Presiona en tu piano cualquier tecla que brille en Naranja o Verde!"
-    );
+  // Probar 1 único comando MIDI limpio en la nota objetivo actual (sin bucles masivos)
+  const testSingleHardwarePacket = (statusByte: number, vel: number, label: string) => {
+    const seq = activeSequenceRef.current;
+    const idx = stepIndexRef.current < seq.length ? stepIndexRef.current : 0;
+    const target = seq[idx]?.note || 60;
+    centerKeyInVirtualKeyboard(target);
+    sendRawMidiToHardware(0x90, target, 0);
+    setTimeout(() => {
+      sendRawMidiToHardware(statusByte, target, vel);
+    }, 40);
+    addLog(`🔬 Paquete único enviado a ${NOTE_LABELS[target]} (${target}): ${label}`);
   };
 
   const uploadAndLoadXML = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1292,134 +1107,50 @@ export default function AlesisPianoStudioSection({
           </button>
         </div>
 
-        {/* Escáner de las 61 Teclas para detectar Naranja y Verde en el Alesis Teacher's Choice 61 */}
+        {/* Panel opcional de prueba de paquete único en la tecla activa */}
         {showCalibrator && (
           <div className="bg-slate-950/95 border border-orange-500/40 rounded-xl p-2.5 flex flex-col gap-2 text-[11px]">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-bold text-orange-300">
-                🌈 Escáner 61 Teclas (Toca un botón y mira qué teclas prenden en Naranja o Verde en tu piano):
+              <span className="font-bold text-emerald-400">
+                ✅ Modo Activo: Paquete único directo [0x90, nota, 1] (sin saturar USB).
               </span>
               <div className="flex flex-wrap items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={runChannelScan16}
-                  className="px-2.5 py-1 rounded-lg font-bold bg-orange-500 hover:bg-orange-400 text-slate-950 cursor-pointer shadow"
+                  onClick={() => {
+                    const prev = Math.max(1, testVelValue - 1);
+                    setTestVelValue(prev);
+                    testSingleHardwarePacket(0x90, prev, `Canal 1 • Vel ${prev}`);
+                  }}
+                  className="px-2.5 py-1 rounded-lg font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 cursor-pointer"
                 >
-                  1️⃣ Scan Canales 1-16 (Do3 a Re#4)
+                  − Vel ({Math.max(1, testVelValue - 1)})
                 </button>
-                <button
-                  type="button"
-                  onClick={runVelocityScan1To61}
-                  className="px-2.5 py-1 rounded-lg font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 cursor-pointer shadow"
-                >
-                  2️⃣ Scan Vel 1-61 (Las 61 Teclas)
-                </button>
-                <button
-                  type="button"
-                  onClick={runVelocityScan62To127}
-                  className="px-2.5 py-1 rounded-lg font-bold bg-cyan-500 hover:bg-cyan-400 text-slate-950 cursor-pointer shadow"
-                >
-                  3️⃣ Scan Vel 62-127 (Las 61 Teclas)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => syncSequenceLeds(activeSequenceRef.current, stepIndexRef.current)}
-                  className="px-2 py-1 rounded-lg font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 cursor-pointer"
-                >
-                  Volver a Lección
-                </button>
-              </div>
-            </div>
-
-            {lastScannedNote && (
-              <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900 border border-emerald-500/50 rounded-lg px-2.5 py-1.5">
-                <span className="text-emerald-300 font-mono text-[11px]">
-                  🎯 Tocaste tecla <b>{SOLFEGE_LABELS[lastScannedNote.note] || lastScannedNote.note}</b> →{" "}
-                  <b>{lastScannedNote.desc}</b>
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCustomOrangeCmd({
-                        status: lastScannedNote.status,
-                        vel: lastScannedNote.vel,
-                      });
-                      addLog(`🟠 Color Naranja asignado a: ${lastScannedNote.desc}`);
-                    }}
-                    className="px-2.5 py-1 rounded bg-orange-500 text-slate-950 font-bold text-[10px] cursor-pointer"
-                  >
-                    🟠 Usar este para Naranja
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCustomGreenCmd({
-                        status: lastScannedNote.status,
-                        vel: lastScannedNote.vel,
-                      });
-                      addLog(`🟢 Color Verde asignado a: ${lastScannedNote.desc}`);
-                    }}
-                    className="px-2.5 py-1 rounded bg-emerald-500 text-slate-950 font-bold text-[10px] cursor-pointer"
-                  >
-                    🟢 Usar este para Verde
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-slate-800/80">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[10px] text-slate-400 font-mono">
-                  Modo de nota a tocar:
+                <span className="px-2.5 py-1 rounded-lg bg-orange-500/20 border border-orange-500/40 text-orange-300 font-mono font-bold">
+                  Vel Actual: {testVelValue}
                 </span>
                 <button
                   type="button"
                   onClick={() => {
-                    setCustomOrangeCmd(null);
-                    setCustomGreenCmd(null);
-                    setHardwareMode("guide_vel1");
+                    const next = Math.min(127, testVelValue + 1);
+                    setTestVelValue(next);
+                    testSingleHardwarePacket(0x90, next, `Canal 1 • Vel ${next}`);
                   }}
-                  className={`px-2 py-0.5 rounded font-bold text-[10px] cursor-pointer border ${
-                    hardwareMode === "guide_vel1" && !customOrangeCmd
-                      ? "bg-orange-500 text-slate-950 border-orange-300"
-                      : "bg-slate-900 text-slate-300 border-slate-700"
-                  }`}
+                  className="px-2.5 py-1 rounded-lg font-bold bg-orange-500 hover:bg-orange-400 text-slate-950 cursor-pointer"
                 >
-                  Mix Ch1+2+3 (Vel=1)
+                  + Vel ({Math.min(127, testVelValue + 1)})
                 </button>
                 <button
                   type="button"
                   onClick={() => {
-                    setCustomOrangeCmd(null);
-                    setHardwareMode("channels_123");
+                    setTestVelValue(1);
+                    testSingleHardwarePacket(0x90, 1, "Canal 1 • Vel 1 (Confirmado)");
                   }}
-                  className={`px-2 py-0.5 rounded font-bold text-[10px] cursor-pointer border ${
-                    hardwareMode === "channels_123" && !customOrangeCmd
-                      ? "bg-orange-500 text-slate-950 border-orange-300"
-                      : "bg-slate-900 text-slate-300 border-slate-700"
-                  }`}
+                  className="px-2.5 py-1 rounded-lg font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 cursor-pointer"
                 >
-                  Solo Canal 3 (0x92 Vel=1)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCustomOrangeCmd(null);
-                    setHardwareMode("vel_123");
-                  }}
-                  className={`px-2 py-0.5 rounded font-bold text-[10px] cursor-pointer border ${
-                    hardwareMode === "vel_123" && !customOrangeCmd
-                      ? "bg-emerald-500 text-slate-950 border-emerald-300"
-                      : "bg-slate-900 text-slate-300 border-slate-700"
-                  }`}
-                >
-                  Solo Canal 2 (0x91 Vel=1)
+                  Volver a Vel = 1
                 </button>
               </div>
-              <span className="text-[10px] text-slate-400">
-                Al tocar un botón Scan (1, 2 o 3), si ves alguna tecla en <b>Naranja</b> o <b>Verde</b> en tu piano, presiónala en el piano para guardarla.
-              </span>
             </div>
           </div>
         )}

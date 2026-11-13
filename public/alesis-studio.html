@@ -55,14 +55,8 @@
                 📂 Cargar y Subir a Supabase
                 <input type="file" id="scoreFile" accept=".xml, .musicxml" class="hidden" onchange="uploadAndLoadXML(event)">
             </label>
-            <button onclick="runChannelScan16()" class="bg-orange-500 text-slate-950 active:scale-95 text-xs px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap shadow">
-                1️⃣ Scan Canales 1-16
-            </button>
-            <button onclick="runVelScan1To61()" class="bg-emerald-500 text-slate-950 active:scale-95 text-xs px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap shadow">
-                2️⃣ Scan Vel 1-61
-            </button>
-            <button onclick="runVelScan62To127()" class="bg-cyan-500 text-slate-950 active:scale-95 text-xs px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap shadow">
-                3️⃣ Scan Vel 62-127
+            <button onclick="updateLessonUI()" class="bg-orange-500 text-slate-950 active:scale-95 text-xs px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap shadow">
+                💡 Ver Luz de Tecla
             </button>
         </div>
     </header>
@@ -151,53 +145,16 @@
             if (!midiOutputs.length) return;
             for (let out of midiOutputs) {
                 try {
-                    if (!color) {
-                        for (let ch = 0; ch < 16; ch++) {
-                            out.send([0x80 + ch, noteNumber, 0]);
-                            out.send([0x90 + ch, noteNumber, 0]);
-                        }
-                    } else if (color === 'red') {
-                        out.send([0x91, noteNumber, 0]);
-                        out.send([0x92, noteNumber, 0]);
+                    if (color === 'orange' || color === 'red') {
                         out.send([0x90, noteNumber, 1]);
-                    } else if (color === 'green') {
+                    } else {
+                        out.send([0x80, noteNumber, 0]);
                         out.send([0x90, noteNumber, 0]);
-                        out.send([0x91, noteNumber, 1]);
-                        out.send([0x90, noteNumber, 64]);
-                    } else if (color === 'orange') {
-                        out.send([0x90, noteNumber, 1]);
-                        out.send([0x91, noteNumber, 1]);
-                        out.send([0x92, noteNumber, 1]);
                     }
                 } catch {}
             }
-            if (color) litHardwareNotes.add(noteNumber);
+            if (color === 'orange' || color === 'red') litHardwareNotes.add(noteNumber);
             else litHardwareNotes.delete(noteNumber);
-        }
-
-        function runChannelScan16() {
-            for (let out of midiOutputs) {
-                for (let n = 36; n <= 96; n++) { out.send([0x90, n, 0]); out.send([0x91, n, 0]); out.send([0x92, n, 0]); }
-                for (let ch = 0; ch < 16; ch++) out.send([0x90 + ch, 48 + ch, 1]);
-            }
-            log('🌈 Scan 1 enviado: Teclas Do3(48) a Re#4(63) tienen Canales 1..16 con Vel=1.');
-        }
-
-        function runVelScan1To61() {
-            for (let out of midiOutputs) {
-                for (let i = 0; i < 61; i++) out.send([0x90, 36 + i, 1 + i]);
-            }
-            log('🌈 Scan 2 enviado: Las 61 teclas tienen Velocidades 1 a 61 en Canal 1.');
-        }
-
-        function runVelScan62To127() {
-            for (let out of midiOutputs) {
-                for (let i = 0; i < 61; i++) {
-                    const v = i === 2 ? 64 : i === 60 ? 127 : Math.min(127, 62 + i);
-                    out.send([0x90, 36 + i, v]);
-                }
-            }
-            log('🌈 Scan 3 enviado: Las 61 teclas tienen Velocidades 62 a 127 en Canal 1.');
         }
 
         let activeSequence = [
