@@ -3,6 +3,12 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { grandPiano } from "@/audio/grandPianoEngine";
 import {
+  fetchOnlineRepertoireFromSupabase,
+  saveCustomXmlToSupabase,
+  DEFAULT_ONLINE_REPERTOIRE,
+  OnlineRepertoireSong,
+} from "@/services/alesisRepertoireSupabase";
+import {
   Usb,
   Upload,
   Mic,
@@ -14,6 +20,8 @@ import {
   X,
   Volume2,
   Sparkles,
+  Cloud,
+  RefreshCw,
 } from "lucide-react";
 
 export interface LessonStep {
@@ -86,6 +94,10 @@ function buildLessonMusicXML(title: string, steps: LessonStep[]): string {
     70: { step: "A", octave: 4, alter: 1 },
     71: { step: "B", octave: 4 },
     72: { step: "C", octave: 5 },
+    73: { step: "C", octave: 5, alter: 1 },
+    74: { step: "D", octave: 5 },
+    75: { step: "D", octave: 5, alter: 1 },
+    76: { step: "E", octave: 5 },
   };
 
   const notesXml = steps
@@ -176,8 +188,8 @@ BEGINNER_LESSONS.forEach((lesson) => {
   lesson.musicXml = buildLessonMusicXML(lesson.title, lesson.sequence);
 });
 
-const BLACK_KEY_NUMBERS = [49, 51, 54, 56, 58, 61, 63, 66, 68, 70];
-const KEY_RANGE = Array.from({ length: 72 - 48 + 1 }, (_, idx) => 48 + idx);
+const BLACK_KEY_NUMBERS = [49, 51, 54, 56, 58, 61, 63, 66, 68, 70, 73, 75];
+const KEY_RANGE = Array.from({ length: 76 - 48 + 1 }, (_, idx) => 48 + idx);
 
 const NOTE_LABELS: Record<number, string> = {
   48: "C3",
@@ -205,6 +217,10 @@ const NOTE_LABELS: Record<number, string> = {
   70: "A#4",
   71: "B4",
   72: "C5",
+  73: "C#5",
+  74: "D5",
+  75: "D#5",
+  76: "E5",
 };
 
 interface AlesisPianoStudioSectionProps {
@@ -216,14 +232,20 @@ export default function AlesisPianoStudioSection({
   onClose,
   isEmbedded = false,
 }: AlesisPianoStudioSectionProps) {
+  const [practiceMode, setPracticeMode] = useState<"lesson" | "repertoire">("lesson");
   const [currentLessonIndex, setCurrentLessonIndex] = useState<number>(0);
+  const [onlineRepertoire, setOnlineRepertoire] = useState<OnlineRepertoireSong[]>(
+    DEFAULT_ONLINE_REPERTOIRE
+  );
+  const [selectedRepertoireId, setSelectedRepertoireId] = useState<string>("");
+  const [isSyncingSupabase, setIsSyncingSupabase] = useState<boolean>(false);
+
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [keyColors, setKeyColors] = useState<Record<number, LedColor>>({});
   const [midiConnected, setMidiConnected] = useState<boolean>(false);
   const [midiDeviceName, setMidiDeviceName] = useState<string>("");
   const [micActive, setMicActive] = useState<boolean>(false);
   const [osmdReady, setOsmdReady] = useState<boolean>(false);
-  const [customXmlLoaded, setCustomXmlLoaded] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([
     `[${new Date().toLocaleTimeString()}] [Sistema] Listo. Conecta tu cable USB-C.`,
   ]);
@@ -239,22 +261,44 @@ export default function AlesisPianoStudioSection({
   const logConsoleRef = useRef<HTMLDivElement | null>(null);
   const keyElementRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
-  // Refs sincronizados para que el callback nativo onmidimessage siempre lea el estado actual
-  const lessonIndexRef = useRef<number>(currentLessonIndex);
-  const stepIndexRef = useRef<number>(currentIndex);
-
-  useEffect(() => {
-    lessonIndexRef.current = currentLessonIndex;
-  }, [currentLessonIndex]);
-
-  useEffect(() => {
-    stepIndexRef.current = currentIndex;
-  }, [currentIndex]);
-
   const addLog = useCallback((msg: string) => {
     const timestamp = new Date().toLocaleTimeString();
     setLogs((prev) => [...prev, `[${timestamp}] ${msg}`]);
   }, []);
+
+  // Determinar la secuencia y el XML activos según si se está en Lección o Repertorio Online de Supabase
+  const activeRepertoireSong =
+    onlineRepertoire.find((item) => item.id === selectedRepertoireId) || onlineRepertoire[0];
+
+  const activeTitle =
+    practiceMode === "repertoire" && activeRepertoireSong
+      ? `${activeRepertoireSong.title}`
+      : BEGINNER_LESSONS[currentLessonIndex].title;
+
+  const activeLevelBadge =
+    practiceMode === "repertoire" ? "Repertorio Supabase" : BEGINNER_LESSONS[currentLessonIndex].level;
+
+  const activeSequence: LessonStep[] =
+    practiceMode === "repertoire" && activeRepertoireSong
+      ? activeRepertoireSong.sequence
+      : BEGINNER_LESSONS[currentLessonIndex].sequence;
+
+  const activeMusicXml: string =
+    practiceMode === "repertoire" && activeRepertoireSong
+      ? activeRepertoireSong.musicXml
+      : BEGINNER_LESSONS[currentLessonIndex].musicXml;
+
+  // Refs sincronizados para que el callback nativo onmidimessage siempre lea la secuencia y paso actuales
+  const activeSequenceRef = useRef<LessonStep[]>(activeSequence);
+  const stepIndexRef = useRef<number>(currentIndex);
+
+  useEffect(() => {
+    activeSequenceRef.current = activeSequence;
+  }, [activeSequence]);
+
+  useEffect(() => {
+    stepIndexRef.current = currentIndex;
+  }, [currentIndex]);
 
   // Auto-scroll del log de sistema
   useEffect(() => {
@@ -262,6 +306,26 @@ export default function AlesisPianoStudioSection({
       logConsoleRef.current.scrollTop = logConsoleRef.current.scrollHeight;
     }
   }, [logs]);
+
+  // Sincronizar Repertorio Online desde la Base de Datos de Supabase de Loya Creative Lab
+  const syncSupabaseRepertoire = useCallback(async () => {
+    setIsSyncingSupabase(true);
+    try {
+      const items = await fetchOnlineRepertoireFromSupabase();
+      setOnlineRepertoire(items);
+      addLog(
+        `[Supabase DB] Repertorio online sincronizado (${items.length} partituras MusicXML disponibles).`
+      );
+    } catch {
+      addLog("[Supabase DB] Usando repertorio local de respaldo.");
+    } finally {
+      setIsSyncingSupabase(false);
+    }
+  }, [addLog]);
+
+  useEffect(() => {
+    syncSupabaseRepertoire();
+  }, [syncSupabaseRepertoire]);
 
   // Cargar librería OpenSheetMusicDisplay desde CDN si no está en window
   useEffect(() => {
@@ -322,16 +386,14 @@ export default function AlesisPianoStudioSection({
     }
   }, []);
 
-  // Limpiar todos los LEDs de una secuencia y encender la nota objetivo en Naranja
-  const syncLessonLeds = useCallback(
-    (lessonIdx: number, stepIdx: number) => {
-      const sequence = BEGINNER_LESSONS[lessonIdx].sequence;
-      // Apagar todas las teclas del rango en MIDI y UI
+  // Limpiar todos los LEDs de la secuencia y encender la nota objetivo en Naranja
+  const syncSequenceLeds = useCallback(
+    (sequence: LessonStep[], stepIdx: number) => {
       setKeyColors({});
-      sequence.forEach((s) => {
+      KEY_RANGE.forEach((midiNote) => {
         if (midiOutputRef.current) {
           try {
-            midiOutputRef.current.send([0x90, s.note, 0]);
+            midiOutputRef.current.send([0x90, midiNote, 0]);
           } catch {}
         }
       });
@@ -344,18 +406,17 @@ export default function AlesisPianoStudioSection({
     [setKeyColor]
   );
 
-  // Actualizar iluminación cada vez que cambia la lección o el paso actual
+  // Actualizar iluminación cada vez que cambia la secuencia o el paso actual
   useEffect(() => {
-    syncLessonLeds(currentLessonIndex, currentIndex);
-  }, [currentLessonIndex, currentIndex, syncLessonLeds]);
+    syncSequenceLeds(activeSequence, currentIndex);
+  }, [activeSequence, currentIndex, syncSequenceLeds]);
 
-  // Renderizar partitura de la lección actual en OSMD si no se ha subido un XML externo personalizado
+  // Renderizar partitura activa en OSMD
   useEffect(() => {
-    if (!osmdReady || !osmdContainerRef.current || customXmlLoaded) return;
-    const lesson = BEGINNER_LESSONS[currentLessonIndex];
-    if (!lesson?.musicXml || !window.opensheetmusicdisplay) return;
+    if (!osmdReady || !osmdContainerRef.current || !activeMusicXml) return;
+    if (!window.opensheetmusicdisplay) return;
 
-    const renderLessonScore = async () => {
+    const renderScore = async () => {
       try {
         if (!osmdContainerRef.current || !window.opensheetmusicdisplay) return;
         osmdContainerRef.current.innerHTML = "";
@@ -369,7 +430,7 @@ export default function AlesisPianoStudioSection({
           }
         );
         osmdInstanceRef.current = instance;
-        await instance.load(lesson.musicXml);
+        await instance.load(activeMusicXml);
         instance.render();
         if (instance.cursor) {
           instance.cursor.show();
@@ -381,8 +442,8 @@ export default function AlesisPianoStudioSection({
       }
     };
 
-    renderLessonScore();
-  }, [osmdReady, currentLessonIndex, customXmlLoaded, addLog]);
+    renderScore();
+  }, [osmdReady, activeMusicXml, addLog]);
 
   // Evaluar nota tocada por el usuario (vía MIDI USB-C o toque en pantalla)
   const evaluateUserNote = useCallback(
@@ -390,8 +451,7 @@ export default function AlesisPianoStudioSection({
       // Sonar piano acústico de estudio al tocar la nota
       grandPiano.playNote(playedNote, 0.85);
 
-      const activeLesson = BEGINNER_LESSONS[lessonIndexRef.current];
-      const sequence = activeLesson.sequence;
+      const sequence = activeSequenceRef.current;
       const idx = stepIndexRef.current;
 
       if (idx >= sequence.length) return;
@@ -496,14 +556,14 @@ export default function AlesisPianoStudioSection({
         addLog("Acceso MIDI concedido, pero no se detectaron puertos USB conectados.");
       }
 
-      syncLessonLeds(lessonIndexRef.current, stepIndexRef.current);
+      syncSequenceLeds(activeSequenceRef.current, stepIndexRef.current);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error desconocido";
       addLog(`Error MIDI: ${message}`);
     }
   };
 
-  // Cargar archivo MusicXML externo (.xml, .musicxml) en OSMD
+  // Cargar archivo MusicXML externo (.xml, .musicxml) en OSMD y guardarlo en Supabase
   const loadMusicXML = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -514,33 +574,47 @@ export default function AlesisPianoStudioSection({
       if (typeof xmlContent !== "string") return;
 
       try {
-        if (!osmdContainerRef.current || !window.opensheetmusicdisplay) {
-          addLog("Error: El motor OSMD aún no está disponible.");
-          return;
-        }
-        setCustomXmlLoaded(file.name);
-        osmdContainerRef.current.innerHTML = "";
-        const instance = new window.opensheetmusicdisplay.OpenSheetMusicDisplay(
-          osmdContainerRef.current,
-          {
-            autoResize: true,
-            backend: "svg",
-            drawFingerings: true,
-          }
-        );
-        osmdInstanceRef.current = instance;
-        await instance.load(xmlContent);
-        instance.render();
-        if (instance.cursor) {
-          instance.cursor.show();
-        }
-        addLog(`Partitura XML cargada correctamente: ${file.name}`);
+        const savedSong = await saveCustomXmlToSupabase(file.name, xmlContent);
+        setOnlineRepertoire((prev) => [...prev.filter((item) => item.id !== savedSong.id), savedSong]);
+        setSelectedRepertoireId(savedSong.id);
+        setPracticeMode("repertoire");
+        setCurrentIndex(0);
+        addLog(`Partitura XML cargada y guardada en Supabase: ${savedSong.title}`);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Archivo XML inválido";
         addLog(`Error XML: ${message}`);
       }
     };
     reader.readAsText(file);
+  };
+
+  // Seleccionar canción del Repertorio Online (Supabase + fallback fetch de file)
+  const handleSelectOnlineSong = async (songId: string) => {
+    if (!songId) return;
+    setSelectedRepertoireId(songId);
+    setPracticeMode("repertoire");
+    setCurrentIndex(0);
+
+    const found = onlineRepertoire.find((s) => s.id === songId);
+    if (!found) return;
+
+    addLog(`Cargando repertorio desde Supabase: ${found.title} (${found.file})...`);
+
+    // Si por alguna razón el registro no tuviera XML embebido, intentar fetch del archivo .xml
+    if (!found.musicXml && found.file) {
+      try {
+        const response = await fetch(`/${found.file.replace(/^\//, "")}`);
+        if (response.ok) {
+          const xmlText = await response.text();
+          setOnlineRepertoire((prev) =>
+            prev.map((item) => (item.id === songId ? { ...item, musicXml: xmlText } : item))
+          );
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Error de red";
+        addLog(`Error cargando archivo XML: ${message}`);
+      }
+    }
   };
 
   // Activar micrófono para análisis acústico complementario
@@ -561,26 +635,25 @@ export default function AlesisPianoStudioSection({
   const changeLesson = (indexStr: string) => {
     const idx = parseInt(indexStr, 10);
     if (isNaN(idx) || idx < 0 || idx >= BEGINNER_LESSONS.length) return;
-    setCustomXmlLoaded(null);
+    setPracticeMode("lesson");
+    setSelectedRepertoireId("");
     setCurrentLessonIndex(idx);
     setCurrentIndex(0);
     addLog(`Lección cargada: ${BEGINNER_LESSONS[idx].title}`);
   };
 
-  const restartCurrentLesson = () => {
+  const restartCurrentSequence = () => {
     setCurrentIndex(0);
     if (osmdInstanceRef.current?.cursor) {
       try {
         osmdInstanceRef.current.cursor.reset();
       } catch {}
     }
-    addLog(`Lección reiniciada: ${BEGINNER_LESSONS[currentLessonIndex].title}`);
+    addLog(`Secuencia reiniciada: ${activeTitle}`);
   };
 
-  const activeLesson = BEGINNER_LESSONS[currentLessonIndex];
-  const lessonSequence = activeLesson.sequence;
-  const isLessonComplete = currentIndex >= lessonSequence.length;
-  const currentStep = !isLessonComplete ? lessonSequence[currentIndex] : null;
+  const isSequenceComplete = currentIndex >= activeSequence.length;
+  const currentStep = !isSequenceComplete ? activeSequence[currentIndex] : null;
 
   return (
     <div
@@ -609,7 +682,7 @@ export default function AlesisPianoStudioSection({
               <p className="text-[10px] text-slate-400 truncate">
                 {midiConnected
                   ? `Conectado: ${midiDeviceName}`
-                  : "Master Studio - USB-C MIDI, LEDs 3 Colores & OSMD"}
+                  : "Master Studio - USB-C MIDI, LEDs 3 Colores, OSMD & Supabase"}
               </p>
             </div>
           </div>
@@ -646,7 +719,7 @@ export default function AlesisPianoStudioSection({
         <div className="flex items-center gap-2 overflow-x-auto pb-0.5 no-scrollbar">
           <label className="bg-purple-600 hover:bg-purple-500 active:scale-95 text-xs px-3 py-2 rounded-xl font-medium transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 shadow text-white">
             <Upload size={13} />
-            <span>📂 Cargar XML</span>
+            <span>📂 Cargar XML (+ Guardar en Supabase)</span>
             <input
               type="file"
               id="scoreFile"
@@ -671,57 +744,96 @@ export default function AlesisPianoStudioSection({
 
           <button
             type="button"
-            onClick={restartCurrentLesson}
+            onClick={restartCurrentSequence}
             className="bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs px-3 py-2 rounded-xl font-medium transition whitespace-nowrap shadow flex items-center gap-1.5 text-slate-200 border border-slate-700 cursor-pointer"
           >
             <RotateCcw size={13} />
-            <span>Repetir Lección</span>
+            <span>Repetir Pieza</span>
           </button>
 
-          {customXmlLoaded && (
-            <button
-              type="button"
-              onClick={() => setCustomXmlLoaded(null)}
-              className="bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/40 text-orange-300 text-xs px-3 py-2 rounded-xl font-medium transition whitespace-nowrap cursor-pointer"
-            >
-              Ver Partitura de Lección
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={syncSupabaseRepertoire}
+            disabled={isSyncingSupabase}
+            className="bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-500/30 text-cyan-300 active:scale-95 text-xs px-3 py-2 rounded-xl font-medium transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
+          >
+            <RefreshCw size={12} className={isSyncingSupabase ? "animate-spin" : ""} />
+            <span>Sincronizar Supabase</span>
+          </button>
         </div>
       </header>
 
       {/* Contenido Principal Mobile-First y adaptable a Desktop */}
       <main className="flex-1 p-3 sm:p-5 max-w-4xl mx-auto w-full flex flex-col gap-4 pb-12">
-        {/* 1. Selector de Lecciones */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg flex flex-col gap-2">
-          <div className="flex justify-between items-center">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-orange-400 flex items-center gap-1.5">
-              <BookOpen size={12} /> 📚 Módulo de Aprendizaje
-            </span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-300 border border-orange-500/20">
-              {activeLesson.level} • Paso {Math.min(currentIndex + 1, lessonSequence.length)}/
-              {lessonSequence.length}
-            </span>
-          </div>
-          <select
-            id="lessonSelector"
-            value={currentLessonIndex}
-            onChange={(e) => changeLesson(e.target.value)}
-            className="bg-slate-950 border border-slate-700 text-xs sm:text-sm text-slate-200 rounded-xl p-2.5 outline-none focus:border-orange-500 font-medium cursor-pointer"
+        {/* 1. Grid de Selectores: Módulo de Aprendizaje + Repertorio Online (Supabase DB) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Selector de Lecciones de Principiante */}
+          <div
+            className={`bg-slate-900 border rounded-2xl p-4 shadow-lg flex flex-col gap-2 transition ${
+              practiceMode === "lesson" ? "border-orange-500/60" : "border-slate-800"
+            }`}
           >
-            {BEGINNER_LESSONS.map((lesson, idx) => (
-              <option key={lesson.title} value={idx}>
-                {lesson.title}
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-orange-400 flex items-center gap-1.5">
+                <BookOpen size={12} /> 📚 Módulo de Aprendizaje
+              </span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-300 border border-orange-500/20">
+                Principiante
+              </span>
+            </div>
+            <select
+              id="lessonSelector"
+              value={practiceMode === "lesson" ? currentLessonIndex : ""}
+              onChange={(e) => changeLesson(e.target.value)}
+              className="bg-slate-950 border border-slate-700 text-xs sm:text-sm text-slate-200 rounded-xl p-2.5 outline-none focus:border-orange-500 font-medium cursor-pointer"
+            >
+              <option value="" disabled>
+                -- Seleccionar Lección Base --
               </option>
-            ))}
-          </select>
+              {BEGINNER_LESSONS.map((lesson, idx) => (
+                <option key={lesson.title} value={idx}>
+                  {lesson.title}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Selector de Repertorio Online (Base de Datos Supabase Loya Creative Lab) */}
+          <div
+            className={`bg-slate-900 border rounded-2xl p-4 shadow-lg flex flex-col gap-2 transition ${
+              practiceMode === "repertoire" ? "border-purple-500/60" : "border-slate-800"
+            }`}
+          >
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
+                <Cloud size={12} /> ☁️ Repertorio Online (Supabase DB)
+              </span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                {onlineRepertoire.length} Partituras XML
+              </span>
+            </div>
+            <select
+              id="onlineSongSelector"
+              value={practiceMode === "repertoire" ? selectedRepertoireId : ""}
+              onChange={(e) => handleSelectOnlineSong(e.target.value)}
+              className="bg-slate-950 border border-slate-700 text-xs sm:text-sm text-slate-200 rounded-xl p-2.5 outline-none focus:border-purple-500 font-medium cursor-pointer"
+            >
+              <option value="">-- Seleccionar Canción de Supabase --</option>
+              {onlineRepertoire.map((song) => (
+                <option key={song.id} value={song.id}>
+                  {song.title} ({song.file})
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        {/* 2. Estado de Lección Activa & Leyenda de 3 Colores LED */}
+        {/* 2. Estado de Lección / Pieza Activa & Leyenda de 3 Colores LED */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg relative flex flex-col items-center text-center">
           <div className="w-full flex items-center justify-between mb-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-              Práctica Activa
+              {activeLevelBadge} • {activeTitle} (Paso{" "}
+              {Math.min(currentIndex + 1, activeSequence.length)}/{activeSequence.length})
             </span>
             {currentStep && (
               <button
@@ -737,24 +849,24 @@ export default function AlesisPianoStudioSection({
           <div
             id="songLyric"
             className={`text-xl sm:text-2xl font-black my-1 transition-all ${
-              isLessonComplete ? "text-emerald-400" : "text-orange-400"
+              isSequenceComplete ? "text-emerald-400" : "text-orange-400"
             }`}
           >
-            {isLessonComplete
-              ? "¡Lección completada con éxito! 🎉"
+            {isSequenceComplete
+              ? "¡Pieza completada con éxito! 🎉"
               : currentStep?.lyric || '"Conecta tu teclado Alesis"'}
           </div>
 
           <div id="instructionText" className="text-xs sm:text-sm text-slate-300">
-            {isLessonComplete
-              ? "Selecciona otra lección o pulsa Repetir Lección para practicar de nuevo."
+            {isSequenceComplete
+              ? "Selecciona otra lección o canción de Supabase, o pulsa Repetir Pieza."
               : `Toca ${currentStep?.name} en tu teclado Alesis o en el monitor táctil (Naranja)`}
           </div>
 
-          {isLessonComplete && (
+          {isSequenceComplete && (
             <button
               type="button"
-              onClick={restartCurrentLesson}
+              onClick={restartCurrentSequence}
               className="mt-3 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg transition cursor-pointer"
             >
               <CheckCircle2 size={14} /> Practicar de Nuevo
@@ -788,12 +900,12 @@ export default function AlesisPianoStudioSection({
             <div
               id="fingerNumberBox"
               className={`w-16 h-16 rounded-2xl border-2 flex items-center justify-center text-3xl font-black shadow-inner transition-all ${
-                isLessonComplete
+                isSequenceComplete
                   ? "bg-emerald-500/20 border-emerald-500 text-emerald-400"
                   : "bg-orange-500/20 border-orange-500 text-orange-400"
               }`}
             >
-              {isLessonComplete ? "✓" : currentStep?.finger ?? "-"}
+              {isSequenceComplete ? "✓" : currentStep?.finger ?? "-"}
             </div>
             <div id="handSideText" className="text-xs font-semibold text-slate-300 mt-2">
               {currentStep?.hand || "Mano Der."}
@@ -809,16 +921,16 @@ export default function AlesisPianoStudioSection({
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                 <Sparkles size={11} className="text-purple-400" /> Partitura Interactiva MusicXML (OSMD)
               </span>
-              {customXmlLoaded && (
-                <span className="text-[10px] font-mono text-purple-300 truncate max-w-[160px]">
-                  {customXmlLoaded}
-                </span>
-              )}
+              <span className="text-[10px] font-mono text-purple-300 truncate max-w-[180px]">
+                {practiceMode === "repertoire" && activeRepertoireSong
+                  ? activeRepertoireSong.file
+                  : activeTitle}
+              </span>
             </div>
             <div
               id="osmdContainer"
               ref={osmdContainerRef}
-              className="bg-white rounded-xl p-2 overflow-x-auto min-h-[120px] max-h-[180px] flex items-center justify-center text-slate-800 shadow-inner"
+              className="bg-white rounded-xl p-2 overflow-x-auto min-h-[120px] max-h-[190px] flex items-center justify-center text-slate-800 shadow-inner"
             >
               <span className="text-xs text-slate-400 font-normal text-center">
                 Cargando visor de partituras OSMD...
@@ -831,7 +943,7 @@ export default function AlesisPianoStudioSection({
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-4 flex flex-col items-center shadow-lg">
           <div className="w-full flex items-center justify-between mb-2">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Teclado Alesis USB-C (En Vivo — Notas MIDI 48 a 72)
+              Teclado Alesis USB-C (En Vivo — Notas MIDI 48 a 76)
             </span>
             <span className="text-[10px] font-mono text-slate-500">
               Toca cualquier tecla para probar
@@ -868,7 +980,7 @@ export default function AlesisPianoStudioSection({
                   className={
                     isBlack
                       ? `z-10 h-16 sm:h-20 w-5 sm:w-6 bg-slate-900 text-slate-100 rounded-b-md cursor-pointer border border-slate-700 flex flex-col items-center justify-end pb-1.5 text-[8px] font-mono shrink-0 transition-all select-none active:scale-95 ${colorClasses}`
-                      : `relative z-0 h-24 sm:h-28 w-8 sm:w-10 bg-white text-slate-900 rounded-b-lg cursor-pointer border border-slate-300 flex flex-col items-center justify-end pb-1.5 text-[9px] font-semibold shadow-sm shrink-0 transition-all select-none active:scale-95 ${colorClasses}`
+                      : `relative z-0 h-24 sm:h-28 w-8 sm:w-9 bg-white text-slate-900 rounded-b-lg cursor-pointer border border-slate-300 flex flex-col items-center justify-end pb-1.5 text-[9px] font-semibold shadow-sm shrink-0 transition-all select-none active:scale-95 ${colorClasses}`
                   }
                 >
                   <span className="opacity-75 text-[7px] font-mono">
@@ -885,7 +997,7 @@ export default function AlesisPianoStudioSection({
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex flex-col shadow-lg">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-              <Terminal size={12} className="text-emerald-400" /> Log de Sistema MIDI / OSMD
+              <Terminal size={12} className="text-emerald-400" /> Log de Sistema MIDI / OSMD / Supabase
             </span>
             <button
               type="button"

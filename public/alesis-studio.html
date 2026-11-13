@@ -8,6 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- OpenSheetMusicDisplay para partituras XML -->
     <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.6/build/opensheetmusicdisplay.min.js"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { -webkit-tap-highlight-color: transparent; }
         .touch-scroll { -webkit-overflow-scrolling: touch; }
@@ -25,7 +27,7 @@
         <div class="flex justify-between items-center">
             <div>
                 <h1 class="text-sm font-bold text-orange-400">🎹 Alesis Piano Academy</h1>
-                <p class="text-[10px] text-slate-400">Master Studio - USB-C MIDI & OSMD</p>
+                <p class="text-[10px] text-slate-400">Master Studio - USB-C MIDI, OSMD & Supabase DB</p>
             </div>
             <button id="btnConnectMIDI" onclick="initMIDI()" class="bg-blue-600 active:scale-95 text-xs px-3 py-2 rounded-xl font-semibold transition shadow-lg">
                 🔌 Conectar USB
@@ -45,17 +47,29 @@
     <!-- Contenido Principal -->
     <main class="flex-1 p-3 max-w-xl mx-auto w-full flex flex-col gap-4 pb-12">
         
-        <!-- Selector de Lecciones -->
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg flex flex-col gap-2">
-            <div class="flex justify-between items-center">
-                <span class="text-[10px] font-bold uppercase tracking-wider text-orange-400">📚 Módulo de Aprendizaje</span>
-                <span class="text-[10px] text-slate-400">Principiante</span>
+        <!-- Selector de Lecciones + Repertorio Online Supabase -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg flex flex-col gap-2">
+                <div class="flex justify-between items-center">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-orange-400">📚 Módulo de Aprendizaje</span>
+                    <span class="text-[10px] text-slate-400">Principiante</span>
+                </div>
+                <select id="lessonSelector" onchange="changeLesson(this.value)" class="bg-slate-950 border border-slate-700 text-xs text-slate-200 rounded-xl p-2.5 outline-none focus:border-orange-500 font-medium">
+                    <option value="0">Lección 1: Pentacorde de Do Mayor (Dedos 1-5)</option>
+                    <option value="1">Lección 2: Independencia de Dedos (Hanon)</option>
+                    <option value="2">Lección 3: Escala Básica de Do Mayor</option>
+                </select>
             </div>
-            <select id="lessonSelector" onchange="changeLesson(this.value)" class="bg-slate-950 border border-slate-700 text-xs text-slate-200 rounded-xl p-2.5 outline-none focus:border-orange-500 font-medium">
-                <option value="0">Lección 1: Pentacorde de Do Mayor (Dedos 1-5)</option>
-                <option value="1">Lección 2: Independencia de Dedos (Hanon)</option>
-                <option value="2">Lección 3: Escala Básica de Do Mayor</option>
-            </select>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg flex flex-col gap-2">
+                <div class="flex justify-between items-center">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-purple-400">☁️ Repertorio Online (Supabase)</span>
+                    <span class="text-[10px] text-slate-400">MusicXML</span>
+                </div>
+                <select id="onlineSongSelector" onchange="loadOnlineSong(this.value)" class="bg-slate-950 border border-slate-700 text-xs text-slate-200 rounded-xl p-2.5 outline-none focus:border-purple-500 font-medium">
+                    <option value="">-- Seleccionar Canción --</option>
+                </select>
+            </div>
         </div>
 
         <!-- Estado de Lección -->
@@ -104,6 +118,15 @@
         let midiInput = null;
         let osmd = null;
 
+        const SUPABASE_URL = "https://femjbpqeejfymdkuagti.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlbWpicHFlZWpmeW1ka3VhZ3RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1MzM1ODMsImV4cCI6MjEwODEwOTU4M30.WoilJ87pAP8HH4CeojXI8eYbkXGXvDLF1n6ZvdjpiSk";
+        const sbClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+        let onlineRepertoire = [
+            { title: "Für Elise (Extracto)", file: "songs/fur_elise.xml" },
+            { title: "Oda a la Alegría (Beethoven)", file: "songs/ode_to_joy.xml" }
+        ];
+
         const beginnerLessons = [
             {
                 title: "Lección 1: Pentacorde de Do Mayor",
@@ -147,6 +170,65 @@
             const consoleEl = document.getElementById('logConsole');
             consoleEl.innerHTML += `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>`;
             consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+
+        async function populateOnlineCatalog() {
+            const selector = document.getElementById('onlineSongSelector');
+            selector.innerHTML = '<option value="">-- Seleccionar Canción --</option>';
+
+            if (sbClient) {
+                try {
+                    const { data, error } = await sbClient
+                        .from('songs')
+                        .select('*')
+                        .eq('album', 'Alesis Online Repertoire')
+                        .order('updated_at', { ascending: true });
+                    if (!error && data && data.length > 0) {
+                        onlineRepertoire = data.map(row => ({
+                            title: row.title,
+                            file: row.audio_url || 'songs/fur_elise.xml',
+                            xml: row.plain_lyrics,
+                            sequence: row.annotations
+                        }));
+                        log(`[Supabase] ${onlineRepertoire.length} canciones cargadas de la BD.`);
+                    }
+                } catch (e) {
+                    log(`[Supabase] Usando catálogo local de respaldo.`);
+                }
+            }
+
+            onlineRepertoire.forEach((song, index) => {
+                const opt = document.createElement('option');
+                opt.value = index;
+                opt.innerText = song.title;
+                selector.appendChild(opt);
+            });
+        }
+
+        async function loadOnlineSong(indexStr) {
+            if (indexStr === "") return;
+            const song = onlineRepertoire[parseInt(indexStr)];
+            if (!song) return;
+            log(`Descargando partitura: ${song.title}...`);
+            try {
+                let xmlText = song.xml;
+                if (!xmlText && song.file) {
+                    const response = await fetch(song.file);
+                    if (!response.ok) throw new Error("No se encontró el archivo XML en el servidor");
+                    xmlText = await response.text();
+                }
+                initOSMD();
+                await osmd.load(xmlText);
+                await osmd.render();
+                if (Array.isArray(song.sequence) && song.sequence.length > 0) {
+                    lessonSequence = song.sequence;
+                    currentIndex = 0;
+                    updateLessonUI();
+                }
+                log(`Partitura '${song.title}' lista en pantalla.`);
+            } catch (err) {
+                log(`Error cargando canción: ${err.message}`);
+            }
         }
 
         function changeLesson(index) {
@@ -243,7 +325,7 @@
             document.getElementById('instructionText').innerText = `Toca ${currentStep.name} (Naranja)`;
             document.getElementById('fingerNumberBox').innerText = currentStep.finger;
 
-            lessonSequence.forEach(s => setKeyColor(s.note, null));
+            for (let i = 48; i <= 76; i++) setKeyColor(i, null);
             setKeyColor(currentStep.note, 'orange');
         }
 
@@ -268,8 +350,8 @@
 
         function buildVirtualKeyboard() {
             const container = document.getElementById('virtualKeyboard');
-            for (let i = 48; i <= 72; i++) {
-                const isBlack = [49, 51, 54, 56, 58, 61, 63, 66, 68, 70].includes(i);
+            for (let i = 48; i <= 76; i++) {
+                const isBlack = [49, 51, 54, 56, 58, 61, 63, 66, 68, 70, 73, 75].includes(i);
                 const key = document.createElement('div');
                 key.id = `key-${i}`;
                 key.className = isBlack 
@@ -283,6 +365,7 @@
         }
 
         buildVirtualKeyboard();
+        populateOnlineCatalog();
         updateLessonUI();
     </script>
 </body>
