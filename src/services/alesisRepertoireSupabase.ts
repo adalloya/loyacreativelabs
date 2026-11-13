@@ -347,9 +347,9 @@ export function parseMusicXmlToSequence(xmlText: string): LessonStep[] {
 }
 
 /**
- * Obtiene y sincroniza el repertorio online de Alesis desde el proyecto Supabase
- * (femjbpqeejfymdkuagti) de Loya Creative Lab. Soporta tanto la tabla activa 'public.songs'
- * como la tabla dedicada 'public.alesis_repertoire'.
+ * Obtiene y sincroniza el repertorio online de Alesis desde la tabla 'public.songs'
+ * del proyecto Supabase (femjbpqeejfymdkuagti) de Loya Creative Lab.
+ * Compatible tanto con columnas (file_url, xml_content) como con (audio_url, plain_lyrics).
  */
 export async function fetchOnlineRepertoireFromSupabase(): Promise<OnlineRepertoireSong[]> {
   if (!isSupabaseConfigured) {
@@ -357,44 +357,7 @@ export async function fetchOnlineRepertoireFromSupabase(): Promise<OnlineReperto
   }
 
   try {
-    // 1. Intentar sincronizar con tabla dedicada 'alesis_repertoire' (si existe en el proyecto)
-    const dedicatedPayload = DEFAULT_ONLINE_REPERTOIRE.map((item) => ({
-      id: item.id,
-      title: item.title,
-      artist: item.artist,
-      file: item.file,
-      music_xml: item.musicXml,
-      sequence: item.sequence,
-      updated_at: new Date().toISOString(),
-    }));
-
-    const { error: dedicatedUpsertErr } = await supabase
-      .from("alesis_repertoire")
-      .upsert(dedicatedPayload, { onConflict: "id" });
-
-    if (!dedicatedUpsertErr) {
-      const { data: dedicatedData, error: dedicatedSelectErr } = await supabase
-        .from("alesis_repertoire")
-        .select("*")
-        .order("updated_at", { ascending: true });
-
-      if (!dedicatedSelectErr && dedicatedData && dedicatedData.length > 0) {
-        return dedicatedData.map((row: any) => ({
-          id: row.id,
-          title: row.title,
-          artist: row.artist || "Ludwig van Beethoven",
-          file: row.file || `songs/${row.id}.xml`,
-          musicXml: row.music_xml,
-          sequence:
-            Array.isArray(row.sequence) && row.sequence.length > 0
-              ? row.sequence
-              : parseMusicXmlToSequence(row.music_xml),
-          updatedAt: row.updated_at,
-        }));
-      }
-    }
-
-    // 2. Sincronizar en la tabla activa 'public.songs' del proyecto femjbpqeejfymdkuagti
+    // 1. Asegurar que las piezas base existan en public.songs
     const upsertPayload = DEFAULT_ONLINE_REPERTOIRE.map((item) => ({
       id: item.id,
       title: item.title,
@@ -409,32 +372,48 @@ export async function fetchOnlineRepertoireFromSupabase(): Promise<OnlineReperto
 
     await supabase.from("songs").upsert(upsertPayload, { onConflict: "id" });
 
+    // 2. Consultar todas las partituras almacenadas en public.songs
     const { data, error } = await supabase
       .from("songs")
       .select("*")
-      .eq("album", ALESIS_REPERTOIRE_ALBUM)
-      .order("updated_at", { ascending: true });
+      .order("updated_at", { ascending: false });
 
     if (error || !data || data.length === 0) {
       return DEFAULT_ONLINE_REPERTOIRE;
     }
 
-    return data.map((row: any) => {
+    // Filtrar filas que contienen partituras XML (por album o porque tienen xml_content / <?xml)
+    const xmlRows = data.filter((row: any) => {
+      const xmlCandidate = row.xml_content || row.plain_lyrics || "";
+      return (
+        row.album === ALESIS_REPERTOIRE_ALBUM ||
+        Boolean(row.xml_content) ||
+        xmlCandidate.includes("<score-partwise") ||
+        xmlCandidate.includes("<?xml")
+      );
+    });
+
+    if (xmlRows.length === 0) {
+      return DEFAULT_ONLINE_REPERTOIRE;
+    }
+
+    return xmlRows.map((row: any) => {
       const fallback = DEFAULT_ONLINE_REPERTOIRE.find((d) => d.id === row.id);
-      const xml = row.plain_lyrics || fallback?.musicXml || FUR_ELISE_XML;
+      const xml = row.xml_content || row.plain_lyrics || fallback?.musicXml || FUR_ELISE_XML;
+      const fileUrl = row.file_url || row.audio_url || fallback?.file || `songs/${row.id}.xml`;
       const seq: LessonStep[] =
         Array.isArray(row.annotations) && row.annotations.length > 0
           ? row.annotations
           : fallback?.sequence || parseMusicXmlToSequence(xml);
 
       return {
-        id: row.id,
+        id: String(row.id),
         title: row.title,
-        artist: row.artist || "Ludwig van Beethoven",
-        file: row.audio_url || fallback?.file || `songs/${row.id}.xml`,
+        artist: row.artist || "Partitura Cloud",
+        file: fileUrl,
         musicXml: xml,
         sequence: seq,
-        updatedAt: row.updated_at,
+        updatedAt: row.created_at || row.updated_at,
       };
     });
   } catch (err) {
@@ -444,13 +423,14 @@ export async function fetchOnlineRepertoireFromSupabase(): Promise<OnlineReperto
 }
 
 /**
- * Guarda una nueva partitura MusicXML subida por el usuario directamente en Supabase
- * (proyecto femjbpqeejfymdkuagti).
+ * Sube el archivo .xml al bucket 'sheet-music' de Supabase Storage y registra la partitura
+ * en la tabla 'public.songs' (proyecto femjbpqeejfymdkuagti).
  */
 export async function saveCustomXmlToSupabase(
   fileName: string,
-  xmlContent: string
-): Promise<OnlineRepertoireSong> {
+  xmlContent: string,
+  rawFile?: File
+): Promise<{ song: OnlineRepertoireSong; storageUploaded: boolean }> {
   const cleanTitle = fileName.replace(/\.(musicxml|xml)$/i, "").replace(/[_-]+/g, " ");
   const id = `alesis-xml-${cleanTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`;
   const parsedSequence = parseMusicXmlToSequence(xmlContent);
@@ -459,45 +439,83 @@ export async function saveCustomXmlToSupabase(
       ? parsedSequence
       : DEFAULT_ONLINE_REPERTOIRE[0].sequence;
 
-  const newSong: OnlineRepertoireSong = {
-    id,
-    title: cleanTitle,
-    artist: "Partitura MusicXML",
-    file: `songs/${fileName}`,
-    musicXml: xmlContent,
-    sequence,
-    updatedAt: new Date().toISOString(),
-  };
+  let publicFileUrl = `songs/${fileName}`;
+  let storageUploaded = false;
 
   if (isSupabaseConfigured) {
+    // 1. Subir archivo al bucket 'sheet-music' de Supabase Storage
     try {
-      // Guardar en tabla 'songs' (activa por defecto en femjbpqeejfymdkuagti)
-      await supabase.from("songs").upsert({
-        id: newSong.id,
-        title: newSong.title,
-        artist: newSong.artist,
-        album: ALESIS_REPERTOIRE_ALBUM,
-        duration: sequence.length * 2,
-        audio_url: newSong.file,
-        plain_lyrics: newSong.musicXml,
-        annotations: newSong.sequence,
-        updated_at: newSong.updatedAt,
-      });
+      const storageFileName = `${Date.now()}_${fileName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      const fileBody =
+        rawFile || new Blob([xmlContent], { type: "application/vnd.recordare.musicxml+xml" });
 
-      // Y si existe la tabla dedicada 'alesis_repertoire', sincronizar también ahí
-      await supabase.from("alesis_repertoire").upsert({
-        id: newSong.id,
-        title: newSong.title,
-        artist: newSong.artist,
-        file: newSong.file,
-        music_xml: newSong.musicXml,
-        sequence: newSong.sequence,
-        updated_at: newSong.updatedAt,
-      });
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("sheet-music")
+        .upload(storageFileName, fileBody, {
+          contentType: "text/xml",
+          upsert: true,
+        });
+
+      if (!uploadError && uploadData) {
+        const { data: publicUrlData } = supabase.storage
+          .from("sheet-music")
+          .getPublicUrl(storageFileName);
+        if (publicUrlData?.publicUrl) {
+          publicFileUrl = publicUrlData.publicUrl;
+          storageUploaded = true;
+        }
+      }
+    } catch (storageErr) {
+      console.warn("[AlesisRepertoire] Aviso al subir a bucket sheet-music:", storageErr);
+    }
+
+    // 2. Guardar registro en la tabla 'public.songs'
+    try {
+      // Intento 1: Con columnas extendidas (file_url, xml_content) + columnas estándar
+      const { error: extError } = await supabase.from("songs").insert([
+        {
+          id,
+          title: fileName,
+          artist: "Partitura MusicXML",
+          album: ALESIS_REPERTOIRE_ALBUM,
+          duration: sequence.length * 2,
+          file_url: publicFileUrl,
+          xml_content: xmlContent,
+          audio_url: publicFileUrl,
+          plain_lyrics: xmlContent,
+          annotations: sequence,
+          updated_at: new Date().toISOString(),
+        },
+      ]);
+
+      // Intento 2: Si el usuario aún no ejecutó el ALTER TABLE para file_url/xml_content, usar las columnas nativas de songs
+      if (extError) {
+        await supabase.from("songs").upsert({
+          id,
+          title: fileName,
+          artist: "Partitura MusicXML",
+          album: ALESIS_REPERTOIRE_ALBUM,
+          duration: sequence.length * 2,
+          audio_url: publicFileUrl,
+          plain_lyrics: xmlContent,
+          annotations: sequence,
+          updated_at: new Date().toISOString(),
+        });
+      }
     } catch (err) {
       console.warn("[AlesisRepertoire] Error guardando XML en Supabase:", err);
     }
   }
 
-  return newSong;
+  const newSong: OnlineRepertoireSong = {
+    id,
+    title: fileName,
+    artist: "Partitura MusicXML",
+    file: publicFileUrl,
+    musicXml: xmlContent,
+    sequence,
+    updatedAt: new Date().toISOString(),
+  };
+
+  return { song: newSong, storageUploaded };
 }

@@ -563,26 +563,39 @@ export default function AlesisPianoStudioSection({
     }
   };
 
-  // Cargar archivo MusicXML externo (.xml, .musicxml) en OSMD y guardarlo en Supabase
-  const loadMusicXML = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Cargar archivo MusicXML externo (.xml, .musicxml) en OSMD y subirlo a Supabase Storage + DB
+  const uploadAndLoadXML = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    addLog(`Procesando archivo: ${file.name}`);
     const reader = new FileReader();
     reader.onload = async (e) => {
       const xmlContent = e.target?.result;
       if (typeof xmlContent !== "string") return;
 
       try {
-        const savedSong = await saveCustomXmlToSupabase(file.name, xmlContent);
-        setOnlineRepertoire((prev) => [...prev.filter((item) => item.id !== savedSong.id), savedSong]);
+        const { song: savedSong, storageUploaded } = await saveCustomXmlToSupabase(
+          file.name,
+          xmlContent,
+          file
+        );
+        setOnlineRepertoire((prev) => [
+          savedSong,
+          ...prev.filter((item) => item.id !== savedSong.id),
+        ]);
         setSelectedRepertoireId(savedSong.id);
         setPracticeMode("repertoire");
         setCurrentIndex(0);
-        addLog(`Partitura XML cargada y guardada en Supabase: ${savedSong.title}`);
+        addLog(
+          storageUploaded
+            ? `¡Partitura subida a Storage (sheet-music) y guardada en Supabase con éxito!`
+            : `¡Partitura guardada en la tabla 'songs' de Supabase con éxito!`
+        );
+        syncSupabaseRepertoire();
       } catch (err) {
         const message = err instanceof Error ? err.message : "Archivo XML inválido";
-        addLog(`Error XML: ${message}`);
+        addLog(`Error al guardar en Supabase: ${message}`);
       }
     };
     reader.readAsText(file);
@@ -719,13 +732,13 @@ export default function AlesisPianoStudioSection({
         <div className="flex items-center gap-2 overflow-x-auto pb-0.5 no-scrollbar">
           <label className="bg-purple-600 hover:bg-purple-500 active:scale-95 text-xs px-3 py-2 rounded-xl font-medium transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 shadow text-white">
             <Upload size={13} />
-            <span>📂 Cargar XML (+ Guardar en Supabase)</span>
+            <span>📂 Cargar y Subir a Supabase</span>
             <input
               type="file"
               id="scoreFile"
               accept=".xml,.musicxml"
               className="hidden"
-              onChange={loadMusicXML}
+              onChange={uploadAndLoadXML}
             />
           </label>
 
@@ -758,26 +771,59 @@ export default function AlesisPianoStudioSection({
             className="bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-500/30 text-cyan-300 active:scale-95 text-xs px-3 py-2 rounded-xl font-medium transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
           >
             <RefreshCw size={12} className={isSyncingSupabase ? "animate-spin" : ""} />
-            <span>Sincronizar Supabase</span>
+            <span>Actualizar Lista</span>
           </button>
         </div>
       </header>
 
       {/* Contenido Principal Mobile-First y adaptable a Desktop */}
       <main className="flex-1 p-3 sm:p-5 max-w-4xl mx-auto w-full flex flex-col gap-4 pb-12">
-        {/* 1. Grid de Selectores: Módulo de Aprendizaje + Repertorio Online (Supabase DB) */}
+        {/* 1. Grid de Selectores: Biblioteca Cloud (Supabase) + Módulo de Aprendizaje */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {/* Selector de Lecciones de Principiante */}
+          {/* Selector de Biblioteca en la Nube (Supabase) */}
           <div
             className={`bg-slate-900 border rounded-2xl p-4 shadow-lg flex flex-col gap-2 transition ${
-              practiceMode === "lesson" ? "border-orange-500/60" : "border-slate-800"
+              practiceMode === "repertoire" ? "border-orange-500/60" : "border-slate-800"
             }`}
           >
             <div className="flex justify-between items-center">
               <span className="text-[10px] font-bold uppercase tracking-wider text-orange-400 flex items-center gap-1.5">
+                <Cloud size={12} /> ☁️ Biblioteca Cloud (Supabase)
+              </span>
+              <button
+                type="button"
+                onClick={syncSupabaseRepertoire}
+                className="text-[10px] text-blue-400 hover:text-blue-300 underline cursor-pointer"
+              >
+                Actualizar Lista ({onlineRepertoire.length})
+              </button>
+            </div>
+            <select
+              id="cloudSongSelector"
+              value={practiceMode === "repertoire" ? selectedRepertoireId : ""}
+              onChange={(e) => handleSelectOnlineSong(e.target.value)}
+              className="bg-slate-950 border border-slate-700 text-xs sm:text-sm text-slate-200 rounded-xl p-2.5 outline-none focus:border-orange-500 font-medium cursor-pointer"
+            >
+              <option value="">Selecciona una partitura guardada en la nube...</option>
+              {onlineRepertoire.map((song) => (
+                <option key={song.id} value={song.id}>
+                  {song.title}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Selector de Lecciones de Principiante */}
+          <div
+            className={`bg-slate-900 border rounded-2xl p-4 shadow-lg flex flex-col gap-2 transition ${
+              practiceMode === "lesson" ? "border-purple-500/60" : "border-slate-800"
+            }`}
+          >
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
                 <BookOpen size={12} /> 📚 Módulo de Aprendizaje
               </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-300 border border-orange-500/20">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20">
                 Principiante
               </span>
             </div>
@@ -785,7 +831,7 @@ export default function AlesisPianoStudioSection({
               id="lessonSelector"
               value={practiceMode === "lesson" ? currentLessonIndex : ""}
               onChange={(e) => changeLesson(e.target.value)}
-              className="bg-slate-950 border border-slate-700 text-xs sm:text-sm text-slate-200 rounded-xl p-2.5 outline-none focus:border-orange-500 font-medium cursor-pointer"
+              className="bg-slate-950 border border-slate-700 text-xs sm:text-sm text-slate-200 rounded-xl p-2.5 outline-none focus:border-purple-500 font-medium cursor-pointer"
             >
               <option value="" disabled>
                 -- Seleccionar Lección Base --
@@ -793,35 +839,6 @@ export default function AlesisPianoStudioSection({
               {BEGINNER_LESSONS.map((lesson, idx) => (
                 <option key={lesson.title} value={idx}>
                   {lesson.title}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Selector de Repertorio Online (Base de Datos Supabase Loya Creative Lab) */}
-          <div
-            className={`bg-slate-900 border rounded-2xl p-4 shadow-lg flex flex-col gap-2 transition ${
-              practiceMode === "repertoire" ? "border-purple-500/60" : "border-slate-800"
-            }`}
-          >
-            <div className="flex justify-between items-center">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
-                <Cloud size={12} /> ☁️ Repertorio Online (Supabase DB)
-              </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20">
-                {onlineRepertoire.length} Partituras XML
-              </span>
-            </div>
-            <select
-              id="onlineSongSelector"
-              value={practiceMode === "repertoire" ? selectedRepertoireId : ""}
-              onChange={(e) => handleSelectOnlineSong(e.target.value)}
-              className="bg-slate-950 border border-slate-700 text-xs sm:text-sm text-slate-200 rounded-xl p-2.5 outline-none focus:border-purple-500 font-medium cursor-pointer"
-            >
-              <option value="">-- Seleccionar Canción de Supabase --</option>
-              {onlineRepertoire.map((song) => (
-                <option key={song.id} value={song.id}>
-                  {song.title} ({song.file})
                 </option>
               ))}
             </select>

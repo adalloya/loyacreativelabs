@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Alesis Mobile Piano Studio - Master</title>
+    <title>Alesis Piano Studio - Supabase Cloud</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- OpenSheetMusicDisplay para partituras XML -->
     <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.6/build/opensheetmusicdisplay.min.js"></script>
-    <!-- Supabase JS Client -->
+    <!-- Supabase JS Client SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { -webkit-tap-highlight-color: transparent; }
@@ -26,8 +26,8 @@
     <header class="bg-slate-900 border-b border-slate-800 p-3 flex flex-col gap-2 shadow-md sticky top-0 z-50">
         <div class="flex justify-between items-center">
             <div>
-                <h1 class="text-sm font-bold text-orange-400">🎹 Alesis Piano Academy</h1>
-                <p class="text-[10px] text-slate-400">Master Studio - USB-C MIDI, OSMD & Supabase DB</p>
+                <h1 class="text-sm font-bold text-orange-400">🎹 Alesis Cloud Studio</h1>
+                <p class="text-[10px] text-slate-400">Supabase Sync + USB-C LEDs</p>
             </div>
             <button id="btnConnectMIDI" onclick="initMIDI()" class="bg-blue-600 active:scale-95 text-xs px-3 py-2 rounded-xl font-semibold transition shadow-lg">
                 🔌 Conectar USB
@@ -35,48 +35,31 @@
         </div>
         <div class="flex gap-2 overflow-x-auto touch-scroll pb-1">
             <label class="bg-purple-600 active:scale-95 text-xs px-3 py-2 rounded-xl font-medium transition whitespace-nowrap cursor-pointer flex items-center gap-1 shadow">
-                📂 Cargar XML
-                <input type="file" id="scoreFile" accept=".xml, .musicxml" class="hidden" onchange="loadMusicXML(event)">
+                📂 Cargar y Subir a Supabase
+                <input type="file" id="scoreFile" accept=".xml, .musicxml" class="hidden" onchange="uploadAndLoadXML(event)">
             </label>
-            <button onclick="initAudio()" class="bg-emerald-600 active:scale-95 text-xs px-3 py-2 rounded-xl font-medium transition whitespace-nowrap shadow">
-                🎤 Micrófono
-            </button>
         </div>
     </header>
 
     <!-- Contenido Principal -->
     <main class="flex-1 p-3 max-w-xl mx-auto w-full flex flex-col gap-4 pb-12">
         
-        <!-- Selector de Lecciones + Repertorio Online Supabase -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg flex flex-col gap-2">
-                <div class="flex justify-between items-center">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-orange-400">📚 Módulo de Aprendizaje</span>
-                    <span class="text-[10px] text-slate-400">Principiante</span>
-                </div>
-                <select id="lessonSelector" onchange="changeLesson(this.value)" class="bg-slate-950 border border-slate-700 text-xs text-slate-200 rounded-xl p-2.5 outline-none focus:border-orange-500 font-medium">
-                    <option value="0">Lección 1: Pentacorde de Do Mayor (Dedos 1-5)</option>
-                    <option value="1">Lección 2: Independencia de Dedos (Hanon)</option>
-                    <option value="2">Lección 3: Escala Básica de Do Mayor</option>
-                </select>
+        <!-- Selector de Biblioteca en la Nube (Supabase) -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg flex flex-col gap-2">
+            <div class="flex justify-between items-center">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-orange-400">☁️ Biblioteca Cloud (Supabase)</span>
+                <button onclick="fetchCloudSongs()" class="text-[10px] text-blue-400 underline">Actualizar Lista</button>
             </div>
-
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg flex flex-col gap-2">
-                <div class="flex justify-between items-center">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-purple-400">☁️ Repertorio Online (Supabase)</span>
-                    <span class="text-[10px] text-slate-400">MusicXML</span>
-                </div>
-                <select id="onlineSongSelector" onchange="loadOnlineSong(this.value)" class="bg-slate-950 border border-slate-700 text-xs text-slate-200 rounded-xl p-2.5 outline-none focus:border-purple-500 font-medium">
-                    <option value="">-- Seleccionar Canción --</option>
-                </select>
-            </div>
+            <select id="cloudSongSelector" onchange="loadSongFromCloud(this.value)" class="bg-slate-950 border border-slate-700 text-xs text-slate-200 rounded-xl p-2.5 outline-none focus:border-orange-500 font-medium">
+                <option value="">Selecciona una partitura guardada en la nube...</option>
+            </select>
         </div>
 
         <!-- Estado de Lección -->
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg relative flex flex-col items-center text-center">
             <div class="absolute top-3 left-4 text-[10px] font-bold uppercase tracking-wider text-slate-500">Práctica Activa</div>
             <div id="songLyric" class="text-xl font-black text-orange-400 my-1">"Conecta tu teclado Alesis"</div>
-            <div id="instructionText" class="text-xs text-slate-300">Esperando conexión USB-C...</div>
+            <div id="instructionText" class="text-xs text-slate-300">Selecciona o sube una partitura para empezar.</div>
             <div class="mt-3 flex gap-4 text-[11px] text-slate-400">
                 <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span> Siguiente</span>
                 <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Bien</span>
@@ -94,7 +77,7 @@
             <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex flex-col shadow-inner col-span-2 justify-center">
                 <div class="text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Partitura Interactiva</div>
                 <div id="osmdContainer" class="bg-white rounded-xl p-2 overflow-x-auto touch-scroll h-28 flex items-center justify-center text-slate-800">
-                    <span class="text-xs text-slate-400 font-normal text-center">Carga o usa lecciones</span>
+                    <span class="text-xs text-slate-400 font-normal text-center">Sin partitura activa</span>
                 </div>
             </div>
         </div>
@@ -108,62 +91,25 @@
         <!-- Consola -->
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex flex-col">
             <span class="text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Log de Sistema</span>
-            <div id="logConsole" class="bg-slate-950 p-2.5 rounded-xl font-mono text-[10px] text-emerald-400 h-20 overflow-y-auto touch-scroll border border-slate-800">[Sistema] Listo. Conecta tu cable USB-C.</div>
+            <div id="logConsole" class="bg-slate-950 p-2.5 rounded-xl font-mono text-[10px] text-emerald-400 h-20 overflow-y-auto touch-scroll border border-slate-800">[Sistema] Listo. Conectado a Supabase (femjbpqeejfymdkuagti).</div>
         </div>
 
     </main>
 
     <script>
+        // --- CREDENCIALES DE SUPABASE (LOYA CREATIVE LAB) ---
+        const SUPABASE_URL = 'https://femjbpqeejfymdkuagti.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlbWpicHFlZWpmeW1ka3VhZ3RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1MzM1ODMsImV4cCI6MjEwODEwOTU4M30.WoilJ87pAP8HH4CeojXI8eYbkXGXvDLF1n6ZvdjpiSk';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
         let midiOutput = null;
         let midiInput = null;
         let osmd = null;
-
-        const SUPABASE_URL = "https://femjbpqeejfymdkuagti.supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlbWpicHFlZWpmeW1ka3VhZ3RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1MzM1ODMsImV4cCI6MjEwODEwOTU4M30.WoilJ87pAP8HH4CeojXI8eYbkXGXvDLF1n6ZvdjpiSk";
-        const sbClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
-
-        let onlineRepertoire = [
-            { title: "Für Elise (Extracto)", file: "songs/fur_elise.xml" },
-            { title: "Oda a la Alegría (Beethoven)", file: "songs/ode_to_joy.xml" }
+        let currentXMLContent = null;
+        let activeSequence = [
+            { note: 60, name: 'C4', lyric: 'Do - Esperando partitura', finger: 1 },
+            { note: 62, name: 'D4', lyric: 'Re', finger: 2 }
         ];
-
-        const beginnerLessons = [
-            {
-                title: "Lección 1: Pentacorde de Do Mayor",
-                sequence: [
-                    { note: 60, name: 'C4 (Do)', lyric: 'Do - Dedo 1 (Pulgar)', finger: 1 },
-                    { note: 62, name: 'D4 (Re)', lyric: 'Re - Dedo 2 (Índice)', finger: 2 },
-                    { note: 64, name: 'E4 (Mi)', lyric: 'Mi - Dedo 3 (Medio)', finger: 3 },
-                    { note: 65, name: 'F4 (Fa)', lyric: 'Fa - Dedo 4 (Anular)', finger: 4 },
-                    { note: 67, name: 'G4 (Sol)', lyric: 'Sol - Dedo 5 (Meñique)', finger: 5 }
-                ]
-            },
-            {
-                title: "Lección 2: Independencia de Dedos",
-                sequence: [
-                    { note: 60, name: 'C4 (Do)', lyric: 'Do - Dedo 1', finger: 1 },
-                    { note: 64, name: 'E4 (Mi)', lyric: 'Mi - Dedo 3', finger: 3 },
-                    { note: 62, name: 'D4 (Re)', lyric: 'Re - Dedo 2', finger: 2 },
-                    { note: 65, name: 'F4 (Fa)', lyric: 'Fa - Dedo 4', finger: 4 }
-                ]
-            },
-            {
-                title: "Lección 3: Escala de Do Mayor",
-                sequence: [
-                    { note: 60, name: 'C4 (Do)', lyric: 'Do - Dedo 1', finger: 1 },
-                    { note: 62, name: 'D4 (Re)', lyric: 'Re - Dedo 2', finger: 2 },
-                    { note: 64, name: 'E4 (Mi)', lyric: 'Mi - Dedo 3', finger: 3 },
-                    { note: 65, name: 'F4 (Fa)', lyric: 'Fa - Dedo 1 (Cruce)', finger: 1 },
-                    { note: 67, name: 'G4 (Sol)', lyric: 'Sol - Dedo 2', finger: 2 },
-                    { note: 69, name: 'A4 (La)', lyric: 'La - Dedo 3', finger: 3 },
-                    { note: 71, name: 'B4 (Si)', lyric: 'Si - Dedo 4', finger: 4 },
-                    { note: 72, name: 'C5 (Do)', lyric: 'Do - Dedo 5', finger: 5 }
-                ]
-            }
-        ];
-
-        let currentLessonIndex = 0;
-        let lessonSequence = beginnerLessons[0].sequence;
         let currentIndex = 0;
 
         function log(msg) {
@@ -172,98 +118,202 @@
             consoleEl.scrollTop = consoleEl.scrollHeight;
         }
 
-        async function populateOnlineCatalog() {
-            const selector = document.getElementById('onlineSongSelector');
-            selector.innerHTML = '<option value="">-- Seleccionar Canción --</option>';
+        // --- PARSER DE MUSICXML A SECUENCIA DE LEDS ---
+        function parseXMLSequence(xmlText) {
+            try {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(xmlText, "application/xml");
+                const noteNodes = Array.from(doc.getElementsByTagName("note"));
+                const stepMap = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+                const solfegeMap = { C: "Do", D: "Re", E: "Mi", F: "Fa", G: "Sol", A: "La", B: "Si" };
+                const steps = [];
 
-            if (sbClient) {
-                try {
-                    const { data, error } = await sbClient
-                        .from('songs')
-                        .select('*')
-                        .eq('album', 'Alesis Online Repertoire')
-                        .order('updated_at', { ascending: true });
-                    if (!error && data && data.length > 0) {
-                        onlineRepertoire = data.map(row => ({
-                            title: row.title,
-                            file: row.audio_url || 'songs/fur_elise.xml',
-                            xml: row.plain_lyrics,
-                            sequence: row.annotations
-                        }));
-                        log(`[Supabase] ${onlineRepertoire.length} canciones cargadas de la BD.`);
-                    }
-                } catch (e) {
-                    log(`[Supabase] Usando catálogo local de respaldo.`);
+                for (const noteEl of noteNodes) {
+                    if (noteEl.getElementsByTagName("rest").length > 0) continue;
+                    const pitchEl = noteEl.getElementsByTagName("pitch")[0];
+                    if (!pitchEl) continue;
+                    const stepLetter = (pitchEl.getElementsByTagName("step")[0]?.textContent || "C").trim();
+                    const octaveNum = parseInt(pitchEl.getElementsByTagName("octave")[0]?.textContent || "4", 10);
+                    const alterNum = parseInt(pitchEl.getElementsByTagName("alter")[0]?.textContent || "0", 10);
+                    const midiNote = (octaveNum + 1) * 12 + (stepMap[stepLetter] ?? 0) + alterNum;
+                    const finger = parseInt(noteEl.getElementsByTagName("fingering")[0]?.textContent || "1", 10) || 1;
+                    const acc = alterNum === 1 ? "#" : alterNum === -1 ? "b" : "";
+                    const solfege = `${solfegeMap[stepLetter] || stepLetter}${acc}`;
+                    steps.push({
+                        note: midiNote,
+                        name: `${stepLetter}${acc}${octaveNum} (${solfege})`,
+                        lyric: `${solfege}${octaveNum} - Dedo ${finger}`,
+                        finger
+                    });
                 }
+                return steps;
+            } catch {
+                return [];
             }
-
-            onlineRepertoire.forEach((song, index) => {
-                const opt = document.createElement('option');
-                opt.value = index;
-                opt.innerText = song.title;
-                selector.appendChild(opt);
-            });
         }
 
-        async function loadOnlineSong(indexStr) {
-            if (indexStr === "") return;
-            const song = onlineRepertoire[parseInt(indexStr)];
-            if (!song) return;
-            log(`Descargando partitura: ${song.title}...`);
-            try {
-                let xmlText = song.xml;
-                if (!xmlText && song.file) {
-                    const response = await fetch(song.file);
-                    if (!response.ok) throw new Error("No se encontró el archivo XML en el servidor");
-                    xmlText = await response.text();
-                }
-                initOSMD();
-                await osmd.load(xmlText);
-                await osmd.render();
-                if (Array.isArray(song.sequence) && song.sequence.length > 0) {
-                    lessonSequence = song.sequence;
+        // --- CARGAR Y SUBIR A SUPABASE ---
+        async function uploadAndLoadXML(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            log(`Procesando archivo: ${file.name}`);
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const xmlText = e.target.result;
+                currentXMLContent = xmlText;
+                
+                // 1. Renderizar localmente
+                renderOSMD(xmlText);
+
+                const parsedSteps = parseXMLSequence(xmlText);
+                if (parsedSteps.length > 0) {
+                    activeSequence = parsedSteps;
                     currentIndex = 0;
                     updateLessonUI();
                 }
-                log(`Partitura '${song.title}' lista en pantalla.`);
-            } catch (err) {
-                log(`Error cargando canción: ${err.message}`);
-            }
-        }
 
-        function changeLesson(index) {
-            currentLessonIndex = parseInt(index);
-            lessonSequence = beginnerLessons[currentLessonIndex].sequence;
-            currentIndex = 0;
-            log(`Lección cargada: ${beginnerLessons[currentLessonIndex].title}`);
-            updateLessonUI();
-        }
-
-        function initOSMD() {
-            const container = document.getElementById("osmdContainer");
-            container.innerHTML = "";
-            osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(container, {
-                autoResize: true, backend: "svg", drawFingerings: true
-            });
-        }
-
-        async function loadMusicXML(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = async function(e) {
+                // 2. Subir a Supabase Storage y Base de Datos
                 try {
-                    initOSMD();
-                    await osmd.load(e.target.result);
-                    await osmd.render();
-                    log("Partitura XML cargada correctamente.");
+                    const fileName = `${Date.now()}_${file.name}`;
+                    let publicUrl = `songs/${file.name}`;
+
+                    const { data: uploadData, error: uploadError } = await supabaseClient.storage
+                        .from('sheet-music')
+                        .upload(fileName, file);
+
+                    if (!uploadError && uploadData) {
+                        const { data: publicUrlData } = supabaseClient.storage
+                            .from('sheet-music')
+                            .getPublicUrl(fileName);
+                        if (publicUrlData?.publicUrl) {
+                            publicUrl = publicUrlData.publicUrl;
+                        }
+                    }
+
+                    // Guardar registro en la tabla 'songs' (compatible con ambos esquemas)
+                    const songId = `alesis-${Date.now()}`;
+                    const { error: dbError } = await supabaseClient
+                        .from('songs')
+                        .insert([
+                            {
+                                id: songId,
+                                title: file.name,
+                                artist: 'Partitura MusicXML',
+                                album: 'Alesis Online Repertoire',
+                                file_url: publicUrl,
+                                xml_content: xmlText,
+                                audio_url: publicUrl,
+                                plain_lyrics: xmlText,
+                                annotations: activeSequence
+                            }
+                        ]);
+
+                    if (dbError) {
+                        const { error: fallbackError } = await supabaseClient
+                            .from('songs')
+                            .upsert({
+                                id: songId,
+                                title: file.name,
+                                artist: 'Partitura MusicXML',
+                                album: 'Alesis Online Repertoire',
+                                audio_url: publicUrl,
+                                plain_lyrics: xmlText,
+                                annotations: activeSequence,
+                                updated_at: new Date().toISOString()
+                            });
+                        if (fallbackError) throw fallbackError;
+                    }
+
+                    log(`¡Partitura subida y guardada en Supabase con éxito!`);
+                    fetchCloudSongs();
                 } catch (err) {
-                    log(`Error XML: ${err.message}`);
+                    log(`Error al guardar en Supabase: ${err.message}`);
                 }
             };
             reader.readAsText(file);
         }
 
+        // --- OBTENER LISTA DESDE SUPABASE ---
+        async function fetchCloudSongs() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('songs')
+                    .select('*')
+                    .order('updated_at', { ascending: false });
+
+                if (error) throw error;
+
+                const selector = document.getElementById('cloudSongSelector');
+                selector.innerHTML = '<option value="">Selecciona una partitura de la nube...</option>';
+                
+                data.forEach(song => {
+                    const xmlContent = song.xml_content || song.plain_lyrics;
+                    if (!xmlContent) return;
+                    const opt = document.createElement('option');
+                    opt.value = song.id;
+                    opt.textContent = song.title;
+                    opt.dataset.xml = xmlContent;
+                    if (song.annotations) {
+                        opt.dataset.sequence = JSON.stringify(song.annotations);
+                    }
+                    selector.appendChild(opt);
+                });
+                log(`Biblioteca cloud actualizada (${selector.options.length - 1} partituras).`);
+            } catch (err) {
+                log(`Error obteniendo canciones: ${err.message}`);
+            }
+        }
+
+        // --- CARGAR CANCIÓN DESDE EL SELECTOR CLOUD ---
+        function loadSongFromCloud(songId) {
+            const selector = document.getElementById('cloudSongSelector');
+            const selectedOption = selector.options[selector.selectedIndex];
+            if (!selectedOption || !selectedOption.dataset.xml) return;
+
+            const xmlText = selectedOption.dataset.xml;
+            renderOSMD(xmlText);
+
+            const parsed = selectedOption.dataset.sequence
+                ? JSON.parse(selectedOption.dataset.sequence)
+                : parseXMLSequence(xmlText);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                activeSequence = parsed;
+                currentIndex = 0;
+                updateLessonUI();
+            }
+            log(`Cargada partitura: ${selectedOption.textContent}`);
+        }
+
+        function updateLessonUI() {
+            if (currentIndex >= activeSequence.length) {
+                document.getElementById('songLyric').innerText = "¡Partitura completada con éxito! 🎉";
+                document.getElementById('instructionText').innerText = "Selecciona otra partitura en la nube.";
+                document.getElementById('fingerNumberBox').innerText = "✓";
+                return;
+            }
+            const currentStep = activeSequence[currentIndex];
+            document.getElementById('songLyric').innerText = currentStep.lyric;
+            document.getElementById('instructionText').innerText = `Toca ${currentStep.name} (Naranja)`;
+            document.getElementById('fingerNumberBox').innerText = currentStep.finger || 1;
+
+            for (let i = 48; i <= 76; i++) setKeyColor(i, null);
+            setKeyColor(currentStep.note, 'orange');
+        }
+
+        // --- RENDERIZAR CON OSMD ---
+        async function renderOSMD(xmlString) {
+            const container = document.getElementById("osmdContainer");
+            container.innerHTML = "";
+            osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(container, {
+                autoResize: true, backend: "svg", drawFingerings: true
+            });
+            await osmd.load(xmlString);
+            await osmd.render();
+            if (osmd.cursor) osmd.cursor.show();
+        }
+
+        // --- WEB MIDI API ---
         async function initMIDI() {
             if (!navigator.requestMIDIAccess) {
                 alert("Web MIDI no soportado en este navegador.");
@@ -313,30 +363,15 @@
             }
         }
 
-        function updateLessonUI() {
-            if (currentIndex >= lessonSequence.length) {
-                document.getElementById('songLyric').innerText = "¡Lección completada con éxito! 🎉";
-                document.getElementById('instructionText').innerText = "Selecciona otra lección o repite.";
-                document.getElementById('fingerNumberBox').innerText = "✓";
-                return;
-            }
-            const currentStep = lessonSequence[currentIndex];
-            document.getElementById('songLyric').innerText = currentStep.lyric;
-            document.getElementById('instructionText').innerText = `Toca ${currentStep.name} (Naranja)`;
-            document.getElementById('fingerNumberBox').innerText = currentStep.finger;
-
-            for (let i = 48; i <= 76; i++) setKeyColor(i, null);
-            setKeyColor(currentStep.note, 'orange');
-        }
-
         function evaluateUserNote(playedNote) {
-            if (currentIndex >= lessonSequence.length) return;
-            const expectedNote = lessonSequence[currentIndex].note;
+            if (currentIndex >= activeSequence.length) return;
+            const expectedNote = activeSequence[currentIndex].note;
 
             if (playedNote === expectedNote) {
                 setKeyColor(expectedNote, 'green');
                 setTimeout(() => {
                     currentIndex++;
+                    if (osmd && osmd.cursor) osmd.cursor.next();
                     updateLessonUI();
                 }, 350);
             } else {
@@ -345,8 +380,6 @@
                 setTimeout(() => { setKeyColor(playedNote, null); }, 400);
             }
         }
-
-        function initAudio() { log("Micrófono activo para análisis."); }
 
         function buildVirtualKeyboard() {
             const container = document.getElementById('virtualKeyboard');
@@ -365,8 +398,7 @@
         }
 
         buildVirtualKeyboard();
-        populateOnlineCatalog();
-        updateLessonUI();
+        fetchCloudSongs(); // Cargar canciones de Supabase al iniciar
     </script>
 </body>
 </html>
