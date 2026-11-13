@@ -22,7 +22,7 @@ import {
   VocalProfile as CanvasVocalProfile,
 } from "@/components/studio/VocalPitchCanvas";
 
-export type DrawerTab = "vocalize" | "songs" | "academy" | "takes";
+export type DrawerTab = "vocalize" | "songs" | "academy" | "takes" | "alesis";
 
 export interface PitchHistoryPoint {
   timestamp: number; // performance.now()
@@ -151,6 +151,9 @@ interface VocalSessionContextType {
   teleprompterOpen: boolean;
   toggleTeleprompter: () => void;
   setTeleprompterOpen: (open: boolean) => void;
+  alesisStudioOpen: boolean;
+  toggleAlesisStudio: () => void;
+  setAlesisStudioOpen: (open: boolean) => void;
   updateActiveSongLyrics: (lyrics: LyricLine[], title?: string, artist?: string) => void;
 }
 
@@ -269,6 +272,7 @@ export function VocalSessionProvider({ children }: { children: React.ReactNode }
   const wakeLockSentinelRef = useRef<{ release: () => Promise<void> } | null>(null);
   const [guitarTunerOpen, setGuitarTunerOpen] = useState<boolean>(false);
   const [teleprompterOpen, setTeleprompterOpen] = useState<boolean>(false);
+  const [alesisStudioOpen, setAlesisStudioOpen] = useState<boolean>(false);
 
   // 1. Cargar datos iniciales de localStorage
   useEffect(() => {
@@ -919,6 +923,9 @@ export function VocalSessionProvider({ children }: { children: React.ReactNode }
         teleprompterOpen,
         toggleTeleprompter: () => setTeleprompterOpen((prev) => !prev),
         setTeleprompterOpen,
+        alesisStudioOpen,
+        toggleAlesisStudio: () => setAlesisStudioOpen((prev) => !prev),
+        setAlesisStudioOpen,
         updateActiveSongLyrics,
       }}
     >

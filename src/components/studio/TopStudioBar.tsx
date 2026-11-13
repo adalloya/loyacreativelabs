@@ -25,6 +25,7 @@ import {
   Tv,
   MoreHorizontal,
   X,
+  Piano,
 } from "lucide-react";
 import { SOLFEGE_NAMES, NOTE_NAMES, midiToNoteName } from "@/lib/vocalEngine";
 
@@ -59,6 +60,8 @@ export default function TopStudioBar() {
     toggleDrawer,
     teleprompterOpen,
     toggleTeleprompter,
+    alesisStudioOpen,
+    toggleAlesisStudio,
   } = useVocalSession();
 
   const [showGainSlider, setShowGainSlider] = useState(false);
@@ -297,6 +300,21 @@ export default function TopStudioBar() {
           <Tv size={13} className={teleprompterOpen ? "text-white" : "text-blue-400"} />
           <span className="text-[11px] hidden md:inline">Teleprompter</span>
         </button>
+
+        {/* Sección Especial: Alesis Smart Piano Studio (USB-C MIDI & OSMD) */}
+        <button
+          type="button"
+          onClick={toggleAlesisStudio}
+          className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border text-xs font-mono flex items-center gap-1.5 transition cursor-pointer ${
+            alesisStudioOpen
+              ? "bg-orange-500 text-white border-orange-400 shadow-[0_0_14px_rgba(249,115,22,0.45)] font-bold"
+              : "bg-orange-500/10 border-orange-500/30 text-orange-300 hover:bg-orange-500/20 hover:text-white"
+          }`}
+          title="Abrir Sección Especial: Alesis Smart Piano Studio (USB-C MIDI, LEDs 3 Colores & OSMD)"
+        >
+          <Piano size={13} className={alesisStudioOpen ? "text-white" : "text-orange-400"} />
+          <span className="text-[11px] hidden md:inline">Alesis MIDI</span>
+        </button>
       </div>
 
       {/* 2. Centro Mobile: Grabación Rápida */}
@@ -326,6 +344,20 @@ export default function TopStudioBar() {
 
       {/* 3. Derecha: Badge de Rango Vocal & Herramientas Mobile */}
       <div className="relative flex items-center gap-1.5 sm:gap-2 shrink-0">
+        {/* Alesis Smart Piano Studio (Solo Mobile) */}
+        <button
+          type="button"
+          onClick={toggleAlesisStudio}
+          className={`p-1.5 rounded-xl border text-xs font-mono md:hidden transition cursor-pointer ${
+            alesisStudioOpen
+              ? "bg-orange-500 text-white border-orange-400"
+              : "bg-orange-500/10 border-orange-500/30 text-orange-400 hover:text-white"
+          }`}
+          title="Alesis Smart Piano Studio"
+        >
+          <Piano size={14} />
+        </button>
+
         {/* Teleprompter en Ventana (Solo Mobile) */}
         <button
           type="button"

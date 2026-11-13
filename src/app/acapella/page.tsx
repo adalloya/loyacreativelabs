@@ -9,6 +9,7 @@ import InteractiveGrandPiano from "@/components/studio/InteractiveGrandPiano";
 import GuitarTunerModal from "@/components/GuitarTunerModal";
 import TeleprompterWindow from "@/components/studio/TeleprompterWindow";
 import HorizontalTeleprompterRibbon from "@/components/studio/HorizontalTeleprompterRibbon";
+import AlesisPianoStudioSection from "@/components/studio/AlesisPianoStudioSection";
 
 function StudioWorkspace() {
   const {
@@ -27,6 +28,8 @@ function StudioWorkspace() {
     activePhoneticTip,
     teleprompterOpen,
     toggleTeleprompter,
+    alesisStudioOpen,
+    setAlesisStudioOpen,
     activeSong,
     isPlayingSong,
     songTime,
@@ -49,46 +52,57 @@ function StudioWorkspace() {
         {/* ZONA 2: LEFT CONTEXT DRAWER (320px Colapsable) */}
         <LeftContextDrawer />
 
-        {/* ZONA 3: CENTER STAGE — CINTA TELEPROMPTER HORIZONTAL & LIENZO DE AFINACIÓN */}
+        {/* ZONA 3: CENTER STAGE — SECCIÓN ESPECIAL ALESIS O LIENZO VOCAL */}
         <div className="flex-1 flex flex-col overflow-hidden relative min-w-0">
-          {/* CINTA HORIZONTAL DE TELEPROMPTER CON ACORDES Y PANTALLA COMPLETA (SIEMPRE VISIBLE) */}
-          <HorizontalTeleprompterRibbon
-            activeSong={activeSong}
-            isPlaying={isPlayingSong}
-            songTime={songTime}
-            songDuration={songDuration}
-            onTogglePlay={togglePlaySong}
-            onSeek={seekSong}
-            onOpenFullscreen={toggleTeleprompter}
-            onLoadSongLyrics={updateActiveSongLyrics}
-          />
+          {alesisStudioOpen ? (
+            <AlesisPianoStudioSection
+              isEmbedded={true}
+              onClose={() => setAlesisStudioOpen(false)}
+            />
+          ) : (
+            <>
+              {/* CINTA HORIZONTAL DE TELEPROMPTER CON ACORDES Y PANTALLA COMPLETA (SIEMPRE VISIBLE) */}
+              <HorizontalTeleprompterRibbon
+                activeSong={activeSong}
+                isPlaying={isPlayingSong}
+                songTime={songTime}
+                songDuration={songDuration}
+                onTogglePlay={togglePlaySong}
+                onSeek={seekSong}
+                onOpenFullscreen={toggleTeleprompter}
+                onLoadSongLyrics={updateActiveSongLyrics}
+              />
 
-          {/* LIENZO DE CURVA DE TONO EN TIEMPO REAL A 60 FPS */}
-          <VocalPitchCanvas
-            samplesBuffer={samplesBuffer}
-            comparisonSamples={comparisonSamples}
-            targetBlocks={targetBlocks}
-            activeLyricCue={activeLyricCue}
-            nextLyricCue={nextLyricCue}
-            vocalProfile={{
-              lowestMidi: vocalProfile.lowestMidi,
-              passaggioMidi: vocalProfile.passaggioMidi,
-              highestMidi: vocalProfile.highestMidi,
-            }}
-            sessionElapsedMs={sessionElapsedMs}
-            activePhoneticTip={activePhoneticTip}
-          />
+              {/* LIENZO DE CURVA DE TONO EN TIEMPO REAL A 60 FPS */}
+              <VocalPitchCanvas
+                samplesBuffer={samplesBuffer}
+                comparisonSamples={comparisonSamples}
+                targetBlocks={targetBlocks}
+                activeLyricCue={activeLyricCue}
+                nextLyricCue={nextLyricCue}
+                vocalProfile={{
+                  lowestMidi: vocalProfile.lowestMidi,
+                  passaggioMidi: vocalProfile.passaggioMidi,
+                  highestMidi: vocalProfile.highestMidi,
+                }}
+                sessionElapsedMs={sessionElapsedMs}
+                activePhoneticTip={activePhoneticTip}
+              />
+            </>
+          )}
         </div>
       </div>
 
       {/* ZONA 4: BOTTOM DOCK — GRAND PIANO INTERACTIVO DE ESTUDIO (165px) */}
-      <InteractiveGrandPiano
-        detectedVoiceMidi={detectedVoiceMidi}
-        voiceCentsOff={voiceCentsOff}
-        lowestVocalMidi={vocalProfile.lowestMidi}
-        passaggioVocalMidi={vocalProfile.passaggioMidi}
-        highestVocalMidi={vocalProfile.highestMidi}
-      />
+      {!alesisStudioOpen && (
+        <InteractiveGrandPiano
+          detectedVoiceMidi={detectedVoiceMidi}
+          voiceCentsOff={voiceCentsOff}
+          lowestVocalMidi={vocalProfile.lowestMidi}
+          passaggioVocalMidi={vocalProfile.passaggioMidi}
+          highestVocalMidi={vocalProfile.highestMidi}
+        />
+      )}
 
       {/* MODAL / OVERLAY DE AFINADOR DE GUITARRA PRO */}
       <GuitarTunerModal

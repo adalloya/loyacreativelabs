@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Alesis Mobile Piano Studio - Master</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- OpenSheetMusicDisplay para partituras XML -->
+    <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.6/build/opensheetmusicdisplay.min.js"></script>
+    <style>
+        * { -webkit-tap-highlight-color: transparent; }
+        .touch-scroll { -webkit-overflow-scrolling: touch; }
+        .key-white { background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; }
+        .key-black { background: #0f172a; color: #f8fafc; z-index: 10; }
+        .led-red { background-color: #ef4444 !important; color: white !important; box-shadow: 0 0 15px #ef4444; }
+        .led-green { background-color: #22c55e !important; color: white !important; box-shadow: 0 0 15px #22c55e; }
+        .led-orange { background-color: #f97316 !important; color: white !important; box-shadow: 0 0 15px #f97316; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans select-none">
+
+    <!-- Header Compacto Mobile -->
+    <header class="bg-slate-900 border-b border-slate-800 p-3 flex flex-col gap-2 shadow-md sticky top-0 z-50">
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-sm font-bold text-orange-400">🎹 Alesis Piano Academy</h1>
+                <p class="text-[10px] text-slate-400">Master Studio - USB-C MIDI & OSMD</p>
+            </div>
+            <button id="btnConnectMIDI" onclick="initMIDI()" class="bg-blue-600 active:scale-95 text-xs px-3 py-2 rounded-xl font-semibold transition shadow-lg">
+                🔌 Conectar USB
+            </button>
+        </div>
+        <div class="flex gap-2 overflow-x-auto touch-scroll pb-1">
+            <label class="bg-purple-600 active:scale-95 text-xs px-3 py-2 rounded-xl font-medium transition whitespace-nowrap cursor-pointer flex items-center gap-1 shadow">
+                📂 Cargar XML
+                <input type="file" id="scoreFile" accept=".xml, .musicxml" class="hidden" onchange="loadMusicXML(event)">
+            </label>
+            <button onclick="initAudio()" class="bg-emerald-600 active:scale-95 text-xs px-3 py-2 rounded-xl font-medium transition whitespace-nowrap shadow">
+                🎤 Micrófono
+            </button>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="flex-1 p-3 max-w-xl mx-auto w-full flex flex-col gap-4 pb-12">
+        
+        <!-- Selector de Lecciones -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg flex flex-col gap-2">
+            <div class="flex justify-between items-center">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-orange-400">📚 Módulo de Aprendizaje</span>
+                <span class="text-[10px] text-slate-400">Principiante</span>
+            </div>
+            <select id="lessonSelector" onchange="changeLesson(this.value)" class="bg-slate-950 border border-slate-700 text-xs text-slate-200 rounded-xl p-2.5 outline-none focus:border-orange-500 font-medium">
+                <option value="0">Lección 1: Pentacorde de Do Mayor (Dedos 1-5)</option>
+                <option value="1">Lección 2: Independencia de Dedos (Hanon)</option>
+                <option value="2">Lección 3: Escala Básica de Do Mayor</option>
+            </select>
+        </div>
+
+        <!-- Estado de Lección -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg relative flex flex-col items-center text-center">
+            <div class="absolute top-3 left-4 text-[10px] font-bold uppercase tracking-wider text-slate-500">Práctica Activa</div>
+            <div id="songLyric" class="text-xl font-black text-orange-400 my-1">"Conecta tu teclado Alesis"</div>
+            <div id="instructionText" class="text-xs text-slate-300">Esperando conexión USB-C...</div>
+            <div class="mt-3 flex gap-4 text-[11px] text-slate-400">
+                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span> Siguiente</span>
+                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Bien</span>
+                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> Error</span>
+            </div>
+        </div>
+
+        <!-- Panel Dueto: Dedos + Partitura -->
+        <div class="grid grid-cols-3 gap-3">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3 shadow-lg flex flex-col items-center justify-center text-center col-span-1">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Dedo Guía</span>
+                <div id="fingerNumberBox" class="w-14 h-14 rounded-2xl bg-orange-500/20 border-2 border-orange-500 flex items-center justify-center text-3xl font-black text-orange-400 shadow-inner">-</div>
+                <div id="handSideText" class="text-[10px] font-semibold text-slate-300 mt-1">Mano Der.</div>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex flex-col shadow-inner col-span-2 justify-center">
+                <div class="text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Partitura Interactiva</div>
+                <div id="osmdContainer" class="bg-white rounded-xl p-2 overflow-x-auto touch-scroll h-28 flex items-center justify-center text-slate-800">
+                    <span class="text-xs text-slate-400 font-normal text-center">Carga o usa lecciones</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Teclado Táctil / Monitor -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex flex-col items-center shadow-lg">
+            <div class="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider">Teclado Alesis USB-C (En Vivo)</div>
+            <div id="virtualKeyboard" class="relative flex h-24 w-full bg-slate-950 p-2 rounded-xl overflow-x-auto touch-scroll justify-start md:justify-center"></div>
+        </div>
+
+        <!-- Consola -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex flex-col">
+            <span class="text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Log de Sistema</span>
+            <div id="logConsole" class="bg-slate-950 p-2.5 rounded-xl font-mono text-[10px] text-emerald-400 h-20 overflow-y-auto touch-scroll border border-slate-800">[Sistema] Listo. Conecta tu cable USB-C.</div>
+        </div>
+
+    </main>
+
+    <script>
+        let midiOutput = null;
+        let midiInput = null;
+        let osmd = null;
+
+        const beginnerLessons = [
+            {
+                title: "Lección 1: Pentacorde de Do Mayor",
+                sequence: [
+                    { note: 60, name: 'C4 (Do)', lyric: 'Do - Dedo 1 (Pulgar)', finger: 1 },
+                    { note: 62, name: 'D4 (Re)', lyric: 'Re - Dedo 2 (Índice)', finger: 2 },
+                    { note: 64, name: 'E4 (Mi)', lyric: 'Mi - Dedo 3 (Medio)', finger: 3 },
+                    { note: 65, name: 'F4 (Fa)', lyric: 'Fa - Dedo 4 (Anular)', finger: 4 },
+                    { note: 67, name: 'G4 (Sol)', lyric: 'Sol - Dedo 5 (Meñique)', finger: 5 }
+                ]
+            },
+            {
+                title: "Lección 2: Independencia de Dedos",
+                sequence: [
+                    { note: 60, name: 'C4 (Do)', lyric: 'Do - Dedo 1', finger: 1 },
+                    { note: 64, name: 'E4 (Mi)', lyric: 'Mi - Dedo 3', finger: 3 },
+                    { note: 62, name: 'D4 (Re)', lyric: 'Re - Dedo 2', finger: 2 },
+                    { note: 65, name: 'F4 (Fa)', lyric: 'Fa - Dedo 4', finger: 4 }
+                ]
+            },
+            {
+                title: "Lección 3: Escala de Do Mayor",
+                sequence: [
+                    { note: 60, name: 'C4 (Do)', lyric: 'Do - Dedo 1', finger: 1 },
+                    { note: 62, name: 'D4 (Re)', lyric: 'Re - Dedo 2', finger: 2 },
+                    { note: 64, name: 'E4 (Mi)', lyric: 'Mi - Dedo 3', finger: 3 },
+                    { note: 65, name: 'F4 (Fa)', lyric: 'Fa - Dedo 1 (Cruce)', finger: 1 },
+                    { note: 67, name: 'G4 (Sol)', lyric: 'Sol - Dedo 2', finger: 2 },
+                    { note: 69, name: 'A4 (La)', lyric: 'La - Dedo 3', finger: 3 },
+                    { note: 71, name: 'B4 (Si)', lyric: 'Si - Dedo 4', finger: 4 },
+                    { note: 72, name: 'C5 (Do)', lyric: 'Do - Dedo 5', finger: 5 }
+                ]
+            }
+        ];
+
+        let currentLessonIndex = 0;
+        let lessonSequence = beginnerLessons[0].sequence;
+        let currentIndex = 0;
+
+        function log(msg) {
+            const consoleEl = document.getElementById('logConsole');
+            consoleEl.innerHTML += `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>`;
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+
+        function changeLesson(index) {
+            currentLessonIndex = parseInt(index);
+            lessonSequence = beginnerLessons[currentLessonIndex].sequence;
+            currentIndex = 0;
+            log(`Lección cargada: ${beginnerLessons[currentLessonIndex].title}`);
+            updateLessonUI();
+        }
+
+        function initOSMD() {
+            const container = document.getElementById("osmdContainer");
+            container.innerHTML = "";
+            osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(container, {
+                autoResize: true, backend: "svg", drawFingerings: true
+            });
+        }
+
+        async function loadMusicXML(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    initOSMD();
+                    await osmd.load(e.target.result);
+                    await osmd.render();
+                    log("Partitura XML cargada correctamente.");
+                } catch (err) {
+                    log(`Error XML: ${err.message}`);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        async function initMIDI() {
+            if (!navigator.requestMIDIAccess) {
+                alert("Web MIDI no soportado en este navegador.");
+                return;
+            }
+            try {
+                const midiAccess = await navigator.requestMIDIAccess({ sysex: true });
+                for (let output of midiAccess.outputs.values()) {
+                    if (output.name.toLowerCase().includes("alesis") || output.name.toLowerCase().includes("usb audio")) {
+                        midiOutput = output;
+                    }
+                }
+                for (let input of midiAccess.inputs.values()) {
+                    if (input.name.toLowerCase().includes("alesis") || input.name.toLowerCase().includes("usb audio")) {
+                        midiInput = input;
+                        input.onmidimessage = handleMIDIMessage;
+                    }
+                }
+                if (!midiOutput || !midiInput) {
+                    for (let output of midiAccess.outputs.values()) { midiOutput = output; break; }
+                    for (let input of midiAccess.inputs.values()) { midiInput = input; input.onmidimessage = handleMIDIMessage; break; }
+                }
+                log("Teclado MIDI conectado con éxito.");
+                updateLessonUI();
+            } catch (err) {
+                log(`Error MIDI: ${err.message}`);
+            }
+        }
+
+        function setKeyColor(noteNumber, color) {
+            const keyEl = document.getElementById(`key-${noteNumber}`);
+            if (keyEl) {
+                keyEl.classList.remove('led-red', 'led-green', 'led-orange');
+                if (color) keyEl.classList.add(`led-${color}`);
+                keyEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }
+            if (midiOutput) {
+                let velocity = (color === 'red') ? 1 : (color === 'green') ? 5 : (color === 'orange') ? 10 : 0;
+                midiOutput.send([0x90, noteNumber, velocity]);
+            }
+        }
+
+        function handleMIDIMessage(event) {
+            const [status, note, velocity] = event.data;
+            if ((status >> 4) === 9 && velocity > 0) {
+                evaluateUserNote(note);
+            }
+        }
+
+        function updateLessonUI() {
+            if (currentIndex >= lessonSequence.length) {
+                document.getElementById('songLyric').innerText = "¡Lección completada con éxito! 🎉";
+                document.getElementById('instructionText').innerText = "Selecciona otra lección o repite.";
+                document.getElementById('fingerNumberBox').innerText = "✓";
+                return;
+            }
+            const currentStep = lessonSequence[currentIndex];
+            document.getElementById('songLyric').innerText = currentStep.lyric;
+            document.getElementById('instructionText').innerText = `Toca ${currentStep.name} (Naranja)`;
+            document.getElementById('fingerNumberBox').innerText = currentStep.finger;
+
+            lessonSequence.forEach(s => setKeyColor(s.note, null));
+            setKeyColor(currentStep.note, 'orange');
+        }
+
+        function evaluateUserNote(playedNote) {
+            if (currentIndex >= lessonSequence.length) return;
+            const expectedNote = lessonSequence[currentIndex].note;
+
+            if (playedNote === expectedNote) {
+                setKeyColor(expectedNote, 'green');
+                setTimeout(() => {
+                    currentIndex++;
+                    updateLessonUI();
+                }, 350);
+            } else {
+                setKeyColor(playedNote, 'red');
+                setKeyColor(expectedNote, 'orange');
+                setTimeout(() => { setKeyColor(playedNote, null); }, 400);
+            }
+        }
+
+        function initAudio() { log("Micrófono activo para análisis."); }
+
+        function buildVirtualKeyboard() {
+            const container = document.getElementById('virtualKeyboard');
+            for (let i = 48; i <= 72; i++) {
+                const isBlack = [49, 51, 54, 56, 58, 61, 63, 66, 68, 70].includes(i);
+                const key = document.createElement('div');
+                key.id = `key-${i}`;
+                key.className = isBlack 
+                    ? 'key-black absolute h-14 w-4 rounded-b-md cursor-pointer border border-slate-700 flex items-end justify-center pb-1 text-[7px]' 
+                    : 'key-white relative h-20 w-7 rounded-b-lg cursor-pointer border flex items-end justify-center pb-1 text-[8px] font-semibold shadow-sm flex-shrink-0';
+                if (isBlack) { key.style.marginLeft = "-8px"; key.style.marginRight = "-8px"; }
+                key.innerText = i;
+                key.onclick = () => evaluateUserNote(i);
+                container.appendChild(key);
+            }
+        }
+
+        buildVirtualKeyboard();
+        updateLessonUI();
+    </script>
+</body>
+</html>

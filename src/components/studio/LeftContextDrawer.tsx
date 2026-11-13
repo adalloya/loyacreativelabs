@@ -34,6 +34,8 @@ import {
   Edit3,
   Tv,
   Timer,
+  Piano,
+  Usb,
 } from "lucide-react";
 
 export default function LeftContextDrawer() {
@@ -67,6 +69,8 @@ export default function LeftContextDrawer() {
     isRecordingTake,
     vocalProfile,
     toggleTeleprompter,
+    alesisStudioOpen,
+    setAlesisStudioOpen,
     updateActiveSongLyrics,
   } = useVocalSession();
 
@@ -259,53 +263,80 @@ export default function LeftContextDrawer() {
 
       {/* Selector de Pestañas Superiores */}
       <div className="p-2 border-b border-white/[0.08] bg-[#0E1017]">
-        <div className="grid grid-cols-4 gap-1 bg-black/50 p-1 rounded-2xl border border-white/[0.06]">
+        <div className="grid grid-cols-5 gap-1 bg-black/50 p-1 rounded-2xl border border-white/[0.06]">
           <button
-            onClick={() => setActiveDrawerTab("vocalize")}
+            onClick={() => {
+              setActiveDrawerTab("vocalize");
+              setAlesisStudioOpen(false);
+            }}
             className={`py-2 rounded-xl text-xs font-semibold flex flex-col items-center gap-1 transition-all cursor-pointer ${
-              activeDrawerTab === "vocalize"
+              activeDrawerTab === "vocalize" && !alesisStudioOpen
                 ? "bg-white text-black shadow-md font-bold"
                 : "text-zinc-400 hover:text-white"
             }`}
           >
             <Music size={14} />
-            <span className="text-[10px] tracking-tight">Vocalizar</span>
+            <span className="text-[9px] tracking-tight">Vocalizar</span>
           </button>
 
           <button
-            onClick={() => setActiveDrawerTab("songs")}
+            onClick={() => {
+              setActiveDrawerTab("songs");
+              setAlesisStudioOpen(false);
+            }}
             className={`py-2 rounded-xl text-xs font-semibold flex flex-col items-center gap-1 transition-all cursor-pointer ${
-              activeDrawerTab === "songs"
+              activeDrawerTab === "songs" && !alesisStudioOpen
                 ? "bg-white text-black shadow-md font-bold"
                 : "text-zinc-400 hover:text-white"
             }`}
           >
             <Disc size={14} />
-            <span className="text-[10px] tracking-tight">Canciones</span>
+            <span className="text-[9px] tracking-tight">Canciones</span>
           </button>
 
           <button
-            onClick={() => setActiveDrawerTab("academy")}
+            onClick={() => {
+              setActiveDrawerTab("academy");
+              setAlesisStudioOpen(false);
+            }}
             className={`py-2 rounded-xl text-xs font-semibold flex flex-col items-center gap-1 transition-all cursor-pointer ${
-              activeDrawerTab === "academy"
+              activeDrawerTab === "academy" && !alesisStudioOpen
                 ? "bg-white text-black shadow-md font-bold"
                 : "text-zinc-400 hover:text-white"
             }`}
           >
             <GraduationCap size={14} />
-            <span className="text-[10px] tracking-tight">Academia</span>
+            <span className="text-[9px] tracking-tight">Academia</span>
           </button>
 
           <button
-            onClick={() => setActiveDrawerTab("takes")}
+            onClick={() => {
+              setActiveDrawerTab("takes");
+              setAlesisStudioOpen(false);
+            }}
             className={`py-2 rounded-xl text-xs font-semibold flex flex-col items-center gap-1 transition-all cursor-pointer ${
-              activeDrawerTab === "takes"
+              activeDrawerTab === "takes" && !alesisStudioOpen
                 ? "bg-white text-black shadow-md font-bold"
                 : "text-zinc-400 hover:text-white"
             }`}
           >
             <Layers size={14} />
-            <span className="text-[10px] tracking-tight">Bitácora</span>
+            <span className="text-[9px] tracking-tight">Bitácora</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveDrawerTab("alesis");
+              setAlesisStudioOpen(true);
+            }}
+            className={`py-2 rounded-xl text-xs font-semibold flex flex-col items-center gap-1 transition-all cursor-pointer ${
+              activeDrawerTab === "alesis" || alesisStudioOpen
+                ? "bg-orange-500 text-white shadow-[0_0_12px_rgba(249,115,22,0.4)] font-bold"
+                : "text-orange-400 hover:text-orange-300"
+            }`}
+          >
+            <Piano size={14} />
+            <span className="text-[9px] tracking-tight">Alesis</span>
           </button>
         </div>
       </div>
@@ -824,6 +855,58 @@ export default function LeftContextDrawer() {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* PESTAÑA 5: ALESIS SMART PIANO STUDIO (USB-C MIDI & OSMD) */}
+      {/* ======================================================== */}
+      {activeDrawerTab === "alesis" && (
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+          <div className="bg-gradient-to-b from-orange-950/40 to-[#161822] border border-orange-500/30 p-4 rounded-2xl space-y-3 shadow-xl">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400 shrink-0">
+                <Piano size={18} />
+              </div>
+              <div>
+                <h4 className="font-bold text-white text-sm">Alesis Piano Academy</h4>
+                <p className="text-[10px] text-orange-300 font-mono">USB-C MIDI • LEDs 3 Colores • OSMD</p>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-zinc-300 leading-relaxed">
+              Conecta tu teclado Alesis por cable USB-C para activar la guía luminosa física en las teclas y practicar partituras MusicXML paso a paso.
+            </p>
+
+            <div className="space-y-1.5 bg-black/40 p-3 rounded-xl border border-white/5 text-[11px]">
+              <div className="flex items-center gap-2 text-orange-300">
+                <span className="w-2 h-2 rounded-full bg-orange-500" />
+                <span><strong>Naranja (Vel 10):</strong> Nota siguiente esperada</span>
+              </div>
+              <div className="flex items-center gap-2 text-emerald-300">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span><strong>Verde (Vel 5):</strong> Acierto y avance automático</span>
+              </div>
+              <div className="flex items-center gap-2 text-red-300">
+                <span className="w-2 h-2 rounded-full bg-red-500" />
+                <span><strong>Rojo (Vel 1):</strong> Corrección de tecla errónea</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setAlesisStudioOpen(true);
+                if (typeof window !== "undefined" && window.innerWidth < 768) {
+                  toggleDrawer();
+                }
+              }}
+              className="w-full py-2.5 px-4 rounded-xl bg-orange-500 hover:bg-orange-400 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition cursor-pointer"
+            >
+              <Usb size={14} />
+              <span>Abrir Estudio Alesis Completo</span>
+            </button>
+          </div>
         </div>
       )}
 
