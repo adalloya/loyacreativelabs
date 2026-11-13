@@ -141,6 +141,11 @@
         let isForcedHorizontal = false;
         let audioCtx = null;
 
+        // Velocidades LED para Alesis Teacher's Choice 61 (0=Off, 1=Rojo, 2=Verde, 3=Ámbar/Naranja)
+        let redVel = 1;
+        let greenVel = 2;
+        let orangeVel = 3;
+
         let activeSequence = [
             { note: 60, name: 'C4 (Do)', lyric: 'Do4 - Dedo 1', finger: 1 },
             { note: 62, name: 'D4 (Re)', lyric: 'Re4 - Dedo 2', finger: 2 },
@@ -422,7 +427,7 @@
 
         function sendHardwareMidi(noteNumber, color) {
             if (!midiOutputs.length) return;
-            let velocity = (color === 'red') ? 1 : (color === 'green') ? 5 : (color === 'orange') ? 10 : 0;
+            let velocity = (color === 'red') ? redVel : (color === 'green') ? greenVel : (color === 'orange') ? orangeVel : 0;
             for (let out of midiOutputs) {
                 try {
                     if (!color) {

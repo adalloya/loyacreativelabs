@@ -13,7 +13,6 @@ import {
   Upload,
   Mic,
   RotateCcw,
-  CheckCircle2,
   Piano,
   BookOpen,
   Terminal,
@@ -24,6 +23,7 @@ import {
   RefreshCw,
   Smartphone,
   Lightbulb,
+  Sliders,
 } from "lucide-react";
 
 export interface LessonStep {
@@ -42,7 +42,9 @@ export interface BeginnerLesson {
 }
 
 type LedColor = "orange" | "green" | "red" | null;
-type HardwareLedMode = "3color" | "standard";
+
+// Modos específicos para el Alesis Teacher's Choice 61
+type Tc61LedPreset = "tc61_123" | "tc61_132" | "tc61_vel1_guide" | "custom";
 
 // Declaración global para OpenSheetMusicDisplay cargado desde CDN
 declare global {
@@ -277,9 +279,17 @@ export default function AlesisPianoStudioSection({
 
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [keyColors, setKeyColors] = useState<Record<number, LedColor>>({
-    60: "orange", // Iluminar primera nota objetivo (Do4 / C4) desde el arranque inicial
+    60: "orange",
   });
-  const [hardwareLedMode, setHardwareLedMode] = useState<HardwareLedMode>("3color");
+
+  // Configuración específica de velocidades LED para Alesis Teacher's Choice 61
+  // En el firmware del Teacher's Choice 61, el enum interno es: 0=Off, 1=Red, 2=Green, 3=Amber (o Vel=1 para encender guía directa)
+  const [ledPreset, setLedPreset] = useState<Tc61LedPreset>("tc61_123");
+  const [orangeVel, setOrangeVel] = useState<number>(3);
+  const [greenVel, setGreenVel] = useState<number>(2);
+  const [redVel, setRedVel] = useState<number>(1);
+  const [showLedCalibrator, setShowLedCalibrator] = useState<boolean>(true);
+
   const [midiConnected, setMidiConnected] = useState<boolean>(false);
   const [midiDeviceName, setMidiDeviceName] = useState<string>("");
   const [micActive, setMicActive] = useState<boolean>(false);
@@ -290,14 +300,24 @@ export default function AlesisPianoStudioSection({
   const [forcedLandscape, setForcedLandscape] = useState<boolean>(false);
 
   const [logs, setLogs] = useState<string[]>([
-    `[${new Date().toLocaleTimeString()}] [Sistema] Listo. Tecla objetivo iluminada en Naranja.`,
+    `[${new Date().toLocaleTimeString()}] [Sistema] Modo Alesis Teacher's Choice 61 activo (Vel: Rojo=1, Verde=2, Ámbar/Naranja=3).`,
   ]);
 
-  // Soportar múltiples salidas MIDI para garantizar que el puerto físico del Alesis reciba la luz
   const midiOutputsRef = useRef<MIDIOutput[]>([]);
   const midiInputsRef = useRef<MIDIInput[]>([]);
   const litHardwareNotesRef = useRef<Set<number>>(new Set());
-  const hardwareLedModeRef = useRef<HardwareLedMode>(hardwareLedMode);
+
+  const orangeVelRef = useRef<number>(orangeVel);
+  const greenVelRef = useRef<number>(greenVel);
+  const redVelRef = useRef<number>(redVel);
+  const ledPresetRef = useRef<Tc61LedPreset>(ledPreset);
+
+  useEffect(() => {
+    orangeVelRef.current = orangeVel;
+    greenVelRef.current = greenVel;
+    redVelRef.current = redVel;
+    ledPresetRef.current = ledPreset;
+  }, [orangeVel, greenVel, redVel, ledPreset]);
 
   const osmdContainerRef = useRef<HTMLDivElement | null>(null);
   const osmdInstanceRef = useRef<{
@@ -309,14 +329,36 @@ export default function AlesisPianoStudioSection({
   const virtualKeyboardRef = useRef<HTMLDivElement | null>(null);
   const keyElementRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
-  useEffect(() => {
-    hardwareLedModeRef.current = hardwareLedMode;
-  }, [hardwareLedMode]);
-
   const addLog = useCallback((msg: string) => {
     const timestamp = new Date().toLocaleTimeString();
     setLogs((prev) => [...prev, `[${timestamp}] ${msg}`]);
   }, []);
+
+  // Aplicar preset de velocidades para el Alesis Teacher's Choice 61
+  const applyTc61Preset = (preset: Tc61LedPreset) => {
+    setLedPreset(preset);
+    if (preset === "tc61_123") {
+      // Enum oficial del manual Teacher's Choice 61: 1=Red, 2=Green, 3=Amber
+      setRedVel(1);
+      setGreenVel(2);
+      setOrangeVel(3);
+      addLog("Preset Teacher's Choice 61 (1-2-3): Rojo=Vel 1, Verde=Vel 2, Ámbar/Naranja=Vel 3.");
+    } else if (preset === "tc61_132") {
+      // Variante 1=Red, 2=Amber, 3=Green
+      setRedVel(1);
+      setOrangeVel(2);
+      setGreenVel(3);
+      addLog("Preset Teacher's Choice 61 (1-3-2): Rojo=Vel 1, Ámbar/Naranja=Vel 2, Verde=Vel 3.");
+    } else if (preset === "tc61_vel1_guide") {
+      // Guía Fija con Vel=1 (Garantizado que enciende la tecla a tocar en el Teacher's Choice 61)
+      setOrangeVel(1);
+      setGreenVel(1);
+      setRedVel(1);
+      addLog(
+        "Modo Luz Guía Segura (Vel=1): La tecla que debes tocar se ilumina siempre con Vel=1 en tu Alesis."
+      );
+    }
+  };
 
   // Detectar orientación horizontal natural del teléfono / tablet
   useEffect(() => {
@@ -338,7 +380,7 @@ export default function AlesisPianoStudioSection({
     };
   }, []);
 
-  // Alternar rotación horizontal (Intenta bloqueo nativo de pantalla; si el teléfono tiene bloqueo vertical o es iOS, aplica rotación horizontal CSS de pantalla completa)
+  // Alternar rotación horizontal
   const toggleHorizontalOrientation = async () => {
     try {
       const screenOrientation = (
@@ -352,7 +394,6 @@ export default function AlesisPianoStudioSection({
       )?.orientation;
 
       if (isNaturalLandscape || forcedLandscape) {
-        // Volver a vertical
         if (screenOrientation?.unlock) {
           try {
             screenOrientation.unlock();
@@ -368,7 +409,6 @@ export default function AlesisPianoStudioSection({
         return;
       }
 
-      // Intentar rotación nativa de hardware (Android Chrome soporta lock en fullscreen)
       if (screenOrientation?.lock) {
         try {
           if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
@@ -377,9 +417,7 @@ export default function AlesisPianoStudioSection({
           await screenOrientation.lock("landscape");
           addLog("Pantalla rotada a modo Horizontal nativo.");
           return;
-        } catch {
-          // Si falla (ej. bloqueo de giro activo en el celular o iOS Safari), usar rotación CSS forzada
-        }
+        } catch {}
       }
 
       setForcedLandscape((prev) => !prev);
@@ -397,11 +435,6 @@ export default function AlesisPianoStudioSection({
     practiceMode === "repertoire" && activeRepertoireSong
       ? `${activeRepertoireSong.title}`
       : BEGINNER_LESSONS[currentLessonIndex].title;
-
-  const activeLevelBadge =
-    practiceMode === "repertoire"
-      ? "Repertorio Supabase"
-      : BEGINNER_LESSONS[currentLessonIndex].level;
 
   const activeSequence: LessonStep[] =
     practiceMode === "repertoire" && activeRepertoireSong
@@ -499,53 +532,49 @@ export default function AlesisPianoStudioSection({
     }
   }, []);
 
-  // Enviar comando MIDI a todos los puertos de salida físicos del teclado Alesis sin saturar el buffer USB
-  const sendHardwareLedMidi = useCallback((noteNumber: number, color: LedColor) => {
+  // Enviar comando MIDI directo con una velocidad específica (para el probador en vivo y el motor de 3 colores)
+  const sendRawHardwareVelocity = useCallback((noteNumber: number, velocity: number) => {
     const outputs = midiOutputsRef.current;
     if (!outputs || outputs.length === 0) return;
 
-    const mode = hardwareLedModeRef.current;
-
-    if (color === null) {
+    if (velocity <= 0) {
       litHardwareNotesRef.current.delete(noteNumber);
       for (const out of outputs) {
         try {
           out.send([0x80, noteNumber, 0]);
           out.send([0x90, noteNumber, 0]);
-          if (mode === "standard") {
-            out.send([0x83, noteNumber, 0]);
-            out.send([0x93, noteNumber, 0]);
-          }
         } catch {}
       }
       return;
     }
 
     litHardwareNotesRef.current.add(noteNumber);
-    // Modo 3 colores (Vel 10 = Naranja, Vel 5 = Verde, Vel 1 = Rojo) o Modo Guía Estándar Alesis (Vel 110 en Ch 1 y Ch 4)
-    const velocity =
-      mode === "standard"
-        ? color === "orange"
-          ? 110
-          : color === "green"
-          ? 127
-          : 64
-        : color === "red"
-        ? 1
-        : color === "green"
-        ? 5
-        : 10;
-
     for (const out of outputs) {
       try {
         out.send([0x90, noteNumber, velocity]);
-        if (mode === "standard") {
-          // Algunos modelos Alesis (Melody / Harmony / Concert) escuchan la guía de luz en Canal 1 (0x90) o Canal 4 (0x93)
-          out.send([0x93, noteNumber, velocity]);
-        }
       } catch {}
     }
   }, []);
+
+  // Enviar comando MIDI mapeado por color al Alesis Teacher's Choice 61
+  const sendHardwareLedMidi = useCallback(
+    (noteNumber: number, color: LedColor) => {
+      if (color === null) {
+        sendRawHardwareVelocity(noteNumber, 0);
+        return;
+      }
+
+      const velocity =
+        color === "red"
+          ? redVelRef.current
+          : color === "green"
+          ? greenVelRef.current
+          : orangeVelRef.current;
+
+      sendRawHardwareVelocity(noteNumber, velocity);
+    },
+    [sendRawHardwareVelocity]
+  );
 
   // Función estricta de control de color en pantalla + LED físico vía MIDI
   const setKeyColor = useCallback(
@@ -569,10 +598,9 @@ export default function AlesisPianoStudioSection({
     [centerKeyInVirtualKeyboard, sendHardwareLedMidi]
   );
 
-  // Limpiar únicamente los LEDs previamente encendidos (evita desbordar el buffer USB-MIDI) y encender la nota objetivo en Naranja
+  // Limpiar únicamente los LEDs previamente encendidos y encender la nota objetivo en Naranja/Ámbar
   const syncSequenceLeds = useCallback(
     (sequence: LessonStep[], stepIdx: number) => {
-      // Apagar en el teclado físico únicamente las notas que estaban encendidas
       const previouslyLit = Array.from(litHardwareNotesRef.current);
       for (const prevNote of previouslyLit) {
         sendHardwareLedMidi(prevNote, null);
@@ -584,11 +612,10 @@ export default function AlesisPianoStudioSection({
         centerKeyInVirtualKeyboard(targetNote);
         sendHardwareLedMidi(targetNote, "orange");
 
-        // Re-confirmación a los 45ms para que el microcontrolador USB-C del Alesis nunca pierda el paquete de luz
         setTimeout(() => {
           centerKeyInVirtualKeyboard(targetNote);
           sendHardwareLedMidi(targetNote, "orange");
-        }, 45);
+        }, 50);
         setTimeout(() => {
           centerKeyInVirtualKeyboard(targetNote);
         }, 300);
@@ -599,10 +626,20 @@ export default function AlesisPianoStudioSection({
     [centerKeyInVirtualKeyboard, sendHardwareLedMidi]
   );
 
-  // Actualizar iluminación cada vez que cambia la secuencia, el paso actual, el modo de LED o la orientación
+  // Actualizar iluminación cada vez que cambia la secuencia, el paso actual, las velocidades o la orientación
   useEffect(() => {
     syncSequenceLeds(activeSequence, currentIndex);
-  }, [activeSequence, currentIndex, hardwareLedMode, isNaturalLandscape, forcedLandscape, syncSequenceLeds]);
+  }, [
+    activeSequence,
+    currentIndex,
+    orangeVel,
+    greenVel,
+    redVel,
+    ledPreset,
+    isNaturalLandscape,
+    forcedLandscape,
+    syncSequenceLeds,
+  ]);
 
   // Renderizar partitura activa en OSMD
   useEffect(() => {
@@ -629,7 +666,6 @@ export default function AlesisPianoStudioSection({
           instance.cursor.show();
           instance.cursor.reset();
         }
-        // Asegurar que tras renderizar OSMD la tecla objetivo siga centrada y visible
         const currentTarget = activeSequenceRef.current[stepIndexRef.current]?.note;
         if (typeof currentTarget === "number") {
           setTimeout(() => centerKeyInVirtualKeyboard(currentTarget), 100);
@@ -652,7 +688,6 @@ export default function AlesisPianoStudioSection({
       const sequence = activeSequenceRef.current;
       const idx = stepIndexRef.current;
 
-      // Si ya terminó la pieza, iluminar la nota tocada en verde y reiniciar al primer paso para seguir practicando
       if (idx >= sequence.length) {
         setKeyColor(playedNote, "green", true);
         setTimeout(() => {
@@ -667,7 +702,15 @@ export default function AlesisPianoStudioSection({
       if (playedNote === expectedNote) {
         const nextIdx = idx + 1;
         stepIndexRef.current = nextIdx;
-        setKeyColor(expectedNote, "green", true);
+
+        // Si estamos en modo Guía Vel=1, apagar inmediatamente la tecla acertada y encender la siguiente con Vel=1
+        if (ledPresetRef.current === "tc61_vel1_guide") {
+          sendHardwareLedMidi(expectedNote, null);
+        } else {
+          sendHardwareLedMidi(expectedNote, "green");
+        }
+
+        setKeyColors({ [expectedNote]: "green" });
         addLog(`✓ Correcto: ${sequence[idx].name} con Dedo ${sequence[idx].finger}`);
         if (osmdInstanceRef.current?.cursor) {
           try {
@@ -675,6 +718,7 @@ export default function AlesisPianoStudioSection({
           } catch {}
         }
         setTimeout(() => {
+          sendHardwareLedMidi(expectedNote, null);
           setCurrentIndex(nextIdx);
           if (nextIdx < sequence.length) {
             const nextNote = sequence[nextIdx].note;
@@ -682,9 +726,8 @@ export default function AlesisPianoStudioSection({
             centerKeyInVirtualKeyboard(nextNote);
             sendHardwareLedMidi(nextNote, "orange");
           }
-        }, 280);
+        }, 260);
       } else {
-        // Mostrar en rojo la tecla que presionó y mantener/re-encender en naranja la tecla que debe tocar
         setKeyColors({
           [expectedNote]: "orange",
           [playedNote]: "red",
@@ -718,7 +761,7 @@ export default function AlesisPianoStudioSection({
     evaluateUserNoteRef.current = evaluateUserNote;
   }, [evaluateUserNote]);
 
-  // Inicializar Web MIDI API (USB-C Bidireccional con Alesis)
+  // Inicializar Web MIDI API (USB-C Bidireccional con Alesis Teacher's Choice 61)
   const initMIDI = async () => {
     if (typeof navigator === "undefined" || !navigator.requestMIDIAccess) {
       alert("Web MIDI no soportado en este navegador. Usa Chrome en Android o Desktop.");
@@ -737,10 +780,17 @@ export default function AlesisPianoStudioSection({
       const allOutputs = Array.from(midiAccess.outputs.values());
       const allInputs = Array.from(midiAccess.inputs.values());
 
-      // Priorizar puertos Alesis / USB reales, evitando puertos fantasma "MIDI Through" si existen puertos reales
       const preferredOutputs = allOutputs.filter((out) => {
         const n = (out.name || "").toLowerCase();
-        return !n.includes("through") && (n.includes("alesis") || n.includes("usb") || n.includes("piano") || n.includes("keyboard"));
+        return (
+          !n.includes("through") &&
+          (n.includes("alesis") ||
+            n.includes("teacher") ||
+            n.includes("choice") ||
+            n.includes("usb") ||
+            n.includes("piano") ||
+            n.includes("keyboard"))
+        );
       });
       const activeOutputs =
         preferredOutputs.length > 0
@@ -749,7 +799,6 @@ export default function AlesisPianoStudioSection({
           ? allOutputs.filter((o) => !(o.name || "").toLowerCase().includes("through"))
           : allOutputs;
 
-      // Abrir explícitamente todos los puertos de salida para Android / Chrome USB-C
       for (const out of activeOutputs) {
         try {
           if (typeof out.open === "function") {
@@ -760,7 +809,15 @@ export default function AlesisPianoStudioSection({
 
       const preferredInputs = allInputs.filter((inp) => {
         const n = (inp.name || "").toLowerCase();
-        return !n.includes("through") && (n.includes("alesis") || n.includes("usb") || n.includes("piano") || n.includes("keyboard"));
+        return (
+          !n.includes("through") &&
+          (n.includes("alesis") ||
+            n.includes("teacher") ||
+            n.includes("choice") ||
+            n.includes("usb") ||
+            n.includes("piano") ||
+            n.includes("keyboard"))
+        );
       });
       const activeInputs = preferredInputs.length > 0 ? preferredInputs : allInputs;
 
@@ -776,6 +833,16 @@ export default function AlesisPianoStudioSection({
           const command = status >> 4;
           if (command === 9 && velocity > 0) {
             evaluateUserNoteRef.current(note);
+          } else if (command === 8 || (command === 9 && velocity === 0)) {
+            // Al soltar una tecla física en el Alesis Teacher's Choice 61, re-confirmar el LED de la nota objetivo actual
+            const seq = activeSequenceRef.current;
+            const idx = stepIndexRef.current;
+            if (idx < seq.length) {
+              const targetNote = seq[idx].note;
+              setTimeout(() => {
+                sendHardwareLedMidi(targetNote, "orange");
+              }, 25);
+            }
           }
         };
       }
@@ -784,14 +851,14 @@ export default function AlesisPianoStudioSection({
       midiInputsRef.current = activeInputs;
 
       const deviceLabel =
-        activeOutputs[0]?.name || activeInputs[0]?.name || "Alesis USB-C MIDI";
+        activeOutputs[0]?.name || activeInputs[0]?.name || "Alesis Teacher's Choice 61";
       const isConnected = activeOutputs.length > 0 || activeInputs.length > 0;
       setMidiConnected(isConnected);
       setMidiDeviceName(deviceLabel);
 
       if (isConnected) {
         addLog(
-          `Teclado MIDI conectado (${activeInputs.length} IN / ${activeOutputs.length} OUT): ${deviceLabel}`
+          `Alesis conectado (${activeInputs.length} IN / ${activeOutputs.length} OUT): ${deviceLabel}`
         );
       } else {
         addLog("Acceso MIDI concedido, pero no se detectó el cable USB-C del teclado.");
@@ -804,17 +871,15 @@ export default function AlesisPianoStudioSection({
     }
   };
 
-  // Botón para probar y re-enviar inmediatamente el pulso de luz a la tecla objetivo actual
-  const testCurrentKeyLight = () => {
+  // Probar una velocidad MIDI específica en la nota objetivo actual (para identificar qué velocidad prende Verde y Ámbar en el Teacher's Choice 61)
+  const testVelocityOnTargetKey = (vel: number) => {
     const seq = activeSequenceRef.current;
     const idx = stepIndexRef.current < seq.length ? stepIndexRef.current : 0;
     const target = seq[idx]?.note || 60;
-    setKeyColors({ [target]: "orange" });
     centerKeyInVirtualKeyboard(target);
-    sendHardwareLedMidi(target, "orange");
-    grandPiano.playNote(target, 0.6);
+    sendRawHardwareVelocity(target, vel);
     addLog(
-      `💡 Luz enviada a la tecla ${NOTE_LABELS[target] || target} (MIDI ${target}) en pantalla y por USB-C.`
+      `🔬 Enviado comando MIDI [0x90, Nota ${target} (${NOTE_LABELS[target]}), Velocity = ${vel}] al Alesis Teacher's Choice 61.`
     );
   };
 
@@ -886,7 +951,6 @@ export default function AlesisPianoStudioSection({
     }
   };
 
-  // Activar micrófono para análisis acústico complementario
   const initAudio = async () => {
     try {
       await grandPiano.load();
@@ -927,7 +991,6 @@ export default function AlesisPianoStudioSection({
   const currentStep = !isSequenceComplete ? activeSequence[currentIndex] : null;
   const isHorizontalLayout = isNaturalLandscape || forcedLandscape;
 
-  // Estilos forzados de rotación 90 grados cuando el usuario pulsa "Horizontal" teniendo su teléfono en bloqueo vertical
   const forcedLandscapeStyle: React.CSSProperties | undefined = forcedLandscape
     ? {
         position: "fixed",
@@ -953,7 +1016,7 @@ export default function AlesisPianoStudioSection({
       {/* Header Compacto Mobile-First y Ultra-Slim en Modo Horizontal */}
       <header
         className={`bg-slate-900/95 backdrop-blur-md border-b border-slate-800 ${
-          isHorizontalLayout ? "px-3 py-1.5 gap-1.5" : "p-3 gap-2.5"
+          isHorizontalLayout ? "px-3 py-1.5 gap-1.5" : "p-3 gap-2"
         } flex flex-col shadow-md sticky top-0 z-40`}
       >
         <div className="flex justify-between items-center gap-2">
@@ -964,7 +1027,7 @@ export default function AlesisPianoStudioSection({
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="text-xs sm:text-base font-bold text-orange-400 truncate">
-                  🎹 Alesis Cloud Studio
+                  🎹 Alesis Teacher&apos;s Choice 61 Studio
                 </h1>
                 {midiConnected && (
                   <span className="px-2 py-0.5 text-[9px] font-mono font-bold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
@@ -976,14 +1039,13 @@ export default function AlesisPianoStudioSection({
                 <p className="text-[10px] text-slate-400 truncate">
                   {midiConnected
                     ? `Conectado: ${midiDeviceName}`
-                    : "Supabase Sync + USB-C LEDs + Partituras OSMD"}
+                    : "LEDs Rojo (Vel 1) • Verde (Vel 2) • Ámbar/Naranja (Vel 3) + Supabase"}
                 </p>
               )}
             </div>
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Botón para Rotar en Horizontal / Vertical */}
             <button
               type="button"
               onClick={toggleHorizontalOrientation}
@@ -996,7 +1058,11 @@ export default function AlesisPianoStudioSection({
             >
               <Smartphone
                 size={13}
-                className={isHorizontalLayout ? "rotate-90 text-amber-400 transition-transform" : "transition-transform"}
+                className={
+                  isHorizontalLayout
+                    ? "rotate-90 text-amber-400 transition-transform"
+                    : "transition-transform"
+                }
               />
               <span>{isHorizontalLayout ? "Vertical" : "🔄 Horizontal"}</span>
             </button>
@@ -1028,7 +1094,7 @@ export default function AlesisPianoStudioSection({
           </div>
         </div>
 
-        {/* Barra de acciones secundarias con touch-scroll */}
+        {/* Barra de acciones secundarias */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
           <label className="bg-purple-600 hover:bg-purple-500 active:scale-95 text-[11px] px-2.5 py-1.5 rounded-xl font-medium transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 shadow text-white">
             <Upload size={12} />
@@ -1044,27 +1110,15 @@ export default function AlesisPianoStudioSection({
 
           <button
             type="button"
-            onClick={testCurrentKeyLight}
-            className="bg-orange-500 hover:bg-orange-400 active:scale-95 text-[11px] px-2.5 py-1.5 rounded-xl font-bold transition whitespace-nowrap shadow flex items-center gap-1 text-slate-950 cursor-pointer"
-            title="Iluminar y centrar la tecla que debes tocar"
+            onClick={() => setShowLedCalibrator((prev) => !prev)}
+            className={`active:scale-95 text-[11px] px-2.5 py-1.5 rounded-xl font-bold transition whitespace-nowrap shadow flex items-center gap-1 cursor-pointer border ${
+              showLedCalibrator
+                ? "bg-orange-500 text-slate-950 border-orange-400"
+                : "bg-slate-800 text-orange-300 border-orange-500/30"
+            }`}
           >
-            <Lightbulb size={12} />
-            <span>💡 Ver Luz de Tecla</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              setHardwareLedMode((prev) => (prev === "3color" ? "standard" : "3color"))
-            }
-            className="bg-slate-800 hover:bg-slate-700 active:scale-95 text-[11px] px-2.5 py-1.5 rounded-xl font-medium transition whitespace-nowrap shadow flex items-center gap-1 text-orange-300 border border-orange-500/30 cursor-pointer"
-            title="Cambiar modo de velocidad MIDI para los LEDs físicos del teclado Alesis"
-          >
-            <span>
-              {hardwareLedMode === "3color"
-                ? "🎹 LED Físico: 3 Colores (Vel 10)"
-                : "🎹 LED Físico: Guía Alesis (Vel 110)"}
-            </span>
+            <Sliders size={12} />
+            <span>🎹 Calibrador LED Teacher&apos;s Choice 61</span>
           </button>
 
           <button
@@ -1099,6 +1153,83 @@ export default function AlesisPianoStudioSection({
             <span>Actualizar Cloud</span>
           </button>
         </div>
+
+        {/* PANEL CALIBRADOR DE LEDS PARA ALESIS TEACHER'S CHOICE 61 */}
+        {showLedCalibrator && (
+          <div className="bg-slate-950/95 border border-orange-500/40 rounded-xl p-2.5 flex flex-col gap-2 text-[11px]">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-bold text-orange-400 flex items-center gap-1">
+                <Lightbulb size={13} /> Modo de Luz Física (Alesis Teacher&apos;s Choice 61):
+              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => applyTc61Preset("tc61_123")}
+                  className={`px-2.5 py-1 rounded-lg font-bold cursor-pointer transition border ${
+                    ledPreset === "tc61_123"
+                      ? "bg-orange-500 text-slate-950 border-orange-300"
+                      : "bg-slate-900 text-slate-300 border-slate-700"
+                  }`}
+                >
+                  3 Colores (Naranja=3, Verde=2, Rojo=1)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyTc61Preset("tc61_132")}
+                  className={`px-2.5 py-1 rounded-lg font-bold cursor-pointer transition border ${
+                    ledPreset === "tc61_132"
+                      ? "bg-orange-500 text-slate-950 border-orange-300"
+                      : "bg-slate-900 text-slate-300 border-slate-700"
+                  }`}
+                >
+                  Alterno (Naranja=2, Verde=3, Rojo=1)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyTc61Preset("tc61_vel1_guide")}
+                  className={`px-2.5 py-1 rounded-lg font-bold cursor-pointer transition border ${
+                    ledPreset === "tc61_vel1_guide"
+                      ? "bg-emerald-500 text-slate-950 border-emerald-300"
+                      : "bg-slate-900 text-emerald-300 border-emerald-500/40"
+                  }`}
+                >
+                  ✅ Guía Segura (Usar Vel=1 en Tecla a Tocar)
+                </button>
+              </div>
+            </div>
+
+            {/* Probador rápido de velocidades en la nota actual */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-slate-800/80">
+              <div className="flex flex-wrap items-center gap-1">
+                <span className="text-[10px] text-slate-400 font-mono mr-1">
+                  🔬 Probar luz en tecla actual ({NOTE_LABELS[currentStep?.note || 60]}):
+                </span>
+                {[1, 2, 3, 4, 5, 16, 32, 64, 127].map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => testVelocityOnTargetKey(v)}
+                    className="px-2 py-0.5 rounded bg-slate-800 hover:bg-orange-500 hover:text-slate-950 text-slate-200 font-mono text-[10px] border border-slate-700 cursor-pointer transition"
+                  >
+                    Vel {v}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => testVelocityOnTargetKey(0)}
+                  className="px-2 py-0.5 rounded bg-rose-950/60 hover:bg-rose-800 text-rose-300 font-mono text-[10px] border border-rose-500/30 cursor-pointer transition"
+                >
+                  Apagar (0)
+                </button>
+              </div>
+
+              <span className="text-[10px] text-slate-400">
+                💡 Tip Alesis: En tu teclado físico mantén <b>FUNCTION + 1ra tecla izq. (Click)</b> para
+                cambiar el color del LED entre Ámbar, Verde y Rojo.
+              </span>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Contenido Principal — Se adapta automáticamente a modo Vertical o Cockpit Horizontal */}
@@ -1282,7 +1413,7 @@ export default function AlesisPianoStudioSection({
               </span>
               {currentStep && (
                 <span
-                  onClick={testCurrentKeyLight}
+                  onClick={() => testVelocityOnTargetKey(orangeVel)}
                   className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold cursor-pointer animate-pulse"
                   style={{
                     backgroundColor: "#f97316",
@@ -1302,21 +1433,21 @@ export default function AlesisPianoStudioSection({
                   className="w-2.5 h-2.5 rounded-full inline-block"
                   style={{ backgroundColor: "#f97316", boxShadow: "0 0 8px #f97316" }}
                 />
-                Tecla a tocar (Naranja)
+                Siguiente (Vel {orangeVel})
               </span>
               <span className="flex items-center gap-1">
                 <span
                   className="w-2.5 h-2.5 rounded-full inline-block"
                   style={{ backgroundColor: "#22c55e", boxShadow: "0 0 8px #22c55e" }}
                 />
-                Correcta (Verde)
+                Bien (Vel {greenVel})
               </span>
               <span className="flex items-center gap-1">
                 <span
                   className="w-2.5 h-2.5 rounded-full inline-block"
                   style={{ backgroundColor: "#ef4444", boxShadow: "0 0 8px #ef4444" }}
                 />
-                Error (Rojo)
+                Error (Vel {redVel})
               </span>
             </div>
           </div>
@@ -1332,11 +1463,9 @@ export default function AlesisPianoStudioSection({
             {KEY_RANGE.map((midiNote) => {
               const isBlack = BLACK_KEY_NUMBERS.includes(midiNote);
               const isExpectedTarget = currentStep?.note === midiNote;
-              // Si es la nota esperada y no tiene color verde/rojo temporal, forzar siempre luz NARANJA
               const activeColor: LedColor =
                 keyColors[midiNote] || (isExpectedTarget ? "orange" : null);
 
-              // Estilos inline explícitos de alto contraste (inmunes a modos claro/oscuro o overrides de CSS)
               const keyInlineStyle: React.CSSProperties = isBlack
                 ? {
                     marginLeft: "-10px",
