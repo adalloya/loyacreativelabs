@@ -290,6 +290,7 @@ export default function AlesisPianoStudioSection({
 
   const [midiConnected, setMidiConnected] = useState<boolean>(false);
   const [midiDeviceName, setMidiDeviceName] = useState<string>("");
+  const [midiPermissionDenied, setMidiPermissionDenied] = useState<boolean>(false);
   const [micActive, setMicActive] = useState<boolean>(false);
   const [osmdReady, setOsmdReady] = useState<boolean>(false);
 
@@ -712,113 +713,141 @@ export default function AlesisPianoStudioSection({
   }, [evaluateUserNote]);
 
   // Inicializar Web MIDI API (USB-C Bidireccional con Alesis Teacher's Choice 61)
-  const initMIDI = async () => {
-    if (typeof navigator === "undefined" || !navigator.requestMIDIAccess) {
-      alert("Web MIDI no soportado en este navegador. Usa Chrome en Android o Desktop.");
-      addLog("Error: Web MIDI API no soportada en este navegador.");
-      return;
-    }
+  // Usamos requestMIDIAccess() estándar (sin sysex) para que funcione tanto en el navegador Chrome como en la PWA instalada sin bloqueo de permisos.
+  const initMIDI = useCallback(
+    async (silent = false) => {
+      if (typeof navigator === "undefined" || !navigator.requestMIDIAccess) {
+        if (!silent) {
+          alert("Web MIDI no soportado en este navegador. Usa Chrome en Android o Desktop.");
+          addLog("Error: Web MIDI API no soportada en este navegador.");
+        }
+        return;
+      }
 
-    try {
-      let midiAccess: MIDIAccess;
       try {
-        midiAccess = await navigator.requestMIDIAccess({ sysex: true });
-      } catch {
-        midiAccess = await navigator.requestMIDIAccess({ sysex: false });
-      }
+        setMidiPermissionDenied(false);
+        const midiAccess = await navigator.requestMIDIAccess({ sysex: false });
 
-      const allOutputs = Array.from(midiAccess.outputs.values());
-      const allInputs = Array.from(midiAccess.inputs.values());
+        const bindPorts = () => {
+          const allOutputs = Array.from(midiAccess.outputs.values());
+          const allInputs = Array.from(midiAccess.inputs.values());
 
-      const preferredOutputs = allOutputs.filter((out) => {
-        const n = (out.name || "").toLowerCase();
-        return (
-          !n.includes("through") &&
-          (n.includes("alesis") ||
-            n.includes("teacher") ||
-            n.includes("choice") ||
-            n.includes("usb") ||
-            n.includes("piano") ||
-            n.includes("keyboard"))
-        );
-      });
-      const activeOutputs =
-        preferredOutputs.length > 0
-          ? preferredOutputs
-          : allOutputs.filter((o) => !(o.name || "").toLowerCase().includes("through")).length > 0
-          ? allOutputs.filter((o) => !(o.name || "").toLowerCase().includes("through"))
-          : allOutputs;
+          const preferredOutputs = allOutputs.filter((out) => {
+            const n = (out.name || "").toLowerCase();
+            return (
+              !n.includes("through") &&
+              (n.includes("alesis") ||
+                n.includes("teacher") ||
+                n.includes("choice") ||
+                n.includes("usb") ||
+                n.includes("piano") ||
+                n.includes("keyboard"))
+            );
+          });
+          const activeOutputs =
+            preferredOutputs.length > 0
+              ? preferredOutputs
+              : allOutputs.filter((o) => !(o.name || "").toLowerCase().includes("through")).length >
+                0
+              ? allOutputs.filter((o) => !(o.name || "").toLowerCase().includes("through"))
+              : allOutputs;
 
-      for (const out of activeOutputs) {
-        try {
-          if (typeof out.open === "function") {
-            await out.open();
+          for (const out of activeOutputs) {
+            try {
+              if (typeof out.open === "function") {
+                out.open();
+              }
+            } catch {}
           }
-        } catch {}
-      }
 
-      const preferredInputs = allInputs.filter((inp) => {
-        const n = (inp.name || "").toLowerCase();
-        return (
-          !n.includes("through") &&
-          (n.includes("alesis") ||
-            n.includes("teacher") ||
-            n.includes("choice") ||
-            n.includes("usb") ||
-            n.includes("piano") ||
-            n.includes("keyboard"))
-        );
-      });
-      const activeInputs = preferredInputs.length > 0 ? preferredInputs : allInputs;
+          const preferredInputs = allInputs.filter((inp) => {
+            const n = (inp.name || "").toLowerCase();
+            return (
+              !n.includes("through") &&
+              (n.includes("alesis") ||
+                n.includes("teacher") ||
+                n.includes("choice") ||
+                n.includes("usb") ||
+                n.includes("piano") ||
+                n.includes("keyboard"))
+            );
+          });
+          const activeInputs = preferredInputs.length > 0 ? preferredInputs : allInputs;
 
-      for (const inp of activeInputs) {
-        try {
-          if (typeof inp.open === "function") {
-            await inp.open();
+          for (const inp of activeInputs) {
+            try {
+              if (typeof inp.open === "function") {
+                inp.open();
+              }
+            } catch {}
+            inp.onmidimessage = (event: MIDIMessageEvent) => {
+              if (!event.data || event.data.length < 3) return;
+              const [status, note, velocity] = event.data;
+              const command = status >> 4;
+              if (command === 9 && velocity > 0) {
+                evaluateUserNoteRef.current(note);
+              } else if (command === 8 || (command === 9 && velocity === 0)) {
+                const seq = activeSequenceRef.current;
+                const idx = stepIndexRef.current;
+                if (idx < seq.length) {
+                  const targetNote = seq[idx].note;
+                  setTimeout(() => {
+                    sendHardwareLedMidi(targetNote, "orange");
+                  }, 30);
+                }
+              }
+            };
           }
-        } catch {}
-        inp.onmidimessage = (event: MIDIMessageEvent) => {
-          if (!event.data || event.data.length < 3) return;
-          const [status, note, velocity] = event.data;
-          const command = status >> 4;
-          if (command === 9 && velocity > 0) {
-            evaluateUserNoteRef.current(note);
-          } else if (command === 8 || (command === 9 && velocity === 0)) {
-            const seq = activeSequenceRef.current;
-            const idx = stepIndexRef.current;
-            if (idx < seq.length) {
-              const targetNote = seq[idx].note;
-              setTimeout(() => {
-                sendHardwareLedMidi(targetNote, "orange");
-              }, 30);
-            }
+
+          midiOutputsRef.current = activeOutputs;
+          midiInputsRef.current = activeInputs;
+
+          const deviceLabel =
+            activeOutputs[0]?.name || activeInputs[0]?.name || "Alesis Teacher's Choice 61";
+          const isConnected = activeOutputs.length > 0 || activeInputs.length > 0;
+          setMidiConnected(isConnected);
+          setMidiDeviceName(deviceLabel);
+
+          if (isConnected) {
+            addLog(
+              `Alesis conectado (${activeInputs.length} IN / ${activeOutputs.length} OUT): ${deviceLabel}. Luz enviada a la tecla a tocar.`
+            );
+            syncSequenceLeds(activeSequenceRef.current, stepIndexRef.current);
+          } else if (!silent) {
+            addLog("Acceso MIDI activo, esperando conexión USB-C del teclado.");
           }
         };
+
+        bindPorts();
+        midiAccess.onstatechange = () => {
+          bindPorts();
+        };
+      } catch (err) {
+        if (!silent) {
+          const message = err instanceof Error ? err.message : "Error desconocido";
+          setMidiPermissionDenied(true);
+          addLog(
+            `Error MIDI: ${message}. Toca el icono a la izquierda de la URL en Chrome → Permisos → Dispositivos MIDI → Permitir.`
+          );
+        }
       }
+    },
+    [addLog, sendHardwareLedMidi, syncSequenceLeds]
+  );
 
-      midiOutputsRef.current = activeOutputs;
-      midiInputsRef.current = activeInputs;
-
-      const deviceLabel =
-        activeOutputs[0]?.name || activeInputs[0]?.name || "Alesis Teacher's Choice 61";
-      const isConnected = activeOutputs.length > 0 || activeInputs.length > 0;
-      setMidiConnected(isConnected);
-      setMidiDeviceName(deviceLabel);
-
-      if (isConnected) {
-        addLog(
-          `Alesis conectado (${activeInputs.length} IN / ${activeOutputs.length} OUT): ${deviceLabel}. Luz enviada a la tecla a tocar.`
-        );
-      } else {
-        addLog("Acceso MIDI concedido, pero no se detectó el cable USB-C del teclado.");
-      }
-
-      syncSequenceLeds(activeSequenceRef.current, stepIndexRef.current);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Error desconocido";
-      addLog(`Error MIDI: ${message}`);
+  // Auto-conectar MIDI al abrir la página únicamente si el permiso ya fue concedido
+  useEffect(() => {
+    if (typeof navigator !== "undefined" && navigator.permissions?.query) {
+      navigator.permissions
+        .query({ name: "midi" as PermissionName })
+        .then((status) => {
+          if (status.state === "granted") {
+            initMIDI(true);
+          }
+        })
+        .catch(() => {});
     }
-  };
+  }, [initMIDI]);
 
   // Probar 1 único comando MIDI limpio en la nota objetivo actual (sin bucles masivos)
   const testSingleHardwarePacket = (statusByte: number, vel: number, label: string) => {
@@ -1018,7 +1047,7 @@ export default function AlesisPianoStudioSection({
             <button
               id="btnConnectMIDI"
               type="button"
-              onClick={initMIDI}
+              onClick={() => initMIDI(false)}
               className={`active:scale-95 text-[11px] sm:text-xs px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl font-semibold transition shadow-lg flex items-center gap-1.5 cursor-pointer ${
                 midiConnected
                   ? "bg-emerald-600 hover:bg-emerald-500 text-white"
@@ -1106,6 +1135,21 @@ export default function AlesisPianoStudioSection({
             <span>Actualizar Cloud</span>
           </button>
         </div>
+
+        {midiPermissionDenied && (
+          <div className="bg-rose-950/90 border border-rose-500/60 rounded-xl p-2.5 text-[11px] text-rose-200 flex items-center justify-between gap-2">
+            <span>
+              🔓 <b>Permiso MIDI bloqueado en Chrome:</b> Toca el icono de ajustes/candado a la izquierda de la barra de dirección arriba en Chrome → <b>Permisos</b> → <b>Dispositivos MIDI</b> → <b>Permitir</b> (o <i>Restablecer permisos</i>) y vuelve a tocar <b>🔌 Conectar USB</b>.
+            </span>
+            <button
+              type="button"
+              onClick={() => setMidiPermissionDenied(false)}
+              className="px-2 py-1 rounded bg-rose-800/60 text-white text-[10px] shrink-0"
+            >
+              Cerrar
+            </button>
+          </div>
+        )}
 
         {/* Panel opcional de prueba de paquete único en la tecla activa */}
         {showCalibrator && (

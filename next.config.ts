@@ -13,6 +13,12 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        source: "/:path*",
+        headers: [
+          { key: "Permissions-Policy", value: "midi=*, microphone=*" }
+        ]
+      },
+      {
         source: "/consultant",
         headers: [
           { key: "Access-Control-Allow-Credentials", value: "true" },

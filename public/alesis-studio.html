@@ -406,33 +406,34 @@
             if (osmd.cursor) osmd.cursor.show();
         }
 
-        async function initMIDI() {
+        async function initMIDI(silent = false) {
             if (!navigator.requestMIDIAccess) {
-                alert("Web MIDI no soportado en este navegador.");
+                if (!silent) alert("Web MIDI no soportado en este navegador.");
                 return;
             }
             try {
-                let midiAccess;
-                try {
-                    midiAccess = await navigator.requestMIDIAccess({ sysex: true });
-                } catch {
-                    midiAccess = await navigator.requestMIDIAccess({ sysex: false });
-                }
-                const allOuts = Array.from(midiAccess.outputs.values());
-                const filteredOuts = allOuts.filter(o => !(o.name || '').toLowerCase().includes('through'));
-                midiOutputs = filteredOuts.length > 0 ? filteredOuts : allOuts;
+                const midiAccess = await navigator.requestMIDIAccess({ sysex: false });
+                const bindPorts = () => {
+                    const allOuts = Array.from(midiAccess.outputs.values());
+                    const filteredOuts = allOuts.filter(o => !(o.name || '').toLowerCase().includes('through'));
+                    midiOutputs = filteredOuts.length > 0 ? filteredOuts : allOuts;
 
-                for (let out of midiOutputs) {
-                    try { if (out.open) await out.open(); } catch {}
-                }
-                for (let input of midiAccess.inputs.values()) {
-                    try { if (input.open) await input.open(); } catch {}
-                    input.onmidimessage = handleMIDIMessage;
-                }
-                log(`Teclado MIDI conectado (${midiOutputs.length} salidas activas).`);
-                updateLessonUI();
+                    for (let out of midiOutputs) {
+                        try { if (out.open) out.open(); } catch {}
+                    }
+                    for (let input of midiAccess.inputs.values()) {
+                        try { if (input.open) input.open(); } catch {}
+                        input.onmidimessage = handleMIDIMessage;
+                    }
+                    if (midiOutputs.length > 0) {
+                        log(`Teclado MIDI conectado (${midiOutputs.length} salidas activas).`);
+                        updateLessonUI();
+                    }
+                };
+                bindPorts();
+                midiAccess.onstatechange = () => bindPorts();
             } catch (err) {
-                log(`Error MIDI: ${err.message}`);
+                if (!silent) log(`Error MIDI: ${err.message}`);
             }
         }
 
