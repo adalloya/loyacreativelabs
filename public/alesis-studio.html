@@ -141,10 +141,23 @@
         let isForcedHorizontal = false;
         let audioCtx = null;
 
-        // Velocidades LED para Alesis Teacher's Choice 61 (0=Off, 1=Rojo, 2=Verde, 3=Ámbar/Naranja)
-        let redVel = 1;
-        let greenVel = 2;
-        let orangeVel = 3;
+        // En el Alesis Teacher's Choice 61, Velocity = 1 es la señal que enciende el LED físico de la tecla.
+        // Lo enviamos directamente a la nota objetivo ('orange') para que en el piano físico siempre esté encendida la tecla que toca presionar.
+        function sendHardwareMidi(noteNumber, color) {
+            if (!midiOutputs.length) return;
+            for (let out of midiOutputs) {
+                try {
+                    if (color === 'orange') {
+                        out.send([0x90, noteNumber, 1]);
+                    } else {
+                        out.send([0x80, noteNumber, 0]);
+                        out.send([0x90, noteNumber, 0]);
+                    }
+                } catch {}
+            }
+            if (color === 'orange') litHardwareNotes.add(noteNumber);
+            else litHardwareNotes.delete(noteNumber);
+        }
 
         let activeSequence = [
             { note: 60, name: 'C4 (Do)', lyric: 'Do4 - Dedo 1', finger: 1 },
@@ -425,22 +438,6 @@
             }
         }
 
-        function sendHardwareMidi(noteNumber, color) {
-            if (!midiOutputs.length) return;
-            let velocity = (color === 'red') ? redVel : (color === 'green') ? greenVel : (color === 'orange') ? orangeVel : 0;
-            for (let out of midiOutputs) {
-                try {
-                    if (!color) {
-                        out.send([0x80, noteNumber, 0]);
-                        out.send([0x90, noteNumber, 0]);
-                    } else {
-                        out.send([0x90, noteNumber, velocity]);
-                    }
-                } catch {}
-            }
-            if (color) litHardwareNotes.add(noteNumber);
-        }
-
         function setKeyColor(noteNumber, color) {
             const container = document.getElementById('virtualKeyboard');
             const keyEl = document.getElementById(`key-${noteNumber}`);
@@ -459,8 +456,14 @@
 
         function handleMIDIMessage(event) {
             const [status, note, velocity] = event.data;
-            if ((status >> 4) === 9 && velocity > 0) {
+            const cmd = status >> 4;
+            if (cmd === 9 && velocity > 0) {
                 evaluateUserNote(note);
+            } else if (cmd === 8 || (cmd === 9 && velocity === 0)) {
+                if (currentIndex < activeSequence.length) {
+                    const targetNote = activeSequence[currentIndex].note;
+                    setTimeout(() => sendHardwareMidi(targetNote, 'orange'), 30);
+                }
             }
         }
 
@@ -475,18 +478,20 @@
 
             if (playedNote === expectedNote) {
                 setKeyColor(expectedNote, 'green');
+                sendHardwareMidi(expectedNote, null);
                 setTimeout(() => {
                     currentIndex++;
                     if (osmd && osmd.cursor) osmd.cursor.next();
                     updateLessonUI();
-                }, 280);
+                }, 200);
             } else {
                 setKeyColor(playedNote, 'red');
+                sendHardwareMidi(playedNote, null);
                 setKeyColor(expectedNote, 'orange');
                 setTimeout(() => {
                     setKeyColor(playedNote, null);
                     setKeyColor(expectedNote, 'orange');
-                }, 400);
+                }, 380);
             }
         }
 
