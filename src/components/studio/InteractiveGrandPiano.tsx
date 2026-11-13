@@ -11,6 +11,7 @@ export interface InteractiveGrandPianoProps {
   lowestVocalMidi?: number;         // La2 = 45
   passaggioVocalMidi?: number;      // Re4 = 62
   highestVocalMidi?: number;        // Mi4 = 64
+  targetPianoNotes?: Set<number>;   // Notas objetivo iluminadas del ejercicio/pieza
 }
 
 export const InteractiveGrandPiano: React.FC<InteractiveGrandPianoProps> = ({
@@ -19,9 +20,11 @@ export const InteractiveGrandPiano: React.FC<InteractiveGrandPianoProps> = ({
   lowestVocalMidi = 45,
   passaggioVocalMidi = 62,
   highestVocalMidi = 64,
+  targetPianoNotes,
 }) => {
-  // Detección responsive para móvil vs escritorio
+  // Detección responsive para móvil vertical, móvil horizontal (landscape) y escritorio
   const [isMobile, setIsMobile] = useState<boolean>(false);
+  const [isLandscapeMobile, setIsLandscapeMobile] = useState<boolean>(false);
   const [isCollapsedOnMobile, setIsCollapsedOnMobile] = useState<boolean>(false);
 
   // Rango por defecto: Desktop = 4 octavas (C2 a C6) | Mobile = 1.8 octavas (C3 a G4)
@@ -34,11 +37,18 @@ export const InteractiveGrandPiano: React.FC<InteractiveGrandPianoProps> = ({
 
   useEffect(() => {
     const handleResize = () => {
-      const mob = window.innerWidth < 768;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const landscapeMob = w > h && h < 540;
+      const mob = w < 768 || landscapeMob;
       setIsMobile(mob);
-      if (mob) {
+      setIsLandscapeMobile(landscapeMob);
+      if (landscapeMob) {
+        setVisibleOctaves(2.5);
+        setStartOctave(3); // C3 a F5 en horizontal
+      } else if (mob) {
         setVisibleOctaves(1.8);
-        setStartOctave(3); // C3 a G4 (registro central para vocalizar en teléfono)
+        setStartOctave(3); // C3 a G4 en vertical
       } else {
         setVisibleOctaves(4);
         setStartOctave(2);
@@ -46,7 +56,11 @@ export const InteractiveGrandPiano: React.FC<InteractiveGrandPianoProps> = ({
     };
     handleResize();
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
   }, []);
 
   useEffect(() => {
@@ -71,7 +85,7 @@ export const InteractiveGrandPiano: React.FC<InteractiveGrandPianoProps> = ({
   }, [sustain]);
 
   const effectiveStartOctave = isMobile ? Math.max(1, Math.min(5, startOctave)) : startOctave;
-  const effectiveVisibleOctaves = isMobile ? 1.8 : visibleOctaves;
+  const effectiveVisibleOctaves = isLandscapeMobile ? 2.5 : isMobile ? 1.8 : visibleOctaves;
 
   const startMidi = (effectiveStartOctave + 1) * 12; // Ej. C3 = 48
   const endMidi = Math.round(startMidi + effectiveVisibleOctaves * 12);
@@ -138,7 +152,7 @@ export const InteractiveGrandPiano: React.FC<InteractiveGrandPianoProps> = ({
   return (
     <div
       className={`bg-[#0D0F16] border-t border-white/10 flex flex-col select-none z-20 shrink-0 ${
-        isMobile ? 'h-36' : 'h-44'
+        isLandscapeMobile ? 'h-28' : isMobile ? 'h-36' : 'h-44'
       }`}
       onMouseUp={() => {
         setIsMouseDown(false);
@@ -236,6 +250,7 @@ export const InteractiveGrandPiano: React.FC<InteractiveGrandPianoProps> = ({
       <div className="relative flex-1 flex px-1 md:px-2 pt-0.5 md:pt-1 pb-1 md:pb-2 bg-[#08090D] overflow-hidden">
         {whiteKeys.map((key) => {
           const isPianoPlaying = activePianoNotes.has(key.midi);
+          const isTargetNote = Boolean(targetPianoNotes?.has(key.midi));
           const isVoiceSinging = detectedVoiceMidi === key.midi;
           const isLowest = key.midi === lowestVocalMidi;
           const isPassaggio = key.midi === passaggioVocalMidi;
@@ -264,8 +279,8 @@ export const InteractiveGrandPiano: React.FC<InteractiveGrandPianoProps> = ({
                     ? Math.abs(voiceCentsOff) <= 20
                       ? 'bg-emerald-400 text-slate-950 shadow-[0_0_20px_rgba(16,185,129,0.8)] translate-y-[2px]'
                       : 'bg-amber-400 text-slate-950 shadow-[0_0_20px_rgba(245,158,11,0.8)] translate-y-[2px]'
-                    : isPianoPlaying
-                    ? 'bg-blue-500 text-white shadow-[0_0_18px_rgba(59,130,246,0.75)] translate-y-[2px]'
+                    : isPianoPlaying || isTargetNote
+                    ? 'bg-orange-500 text-white shadow-[0_0_18px_rgba(249,115,22,0.85)] translate-y-[2px]'
                     : 'bg-gradient-to-b from-slate-100 to-white text-slate-700 hover:from-white hover:to-blue-50'
                 }`}
               >
@@ -298,7 +313,7 @@ export const InteractiveGrandPiano: React.FC<InteractiveGrandPianoProps> = ({
               {/* TECLA NEGRA SUPERPUESTA (SI CORRESPONDE) */}
               {hasBlackKeyRight && (() => {
                 const blackKey = nextMidiInfo;
-                const isBlackPianoPlaying = activePianoNotes.has(blackKey.midi);
+                const isBlackPianoPlaying = activePianoNotes.has(blackKey.midi) || Boolean(targetPianoNotes?.has(blackKey.midi));
                 const isBlackVoiceSinging = detectedVoiceMidi === blackKey.midi;
 
                 return (

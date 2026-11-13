@@ -4,6 +4,7 @@
   "description": "Suite vocal profesional inspirada en Apple Liquid Glass: afinador de alta precisión, vocalizaciones, academia y teleprompter con karaoke.",
   "start_url": "/acapella",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#000000",
   "theme_color": "#000000",
   "icons": [

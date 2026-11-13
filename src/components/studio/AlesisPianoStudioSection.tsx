@@ -22,6 +22,8 @@ import {
   Sparkles,
   Cloud,
   RefreshCw,
+  Smartphone,
+  Lightbulb,
 } from "lucide-react";
 
 export interface LessonStep {
@@ -40,6 +42,7 @@ export interface BeginnerLesson {
 }
 
 type LedColor = "orange" | "green" | "red" | null;
+type HardwareLedMode = "3color" | "standard";
 
 // Declaración global para OpenSheetMusicDisplay cargado desde CDN
 declare global {
@@ -223,6 +226,38 @@ const NOTE_LABELS: Record<number, string> = {
   76: "E5",
 };
 
+const SOLFEGE_LABELS: Record<number, string> = {
+  48: "Do3",
+  49: "Do#3",
+  50: "Re3",
+  51: "Re#3",
+  52: "Mi3",
+  53: "Fa3",
+  54: "Fa#3",
+  55: "Sol3",
+  56: "Sol#3",
+  57: "La3",
+  58: "La#3",
+  59: "Si3",
+  60: "Do4",
+  61: "Do#4",
+  62: "Re4",
+  63: "Re#4",
+  64: "Mi4",
+  65: "Fa4",
+  66: "Fa#4",
+  67: "Sol4",
+  68: "Sol#4",
+  69: "La4",
+  70: "La#4",
+  71: "Si4",
+  72: "Do5",
+  73: "Do#5",
+  74: "Re5",
+  75: "Re#5",
+  76: "Mi5",
+};
+
 interface AlesisPianoStudioSectionProps {
   onClose?: () => void;
   isEmbedded?: boolean;
@@ -241,17 +276,29 @@ export default function AlesisPianoStudioSection({
   const [isSyncingSupabase, setIsSyncingSupabase] = useState<boolean>(false);
 
   const [currentIndex, setCurrentIndex] = useState<number>(0);
-  const [keyColors, setKeyColors] = useState<Record<number, LedColor>>({});
+  const [keyColors, setKeyColors] = useState<Record<number, LedColor>>({
+    60: "orange", // Iluminar primera nota objetivo (Do4 / C4) desde el arranque inicial
+  });
+  const [hardwareLedMode, setHardwareLedMode] = useState<HardwareLedMode>("3color");
   const [midiConnected, setMidiConnected] = useState<boolean>(false);
   const [midiDeviceName, setMidiDeviceName] = useState<string>("");
   const [micActive, setMicActive] = useState<boolean>(false);
   const [osmdReady, setOsmdReady] = useState<boolean>(false);
+
+  // Soporte de rotación horizontal (natural del dispositivo o forzada con 1 toque)
+  const [isNaturalLandscape, setIsNaturalLandscape] = useState<boolean>(false);
+  const [forcedLandscape, setForcedLandscape] = useState<boolean>(false);
+
   const [logs, setLogs] = useState<string[]>([
-    `[${new Date().toLocaleTimeString()}] [Sistema] Listo. Conecta tu cable USB-C.`,
+    `[${new Date().toLocaleTimeString()}] [Sistema] Listo. Tecla objetivo iluminada en Naranja.`,
   ]);
 
-  const midiOutputRef = useRef<MIDIOutput | null>(null);
-  const midiInputRef = useRef<MIDIInput | null>(null);
+  // Soportar múltiples salidas MIDI para garantizar que el puerto físico del Alesis reciba la luz
+  const midiOutputsRef = useRef<MIDIOutput[]>([]);
+  const midiInputsRef = useRef<MIDIInput[]>([]);
+  const litHardwareNotesRef = useRef<Set<number>>(new Set());
+  const hardwareLedModeRef = useRef<HardwareLedMode>(hardwareLedMode);
+
   const osmdContainerRef = useRef<HTMLDivElement | null>(null);
   const osmdInstanceRef = useRef<{
     load: (xml: string) => Promise<void>;
@@ -259,12 +306,88 @@ export default function AlesisPianoStudioSection({
     cursor?: { show: () => void; next: () => void; reset: () => void };
   } | null>(null);
   const logConsoleRef = useRef<HTMLDivElement | null>(null);
+  const virtualKeyboardRef = useRef<HTMLDivElement | null>(null);
   const keyElementRefs = useRef<Record<number, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    hardwareLedModeRef.current = hardwareLedMode;
+  }, [hardwareLedMode]);
 
   const addLog = useCallback((msg: string) => {
     const timestamp = new Date().toLocaleTimeString();
     setLogs((prev) => [...prev, `[${timestamp}] ${msg}`]);
   }, []);
+
+  // Detectar orientación horizontal natural del teléfono / tablet
+  useEffect(() => {
+    const checkOrientation = () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const landscape = w > h && h < 600;
+      setIsNaturalLandscape(landscape);
+      if (landscape) {
+        setForcedLandscape(false);
+      }
+    };
+    checkOrientation();
+    window.addEventListener("resize", checkOrientation);
+    window.addEventListener("orientationchange", checkOrientation);
+    return () => {
+      window.removeEventListener("resize", checkOrientation);
+      window.removeEventListener("orientationchange", checkOrientation);
+    };
+  }, []);
+
+  // Alternar rotación horizontal (Intenta bloqueo nativo de pantalla; si el teléfono tiene bloqueo vertical o es iOS, aplica rotación horizontal CSS de pantalla completa)
+  const toggleHorizontalOrientation = async () => {
+    try {
+      const screenOrientation = (
+        window.screen as unknown as {
+          orientation?: {
+            type?: string;
+            lock?: (mode: string) => Promise<void>;
+            unlock?: () => void;
+          };
+        }
+      )?.orientation;
+
+      if (isNaturalLandscape || forcedLandscape) {
+        // Volver a vertical
+        if (screenOrientation?.unlock) {
+          try {
+            screenOrientation.unlock();
+          } catch {}
+        }
+        if (document.fullscreenElement && document.exitFullscreen) {
+          try {
+            await document.exitFullscreen();
+          } catch {}
+        }
+        setForcedLandscape(false);
+        addLog("Vista cambiada a modo Vertical.");
+        return;
+      }
+
+      // Intentar rotación nativa de hardware (Android Chrome soporta lock en fullscreen)
+      if (screenOrientation?.lock) {
+        try {
+          if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+            await document.documentElement.requestFullscreen();
+          }
+          await screenOrientation.lock("landscape");
+          addLog("Pantalla rotada a modo Horizontal nativo.");
+          return;
+        } catch {
+          // Si falla (ej. bloqueo de giro activo en el celular o iOS Safari), usar rotación CSS forzada
+        }
+      }
+
+      setForcedLandscape((prev) => !prev);
+      addLog("Modo Horizontal activado en pantalla.");
+    } catch {
+      setForcedLandscape((prev) => !prev);
+    }
+  };
 
   // Determinar la secuencia y el XML activos según si se está en Lección o Repertorio Online de Supabase
   const activeRepertoireSong =
@@ -276,7 +399,9 @@ export default function AlesisPianoStudioSection({
       : BEGINNER_LESSONS[currentLessonIndex].title;
 
   const activeLevelBadge =
-    practiceMode === "repertoire" ? "Repertorio Supabase" : BEGINNER_LESSONS[currentLessonIndex].level;
+    practiceMode === "repertoire"
+      ? "Repertorio Supabase"
+      : BEGINNER_LESSONS[currentLessonIndex].level;
 
   const activeSequence: LessonStep[] =
     practiceMode === "repertoire" && activeRepertoireSong
@@ -354,62 +479,130 @@ export default function AlesisPianoStudioSection({
     document.head.appendChild(script);
   }, [addLog]);
 
-  // Función estricta de control de color en pantalla + LED físico vía MIDI Velocity
-  const setKeyColor = useCallback((noteNumber: number, color: LedColor) => {
-    setKeyColors((prev) => {
-      const next = { ...prev };
-      if (color === null) {
-        delete next[noteNumber];
-      } else {
-        next[noteNumber] = color;
-      }
-      return next;
-    });
-
+  // Centrar automáticamente la tecla activa en el contenedor horizontal del teclado virtual
+  const centerKeyInVirtualKeyboard = useCallback((noteNumber: number) => {
+    const container = virtualKeyboardRef.current;
     const keyEl = keyElementRefs.current[noteNumber];
-    if (keyEl && color) {
+    if (!container || !keyEl) return;
+
+    try {
+      const targetScrollLeft =
+        keyEl.offsetLeft - container.clientWidth / 2 + keyEl.clientWidth / 2;
+      container.scrollTo({
+        left: Math.max(0, targetScrollLeft),
+        behavior: "smooth",
+      });
+    } catch {
       try {
         keyEl.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-      } catch {
-        // Fallback seguro
-      }
-    }
-
-    if (midiOutputRef.current) {
-      const velocity =
-        color === "red" ? 1 : color === "green" ? 5 : color === "orange" ? 10 : 0;
-      try {
-        midiOutputRef.current.send([0x90, noteNumber, velocity]);
-      } catch {
-        // Fallback si el puerto MIDI se desconectó
-      }
+      } catch {}
     }
   }, []);
 
-  // Limpiar todos los LEDs de la secuencia y encender la nota objetivo en Naranja
+  // Enviar comando MIDI a todos los puertos de salida físicos del teclado Alesis sin saturar el buffer USB
+  const sendHardwareLedMidi = useCallback((noteNumber: number, color: LedColor) => {
+    const outputs = midiOutputsRef.current;
+    if (!outputs || outputs.length === 0) return;
+
+    const mode = hardwareLedModeRef.current;
+
+    if (color === null) {
+      litHardwareNotesRef.current.delete(noteNumber);
+      for (const out of outputs) {
+        try {
+          out.send([0x80, noteNumber, 0]);
+          out.send([0x90, noteNumber, 0]);
+          if (mode === "standard") {
+            out.send([0x83, noteNumber, 0]);
+            out.send([0x93, noteNumber, 0]);
+          }
+        } catch {}
+      }
+      return;
+    }
+
+    litHardwareNotesRef.current.add(noteNumber);
+    // Modo 3 colores (Vel 10 = Naranja, Vel 5 = Verde, Vel 1 = Rojo) o Modo Guía Estándar Alesis (Vel 110 en Ch 1 y Ch 4)
+    const velocity =
+      mode === "standard"
+        ? color === "orange"
+          ? 110
+          : color === "green"
+          ? 127
+          : 64
+        : color === "red"
+        ? 1
+        : color === "green"
+        ? 5
+        : 10;
+
+    for (const out of outputs) {
+      try {
+        out.send([0x90, noteNumber, velocity]);
+        if (mode === "standard") {
+          // Algunos modelos Alesis (Melody / Harmony / Concert) escuchan la guía de luz en Canal 1 (0x90) o Canal 4 (0x93)
+          out.send([0x93, noteNumber, velocity]);
+        }
+      } catch {}
+    }
+  }, []);
+
+  // Función estricta de control de color en pantalla + LED físico vía MIDI
+  const setKeyColor = useCallback(
+    (noteNumber: number, color: LedColor, shouldScroll = true) => {
+      setKeyColors((prev) => {
+        const next = { ...prev };
+        if (color === null) {
+          delete next[noteNumber];
+        } else {
+          next[noteNumber] = color;
+        }
+        return next;
+      });
+
+      if (color && shouldScroll) {
+        centerKeyInVirtualKeyboard(noteNumber);
+      }
+
+      sendHardwareLedMidi(noteNumber, color);
+    },
+    [centerKeyInVirtualKeyboard, sendHardwareLedMidi]
+  );
+
+  // Limpiar únicamente los LEDs previamente encendidos (evita desbordar el buffer USB-MIDI) y encender la nota objetivo en Naranja
   const syncSequenceLeds = useCallback(
     (sequence: LessonStep[], stepIdx: number) => {
-      setKeyColors({});
-      KEY_RANGE.forEach((midiNote) => {
-        if (midiOutputRef.current) {
-          try {
-            midiOutputRef.current.send([0x90, midiNote, 0]);
-          } catch {}
-        }
-      });
+      // Apagar en el teclado físico únicamente las notas que estaban encendidas
+      const previouslyLit = Array.from(litHardwareNotesRef.current);
+      for (const prevNote of previouslyLit) {
+        sendHardwareLedMidi(prevNote, null);
+      }
 
       if (stepIdx < sequence.length) {
         const targetNote = sequence[stepIdx].note;
-        setKeyColor(targetNote, "orange");
+        setKeyColors({ [targetNote]: "orange" });
+        centerKeyInVirtualKeyboard(targetNote);
+        sendHardwareLedMidi(targetNote, "orange");
+
+        // Re-confirmación a los 45ms para que el microcontrolador USB-C del Alesis nunca pierda el paquete de luz
+        setTimeout(() => {
+          centerKeyInVirtualKeyboard(targetNote);
+          sendHardwareLedMidi(targetNote, "orange");
+        }, 45);
+        setTimeout(() => {
+          centerKeyInVirtualKeyboard(targetNote);
+        }, 300);
+      } else {
+        setKeyColors({});
       }
     },
-    [setKeyColor]
+    [centerKeyInVirtualKeyboard, sendHardwareLedMidi]
   );
 
-  // Actualizar iluminación cada vez que cambia la secuencia o el paso actual
+  // Actualizar iluminación cada vez que cambia la secuencia, el paso actual, el modo de LED o la orientación
   useEffect(() => {
     syncSequenceLeds(activeSequence, currentIndex);
-  }, [activeSequence, currentIndex, syncSequenceLeds]);
+  }, [activeSequence, currentIndex, hardwareLedMode, isNaturalLandscape, forcedLandscape, syncSequenceLeds]);
 
   // Renderizar partitura activa en OSMD
   useEffect(() => {
@@ -436,6 +629,11 @@ export default function AlesisPianoStudioSection({
           instance.cursor.show();
           instance.cursor.reset();
         }
+        // Asegurar que tras renderizar OSMD la tecla objetivo siga centrada y visible
+        const currentTarget = activeSequenceRef.current[stepIndexRef.current]?.note;
+        if (typeof currentTarget === "number") {
+          setTimeout(() => centerKeyInVirtualKeyboard(currentTarget), 100);
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : "Error al renderizar partitura";
         addLog(`Aviso OSMD: ${message}`);
@@ -443,7 +641,7 @@ export default function AlesisPianoStudioSection({
     };
 
     renderScore();
-  }, [osmdReady, activeMusicXml, addLog]);
+  }, [osmdReady, activeMusicXml, addLog, centerKeyInVirtualKeyboard]);
 
   // Evaluar nota tocada por el usuario (vía MIDI USB-C o toque en pantalla)
   const evaluateUserNote = useCallback(
@@ -454,11 +652,22 @@ export default function AlesisPianoStudioSection({
       const sequence = activeSequenceRef.current;
       const idx = stepIndexRef.current;
 
-      if (idx >= sequence.length) return;
+      // Si ya terminó la pieza, iluminar la nota tocada en verde y reiniciar al primer paso para seguir practicando
+      if (idx >= sequence.length) {
+        setKeyColor(playedNote, "green", true);
+        setTimeout(() => {
+          stepIndexRef.current = 0;
+          setCurrentIndex(0);
+        }, 350);
+        return;
+      }
+
       const expectedNote = sequence[idx].note;
 
       if (playedNote === expectedNote) {
-        setKeyColor(expectedNote, "green");
+        const nextIdx = idx + 1;
+        stepIndexRef.current = nextIdx;
+        setKeyColor(expectedNote, "green", true);
         addLog(`✓ Correcto: ${sequence[idx].name} con Dedo ${sequence[idx].finger}`);
         if (osmdInstanceRef.current?.cursor) {
           try {
@@ -466,21 +675,41 @@ export default function AlesisPianoStudioSection({
           } catch {}
         }
         setTimeout(() => {
-          setCurrentIndex((prev) => prev + 1);
-        }, 350);
+          setCurrentIndex(nextIdx);
+          if (nextIdx < sequence.length) {
+            const nextNote = sequence[nextIdx].note;
+            setKeyColors({ [nextNote]: "orange" });
+            centerKeyInVirtualKeyboard(nextNote);
+            sendHardwareLedMidi(nextNote, "orange");
+          }
+        }, 280);
       } else {
-        setKeyColor(playedNote, "red");
-        setKeyColor(expectedNote, "orange");
+        // Mostrar en rojo la tecla que presionó y mantener/re-encender en naranja la tecla que debe tocar
+        setKeyColors({
+          [expectedNote]: "orange",
+          [playedNote]: "red",
+        });
+        centerKeyInVirtualKeyboard(expectedNote);
+        sendHardwareLedMidi(playedNote, "red");
+        sendHardwareLedMidi(expectedNote, "orange");
         addLog(
-          `✕ Nota errónea (${NOTE_LABELS[playedNote] || playedNote}). Se esperaba ${sequence[idx].name}.`
+          `✕ Tocaste ${NOTE_LABELS[playedNote] || playedNote}. Toca la tecla NARANJA: ${sequence[idx].name}.`
         );
         setTimeout(() => {
-          setKeyColor(playedNote, null);
-          setKeyColor(expectedNote, "orange");
-        }, 400);
+          sendHardwareLedMidi(playedNote, null);
+          setKeyColors((prev) => {
+            const copy = { ...prev };
+            if (playedNote !== expectedNote) {
+              delete copy[playedNote];
+            }
+            copy[expectedNote] = "orange";
+            return copy;
+          });
+          sendHardwareLedMidi(expectedNote, "orange");
+        }, 420);
       }
     },
-    [setKeyColor, addLog]
+    [setKeyColor, addLog, centerKeyInVirtualKeyboard, sendHardwareLedMidi]
   );
 
   // Mantener ref de evaluateUserNote para listener MIDI
@@ -498,62 +727,74 @@ export default function AlesisPianoStudioSection({
     }
 
     try {
-      const midiAccess = await navigator.requestMIDIAccess({ sysex: true });
-      let foundOutput: MIDIOutput | null = null;
-      let foundInput: MIDIInput | null = null;
-
-      for (const output of midiAccess.outputs.values()) {
-        const name = (output.name || "").toLowerCase();
-        if (name.includes("alesis") || name.includes("usb audio") || name.includes("midi")) {
-          foundOutput = output;
-          break;
-        }
+      let midiAccess: MIDIAccess;
+      try {
+        midiAccess = await navigator.requestMIDIAccess({ sysex: true });
+      } catch {
+        midiAccess = await navigator.requestMIDIAccess({ sysex: false });
       }
 
-      for (const input of midiAccess.inputs.values()) {
-        const name = (input.name || "").toLowerCase();
-        if (name.includes("alesis") || name.includes("usb audio") || name.includes("midi")) {
-          foundInput = input;
-          break;
-        }
+      const allOutputs = Array.from(midiAccess.outputs.values());
+      const allInputs = Array.from(midiAccess.inputs.values());
+
+      // Priorizar puertos Alesis / USB reales, evitando puertos fantasma "MIDI Through" si existen puertos reales
+      const preferredOutputs = allOutputs.filter((out) => {
+        const n = (out.name || "").toLowerCase();
+        return !n.includes("through") && (n.includes("alesis") || n.includes("usb") || n.includes("piano") || n.includes("keyboard"));
+      });
+      const activeOutputs =
+        preferredOutputs.length > 0
+          ? preferredOutputs
+          : allOutputs.filter((o) => !(o.name || "").toLowerCase().includes("through")).length > 0
+          ? allOutputs.filter((o) => !(o.name || "").toLowerCase().includes("through"))
+          : allOutputs;
+
+      // Abrir explícitamente todos los puertos de salida para Android / Chrome USB-C
+      for (const out of activeOutputs) {
+        try {
+          if (typeof out.open === "function") {
+            await out.open();
+          }
+        } catch {}
       }
 
-      if (!foundOutput) {
-        for (const output of midiAccess.outputs.values()) {
-          foundOutput = output;
-          break;
-        }
-      }
+      const preferredInputs = allInputs.filter((inp) => {
+        const n = (inp.name || "").toLowerCase();
+        return !n.includes("through") && (n.includes("alesis") || n.includes("usb") || n.includes("piano") || n.includes("keyboard"));
+      });
+      const activeInputs = preferredInputs.length > 0 ? preferredInputs : allInputs;
 
-      if (!foundInput) {
-        for (const input of midiAccess.inputs.values()) {
-          foundInput = input;
-          break;
-        }
-      }
-
-      midiOutputRef.current = foundOutput;
-      midiInputRef.current = foundInput;
-
-      if (foundInput) {
-        foundInput.onmidimessage = (event: MIDIMessageEvent) => {
+      for (const inp of activeInputs) {
+        try {
+          if (typeof inp.open === "function") {
+            await inp.open();
+          }
+        } catch {}
+        inp.onmidimessage = (event: MIDIMessageEvent) => {
           if (!event.data || event.data.length < 3) return;
           const [status, note, velocity] = event.data;
-          if (status >> 4 === 9 && velocity > 0) {
+          const command = status >> 4;
+          if (command === 9 && velocity > 0) {
             evaluateUserNoteRef.current(note);
           }
         };
       }
 
+      midiOutputsRef.current = activeOutputs;
+      midiInputsRef.current = activeInputs;
+
       const deviceLabel =
-        foundInput?.name || foundOutput?.name || "Controlador USB-C MIDI Genérico";
-      setMidiConnected(Boolean(foundInput || foundOutput));
+        activeOutputs[0]?.name || activeInputs[0]?.name || "Alesis USB-C MIDI";
+      const isConnected = activeOutputs.length > 0 || activeInputs.length > 0;
+      setMidiConnected(isConnected);
       setMidiDeviceName(deviceLabel);
 
-      if (foundInput || foundOutput) {
-        addLog(`Teclado MIDI conectado con éxito: ${deviceLabel}`);
+      if (isConnected) {
+        addLog(
+          `Teclado MIDI conectado (${activeInputs.length} IN / ${activeOutputs.length} OUT): ${deviceLabel}`
+        );
       } else {
-        addLog("Acceso MIDI concedido, pero no se detectaron puertos USB conectados.");
+        addLog("Acceso MIDI concedido, pero no se detectó el cable USB-C del teclado.");
       }
 
       syncSequenceLeds(activeSequenceRef.current, stepIndexRef.current);
@@ -561,6 +802,20 @@ export default function AlesisPianoStudioSection({
       const message = err instanceof Error ? err.message : "Error desconocido";
       addLog(`Error MIDI: ${message}`);
     }
+  };
+
+  // Botón para probar y re-enviar inmediatamente el pulso de luz a la tecla objetivo actual
+  const testCurrentKeyLight = () => {
+    const seq = activeSequenceRef.current;
+    const idx = stepIndexRef.current < seq.length ? stepIndexRef.current : 0;
+    const target = seq[idx]?.note || 60;
+    setKeyColors({ [target]: "orange" });
+    centerKeyInVirtualKeyboard(target);
+    sendHardwareLedMidi(target, "orange");
+    grandPiano.playNote(target, 0.6);
+    addLog(
+      `💡 Luz enviada a la tecla ${NOTE_LABELS[target] || target} (MIDI ${target}) en pantalla y por USB-C.`
+    );
   };
 
   // Cargar archivo MusicXML externo (.xml, .musicxml) en OSMD y subirlo a Supabase Storage + DB
@@ -586,6 +841,7 @@ export default function AlesisPianoStudioSection({
         ]);
         setSelectedRepertoireId(savedSong.id);
         setPracticeMode("repertoire");
+        stepIndexRef.current = 0;
         setCurrentIndex(0);
         addLog(
           storageUploaded
@@ -606,14 +862,14 @@ export default function AlesisPianoStudioSection({
     if (!songId) return;
     setSelectedRepertoireId(songId);
     setPracticeMode("repertoire");
+    stepIndexRef.current = 0;
     setCurrentIndex(0);
 
     const found = onlineRepertoire.find((s) => s.id === songId);
     if (!found) return;
 
-    addLog(`Cargando repertorio desde Supabase: ${found.title} (${found.file})...`);
+    addLog(`Cargando repertorio desde Supabase: ${found.title}...`);
 
-    // Si por alguna razón el registro no tuviera XML embebido, intentar fetch del archivo .xml
     if (!found.musicXml && found.file) {
       try {
         const response = await fetch(`/${found.file.replace(/^\//, "")}`);
@@ -651,11 +907,13 @@ export default function AlesisPianoStudioSection({
     setPracticeMode("lesson");
     setSelectedRepertoireId("");
     setCurrentLessonIndex(idx);
+    stepIndexRef.current = 0;
     setCurrentIndex(0);
     addLog(`Lección cargada: ${BEGINNER_LESSONS[idx].title}`);
   };
 
   const restartCurrentSequence = () => {
+    stepIndexRef.current = 0;
     setCurrentIndex(0);
     if (osmdInstanceRef.current?.cursor) {
       try {
@@ -667,71 +925,113 @@ export default function AlesisPianoStudioSection({
 
   const isSequenceComplete = currentIndex >= activeSequence.length;
   const currentStep = !isSequenceComplete ? activeSequence[currentIndex] : null;
+  const isHorizontalLayout = isNaturalLandscape || forcedLandscape;
+
+  // Estilos forzados de rotación 90 grados cuando el usuario pulsa "Horizontal" teniendo su teléfono en bloqueo vertical
+  const forcedLandscapeStyle: React.CSSProperties | undefined = forcedLandscape
+    ? {
+        position: "fixed",
+        top: 0,
+        left: "100vw",
+        width: "100dvh",
+        height: "100dvw",
+        transform: "rotate(90deg)",
+        transformOrigin: "top left",
+        zIndex: 9999,
+        overflowY: "auto",
+        overflowX: "hidden",
+      }
+    : undefined;
 
   return (
     <div
+      style={forcedLandscapeStyle}
       className={`${
-        isEmbedded ? "h-full w-full overflow-y-auto" : "min-h-screen w-full"
+        isEmbedded && !forcedLandscape ? "h-full w-full overflow-y-auto" : "min-h-screen w-full"
       } bg-slate-950 text-slate-100 flex flex-col font-sans select-none`}
     >
-      {/* Header Compacto Mobile-First */}
-      <header className="bg-slate-900/95 backdrop-blur-md border-b border-slate-800 p-3 flex flex-col gap-2.5 shadow-md sticky top-0 z-40">
+      {/* Header Compacto Mobile-First y Ultra-Slim en Modo Horizontal */}
+      <header
+        className={`bg-slate-900/95 backdrop-blur-md border-b border-slate-800 ${
+          isHorizontalLayout ? "px-3 py-1.5 gap-1.5" : "p-3 gap-2.5"
+        } flex flex-col shadow-md sticky top-0 z-40`}
+      >
         <div className="flex justify-between items-center gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-orange-500/15 border border-orange-500/40 flex items-center justify-center text-orange-400 shrink-0 shadow">
-              <Piano size={17} />
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-orange-500/15 border border-orange-500/40 flex items-center justify-center text-orange-400 shrink-0 shadow">
+              <Piano size={16} />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="text-sm sm:text-base font-bold text-orange-400 truncate">
-                  🎹 Alesis Piano Academy
+                <h1 className="text-xs sm:text-base font-bold text-orange-400 truncate">
+                  🎹 Alesis Cloud Studio
                 </h1>
                 {midiConnected && (
-                  <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                  <span className="px-2 py-0.5 text-[9px] font-mono font-bold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
                     USB-C Activo
                   </span>
                 )}
               </div>
-              <p className="text-[10px] text-slate-400 truncate">
-                {midiConnected
-                  ? `Conectado: ${midiDeviceName}`
-                  : "Master Studio - USB-C MIDI, LEDs 3 Colores, OSMD & Supabase"}
-              </p>
+              {!isHorizontalLayout && (
+                <p className="text-[10px] text-slate-400 truncate">
+                  {midiConnected
+                    ? `Conectado: ${midiDeviceName}`
+                    : "Supabase Sync + USB-C LEDs + Partituras OSMD"}
+                </p>
+              )}
             </div>
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            {/* Botón para Rotar en Horizontal / Vertical */}
+            <button
+              type="button"
+              onClick={toggleHorizontalOrientation}
+              className={`active:scale-95 text-[11px] sm:text-xs px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl font-semibold transition shadow flex items-center gap-1 cursor-pointer border ${
+                isHorizontalLayout
+                  ? "bg-amber-500/20 border-amber-400/50 text-amber-300"
+                  : "bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200"
+              }`}
+              title="Rotar aplicación en Horizontal / Vertical"
+            >
+              <Smartphone
+                size={13}
+                className={isHorizontalLayout ? "rotate-90 text-amber-400 transition-transform" : "transition-transform"}
+              />
+              <span>{isHorizontalLayout ? "Vertical" : "🔄 Horizontal"}</span>
+            </button>
+
             <button
               id="btnConnectMIDI"
               type="button"
               onClick={initMIDI}
-              className={`active:scale-95 text-xs px-3 py-2 rounded-xl font-semibold transition shadow-lg flex items-center gap-1.5 cursor-pointer ${
+              className={`active:scale-95 text-[11px] sm:text-xs px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl font-semibold transition shadow-lg flex items-center gap-1.5 cursor-pointer ${
                 midiConnected
                   ? "bg-emerald-600 hover:bg-emerald-500 text-white"
                   : "bg-blue-600 hover:bg-blue-500 text-white"
               }`}
             >
-              <Usb size={14} />
-              <span>{midiConnected ? "MIDI Conectado" : "🔌 Conectar USB"}</span>
+              <Usb size={13} />
+              <span>{midiConnected ? "MIDI OK" : "🔌 Conectar USB"}</span>
             </button>
 
             {onClose && (
               <button
                 type="button"
                 onClick={onClose}
-                className="p-2 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 border border-slate-700 transition cursor-pointer"
+                className="p-1.5 sm:p-2 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 border border-slate-700 transition cursor-pointer"
                 title="Volver al Estudio Vocal"
               >
-                <X size={16} />
+                <X size={15} />
               </button>
             )}
           </div>
         </div>
 
         {/* Barra de acciones secundarias con touch-scroll */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-0.5 no-scrollbar">
-          <label className="bg-purple-600 hover:bg-purple-500 active:scale-95 text-xs px-3 py-2 rounded-xl font-medium transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 shadow text-white">
-            <Upload size={13} />
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+          <label className="bg-purple-600 hover:bg-purple-500 active:scale-95 text-[11px] px-2.5 py-1.5 rounded-xl font-medium transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 shadow text-white">
+            <Upload size={12} />
             <span>📂 Cargar y Subir a Supabase</span>
             <input
               type="file"
@@ -744,210 +1044,227 @@ export default function AlesisPianoStudioSection({
 
           <button
             type="button"
-            onClick={initAudio}
-            className={`active:scale-95 text-xs px-3 py-2 rounded-xl font-medium transition whitespace-nowrap shadow flex items-center gap-1.5 cursor-pointer ${
-              micActive
-                ? "bg-emerald-500 text-slate-950 font-bold"
-                : "bg-emerald-600 hover:bg-emerald-500 text-white"
-            }`}
+            onClick={testCurrentKeyLight}
+            className="bg-orange-500 hover:bg-orange-400 active:scale-95 text-[11px] px-2.5 py-1.5 rounded-xl font-bold transition whitespace-nowrap shadow flex items-center gap-1 text-slate-950 cursor-pointer"
+            title="Iluminar y centrar la tecla que debes tocar"
           >
-            <Mic size={13} />
-            <span>🎤 {micActive ? "Micrófono ON" : "Micrófono"}</span>
+            <Lightbulb size={12} />
+            <span>💡 Ver Luz de Tecla</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              setHardwareLedMode((prev) => (prev === "3color" ? "standard" : "3color"))
+            }
+            className="bg-slate-800 hover:bg-slate-700 active:scale-95 text-[11px] px-2.5 py-1.5 rounded-xl font-medium transition whitespace-nowrap shadow flex items-center gap-1 text-orange-300 border border-orange-500/30 cursor-pointer"
+            title="Cambiar modo de velocidad MIDI para los LEDs físicos del teclado Alesis"
+          >
+            <span>
+              {hardwareLedMode === "3color"
+                ? "🎹 LED Físico: 3 Colores (Vel 10)"
+                : "🎹 LED Físico: Guía Alesis (Vel 110)"}
+            </span>
           </button>
 
           <button
             type="button"
             onClick={restartCurrentSequence}
-            className="bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs px-3 py-2 rounded-xl font-medium transition whitespace-nowrap shadow flex items-center gap-1.5 text-slate-200 border border-slate-700 cursor-pointer"
+            className="bg-slate-800 hover:bg-slate-700 active:scale-95 text-[11px] px-2.5 py-1.5 rounded-xl font-medium transition whitespace-nowrap shadow flex items-center gap-1 text-slate-200 border border-slate-700 cursor-pointer"
           >
-            <RotateCcw size={13} />
-            <span>Repetir Pieza</span>
+            <RotateCcw size={12} />
+            <span>Repetir</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={initAudio}
+            className={`active:scale-95 text-[11px] px-2.5 py-1.5 rounded-xl font-medium transition whitespace-nowrap shadow flex items-center gap-1 cursor-pointer ${
+              micActive
+                ? "bg-emerald-500 text-slate-950 font-bold"
+                : "bg-emerald-600 hover:bg-emerald-500 text-white"
+            }`}
+          >
+            <Mic size={12} />
+            <span>{micActive ? "Mic ON" : "Micrófono"}</span>
           </button>
 
           <button
             type="button"
             onClick={syncSupabaseRepertoire}
             disabled={isSyncingSupabase}
-            className="bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-500/30 text-cyan-300 active:scale-95 text-xs px-3 py-2 rounded-xl font-medium transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
+            className="bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-500/30 text-cyan-300 active:scale-95 text-[11px] px-2.5 py-1.5 rounded-xl font-medium transition whitespace-nowrap flex items-center gap-1 cursor-pointer"
           >
-            <RefreshCw size={12} className={isSyncingSupabase ? "animate-spin" : ""} />
-            <span>Actualizar Lista</span>
+            <RefreshCw size={11} className={isSyncingSupabase ? "animate-spin" : ""} />
+            <span>Actualizar Cloud</span>
           </button>
         </div>
       </header>
 
-      {/* Contenido Principal Mobile-First y adaptable a Desktop */}
-      <main className="flex-1 p-3 sm:p-5 max-w-4xl mx-auto w-full flex flex-col gap-4 pb-12">
-        {/* 1. Grid de Selectores: Biblioteca Cloud (Supabase) + Módulo de Aprendizaje */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {/* Selector de Biblioteca en la Nube (Supabase) */}
+      {/* Contenido Principal — Se adapta automáticamente a modo Vertical o Cockpit Horizontal */}
+      <main
+        className={`flex-1 ${
+          isHorizontalLayout
+            ? "p-2 max-w-full flex flex-col gap-2 pb-4"
+            : "p-3 sm:p-5 max-w-4xl mx-auto w-full flex flex-col gap-3.5 pb-12"
+        }`}
+      >
+        {/* 1. Selectores + Estado Activo + Dedo Guía + Partitura OSMD */}
+        <div
+          className={
+            isHorizontalLayout
+              ? "grid grid-cols-12 gap-2 items-stretch"
+              : "flex flex-col gap-3.5"
+          }
+        >
+          {/* Columna Izquierda en Horizontal / Fila Superior en Vertical: Selectores + Nota a Tocar */}
           <div
-            className={`bg-slate-900 border rounded-2xl p-4 shadow-lg flex flex-col gap-2 transition ${
-              practiceMode === "repertoire" ? "border-orange-500/60" : "border-slate-800"
-            }`}
+            className={
+              isHorizontalLayout
+                ? "col-span-5 flex flex-col gap-2 justify-between"
+                : "flex flex-col gap-3"
+            }
           >
-            <div className="flex justify-between items-center">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-orange-400 flex items-center gap-1.5">
-                <Cloud size={12} /> ☁️ Biblioteca Cloud (Supabase)
-              </span>
-              <button
-                type="button"
-                onClick={syncSupabaseRepertoire}
-                className="text-[10px] text-blue-400 hover:text-blue-300 underline cursor-pointer"
+            {/* Selectores Cloud + Lecciones */}
+            <div className="grid grid-cols-2 gap-2">
+              <div
+                className={`bg-slate-900 border rounded-xl p-2.5 shadow flex flex-col gap-1 ${
+                  practiceMode === "repertoire" ? "border-orange-500/60" : "border-slate-800"
+                }`}
               >
-                Actualizar Lista ({onlineRepertoire.length})
-              </button>
-            </div>
-            <select
-              id="cloudSongSelector"
-              value={practiceMode === "repertoire" ? selectedRepertoireId : ""}
-              onChange={(e) => handleSelectOnlineSong(e.target.value)}
-              className="bg-slate-950 border border-slate-700 text-xs sm:text-sm text-slate-200 rounded-xl p-2.5 outline-none focus:border-orange-500 font-medium cursor-pointer"
-            >
-              <option value="">Selecciona una partitura guardada en la nube...</option>
-              {onlineRepertoire.map((song) => (
-                <option key={song.id} value={song.id}>
-                  {song.title}
-                </option>
-              ))}
-            </select>
-          </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-orange-400 flex items-center gap-1 truncate">
+                    <Cloud size={10} /> ☁️ Cloud Supabase
+                  </span>
+                </div>
+                <select
+                  id="cloudSongSelector"
+                  value={practiceMode === "repertoire" ? selectedRepertoireId : ""}
+                  onChange={(e) => handleSelectOnlineSong(e.target.value)}
+                  className="bg-slate-950 border border-slate-700 text-[11px] text-slate-200 rounded-lg p-1.5 outline-none focus:border-orange-500 font-medium cursor-pointer"
+                >
+                  <option value="">Elegir partitura cloud...</option>
+                  {onlineRepertoire.map((song) => (
+                    <option key={song.id} value={song.id}>
+                      {song.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          {/* Selector de Lecciones de Principiante */}
-          <div
-            className={`bg-slate-900 border rounded-2xl p-4 shadow-lg flex flex-col gap-2 transition ${
-              practiceMode === "lesson" ? "border-purple-500/60" : "border-slate-800"
-            }`}
-          >
-            <div className="flex justify-between items-center">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
-                <BookOpen size={12} /> 📚 Módulo de Aprendizaje
-              </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20">
-                Principiante
-              </span>
-            </div>
-            <select
-              id="lessonSelector"
-              value={practiceMode === "lesson" ? currentLessonIndex : ""}
-              onChange={(e) => changeLesson(e.target.value)}
-              className="bg-slate-950 border border-slate-700 text-xs sm:text-sm text-slate-200 rounded-xl p-2.5 outline-none focus:border-purple-500 font-medium cursor-pointer"
-            >
-              <option value="" disabled>
-                -- Seleccionar Lección Base --
-              </option>
-              {BEGINNER_LESSONS.map((lesson, idx) => (
-                <option key={lesson.title} value={idx}>
-                  {lesson.title}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* 2. Estado de Lección / Pieza Activa & Leyenda de 3 Colores LED */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg relative flex flex-col items-center text-center">
-          <div className="w-full flex items-center justify-between mb-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-              {activeLevelBadge} • {activeTitle} (Paso{" "}
-              {Math.min(currentIndex + 1, activeSequence.length)}/{activeSequence.length})
-            </span>
-            {currentStep && (
-              <button
-                type="button"
-                onClick={() => grandPiano.playNote(currentStep.note, 0.9)}
-                className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-orange-500/15 hover:bg-orange-500/25 text-orange-300 border border-orange-500/30 flex items-center gap-1 transition cursor-pointer"
+              <div
+                className={`bg-slate-900 border rounded-xl p-2.5 shadow flex flex-col gap-1 ${
+                  practiceMode === "lesson" ? "border-purple-500/60" : "border-slate-800"
+                }`}
               >
-                <Volume2 size={11} /> Escuchar Nota
-              </button>
-            )}
+                <div className="flex justify-between items-center">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1 truncate">
+                    <BookOpen size={10} /> 📚 Lecciones
+                  </span>
+                </div>
+                <select
+                  id="lessonSelector"
+                  value={practiceMode === "lesson" ? currentLessonIndex : ""}
+                  onChange={(e) => changeLesson(e.target.value)}
+                  className="bg-slate-950 border border-slate-700 text-[11px] text-slate-200 rounded-lg p-1.5 outline-none focus:border-purple-500 font-medium cursor-pointer"
+                >
+                  {BEGINNER_LESSONS.map((lesson, idx) => (
+                    <option key={lesson.title} value={idx}>
+                      {lesson.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Banner de Nota Objetivo (Siempre visible y de alto contraste) */}
+            <div className="bg-slate-900 border border-orange-500/40 rounded-2xl p-3 shadow-lg flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-md bg-orange-500 text-slate-950 text-[10px] font-black uppercase tracking-wider">
+                    TECLA A TOCAR AHORA
+                  </span>
+                  <span className="text-[10px] font-mono text-slate-400 truncate">
+                    Paso {Math.min(currentIndex + 1, activeSequence.length)}/{activeSequence.length}
+                  </span>
+                </div>
+                <div
+                  id="songLyric"
+                  className={`text-lg sm:text-xl font-black mt-1 truncate ${
+                    isSequenceComplete ? "text-emerald-400" : "text-orange-400"
+                  }`}
+                >
+                  {isSequenceComplete
+                    ? "¡Pieza completada! 🎉"
+                    : `${currentStep?.name || "C4 (Do)"} — ${currentStep?.lyric || "Dedo 1"}`}
+                </div>
+                <div id="instructionText" className="text-[11px] text-slate-300 truncate">
+                  {isSequenceComplete
+                    ? "Toca cualquier tecla para reiniciar o elige otra partitura."
+                    : `Busca la tecla iluminada en NARANJA (${NOTE_LABELS[currentStep?.note || 60]} / ${
+                        SOLFEGE_LABELS[currentStep?.note || 60]
+                      })`}
+                </div>
+              </div>
+
+              {/* Recuadro de Digitación (Dedo Guía integrado) */}
+              <div className="flex flex-col items-center shrink-0 bg-slate-950/90 border border-slate-800 rounded-xl px-3 py-2">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                  Dedo Guía
+                </span>
+                <div
+                  id="fingerNumberBox"
+                  className="w-11 h-11 rounded-xl border-2 flex items-center justify-center text-2xl font-black my-0.5"
+                  style={{
+                    backgroundColor: isSequenceComplete
+                      ? "rgba(34, 197, 94, 0.2)"
+                      : "rgba(249, 115, 22, 0.25)",
+                    borderColor: isSequenceComplete ? "#22c55e" : "#f97316",
+                    color: isSequenceComplete ? "#4ade80" : "#fb923c",
+                  }}
+                >
+                  {isSequenceComplete ? "✓" : currentStep?.finger ?? 1}
+                </div>
+                <span id="handSideText" className="text-[9px] font-semibold text-slate-300">
+                  {currentStep?.hand || "Mano Der."}
+                </span>
+              </div>
+            </div>
           </div>
 
+          {/* Columna Derecha en Horizontal / Fila Intermedia en Vertical: Partitura Interactiva MusicXML (OSMD) */}
           <div
-            id="songLyric"
-            className={`text-xl sm:text-2xl font-black my-1 transition-all ${
-              isSequenceComplete ? "text-emerald-400" : "text-orange-400"
-            }`}
+            className={
+              isHorizontalLayout
+                ? "col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-2.5 flex flex-col justify-between shadow-inner"
+                : "bg-slate-900 border border-slate-800 rounded-2xl p-3 flex flex-col justify-between shadow-inner"
+            }
           >
-            {isSequenceComplete
-              ? "¡Pieza completada con éxito! 🎉"
-              : currentStep?.lyric || '"Conecta tu teclado Alesis"'}
-          </div>
-
-          <div id="instructionText" className="text-xs sm:text-sm text-slate-300">
-            {isSequenceComplete
-              ? "Selecciona otra lección o canción de Supabase, o pulsa Repetir Pieza."
-              : `Toca ${currentStep?.name} en tu teclado Alesis o en el monitor táctil (Naranja)`}
-          </div>
-
-          {isSequenceComplete && (
-            <button
-              type="button"
-              onClick={restartCurrentSequence}
-              className="mt-3 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg transition cursor-pointer"
-            >
-              <CheckCircle2 size={14} /> Practicar de Nuevo
-            </button>
-          )}
-
-          {/* Indicadores de los 3 estados del motor pedagógico */}
-          <div className="mt-3 pt-2.5 border-t border-slate-800/80 w-full flex justify-center gap-5 text-[11px] text-slate-400">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-[0_0_8px_#f97316]" />
-              Siguiente (Vel 10)
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#22c55e]" />
-              Bien (Vel 5)
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]" />
-              Error (Vel 1)
-            </span>
-          </div>
-        </div>
-
-        {/* 3. Panel Dueto: Recuadro Dedicado de Posición de Dedos (Fingering) + Partitura MusicXML (OSMD) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {/* Recuadro de Digitación (1 al 5) */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg flex flex-col items-center justify-center text-center sm:col-span-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-              Dedo Guía (Fingering)
-            </span>
-            <div
-              id="fingerNumberBox"
-              className={`w-16 h-16 rounded-2xl border-2 flex items-center justify-center text-3xl font-black shadow-inner transition-all ${
-                isSequenceComplete
-                  ? "bg-emerald-500/20 border-emerald-500 text-emerald-400"
-                  : "bg-orange-500/20 border-orange-500 text-orange-400"
-              }`}
-            >
-              {isSequenceComplete ? "✓" : currentStep?.finger ?? "-"}
-            </div>
-            <div id="handSideText" className="text-xs font-semibold text-slate-300 mt-2">
-              {currentStep?.hand || "Mano Der."}
-            </div>
-            <span className="text-[10px] text-slate-500 mt-0.5">
-              1: Pulgar • 2: Índice • 3: Medio • 4: Anular • 5: Meñique
-            </span>
-          </div>
-
-          {/* Visor de Partituras MusicXML (OSMD) */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex flex-col shadow-inner sm:col-span-2 justify-between">
-            <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center justify-between mb-1">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                <Sparkles size={11} className="text-purple-400" /> Partitura Interactiva MusicXML (OSMD)
+                <Sparkles size={11} className="text-purple-400" /> Partitura MusicXML (OSMD)
               </span>
-              <span className="text-[10px] font-mono text-purple-300 truncate max-w-[180px]">
-                {practiceMode === "repertoire" && activeRepertoireSong
-                  ? activeRepertoireSong.file
-                  : activeTitle}
-              </span>
+              <div className="flex items-center gap-2">
+                {currentStep && (
+                  <button
+                    type="button"
+                    onClick={() => grandPiano.playNote(currentStep.note, 0.9)}
+                    className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-orange-500/15 hover:bg-orange-500/25 text-orange-300 border border-orange-500/30 flex items-center gap-1 transition cursor-pointer"
+                  >
+                    <Volume2 size={11} /> Escuchar Nota
+                  </button>
+                )}
+                <span className="text-[10px] font-mono text-purple-300 truncate max-w-[160px]">
+                  {activeTitle}
+                </span>
+              </div>
             </div>
             <div
               id="osmdContainer"
               ref={osmdContainerRef}
-              className="bg-white rounded-xl p-2 overflow-x-auto min-h-[120px] max-h-[190px] flex items-center justify-center text-slate-800 shadow-inner"
+              className={`bg-white rounded-xl p-1.5 overflow-x-auto ${
+                isHorizontalLayout ? "h-24" : "min-h-[115px] max-h-[175px]"
+              } flex items-center justify-center text-slate-800 shadow-inner`}
             >
               <span className="text-xs text-slate-400 font-normal text-center">
                 Cargando visor de partituras OSMD...
@@ -956,34 +1273,127 @@ export default function AlesisPianoStudioSection({
           </div>
         </div>
 
-        {/* 4. Teclado Táctil / Monitor Alesis USB-C (En Vivo con auto-scroll) */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-4 flex flex-col items-center shadow-lg">
-          <div className="w-full flex items-center justify-between mb-2">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Teclado Alesis USB-C (En Vivo — Notas MIDI 48 a 76)
-            </span>
-            <span className="text-[10px] font-mono text-slate-500">
-              Toca cualquier tecla para probar
-            </span>
+        {/* 2. TECLADO TÁCTIL / MONITOR ALESIS USB-C (Con luz LED Naranja/Verde/Roja garantizada y auto-centrado) */}
+        <div className="bg-slate-900 border border-orange-500/30 rounded-2xl p-2.5 sm:p-3.5 flex flex-col items-center shadow-xl">
+          <div className="w-full flex flex-wrap items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider">
+                🎹 Teclado Guía Alesis (C3 a E5)
+              </span>
+              {currentStep && (
+                <span
+                  onClick={testCurrentKeyLight}
+                  className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold cursor-pointer animate-pulse"
+                  style={{
+                    backgroundColor: "#f97316",
+                    color: "#090a0f",
+                    boxShadow: "0 0 12px #f97316",
+                  }}
+                >
+                  👉 Toca: {NOTE_LABELS[currentStep.note]} ({SOLFEGE_LABELS[currentStep.note]}) • Dedo{" "}
+                  {currentStep.finger}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3 text-[10px] text-slate-300 font-medium">
+              <span className="flex items-center gap-1">
+                <span
+                  className="w-2.5 h-2.5 rounded-full inline-block"
+                  style={{ backgroundColor: "#f97316", boxShadow: "0 0 8px #f97316" }}
+                />
+                Tecla a tocar (Naranja)
+              </span>
+              <span className="flex items-center gap-1">
+                <span
+                  className="w-2.5 h-2.5 rounded-full inline-block"
+                  style={{ backgroundColor: "#22c55e", boxShadow: "0 0 8px #22c55e" }}
+                />
+                Correcta (Verde)
+              </span>
+              <span className="flex items-center gap-1">
+                <span
+                  className="w-2.5 h-2.5 rounded-full inline-block"
+                  style={{ backgroundColor: "#ef4444", boxShadow: "0 0 8px #ef4444" }}
+                />
+                Error (Rojo)
+              </span>
+            </div>
           </div>
 
           <div
             id="virtualKeyboard"
-            className="relative flex h-28 sm:h-32 w-full bg-slate-950 p-2.5 rounded-xl overflow-x-auto justify-start sm:justify-center items-start border border-slate-800/80"
+            ref={virtualKeyboardRef}
+            className={`relative flex ${
+              isHorizontalLayout ? "h-28 sm:h-32" : "h-32 sm:h-36"
+            } w-full bg-slate-950 p-2 rounded-xl overflow-x-auto justify-start md:justify-center items-start border border-slate-800`}
             style={{ WebkitOverflowScrolling: "touch" }}
           >
             {KEY_RANGE.map((midiNote) => {
               const isBlack = BLACK_KEY_NUMBERS.includes(midiNote);
-              const activeColor = keyColors[midiNote] || null;
+              const isExpectedTarget = currentStep?.note === midiNote;
+              // Si es la nota esperada y no tiene color verde/rojo temporal, forzar siempre luz NARANJA
+              const activeColor: LedColor =
+                keyColors[midiNote] || (isExpectedTarget ? "orange" : null);
 
-              const colorClasses =
-                activeColor === "red"
-                  ? "!bg-[#ef4444] !text-white !border-red-400 shadow-[0_0_15px_#ef4444]"
-                  : activeColor === "green"
-                  ? "!bg-[#22c55e] !text-white !border-emerald-400 shadow-[0_0_15px_#22c55e]"
-                  : activeColor === "orange"
-                  ? "!bg-[#f97316] !text-white !border-orange-300 shadow-[0_0_15px_#f97316]"
-                  : "";
+              // Estilos inline explícitos de alto contraste (inmunes a modos claro/oscuro o overrides de CSS)
+              const keyInlineStyle: React.CSSProperties = isBlack
+                ? {
+                    marginLeft: "-10px",
+                    marginRight: "-10px",
+                    backgroundColor:
+                      activeColor === "red"
+                        ? "#ef4444"
+                        : activeColor === "green"
+                        ? "#22c55e"
+                        : activeColor === "orange"
+                        ? "#f97316"
+                        : "#0f172a",
+                    color: "#ffffff",
+                    borderColor:
+                      activeColor === "red"
+                        ? "#fca5a5"
+                        : activeColor === "green"
+                        ? "#86efac"
+                        : activeColor === "orange"
+                        ? "#fed7aa"
+                        : "#334155",
+                    boxShadow:
+                      activeColor === "red"
+                        ? "0 0 20px #ef4444, inset 0 0 8px rgba(255,255,255,0.5)"
+                        : activeColor === "green"
+                        ? "0 0 20px #22c55e, inset 0 0 8px rgba(255,255,255,0.5)"
+                        : activeColor === "orange"
+                        ? "0 0 24px #f97316, 0 0 10px #fb923c, inset 0 0 10px rgba(255,255,255,0.6)"
+                        : undefined,
+                  }
+                : {
+                    backgroundColor:
+                      activeColor === "red"
+                        ? "#ef4444"
+                        : activeColor === "green"
+                        ? "#22c55e"
+                        : activeColor === "orange"
+                        ? "#f97316"
+                        : "#ffffff",
+                    color: activeColor ? "#ffffff" : "#0f172a",
+                    borderColor:
+                      activeColor === "red"
+                        ? "#fca5a5"
+                        : activeColor === "green"
+                        ? "#86efac"
+                        : activeColor === "orange"
+                        ? "#ffedd5"
+                        : "#cbd5e1",
+                    boxShadow:
+                      activeColor === "red"
+                        ? "0 0 22px #ef4444, inset 0 0 10px rgba(255,255,255,0.5)"
+                        : activeColor === "green"
+                        ? "0 0 22px #22c55e, inset 0 0 10px rgba(255,255,255,0.5)"
+                        : activeColor === "orange"
+                        ? "0 0 26px #f97316, 0 0 12px #fb923c, inset 0 0 12px rgba(255,255,255,0.55)"
+                        : undefined,
+                  };
 
               return (
                 <div
@@ -993,26 +1403,66 @@ export default function AlesisPianoStudioSection({
                     keyElementRefs.current[midiNote] = el;
                   }}
                   onClick={() => evaluateUserNote(midiNote)}
-                  style={isBlack ? { marginLeft: "-10px", marginRight: "-10px" } : undefined}
+                  onTouchStart={(e) => {
+                    e.stopPropagation();
+                  }}
+                  style={keyInlineStyle}
                   className={
                     isBlack
-                      ? `z-10 h-16 sm:h-20 w-5 sm:w-6 bg-slate-900 text-slate-100 rounded-b-md cursor-pointer border border-slate-700 flex flex-col items-center justify-end pb-1.5 text-[8px] font-mono shrink-0 transition-all select-none active:scale-95 ${colorClasses}`
-                      : `relative z-0 h-24 sm:h-28 w-8 sm:w-9 bg-white text-slate-900 rounded-b-lg cursor-pointer border border-slate-300 flex flex-col items-center justify-end pb-1.5 text-[9px] font-semibold shadow-sm shrink-0 transition-all select-none active:scale-95 ${colorClasses}`
+                      ? `relative z-20 ${
+                          isHorizontalLayout ? "h-16 w-5" : "h-16 sm:h-20 w-5 sm:w-6"
+                        } rounded-b-md cursor-pointer border-2 flex flex-col items-center justify-between py-1 text-[8px] font-mono shrink-0 transition-all select-none active:scale-95`
+                      : `relative z-10 ${
+                          isHorizontalLayout
+                            ? "h-24 sm:h-28 flex-1 min-w-[28px]"
+                            : "h-28 sm:h-32 w-9 sm:w-10 shrink-0"
+                        } rounded-b-lg cursor-pointer border-2 flex flex-col items-center justify-between py-1.5 text-[9px] font-semibold shadow-sm transition-all select-none active:scale-95`
                   }
                 >
-                  <span className="opacity-75 text-[7px] font-mono">
-                    {NOTE_LABELS[midiNote]}
-                  </span>
-                  <span className="font-bold">{midiNote}</span>
+                  {/* Bombillo LED superior en cada tecla */}
+                  <div className="flex flex-col items-center">
+                    <span
+                      className={`w-2.5 h-2.5 rounded-full transition-all ${
+                        activeColor === "orange" ? "animate-ping" : ""
+                      }`}
+                      style={{
+                        backgroundColor:
+                          activeColor === "orange"
+                            ? "#fff7ed"
+                            : activeColor === "green"
+                            ? "#dcfce7"
+                            : activeColor === "red"
+                            ? "#fee2e2"
+                            : isBlack
+                            ? "#1e293b"
+                            : "#e2e8f0",
+                        boxShadow: activeColor ? "0 0 8px #ffffff" : "none",
+                      }}
+                    />
+                    {activeColor === "orange" && currentStep && (
+                      <span
+                        className="mt-0.5 px-1 py-0.2 rounded text-[8px] font-black leading-tight"
+                        style={{ backgroundColor: "#090a0f", color: "#fb923c" }}
+                      >
+                        D{currentStep.finger}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Nombre de la Nota (Solfeo + Inglés) */}
+                  <div className="flex flex-col items-center leading-tight">
+                    <span className="font-black text-[9px]">{SOLFEGE_LABELS[midiNote]}</span>
+                    <span className="opacity-85 text-[7px] font-mono">{NOTE_LABELS[midiNote]}</span>
+                  </div>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* 5. Consola de Sistema MIDI & OSMD */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex flex-col shadow-lg">
-          <div className="flex items-center justify-between mb-1.5">
+        {/* 3. Consola de Sistema MIDI & OSMD */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-2.5 flex flex-col shadow-lg">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
               <Terminal size={12} className="text-emerald-400" /> Log de Sistema MIDI / OSMD / Supabase
             </span>
@@ -1029,7 +1479,9 @@ export default function AlesisPianoStudioSection({
           <div
             id="logConsole"
             ref={logConsoleRef}
-            className="bg-slate-950 p-2.5 rounded-xl font-mono text-[10px] text-emerald-400 h-24 overflow-y-auto border border-slate-800 space-y-0.5"
+            className={`bg-slate-950 p-2 rounded-xl font-mono text-[10px] text-emerald-400 ${
+              isHorizontalLayout ? "h-14" : "h-20"
+            } overflow-y-auto border border-slate-800 space-y-0.5`}
           >
             {logs.map((entry, idx) => (
               <div key={`${idx}-${entry}`}>{entry}</div>

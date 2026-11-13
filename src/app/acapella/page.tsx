@@ -37,6 +37,7 @@ function StudioWorkspace() {
     togglePlaySong,
     seekSong,
     updateActiveSongLyrics,
+    targetPianoNotes,
   } = useVocalSession();
 
   const detectedVoiceMidi = currentPitch && currentPitch.clarity >= 0.65 ? currentPitch.midi : null;
@@ -44,8 +45,10 @@ function StudioWorkspace() {
 
   return (
     <div className="h-[100dvh] w-full overflow-hidden bg-[#090A0F] text-white flex flex-col font-sans select-none">
-      {/* ZONA 1: TOP STUDIO BAR (56px) - Hardware, Transporte Global & Tesitura */}
-      <TopStudioBar />
+      {/* ZONA 1: TOP STUDIO BAR (56px) - Oculta en móvil cuando Alesis Studio está abierto para dar 100% de pantalla */}
+      <div className={alesisStudioOpen ? "hidden lg:block" : "block"}>
+        <TopStudioBar />
+      </div>
 
       {/* ÁREA CENTRAL: DRAWER LATERAL + LIENZO DE AFINACIÓN */}
       <div className="flex-1 flex overflow-hidden relative min-h-0">
@@ -101,6 +104,7 @@ function StudioWorkspace() {
           lowestVocalMidi={vocalProfile.lowestMidi}
           passaggioVocalMidi={vocalProfile.passaggioMidi}
           highestVocalMidi={vocalProfile.highestMidi}
+          targetPianoNotes={targetPianoNotes}
         />
       )}
 
