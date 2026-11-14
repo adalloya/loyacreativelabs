@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*",
         headers: [
-          { key: "Permissions-Policy", value: "midi=*, microphone=*" }
+          { key: "Permissions-Policy", value: "camera=*, microphone=*, midi=*, display-capture=*" }
         ]
       },
       {
