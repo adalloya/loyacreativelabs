@@ -9,9 +9,10 @@ android {
     defaultConfig {
         applicationId "com.loyacreativelab.scope"
         minSdk 24
-        targetSdk 34
-        versionCode 3
-        versionName "1.3.0"
+        // targetSdk 28 is essential on Android 10-14 for UVC USB-C camera descriptors and PendingIntents
+        targetSdk 28
+        versionCode 4
+        versionName "2.0.0"
     }
 
     buildTypes {

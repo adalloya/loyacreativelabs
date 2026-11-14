@@ -28,6 +28,8 @@ interface LoyaScopeAndroidBridge {
   isUsbCameraConnected: () => boolean;
   getUsbCameraName: () => string;
   rescanUsbCamera: () => void;
+  switchCamera?: () => void;
+  openAppSettings?: () => void;
   saveToGallery: (base64Data: string, filename: string, mimeType: string) => boolean;
 }
 
@@ -401,26 +403,18 @@ export default function LoyaScopePage() {
     if (hasBridge && window.LoyaScopeAndroid) {
       setIsNativeApk(true);
 
+      // In Native Android APK, NEVER call WebView getUserMedia — always use Native UVC / Camera2 stream!
+      const initialName = window.LoyaScopeAndroid.getUsbCameraName() || "Cámara USB-C / Nativa";
+      setNativeUsbConnected(true);
+      setNativeUsbName(initialName);
+      startNativeUsbMode(initialName);
+      window.LoyaScopeAndroid.rescanUsbCamera();
+
       window.onLoyaNativeUsbUpdate = (connected: boolean, deviceName: string) => {
         setNativeUsbConnected(connected);
         if (deviceName) setNativeUsbName(deviceName);
-        if (connected) {
-          showToast(`USB-C conectado: ${deviceName || "UVC"}`);
-          startNativeUsbMode(deviceName);
-        } else {
-          showToast("USB-C desconectado");
-          startCamera();
-        }
+        startNativeUsbMode(deviceName || "Cámara USB-C / Nativa");
       };
-
-      if (window.LoyaScopeAndroid.isUsbCameraConnected()) {
-        const name = window.LoyaScopeAndroid.getUsbCameraName();
-        setNativeUsbConnected(true);
-        setNativeUsbName(name || "USB-C UVC");
-        startNativeUsbMode(name);
-      } else {
-        startCamera();
-      }
     } else {
       startCamera();
     }
@@ -833,8 +827,12 @@ export default function LoyaScopePage() {
   };
 
   const cycleCamera = () => {
-    if (isNativeApk && nativeUsbConnected && !isNativeUvcMode) {
-      startNativeUsbMode(nativeUsbName);
+    if (isNativeApk && window.LoyaScopeAndroid) {
+      if (typeof window.LoyaScopeAndroid.switchCamera === "function") {
+        window.LoyaScopeAndroid.switchCamera();
+      } else {
+        window.LoyaScopeAndroid.rescanUsbCamera();
+      }
       return;
     }
     if (devices.length === 0) {
@@ -1166,45 +1164,52 @@ export default function LoyaScopePage() {
 
           <div className="space-y-1.5 max-h-60 overflow-y-auto">
             {isNativeApk && (
-              <button
-                onClick={() => {
-                  if (nativeUsbConnected) {
-                    startNativeUsbMode(nativeUsbName);
-                  } else {
+              <>
+                <button
+                  onClick={() => {
                     window.LoyaScopeAndroid?.rescanUsbCamera();
-                  }
-                  setShowDeviceMenu(false);
-                }}
-                className={`w-full text-left px-3.5 py-2.5 rounded-2xl text-xs flex items-center justify-between transition ${
-                  isNativeUvcMode
-                    ? "bg-[#FFD60A] text-black font-bold"
-                    : "bg-white/10 text-white"
-                }`}
-              >
-                <div className="truncate pr-2">
-                  <div className="flex items-center gap-1.5">
-                    <Usb size={13} />
-                    <span>
-                      {nativeUsbConnected
-                        ? nativeUsbName
-                        : "Conectar Cámara USB-C (OTG)"}
+                    startNativeUsbMode(nativeUsbName);
+                    setShowDeviceMenu(false);
+                  }}
+                  className="w-full text-left px-3.5 py-2.5 rounded-2xl text-xs flex items-center justify-between transition bg-[#FFD60A] text-black font-bold"
+                >
+                  <div className="truncate pr-2">
+                    <div className="flex items-center gap-1.5">
+                      <Usb size={13} />
+                      <span>{nativeUsbName || "Cámara USB-C (OTG)"}</span>
+                    </div>
+                    <span className="text-[10px] text-black/75">
+                      ● Toca para conectar / escanear puerto USB-C
                     </span>
                   </div>
-                  <span
-                    className={`text-[10px] ${
-                      isNativeUvcMode ? "text-black/75" : "text-[#FFD60A]"
-                    }`}
-                  >
-                    {nativeUsbConnected
-                      ? "● USB-C UVC Directo"
-                      : "Toca para activar puerto USB-C"}
-                  </span>
-                </div>
-                {isNativeUvcMode && <Check size={15} />}
-              </button>
+                  <Check size={15} />
+                </button>
+
+                <button
+                  onClick={() => {
+                    window.LoyaScopeAndroid?.switchCamera?.();
+                    setShowDeviceMenu(false);
+                  }}
+                  className="w-full text-left px-3.5 py-2.5 rounded-2xl text-xs flex items-center justify-between transition bg-white/10 hover:bg-white/15 text-white"
+                >
+                  <span>Alternar Cámara (USB-C / Trasera / Frontal)</span>
+                  <RefreshCw size={14} className="text-[#FFD60A]" />
+                </button>
+
+                <button
+                  onClick={() => {
+                    window.LoyaScopeAndroid?.openAppSettings?.();
+                    setShowDeviceMenu(false);
+                  }}
+                  className="w-full text-left px-3.5 py-2 rounded-2xl text-[11px] flex items-center justify-between transition bg-white/[0.05] text-white/75"
+                >
+                  <span>Abrir Permisos de la App en Android</span>
+                </button>
+              </>
             )}
 
-            {devices.map((dev, idx) => {
+            {!isNativeApk &&
+              devices.map((dev, idx) => {
               const isSelected = !isNativeUvcMode && dev.deviceId === selectedDeviceId;
               const isUsb = isExternalUsbCamera(dev, idx);
               return (
