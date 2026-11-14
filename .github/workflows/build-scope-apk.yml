@@ -29,15 +29,15 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
-          gradle-version: '8.5'
+          gradle-version: '8.7'
 
-      - name: Build Loya Scope APK (Release signed with debug key)
+      - name: Build Loya Scope APK
         working-directory: ./android-scope
-        run: gradle assembleRelease --no-daemon
+        run: gradle assembleDebug --stacktrace --no-daemon
 
       - name: Copy APK to public/loya-scope.apk
         run: |
-          cp android-scope/app/build/outputs/apk/release/app-release.apk public/loya-scope.apk
+          cp android-scope/app/build/outputs/apk/debug/app-debug.apk public/loya-scope.apk
           ls -lh public/loya-scope.apk
 
       - name: Upload APK Artifact
