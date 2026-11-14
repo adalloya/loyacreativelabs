@@ -322,6 +322,8 @@ export default function AlesisPianoStudioSection({
   const midiOutputsRef = useRef<MIDIOutput[]>([]);
   const midiInputsRef = useRef<MIDIInput[]>([]);
   const litHardwareNotesRef = useRef<Set<number>>(new Set());
+  const hardwareLedStateRef = useRef<Map<number, Exclude<LedColor, null>>>(new Map());
+  const ledTimersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
   const sysexEnabledRef = useRef<boolean>(false);
 
   const osmdContainerRef = useRef<HTMLDivElement | null>(null);
@@ -506,6 +508,10 @@ export default function AlesisPianoStudioSection({
   // Apagar todos los LEDs del Alesis Teacher's Choice 61 usando el comando oficial RESET_ALL de Skoove:
   // [0xF0, 0x00, 0x00, 0x0E, 0x00, 0x4D, 0x04, 0xF7]
   const sendHardwareResetAllLeds = useCallback(() => {
+    ledTimersRef.current.forEach((timer) => clearTimeout(timer));
+    ledTimersRef.current.clear();
+    hardwareLedStateRef.current.clear();
+
     const outputs = midiOutputsRef.current;
     if (!outputs || outputs.length === 0) return;
 
@@ -532,10 +538,8 @@ export default function AlesisPianoStudioSection({
     litHardwareNotesRef.current.clear();
   }, []);
 
-  // Control directo del LED físico del Alesis Teacher's Choice 61 usando el protocolo oficial de Skoove (AlesisMidiLEDController.kt):
-  // SysEx: [0xF0, 0x00, 0x00, 0x0E, 0x00, 0x4D, 0x00, noteNumber, colorByte, 0xF7]
-  // Donde colorByte es: AMBER=0x17 (23), GREEN=0x09 (9), RED=0x01 (1), OFF=0x00 (0).
-  const sendHardwareLedMidi = useCallback((noteNumber: number, color: LedColor) => {
+  // Envía el paquete MIDI crudo de color a la tecla en el Alesis Teacher's Choice 61
+  const transmitRawLedPacket = useCallback((noteNumber: number, color: LedColor) => {
     const outputs = midiOutputsRef.current;
     if (!outputs || outputs.length === 0) return;
 
@@ -584,7 +588,37 @@ export default function AlesisPianoStudioSection({
     }
   }, []);
 
-  // Encender en el piano físico y en pantalla la nota objetivo actual
+  // Control directo del LED físico del Alesis Teacher's Choice 61 usando el protocolo oficial de Skoove (AlesisMidiLEDController.kt):
+  // SysEx: [0xF0, 0x00, 0x00, 0x0E, 0x00, 0x4D, 0x00, noteNumber, colorByte, 0xF7]
+  // Donde colorByte es: AMBER=0x17 (23), GREEN=0x09 (9), RED=0x01 (1), OFF=0x00 (0).
+  // Además guarda el estado deseado en hardwareLedStateRef y lo re-confirma para que el NoteOn/NoteOff físico del teclado no borre el Verde o Rojo.
+  const sendHardwareLedMidi = useCallback(
+    (noteNumber: number, color: LedColor) => {
+      if (color === null) {
+        hardwareLedStateRef.current.delete(noteNumber);
+        transmitRawLedPacket(noteNumber, null);
+        return;
+      }
+
+      hardwareLedStateRef.current.set(noteNumber, color);
+      transmitRawLedPacket(noteNumber, color);
+
+      // Re-confirmar tras 25ms y 75ms por si la tecla física acaba de ser presionada
+      setTimeout(() => {
+        if (hardwareLedStateRef.current.get(noteNumber) === color) {
+          transmitRawLedPacket(noteNumber, color);
+        }
+      }, 25);
+      setTimeout(() => {
+        if (hardwareLedStateRef.current.get(noteNumber) === color) {
+          transmitRawLedPacket(noteNumber, color);
+        }
+      }, 75);
+    },
+    [transmitRawLedPacket]
+  );
+
+  // Encender en el piano físico y en pantalla la nota objetivo al iniciar o reiniciar una lección
   const syncSequenceLeds = useCallback(
     (sequence: LessonStep[], stepIdx: number) => {
       sendHardwareResetAllLeds();
@@ -601,11 +635,11 @@ export default function AlesisPianoStudioSection({
     [centerKeyInVirtualKeyboard, sendHardwareLedMidi, sendHardwareResetAllLeds]
   );
 
+  // Solo reiniciar todas las luces cuando cambia la canción/lección o la orientación (NO en cada nota individual para no borrar el Verde)
   useEffect(() => {
-    syncSequenceLeds(activeSequence, currentIndex);
+    syncSequenceLeds(activeSequence, stepIndexRef.current);
   }, [
     activeSequence,
-    currentIndex,
     isNaturalLandscape,
     forcedLandscape,
     syncSequenceLeds,
@@ -659,10 +693,12 @@ export default function AlesisPianoStudioSection({
 
       if (idx >= sequence.length) {
         setKeyColors({ [playedNote]: "green" });
+        sendHardwareLedMidi(playedNote, "green");
         setTimeout(() => {
           stepIndexRef.current = 0;
           setCurrentIndex(0);
-        }, 300);
+          syncSequenceLeds(sequence, 0);
+        }, 500);
         return;
       }
 
@@ -671,9 +707,27 @@ export default function AlesisPianoStudioSection({
       if (playedNote === expectedNote) {
         const nextIdx = idx + 1;
         stepIndexRef.current = nextIdx;
+        setCurrentIndex(nextIdx);
 
-        // 1. En pantalla y en el piano físico encendemos en VERDE (0x09)
-        setKeyColors({ [expectedNote]: "green" });
+        // Limpiar cualquier luz verde o roja anterior que siguiera encendida en otra tecla
+        Array.from(hardwareLedStateRef.current.entries()).forEach(([noteNum, activeCol]) => {
+          if (noteNum !== expectedNote && (activeCol === "green" || activeCol === "red")) {
+            const prevTimer = ledTimersRef.current.get(noteNum);
+            if (prevTimer) {
+              clearTimeout(prevTimer);
+              ledTimersRef.current.delete(noteNum);
+            }
+            sendHardwareLedMidi(noteNum, null);
+          }
+        });
+
+        const existingTimer = ledTimersRef.current.get(expectedNote);
+        if (existingTimer) {
+          clearTimeout(existingTimer);
+          ledTimersRef.current.delete(expectedNote);
+        }
+
+        // 1. Encender la tecla tocada correctamente en VERDE (0x09)
         sendHardwareLedMidi(expectedNote, "green");
 
         addLog(`✓ Correcto: ${sequence[idx].name} con Dedo ${sequence[idx].finger} (Luz Verde 0x09)`);
@@ -683,50 +737,103 @@ export default function AlesisPianoStudioSection({
           } catch {}
         }
 
-        // 2. Apagar la nota anterior (0x00) y encender la SIGUIENTE nota en ÁMBAR/NARANJA (0x17)
-        setTimeout(() => {
-          sendHardwareLedMidi(expectedNote, null);
-          setCurrentIndex(nextIdx);
-          if (nextIdx < sequence.length) {
-            const nextNote = sequence[nextIdx].note;
-            setKeyColors({ [nextNote]: "orange" });
-            centerKeyInVirtualKeyboard(nextNote);
+        if (nextIdx < sequence.length) {
+          const nextNote = sequence[nextIdx].note;
+          centerKeyInVirtualKeyboard(nextNote);
+
+          if (nextNote !== expectedNote) {
+            // Encender la siguiente tecla en ÁMBAR (0x17) mientras la tecla recién tocada permanece en VERDE (0x09) por 750ms
+            setKeyColors({
+              [expectedNote]: "green",
+              [nextNote]: "orange",
+            });
             sendHardwareLedMidi(nextNote, "orange");
+
+            const greenTimer = setTimeout(() => {
+              ledTimersRef.current.delete(expectedNote);
+              if (hardwareLedStateRef.current.get(expectedNote) === "green") {
+                sendHardwareLedMidi(expectedNote, null);
+              }
+              setKeyColors((prev) => {
+                const copy = { ...prev };
+                if (copy[expectedNote] === "green") {
+                  delete copy[expectedNote];
+                }
+                return copy;
+              });
+            }, 750);
+            ledTimersRef.current.set(expectedNote, greenTimer);
+          } else {
+            // Si la siguiente nota es la MISMA tecla, mostrar VERDE (0x09) durante 450ms y luego volverla a ÁMBAR (0x17)
+            setKeyColors({ [expectedNote]: "green" });
+            const repeatTimer = setTimeout(() => {
+              ledTimersRef.current.delete(expectedNote);
+              sendHardwareLedMidi(expectedNote, "orange");
+              setKeyColors({ [expectedNote]: "orange" });
+            }, 450);
+            ledTimersRef.current.set(expectedNote, repeatTimer);
           }
-        }, 220);
+        } else {
+          // Última nota de la lección completada: mostrar VERDE (0x09) durante 800ms
+          setKeyColors({ [expectedNote]: "green" });
+          const finishTimer = setTimeout(() => {
+            ledTimersRef.current.delete(expectedNote);
+            sendHardwareLedMidi(expectedNote, null);
+            setKeyColors({});
+          }, 800);
+          ledTimersRef.current.set(expectedNote, finishTimer);
+        }
       } else {
         // Si tocó una tecla equivocada:
-        // En el piano físico encendemos la tecla equivocada en ROJO (0x01) y mantenemos la correcta en ÁMBAR (0x17)
-        setKeyColors({
+        // Encender la tecla equivocada en ROJO (0x01) por 900ms y mantener la tecla correcta en ÁMBAR (0x17)
+        const existingWrongTimer = ledTimersRef.current.get(playedNote);
+        if (existingWrongTimer) {
+          clearTimeout(existingWrongTimer);
+          ledTimersRef.current.delete(playedNote);
+        }
+
+        setKeyColors((prev) => ({
+          ...prev,
           [expectedNote]: "orange",
           [playedNote]: "red",
-        });
+        }));
         centerKeyInVirtualKeyboard(expectedNote);
 
         sendHardwareLedMidi(playedNote, "red");
         sendHardwareLedMidi(expectedNote, "orange");
 
         addLog(
-          `✕ Tocaste ${NOTE_LABELS[playedNote] || playedNote} (Rojo 0x01). Toca ${sequence[idx].name} (Ámbar 0x17).`
+          `✕ Tocaste ${NOTE_LABELS[playedNote] || playedNote} (Luz Roja 0x01). Toca ${sequence[idx].name} (Luz Ámbar 0x17).`
         );
 
-        setTimeout(() => {
-          setKeyColors((prev) => {
-            const copy = { ...prev };
-            if (playedNote !== expectedNote) {
-              delete copy[playedNote];
-            }
-            copy[expectedNote] = "orange";
-            return copy;
-          });
-          if (playedNote !== expectedNote) {
+        const wrongTimer = setTimeout(() => {
+          ledTimersRef.current.delete(playedNote);
+          if (
+            playedNote !== activeSequenceRef.current[stepIndexRef.current]?.note &&
+            hardwareLedStateRef.current.get(playedNote) === "red"
+          ) {
             sendHardwareLedMidi(playedNote, null);
           }
-          sendHardwareLedMidi(expectedNote, "orange");
-        }, 380);
+          setKeyColors((prev) => {
+            const copy = { ...prev };
+            if (copy[playedNote] === "red") {
+              delete copy[playedNote];
+            }
+            const currentExpected = activeSequenceRef.current[stepIndexRef.current]?.note;
+            if (typeof currentExpected === "number") {
+              copy[currentExpected] = "orange";
+            }
+            return copy;
+          });
+          const currentExpected = activeSequenceRef.current[stepIndexRef.current]?.note;
+          if (typeof currentExpected === "number") {
+            sendHardwareLedMidi(currentExpected, "orange");
+          }
+        }, 900);
+        ledTimersRef.current.set(playedNote, wrongTimer);
       }
     },
-    [addLog, centerKeyInVirtualKeyboard, sendHardwareLedMidi]
+    [addLog, centerKeyInVirtualKeyboard, sendHardwareLedMidi, syncSequenceLeds]
   );
 
   const evaluateUserNoteRef = useRef(evaluateUserNote);
@@ -830,14 +937,17 @@ export default function AlesisPianoStudioSection({
             if (command === 9 && velocity > 0) {
               evaluateUserNoteRef.current(note);
             } else if (command === 8 || (command === 9 && velocity === 0)) {
-              const seq = activeSequenceRef.current;
-              const idx = stepIndexRef.current;
-              if (idx < seq.length) {
-                const targetNote = seq[idx].note;
-                setTimeout(() => {
-                  sendHardwareLedMidi(targetNote, "orange");
-                }, 30);
-              }
+              // Al soltar una tecla física, el firmware del Alesis apaga el LED de esa tecla.
+              // Re-enviamos inmediatamente todos los colores activos (Verde 0x09, Rojo 0x01 y Ámbar 0x17)
+              // para que la confirmación Verde o Roja siga viéndose claramente al levantar el dedo.
+              const restoreActiveLeds = () => {
+                hardwareLedStateRef.current.forEach((activeColor, activeNote) => {
+                  transmitRawLedPacket(activeNote, activeColor);
+                });
+              };
+              restoreActiveLeds();
+              setTimeout(restoreActiveLeds, 20);
+              setTimeout(restoreActiveLeds, 65);
             }
           };
         }
@@ -868,7 +978,7 @@ export default function AlesisPianoStudioSection({
         bindPorts();
       };
     },
-    [addLog, sendHardwareLedMidi, syncSequenceLeds]
+    [addLog, syncSequenceLeds, transmitRawLedPacket]
   );
 
   // Auto-conectar al abrir la página únicamente si el permiso MIDI + SysEx ya fue concedido previamente
@@ -1007,6 +1117,7 @@ export default function AlesisPianoStudioSection({
   const restartCurrentSequence = () => {
     stepIndexRef.current = 0;
     setCurrentIndex(0);
+    syncSequenceLeds(activeSequenceRef.current, 0);
     if (osmdInstanceRef.current?.cursor) {
       try {
         osmdInstanceRef.current.cursor.reset();
