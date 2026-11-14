@@ -4,6 +4,7 @@ import SoftwareLabsHeader from "@/components/SoftwareLabsHeader";
 import AcapellaPromo from "@/components/AcapellaPromo";
 import ApexPromo from "@/components/ApexPromo";
 import ArcoMaestroPromo from "@/components/ArcoMaestroPromo";
+import ScopePromo from "@/components/ScopePromo";
 import { Services } from "@/components/Services";
 import { ProblemSolution } from "@/components/ProblemSolution";
 import ChatbotPromo from "@/components/ChatbotPromo";
@@ -25,6 +26,7 @@ export default function Home() {
         <AcapellaPromo />
         <ApexPromo />
         <ArcoMaestroPromo />
+        <ScopePromo />
 
         {/* Agency Services */}
         <Services />

@@ -17,7 +17,7 @@ export const content = {
         softwareLabs: {
             badge: "Propiedad Intelectual // Software Labs",
             title: "No vendemos promesas. Construimos plataformas reales en producción.",
-            description: "La mejor prueba de nuestra capacidad técnica es el software que desarrollamos para nosotros mismos. Tres plataformas independientes que demuestran nuestra maestría en audio DSP en tiempo real, biomecánica y visión artificial para la industria.",
+            description: "La mejor prueba de nuestra capacidad técnica es el software que desarrollamos para nosotros mismos. Cuatro plataformas independientes que demuestran nuestra maestría en audio DSP en tiempo real, biomecánica, visión artificial para la industria y telemetría óptica USB-C.",
         },
         portfolio: {
             badge: "Casos de Éxito & Clientes",
@@ -161,7 +161,7 @@ export const content = {
         softwareLabs: {
             badge: "Intellectual Property // Software Labs",
             title: "We don't sell promises. We ship real platforms in production.",
-            description: "The best proof of our engineering capabilities is the software we build for ourselves. Three independent platforms showcasing real-time audio DSP, biomechanics, and industrial computer vision.",
+            description: "The best proof of our engineering capabilities is the software we build for ourselves. Four independent platforms showcasing real-time audio DSP, biomechanics, industrial computer vision, and USB-C optical telemetry.",
         },
         portfolio: {
             badge: "Case Studies & Clients",

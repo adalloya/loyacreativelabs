@@ -67,6 +67,21 @@ export function Footer() {
                             </div>
                             <span>Arco Maestro</span>
                         </Link>
+                        <Link 
+                            href="/scope" 
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 hover:border-emerald-400/40 text-zinc-300 hover:text-white font-mono text-xs transition-all group"
+                        >
+                            <div className="relative w-4 h-4 rounded overflow-hidden">
+                                <Image
+                                    src="/scope-icon.png"
+                                    alt="Scope"
+                                    width={16}
+                                    height={16}
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+                            <span>Scope</span>
+                        </Link>
                         <Link href="mailto:hello@loyacreativelab.com" className="hover:text-white transition-colors">hello@loyacreativelab.com</Link>
                     </div>
                 </div>

@@ -9,7 +9,7 @@ export default function SoftwareLabsHeader() {
     const labs = t.softwareLabs || {
         badge: "Propiedad Intelectual // Software Labs",
         title: "No vendemos promesas. Construimos plataformas reales en producción.",
-        description: "La mejor prueba de nuestra capacidad técnica es el software que desarrollamos para nosotros mismos. Tres plataformas independientes que demuestran nuestra maestría en audio DSP en tiempo real, biomecánica y visión artificial para la industria.",
+        description: "La mejor prueba de nuestra capacidad técnica es el software que desarrollamos para nosotros mismos. Cuatro plataformas independientes que demuestran nuestra maestría en audio DSP en tiempo real, biomecánica, visión artificial industrial y telemetría óptica USB-C.",
     };
 
     return (

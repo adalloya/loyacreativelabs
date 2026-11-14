@@ -63,10 +63,10 @@ export function Hero() {
                         <div className="flex items-center gap-2">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                             <span className="text-[11px] font-mono uppercase tracking-widest text-zinc-400">
-                                Software Labs // 3 Plataformas en Producción
+                                Software Labs // 4 Plataformas en Producción
                             </span>
                         </div>
-                        <div className="flex items-center gap-6 sm:gap-8 px-6 py-3.5 rounded-3xl bg-white/[0.04] backdrop-blur-2xl border border-white/10 shadow-2xl">
+                        <div className="flex items-center gap-5 sm:gap-8 px-6 py-3.5 rounded-3xl bg-white/[0.04] backdrop-blur-2xl border border-white/10 shadow-2xl">
                             <Link
                                 href="/acapella"
                                 className="group flex flex-col items-center gap-1.5 transition-transform hover:-translate-y-1 focus:outline-none"
@@ -115,6 +115,23 @@ export function Hero() {
                                 </div>
                                 <span className="text-[11px] font-medium text-zinc-400 group-hover:text-white transition-colors">
                                     Arco Maestro
+                                </span>
+                            </Link>
+
+                            <Link
+                                href="/scope"
+                                className="group flex flex-col items-center gap-1.5 transition-transform hover:-translate-y-1 focus:outline-none"
+                            >
+                                <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-[22%] overflow-hidden bg-black/80 border border-white/15 shadow-lg group-hover:border-emerald-400/50 group-hover:shadow-[0_8px_20px_rgba(0,230,153,0.18)] transition-all">
+                                    <Image
+                                        src="/scope-icon.png"
+                                        alt="Scope"
+                                        fill
+                                        className="object-cover"
+                                    />
+                                </div>
+                                <span className="text-[11px] font-medium text-zinc-400 group-hover:text-white transition-colors">
+                                    Scope
                                 </span>
                             </Link>
                         </div>

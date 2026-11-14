@@ -1,0 +1,23 @@
+{
+  "name": "Loya Scope - USB-C Optical Viewer",
+  "short_name": "Scope",
+  "description": "Visor óptico de inspección por USB-C / UVC con captura de foto, grabación de video, zoom digital de precisión y guardado directo al carrete.",
+  "start_url": "/scope",
+  "display": "standalone",
+  "background_color": "#050608",
+  "theme_color": "#00E699",
+  "icons": [
+    {
+      "src": "/scope-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/scope-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
