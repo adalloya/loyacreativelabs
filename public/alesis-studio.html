@@ -58,6 +58,21 @@
             <button onclick="updateLessonUI()" class="bg-orange-500 text-slate-950 active:scale-95 text-xs px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap shadow">
                 💡 Ver Luz de Tecla
             </button>
+            <button onclick="setColorPreset(0x90, 17, 16, 'Hex 17/16/1')" class="bg-slate-800 border border-orange-500/40 text-orange-300 text-[11px] px-2.5 py-1.5 rounded-xl font-semibold whitespace-nowrap">
+                1. Hex 17/16/1
+            </button>
+            <button onclick="setColorPreset(0x90, 51, 48, 'Hex 51/48/1')" class="bg-slate-800 border border-slate-700 text-slate-200 text-[11px] px-2.5 py-1.5 rounded-xl font-semibold whitespace-nowrap">
+                2. Hex 51/48/1
+            </button>
+            <button onclick="setColorPreset(0x90, 3, 2, 'Bits 3/2/1')" class="bg-slate-800 border border-slate-700 text-slate-200 text-[11px] px-2.5 py-1.5 rounded-xl font-semibold whitespace-nowrap">
+                3. Bits 3/2/1
+            </button>
+            <button onclick="setColorPreset(0x92, 1, 1, 'Canales Ch3/Ch2/Ch1')" class="bg-slate-800 border border-slate-700 text-slate-200 text-[11px] px-2.5 py-1.5 rounded-xl font-semibold whitespace-nowrap">
+                4. Canales 3/2/1
+            </button>
+            <button onclick="setColorPreset(0x90, 1, 0, 'Seguro Vel=1')" class="bg-emerald-600 text-white text-[11px] px-2.5 py-1.5 rounded-xl font-semibold whitespace-nowrap">
+                5. Seguro (Vel=1)
+            </button>
         </div>
     </header>
 
@@ -136,25 +151,62 @@
         };
 
         let midiOutputs = [];
-        let litHardwareNotes = new Set();
+        let litHardwareNotes = new Map();
         let osmd = null;
         let isForcedHorizontal = false;
         let audioCtx = null;
+
+        let hwColorConfig = {
+            orangeStatus: 0x90,
+            orangeVel: 17,
+            greenStatus: 0x90,
+            greenVel: 16,
+            redStatus: 0x90,
+            redVel: 1
+        };
 
         function sendHardwareMidi(noteNumber, color) {
             if (!midiOutputs.length) return;
             for (let out of midiOutputs) {
                 try {
-                    if (color === 'orange' || color === 'red') {
-                        out.send([0x90, noteNumber, 1]);
+                    if (!color) {
+                        const prevStatus = litHardwareNotes.get(noteNumber) || 0x90;
+                        const ch = prevStatus & 0x0f;
+                        out.send([0x80 | ch, noteNumber, 0]);
+                        out.send([0x90 | ch, noteNumber, 0]);
+                        if (ch !== 0) {
+                            out.send([0x80, noteNumber, 0]);
+                            out.send([0x90, noteNumber, 0]);
+                        }
+                    } else if (color === 'red') {
+                        out.send([hwColorConfig.redStatus, noteNumber, hwColorConfig.redVel]);
+                    } else if (color === 'green') {
+                        if (hwColorConfig.greenVel <= 0) {
+                            out.send([0x80, noteNumber, 0]);
+                            out.send([0x90, noteNumber, 0]);
+                        } else {
+                            out.send([hwColorConfig.greenStatus, noteNumber, hwColorConfig.greenVel]);
+                        }
                     } else {
-                        out.send([0x80, noteNumber, 0]);
-                        out.send([0x90, noteNumber, 0]);
+                        out.send([hwColorConfig.orangeStatus, noteNumber, hwColorConfig.orangeVel]);
                     }
                 } catch {}
             }
-            if (color === 'orange' || color === 'red') litHardwareNotes.add(noteNumber);
-            else litHardwareNotes.delete(noteNumber);
+            if (color) {
+                const st = color === 'red' ? hwColorConfig.redStatus : color === 'green' ? hwColorConfig.greenStatus : hwColorConfig.orangeStatus;
+                litHardwareNotes.set(noteNumber, st);
+            } else {
+                litHardwareNotes.delete(noteNumber);
+            }
+        }
+
+        function setColorPreset(orangeStatus, orangeVel, greenVel, label) {
+            hwColorConfig.orangeStatus = orangeStatus;
+            hwColorConfig.orangeVel = orangeVel;
+            hwColorConfig.greenStatus = orangeStatus === 0x92 ? 0x91 : 0x90;
+            hwColorConfig.greenVel = greenVel;
+            log(`🎨 Color cambiado a ${label}: [0x${orangeStatus.toString(16).toUpperCase()}, nota, ${orangeVel}]`);
+            updateLessonUI();
         }
 
         let activeSequence = [
@@ -388,11 +440,10 @@
                 const keyEl = document.getElementById(`key-${i}`);
                 if (keyEl) keyEl.classList.remove('led-red', 'led-green', 'led-orange');
             }
-            litHardwareNotes.forEach(n => sendHardwareMidi(n, null));
+            Array.from(litHardwareNotes.keys()).forEach(n => sendHardwareMidi(n, null));
             litHardwareNotes.clear();
 
             setKeyColor(currentStep.note, 'orange');
-            setTimeout(() => setKeyColor(currentStep.note, 'orange'), 50);
         }
 
         async function renderOSMD(xmlString) {
