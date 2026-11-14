@@ -43,86 +43,32 @@ export interface BeginnerLesson {
 
 type LedColor = "orange" | "green" | "red" | null;
 
-export interface HardwareColorConfig {
-  id: string;
-  label: string;
-  description: string;
-  orangeStatus: number; // 0x90 = Canal 1, 0x91 = Canal 2, 0x92 = Canal 3
-  orangeVel: number;    // Velocidad para Naranja / Ámbar (Tecla a tocar)
-  greenStatus: number;  // Canal para Verde (Acierto)
-  greenVel: number;     // Velocidad para Verde (0 = apagar inmediatamente al acertar)
-  redStatus: number;    // Confirmado 100% en Alesis Teacher's Choice 61: 0x90 (Canal 1)
-  redVel: number;       // Confirmado 100% en Alesis Teacher's Choice 61: Vel = 1 (Rojo)
+// Protocolo Oficial extraído directamente de AlesisMidiLEDController.kt (Skoove Android App):
+// Manufacturer ID: [0x00, 0x00, 0x0E] (Alesis)
+// Product Model ID: [0x00, 0x4D] (77 = Teacher's Choice 61)
+// MessageTypeIdentifier: SET_LED = 0x00, RESET_ALL = 0x04
+// LedColors: OFF = 0x00 (0), RED = 0x01 (1), GREEN = 0x09 (9), AMBER = 0x17 (23)
+const ALESIS_TC61_SYSEX_HEADER = [0xf0, 0x00, 0x00, 0x0e, 0x00, 0x4d] as const;
+const ALESIS_TC61_MSG_SET_LED = 0x00;
+const ALESIS_TC61_MSG_RESET_ALL = 0x04;
+const ALESIS_TC61_COLOR_OFF = 0x00;   // 0
+const ALESIS_TC61_COLOR_RED = 0x01;   // 1
+const ALESIS_TC61_COLOR_GREEN = 0x09; // 9
+const ALESIS_TC61_COLOR_AMBER = 0x17; // 23
+
+export function buildAlesisTc61SetLedSysEx(noteNumber: number, colorByte: number): number[] {
+  return [
+    ...ALESIS_TC61_SYSEX_HEADER,
+    ALESIS_TC61_MSG_SET_LED,
+    noteNumber & 0x7f,
+    colorByte & 0x7f,
+    0xf7,
+  ];
 }
 
-const HARDWARE_COLOR_PRESETS: HardwareColorConfig[] = [
-  {
-    id: "bicolor_hex17",
-    label: "1. Hex Bi-Color (Naranja=17 / Verde=16 / Rojo=1)",
-    description: "Estándar inMusic Dual-LED: 0x01 (1)=Rojo, 0x10 (16)=Verde, 0x11 (17)=Rojo+Verde (Naranja/Ámbar)",
-    orangeStatus: 0x90,
-    orangeVel: 17,
-    greenStatus: 0x90,
-    greenVel: 16,
-    redStatus: 0x90,
-    redVel: 1,
-  },
-  {
-    id: "bicolor_hex51",
-    label: "2. Hex Brillo Max (Naranja=51 / Verde=48 / Rojo=1)",
-    description: "Matriz Dual-LED brillo alto: 0x33 (51)=Naranja/Ámbar, 0x30 (48)=Verde, 0x01 (1)=Rojo",
-    orangeStatus: 0x90,
-    orangeVel: 51,
-    greenStatus: 0x90,
-    greenVel: 48,
-    redStatus: 0x90,
-    redVel: 1,
-  },
-  {
-    id: "bitmask_321",
-    label: "3. Bits R+G (Naranja=3 / Verde=2 / Rojo=1)",
-    description: "Binario de 2 bits: Bit 0 (1)=Rojo, Bit 1 (2)=Verde, Bits 0+1 (3)=Naranja/Ámbar",
-    orangeStatus: 0x90,
-    orangeVel: 3,
-    greenStatus: 0x90,
-    greenVel: 2,
-    redStatus: 0x90,
-    redVel: 1,
-  },
-  {
-    id: "vel_zones",
-    label: "4. Rangos Vel (Naranja=64 / Verde=127 / Rojo=1)",
-    description: "3 zonas de velocidad en Canal 1: 1=Rojo, 64=Naranja/Ámbar, 127=Verde",
-    orangeStatus: 0x90,
-    orangeVel: 64,
-    greenStatus: 0x90,
-    greenVel: 127,
-    redStatus: 0x90,
-    redVel: 1,
-  },
-  {
-    id: "channels_321",
-    label: "5. Canales 3/2/1 (Ch3=Naranja / Ch2=Verde / Ch1=Rojo)",
-    description: "1 paquete único Vel=1 por canal: 0x92 (Canal 3)=Naranja, 0x91 (Canal 2)=Verde, 0x90 (Canal 1)=Rojo",
-    orangeStatus: 0x92,
-    orangeVel: 1,
-    greenStatus: 0x91,
-    greenVel: 1,
-    redStatus: 0x90,
-    redVel: 1,
-  },
-  {
-    id: "safe_red1",
-    label: "6. Seguro (Vel=1 Confirmado)",
-    description: "Usa siempre [0x90, nota, 1] (confirmado que enciende el LED en tu Alesis Teacher's Choice 61)",
-    orangeStatus: 0x90,
-    orangeVel: 1,
-    greenStatus: 0x90,
-    greenVel: 0,
-    redStatus: 0x90,
-    redVel: 1,
-  },
-];
+export function buildAlesisTc61ResetAllSysEx(): number[] {
+  return [...ALESIS_TC61_SYSEX_HEADER, ALESIS_TC61_MSG_RESET_ALL, 0xf7];
+}
 
 declare global {
   interface Window {
@@ -357,10 +303,8 @@ export default function AlesisPianoStudioSection({
     60: "orange",
   });
 
-  // Configuración activa de color en hardware: conectada directamente a sendHardwareLedMidi
-  // para que cualquier cambio de preset, velocidad o canal se aplique de verdad en la tecla actual y al tocar.
-  const [colorConfig, setColorConfig] = useState<HardwareColorConfig>(HARDWARE_COLOR_PRESETS[0]);
   const [showCalibrator, setShowCalibrator] = useState<boolean>(true);
+  const [sysexEnabled, setSysexEnabled] = useState<boolean>(false);
 
   const [midiConnected, setMidiConnected] = useState<boolean>(false);
   const [midiDeviceName, setMidiDeviceName] = useState<string>("");
@@ -372,18 +316,13 @@ export default function AlesisPianoStudioSection({
   const [forcedLandscape, setForcedLandscape] = useState<boolean>(false);
 
   const [logs, setLogs] = useState<string[]>([
-    `[${new Date().toLocaleTimeString()}] [Sistema] Control de Color LED Alesis Teacher's Choice 61 activo (Rojo confirmado en [0x90, nota, 1]).`,
+    `[${new Date().toLocaleTimeString()}] [Sistema] Protocolo Oficial Skoove AlesisMidiLED listo ([F0 00 00 0E 00 4D]: Ámbar=0x17, Verde=0x09, Rojo=0x01, Off=0x00).`,
   ]);
 
   const midiOutputsRef = useRef<MIDIOutput[]>([]);
   const midiInputsRef = useRef<MIDIInput[]>([]);
-  // Mapa nota -> último statusByte encendido para apagar siempre el canal exacto sin bucles de 16 canales
-  const litHardwareNotesRef = useRef<Map<number, number>>(new Map());
-  const colorConfigRef = useRef<HardwareColorConfig>(colorConfig);
-
-  useEffect(() => {
-    colorConfigRef.current = colorConfig;
-  }, [colorConfig]);
+  const litHardwareNotesRef = useRef<Set<number>>(new Set());
+  const sysexEnabledRef = useRef<boolean>(false);
 
   const osmdContainerRef = useRef<HTMLDivElement | null>(null);
   const osmdInstanceRef = useRef<{
@@ -564,78 +503,91 @@ export default function AlesisPianoStudioSection({
     }
   }, []);
 
-  // Enviar comando MIDI limpio al teclado físico (1 único paquete para encender, sin saturar el buffer USB-MIDI)
-  const sendRawMidiToHardware = useCallback(
-    (statusByte: number, noteNumber: number, velocity: number) => {
-      const outputs = midiOutputsRef.current;
-      if (!outputs || outputs.length === 0) return;
+  // Apagar todos los LEDs del Alesis Teacher's Choice 61 usando el comando oficial RESET_ALL de Skoove:
+  // [0xF0, 0x00, 0x00, 0x0E, 0x00, 0x4D, 0x04, 0xF7]
+  const sendHardwareResetAllLeds = useCallback(() => {
+    const outputs = midiOutputsRef.current;
+    if (!outputs || outputs.length === 0) return;
 
-      if (velocity <= 0) {
-        const prevStatus = litHardwareNotesRef.current.get(noteNumber) ?? 0x90;
-        const ch = prevStatus & 0x0f;
-        litHardwareNotesRef.current.delete(noteNumber);
-        for (const out of outputs) {
-          try {
-            out.send([0x80 | ch, noteNumber, 0]);
-            out.send([0x90 | ch, noteNumber, 0]);
-            if (ch !== 0) {
-              out.send([0x80, noteNumber, 0]);
-              out.send([0x90, noteNumber, 0]);
-            }
-          } catch {}
-        }
-        return;
-      }
-
-      litHardwareNotesRef.current.set(noteNumber, statusByte);
+    if (sysexEnabledRef.current) {
+      const resetPacket = buildAlesisTc61ResetAllSysEx();
       for (const out of outputs) {
         try {
-          out.send([statusByte, noteNumber, velocity]);
+          out.send(resetPacket);
         } catch {}
       }
-    },
-    []
-  );
+      litHardwareNotesRef.current.clear();
+      return;
+    }
 
-  // Control directo del LED físico del Alesis Teacher's Choice 61 usando colorConfigRef en tiempo real:
-  // Envía siempre UN SOLO PAQUETE [status, noteNumber, velocity].
-  const sendHardwareLedMidi = useCallback(
-    (noteNumber: number, color: LedColor) => {
+    const previouslyLit = Array.from(litHardwareNotesRef.current);
+    for (const prevNote of previouslyLit) {
+      for (const out of outputs) {
+        try {
+          out.send([0x80, prevNote, 0]);
+          out.send([0x90, prevNote, 0]);
+        } catch {}
+      }
+    }
+    litHardwareNotesRef.current.clear();
+  }, []);
+
+  // Control directo del LED físico del Alesis Teacher's Choice 61 usando el protocolo oficial de Skoove (AlesisMidiLEDController.kt):
+  // SysEx: [0xF0, 0x00, 0x00, 0x0E, 0x00, 0x4D, 0x00, noteNumber, colorByte, 0xF7]
+  // Donde colorByte es: AMBER=0x17 (23), GREEN=0x09 (9), RED=0x01 (1), OFF=0x00 (0).
+  const sendHardwareLedMidi = useCallback((noteNumber: number, color: LedColor) => {
+    const outputs = midiOutputsRef.current;
+    if (!outputs || outputs.length === 0) return;
+
+    if (sysexEnabledRef.current) {
+      const colorByte =
+        color === "orange"
+          ? ALESIS_TC61_COLOR_AMBER
+          : color === "green"
+          ? ALESIS_TC61_COLOR_GREEN
+          : color === "red"
+          ? ALESIS_TC61_COLOR_RED
+          : ALESIS_TC61_COLOR_OFF;
+
+      const sysexPacket = buildAlesisTc61SetLedSysEx(noteNumber, colorByte);
+      for (const out of outputs) {
+        try {
+          out.send(sysexPacket);
+        } catch {}
+      }
+
       if (color === null) {
-        sendRawMidiToHardware(0x90, noteNumber, 0);
-        return;
+        litHardwareNotesRef.current.delete(noteNumber);
+      } else {
+        litHardwareNotesRef.current.add(noteNumber);
       }
+      return;
+    }
 
-      const cfg = colorConfigRef.current;
-
-      if (color === "red") {
-        // Confirmado 100% en tu Alesis Teacher's Choice 61: [0x90, noteNumber, 1] prende en ROJO
-        sendRawMidiToHardware(cfg.redStatus, noteNumber, cfg.redVel);
-        return;
+    // Respaldo si el navegador aún no tiene concedido el permiso SysEx
+    if (color === null || color === "green") {
+      litHardwareNotesRef.current.delete(noteNumber);
+      for (const out of outputs) {
+        try {
+          out.send([0x80, noteNumber, 0]);
+          out.send([0x90, noteNumber, 0]);
+        } catch {}
       }
+      return;
+    }
 
-      if (color === "green") {
-        if (cfg.greenVel <= 0) {
-          sendRawMidiToHardware(0x90, noteNumber, 0);
-        } else {
-          sendRawMidiToHardware(cfg.greenStatus, noteNumber, cfg.greenVel);
-        }
-        return;
-      }
-
-      // color === "orange" (Tecla objetivo a tocar)
-      sendRawMidiToHardware(cfg.orangeStatus, noteNumber, cfg.orangeVel);
-    },
-    [sendRawMidiToHardware]
-  );
+    litHardwareNotesRef.current.add(noteNumber);
+    for (const out of outputs) {
+      try {
+        out.send([0x90, noteNumber, 1]);
+      } catch {}
+    }
+  }, []);
 
   // Encender en el piano físico y en pantalla la nota objetivo actual
   const syncSequenceLeds = useCallback(
     (sequence: LessonStep[], stepIdx: number) => {
-      const previouslyLit = Array.from(litHardwareNotesRef.current.keys());
-      for (const prevNote of previouslyLit) {
-        sendRawMidiToHardware(0x90, prevNote, 0);
-      }
+      sendHardwareResetAllLeds();
 
       if (stepIdx < sequence.length) {
         const targetNote = sequence[stepIdx].note;
@@ -646,7 +598,7 @@ export default function AlesisPianoStudioSection({
         setKeyColors({});
       }
     },
-    [centerKeyInVirtualKeyboard, sendHardwareLedMidi, sendRawMidiToHardware]
+    [centerKeyInVirtualKeyboard, sendHardwareLedMidi, sendHardwareResetAllLeds]
   );
 
   useEffect(() => {
@@ -720,24 +672,20 @@ export default function AlesisPianoStudioSection({
         const nextIdx = idx + 1;
         stepIndexRef.current = nextIdx;
 
-        // 1. En pantalla mostramos Verde de confirmación
+        // 1. En pantalla y en el piano físico encendemos en VERDE (0x09)
         setKeyColors({ [expectedNote]: "green" });
-        // 2. En el piano físico apagamos la luz anterior y enviamos el comando Verde (si está activo)
-        sendRawMidiToHardware(0x90, expectedNote, 0);
-        if (colorConfigRef.current.greenVel > 0) {
-          sendHardwareLedMidi(expectedNote, "green");
-        }
+        sendHardwareLedMidi(expectedNote, "green");
 
-        addLog(`✓ Correcto: ${sequence[idx].name} con Dedo ${sequence[idx].finger}`);
+        addLog(`✓ Correcto: ${sequence[idx].name} con Dedo ${sequence[idx].finger} (Luz Verde 0x09)`);
         if (osmdInstanceRef.current?.cursor) {
           try {
             osmdInstanceRef.current.cursor.next();
           } catch {}
         }
 
-        // 3. Apagar la nota anterior y encender la SIGUIENTE nota a tocar con la configuración Naranja activa
+        // 2. Apagar la nota anterior (0x00) y encender la SIGUIENTE nota en ÁMBAR/NARANJA (0x17)
         setTimeout(() => {
-          sendRawMidiToHardware(0x90, expectedNote, 0);
+          sendHardwareLedMidi(expectedNote, null);
           setCurrentIndex(nextIdx);
           if (nextIdx < sequence.length) {
             const nextNote = sequence[nextIdx].note;
@@ -745,11 +693,10 @@ export default function AlesisPianoStudioSection({
             centerKeyInVirtualKeyboard(nextNote);
             sendHardwareLedMidi(nextNote, "orange");
           }
-        }, 200);
+        }, 220);
       } else {
         // Si tocó una tecla equivocada:
-        // En pantalla mostramos Rojo en la equivocada y Naranja en la correcta.
-        // En el piano físico encendemos en Rojo confirmado ([0x90, playedNote, 1]) la tecla equivocada durante 380ms y luego la apagamos.
+        // En el piano físico encendemos la tecla equivocada en ROJO (0x01) y mantenemos la correcta en ÁMBAR (0x17)
         setKeyColors({
           [expectedNote]: "orange",
           [playedNote]: "red",
@@ -757,9 +704,10 @@ export default function AlesisPianoStudioSection({
         centerKeyInVirtualKeyboard(expectedNote);
 
         sendHardwareLedMidi(playedNote, "red");
+        sendHardwareLedMidi(expectedNote, "orange");
 
         addLog(
-          `✕ Tocaste ${NOTE_LABELS[playedNote] || playedNote}. Toca ${sequence[idx].name}.`
+          `✕ Tocaste ${NOTE_LABELS[playedNote] || playedNote} (Rojo 0x01). Toca ${sequence[idx].name} (Ámbar 0x17).`
         );
 
         setTimeout(() => {
@@ -772,13 +720,13 @@ export default function AlesisPianoStudioSection({
             return copy;
           });
           if (playedNote !== expectedNote) {
-            sendRawMidiToHardware(0x90, playedNote, 0);
+            sendHardwareLedMidi(playedNote, null);
           }
           sendHardwareLedMidi(expectedNote, "orange");
         }, 380);
       }
     },
-    [addLog, centerKeyInVirtualKeyboard, sendHardwareLedMidi, sendRawMidiToHardware]
+    [addLog, centerKeyInVirtualKeyboard, sendHardwareLedMidi]
   );
 
   const evaluateUserNoteRef = useRef(evaluateUserNote);
@@ -786,8 +734,7 @@ export default function AlesisPianoStudioSection({
     evaluateUserNoteRef.current = evaluateUserNote;
   }, [evaluateUserNote]);
 
-  // Inicializar Web MIDI API (USB-C Bidireccional con Alesis Teacher's Choice 61)
-  // Usamos requestMIDIAccess({ sysex: false }) para funcionar sin bloqueo de permisos.
+  // Inicializar Web MIDI API con SysEx (necesario para enviar [0xF0, 0x00, 0x00, 0x0E, 0x00, 0x4D, ...] al Alesis Teacher's Choice 61)
   const initMIDI = useCallback(
     async (silent = false) => {
       if (typeof navigator === "undefined" || !navigator.requestMIDIAccess) {
@@ -798,122 +745,137 @@ export default function AlesisPianoStudioSection({
         return;
       }
 
+      let midiAccess: MIDIAccess | null = null;
+
       try {
         setMidiPermissionDenied(false);
-        const midiAccess = await navigator.requestMIDIAccess({ sysex: false });
-
-        const bindPorts = () => {
-          const allOutputs = Array.from(midiAccess.outputs.values());
-          const allInputs = Array.from(midiAccess.inputs.values());
-
-          const preferredOutputs = allOutputs.filter((out) => {
-            const n = (out.name || "").toLowerCase();
-            return (
-              !n.includes("through") &&
-              (n.includes("alesis") ||
-                n.includes("teacher") ||
-                n.includes("choice") ||
-                n.includes("usb") ||
-                n.includes("piano") ||
-                n.includes("keyboard"))
-            );
-          });
-          const activeOutputs =
-            preferredOutputs.length > 0
-              ? preferredOutputs
-              : allOutputs.filter((o) => !(o.name || "").toLowerCase().includes("through")).length >
-                0
-              ? allOutputs.filter((o) => !(o.name || "").toLowerCase().includes("through"))
-              : allOutputs;
-
-          for (const out of activeOutputs) {
-            try {
-              if (typeof out.open === "function") {
-                out.open();
-              }
-            } catch {}
-          }
-
-          const preferredInputs = allInputs.filter((inp) => {
-            const n = (inp.name || "").toLowerCase();
-            return (
-              !n.includes("through") &&
-              (n.includes("alesis") ||
-                n.includes("teacher") ||
-                n.includes("choice") ||
-                n.includes("usb") ||
-                n.includes("piano") ||
-                n.includes("keyboard"))
-            );
-          });
-          const activeInputs = preferredInputs.length > 0 ? preferredInputs : allInputs;
-
-          for (const inp of activeInputs) {
-            try {
-              if (typeof inp.open === "function") {
-                inp.open();
-              }
-            } catch {}
-            inp.onmidimessage = (event: MIDIMessageEvent) => {
-              if (!event.data || event.data.length < 3) return;
-              const [status, note, velocity] = event.data;
-              const command = status >> 4;
-              if (command === 9 && velocity > 0) {
-                evaluateUserNoteRef.current(note);
-              } else if (command === 8 || (command === 9 && velocity === 0)) {
-                const seq = activeSequenceRef.current;
-                const idx = stepIndexRef.current;
-                if (idx < seq.length) {
-                  const targetNote = seq[idx].note;
-                  setTimeout(() => {
-                    sendHardwareLedMidi(targetNote, "orange");
-                  }, 30);
-                }
-              }
-            };
-          }
-
-          midiOutputsRef.current = activeOutputs;
-          midiInputsRef.current = activeInputs;
-
-          const deviceLabel =
-            activeOutputs[0]?.name || activeInputs[0]?.name || "Alesis Teacher's Choice 61";
-          const isConnected = activeOutputs.length > 0 || activeInputs.length > 0;
-          setMidiConnected(isConnected);
-          setMidiDeviceName(deviceLabel);
-
-          if (isConnected) {
-            addLog(
-              `Alesis conectado (${activeInputs.length} IN / ${activeOutputs.length} OUT): ${deviceLabel}. Luz enviada a la tecla a tocar.`
-            );
-            syncSequenceLeds(activeSequenceRef.current, stepIndexRef.current);
-          } else if (!silent) {
-            addLog("Acceso MIDI activo, esperando conexión USB-C del teclado.");
-          }
-        };
-
-        bindPorts();
-        midiAccess.onstatechange = () => {
-          bindPorts();
-        };
+        midiAccess = await navigator.requestMIDIAccess({ sysex: true });
+        sysexEnabledRef.current = Boolean(midiAccess.sysexEnabled);
+        setSysexEnabled(Boolean(midiAccess.sysexEnabled));
       } catch (err) {
+        sysexEnabledRef.current = false;
+        setSysexEnabled(false);
+        setMidiPermissionDenied(true);
         if (!silent) {
-          const message = err instanceof Error ? err.message : "Error desconocido";
-          setMidiPermissionDenied(true);
+          const message = err instanceof Error ? err.message : "Permiso SysEx bloqueado";
           addLog(
-            `Error MIDI: ${message}. Toca el icono a la izquierda de la URL en Chrome → Permisos → Dispositivos MIDI → Permitir.`
+            `⚠️ Chrome bloqueó SysEx (${message}). Para ver los 3 colores (Ámbar, Verde y Rojo), toca el icono a la izquierda de la URL en Chrome → Permisos → Dispositivos MIDI → Permitir / Restablecer.`
           );
         }
+        try {
+          midiAccess = await navigator.requestMIDIAccess({ sysex: false });
+        } catch {
+          return;
+        }
       }
+
+      if (!midiAccess) return;
+
+      const bindPorts = () => {
+        if (!midiAccess) return;
+        const allOutputs = Array.from(midiAccess.outputs.values());
+        const allInputs = Array.from(midiAccess.inputs.values());
+
+        const preferredOutputs = allOutputs.filter((out) => {
+          const n = (out.name || "").toLowerCase();
+          return (
+            !n.includes("through") &&
+            (n.includes("alesis") ||
+              n.includes("teacher") ||
+              n.includes("choice") ||
+              n.includes("usb") ||
+              n.includes("piano") ||
+              n.includes("keyboard"))
+          );
+        });
+        const activeOutputs =
+          preferredOutputs.length > 0
+            ? preferredOutputs
+            : allOutputs.filter((o) => !(o.name || "").toLowerCase().includes("through")).length > 0
+            ? allOutputs.filter((o) => !(o.name || "").toLowerCase().includes("through"))
+            : allOutputs;
+
+        for (const out of activeOutputs) {
+          try {
+            if (typeof out.open === "function") {
+              out.open();
+            }
+          } catch {}
+        }
+
+        const preferredInputs = allInputs.filter((inp) => {
+          const n = (inp.name || "").toLowerCase();
+          return (
+            !n.includes("through") &&
+            (n.includes("alesis") ||
+              n.includes("teacher") ||
+              n.includes("choice") ||
+              n.includes("usb") ||
+              n.includes("piano") ||
+              n.includes("keyboard"))
+          );
+        });
+        const activeInputs = preferredInputs.length > 0 ? preferredInputs : allInputs;
+
+        for (const inp of activeInputs) {
+          try {
+            if (typeof inp.open === "function") {
+              inp.open();
+            }
+          } catch {}
+          inp.onmidimessage = (event: MIDIMessageEvent) => {
+            if (!event.data || event.data.length < 3) return;
+            const [status, note, velocity] = event.data;
+            const command = status >> 4;
+            if (command === 9 && velocity > 0) {
+              evaluateUserNoteRef.current(note);
+            } else if (command === 8 || (command === 9 && velocity === 0)) {
+              const seq = activeSequenceRef.current;
+              const idx = stepIndexRef.current;
+              if (idx < seq.length) {
+                const targetNote = seq[idx].note;
+                setTimeout(() => {
+                  sendHardwareLedMidi(targetNote, "orange");
+                }, 30);
+              }
+            }
+          };
+        }
+
+        midiOutputsRef.current = activeOutputs;
+        midiInputsRef.current = activeInputs;
+
+        const deviceLabel =
+          activeOutputs[0]?.name || activeInputs[0]?.name || "Alesis Teacher's Choice 61";
+        const isConnected = activeOutputs.length > 0 || activeInputs.length > 0;
+        setMidiConnected(isConnected);
+        setMidiDeviceName(deviceLabel);
+
+        if (isConnected) {
+          addLog(
+            sysexEnabledRef.current
+              ? `✅ ${deviceLabel} conectado con 3 Colores Oficiales Skoove SysEx [F0 00 00 0E 00 4D] (Ámbar=23, Verde=9, Rojo=1).`
+              : `⚠️ ${deviceLabel} conectado sin permiso SysEx (solo luz Roja). Habilita permiso MIDI en Chrome para ver Ámbar y Verde.`
+          );
+          syncSequenceLeds(activeSequenceRef.current, stepIndexRef.current);
+        } else if (!silent) {
+          addLog("Acceso MIDI activo, esperando conexión USB-C del teclado.");
+        }
+      };
+
+      bindPorts();
+      midiAccess.onstatechange = () => {
+        bindPorts();
+      };
     },
     [addLog, sendHardwareLedMidi, syncSequenceLeds]
   );
 
-  // Auto-conectar MIDI al abrir la página únicamente si el permiso ya fue concedido
+  // Auto-conectar al abrir la página únicamente si el permiso MIDI + SysEx ya fue concedido previamente
   useEffect(() => {
     if (typeof navigator !== "undefined" && navigator.permissions?.query) {
       navigator.permissions
-        .query({ name: "midi" as PermissionName })
+        .query({ name: "midi" as PermissionName, sysex: true } as PermissionDescriptor)
         .then((status) => {
           if (status.state === "granted") {
             initMIDI(true);
@@ -923,28 +885,32 @@ export default function AlesisPianoStudioSection({
     }
   }, [initMIDI]);
 
-  // Aplicar una configuración de color en vivo y encender de inmediato la tecla objetivo actual con 1 único paquete
-  const applyLiveColorConfig = useCallback(
-    (nextCfg: HardwareColorConfig) => {
-      colorConfigRef.current = nextCfg;
-      setColorConfig(nextCfg);
-
+  // Probar directamente cualquiera de los 3 colores oficiales de Skoove en la tecla actual
+  const testOfficialSkooveColor = useCallback(
+    (color: LedColor, label: string) => {
       const seq = activeSequenceRef.current;
       const idx = stepIndexRef.current < seq.length ? stepIndexRef.current : 0;
       const target = seq[idx]?.note || 60;
       centerKeyInVirtualKeyboard(target);
 
-      sendRawMidiToHardware(0x90, target, 0);
-      setTimeout(() => {
-        sendRawMidiToHardware(nextCfg.orangeStatus, target, nextCfg.orangeVel);
-      }, 30);
+      if (color === null) {
+        sendHardwareResetAllLeds();
+        setKeyColors({});
+        addLog(`⚫ Enviado RESET_ALL oficial Skoove: [F0 00 00 0E 00 4D 04 F7]`);
+        return;
+      }
 
-      const hexStatus = `0x${nextCfg.orangeStatus.toString(16).toUpperCase()}`;
+      setKeyColors({ [target]: color });
+      sendHardwareLedMidi(target, color);
+      const byteVal =
+        color === "orange" ? "0x17 (23)" : color === "green" ? "0x09 (9)" : "0x01 (1)";
       addLog(
-        `🎨 Color actualizado en ${NOTE_LABELS[target] || target} (${target}): [${hexStatus}, ${target}, ${nextCfg.orangeVel}] (Verde=${nextCfg.greenVel}, Rojo=${nextCfg.redVel})`
+        `🎨 Enviado ${label} a ${NOTE_LABELS[target] || target} (${target}): [F0 00 00 0E 00 4D 00 ${target
+          .toString(16)
+          .toUpperCase()} ${byteVal} F7]`
       );
     },
-    [addLog, centerKeyInVirtualKeyboard, sendRawMidiToHardware]
+    [addLog, centerKeyInVirtualKeyboard, sendHardwareLedMidi, sendHardwareResetAllLeds]
   );
 
   const uploadAndLoadXML = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1224,7 +1190,7 @@ export default function AlesisPianoStudioSection({
         {midiPermissionDenied && (
           <div className="bg-rose-950/90 border border-rose-500/60 rounded-xl p-2.5 text-[11px] text-rose-200 flex items-center justify-between gap-2">
             <span>
-              🔓 <b>Permiso MIDI bloqueado en Chrome:</b> Toca el icono de ajustes/candado a la izquierda de la barra de dirección arriba en Chrome → <b>Permisos</b> → <b>Dispositivos MIDI</b> → <b>Permitir</b> (o <i>Restablecer permisos</i>) y vuelve a tocar <b>🔌 Conectar USB</b>.
+              🔓 <b>Permiso SysEx bloqueado en Chrome:</b> Para que el Alesis Teacher&apos;s Choice 61 prenda en <b>Ámbar (0x17), Verde (0x09) y Rojo (0x01)</b> sin sonar como nota, toca el icono de ajustes/candado a la izquierda de la URL arriba en Chrome → <b>Permisos</b> → <b>Dispositivos MIDI</b> → <b>Permitir / Restablecer permisos</b> y toca <b>🔌 Conectar USB</b>.
             </span>
             <button
               type="button"
@@ -1236,135 +1202,55 @@ export default function AlesisPianoStudioSection({
           </div>
         )}
 
-        {/* Panel de Control de Colores Físicos conectado en tiempo real a la tecla activa */}
+        {/* Panel de Protocolo Oficial Skoove AlesisMidiLEDController.kt */}
         {showCalibrator && (
           <div className="bg-slate-950/95 border border-orange-500/40 rounded-xl p-2.5 flex flex-col gap-2 text-[11px]">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-bold text-orange-300">
-                🎨 Control de Color en Vivo (Rojo=1 confirmado • Cambia el color de la tecla actual al instante):
+                🎹 Protocolo Oficial Skoove (`AlesisMidiLEDController.kt`): SysEx `[F0 00 00 0E 00 4D]`
               </span>
-              <span className="px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-mono text-[10px]">
-                Activo: [0x{colorConfig.orangeStatus.toString(16).toUpperCase()}, nota, {colorConfig.orangeVel}] • Verde={colorConfig.greenVel} • Rojo={colorConfig.redVel}
+              <span
+                className={`px-2 py-0.5 rounded font-mono text-[10px] border ${
+                  sysexEnabled
+                    ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
+                    : "bg-amber-500/15 border-amber-500/40 text-amber-300"
+                }`}
+              >
+                {sysexEnabled
+                  ? "✅ SysEx 3 Colores Activo (Ámbar=23, Verde=9, Rojo=1)"
+                  : "⚠️ Conecta USB y permite MIDI SysEx para activar Ámbar y Verde"}
               </span>
             </div>
 
-            {/* 1. Presets de Protocolos Bicolores (Rojo + Verde = Naranja) */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-              {HARDWARE_COLOR_PRESETS.map((preset) => {
-                const isSelected = colorConfig.id === preset.id;
-                return (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => applyLiveColorConfig(preset)}
-                    className={`px-2.5 py-1.5 rounded-lg font-semibold text-left transition cursor-pointer border text-[10px] sm:text-[11px] truncate ${
-                      isSelected
-                        ? "bg-orange-500 text-slate-950 border-orange-300 font-bold shadow"
-                        : "bg-slate-900 hover:bg-slate-800 text-slate-200 border-slate-700"
-                    }`}
-                    title={preset.description}
-                  >
-                    {preset.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* 2. Buscador Manual en Tiempo Real (Conectado de verdad a la tecla activa y al juego) */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800/80">
-              <div className="flex flex-wrap items-center gap-1">
-                <span className="text-[10px] text-slate-400 font-semibold mr-1">Canal:</span>
-                {[
-                  { label: "Ch 1 (0x90)", status: 0x90 },
-                  { label: "Ch 2 (0x91)", status: 0x91 },
-                  { label: "Ch 3 (0x92)", status: 0x92 },
-                  { label: "Ch 4 (0x93)", status: 0x93 },
-                ].map((ch) => (
-                  <button
-                    key={ch.status}
-                    type="button"
-                    onClick={() =>
-                      applyLiveColorConfig({
-                        ...colorConfig,
-                        id: "custom",
-                        label: `Manual (${ch.label} • Vel ${colorConfig.orangeVel})`,
-                        orangeStatus: ch.status,
-                      })
-                    }
-                    className={`px-2 py-1 rounded-md font-mono text-[10px] cursor-pointer border ${
-                      colorConfig.orangeStatus === ch.status
-                        ? "bg-blue-500 text-white border-blue-300 font-bold"
-                        : "bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800"
-                    }`}
-                  >
-                    {ch.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const prev = Math.max(1, colorConfig.orangeVel - 1);
-                    applyLiveColorConfig({
-                      ...colorConfig,
-                      id: "custom",
-                      label: `Manual (Vel ${prev})`,
-                      orangeVel: prev,
-                    });
-                  }}
-                  className="px-2 py-1 rounded-lg font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 cursor-pointer"
-                >
-                  − Vel ({Math.max(1, colorConfig.orangeVel - 1)})
-                </button>
-                <span className="px-2.5 py-1 rounded-lg bg-orange-500/20 border border-orange-500/40 text-orange-300 font-mono font-bold">
-                  Vel Tecla: {colorConfig.orangeVel}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = Math.min(127, colorConfig.orangeVel + 1);
-                    applyLiveColorConfig({
-                      ...colorConfig,
-                      id: "custom",
-                      label: `Manual (Vel ${next})`,
-                      orangeVel: next,
-                    });
-                  }}
-                  className="px-2 py-1 rounded-lg font-bold bg-orange-500 hover:bg-orange-400 text-slate-950 cursor-pointer"
-                >
-                  + Vel ({Math.min(127, colorConfig.orangeVel + 1)})
-                </button>
-              </div>
-            </div>
-
-            {/* 3. Valores Rápidos de Velocidad Bicolor / RGB en 1 toque */}
-            <div className="flex flex-wrap items-center gap-1">
-              <span className="text-[10px] text-slate-400 font-semibold mr-1">
-                Probar Vel directo en tecla actual:
-              </span>
-              {[1, 2, 3, 4, 5, 16, 17, 32, 48, 51, 64, 87, 96, 127].map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() =>
-                    applyLiveColorConfig({
-                      ...colorConfig,
-                      id: "custom",
-                      label: `Manual (Vel ${v})`,
-                      orangeVel: v,
-                    })
-                  }
-                  className={`px-2 py-0.5 rounded font-mono text-[10px] cursor-pointer border ${
-                    colorConfig.orangeVel === v
-                      ? "bg-emerald-500 text-slate-950 border-emerald-300 font-bold"
-                      : "bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800"
-                  }`}
-                >
-                  {v}
-                </button>
-              ))}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+              <button
+                type="button"
+                onClick={() => testOfficialSkooveColor("orange", "ÁMBAR (0x17 = 23)")}
+                className="px-2.5 py-1.5 rounded-lg font-bold bg-orange-500 hover:bg-orange-400 text-slate-950 transition cursor-pointer shadow text-[11px]"
+              >
+                🟠 Probar Ámbar (0x17)
+              </button>
+              <button
+                type="button"
+                onClick={() => testOfficialSkooveColor("green", "VERDE (0x09 = 9)")}
+                className="px-2.5 py-1.5 rounded-lg font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition cursor-pointer shadow text-[11px]"
+              >
+                🟢 Probar Verde (0x09)
+              </button>
+              <button
+                type="button"
+                onClick={() => testOfficialSkooveColor("red", "ROJO (0x01 = 1)")}
+                className="px-2.5 py-1.5 rounded-lg font-bold bg-rose-500 hover:bg-rose-400 text-white transition cursor-pointer shadow text-[11px]"
+              >
+                🔴 Probar Rojo (0x01)
+              </button>
+              <button
+                type="button"
+                onClick={() => testOfficialSkooveColor(null, "RESET_ALL (0x04)")}
+                className="px-2.5 py-1.5 rounded-lg font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer text-[11px]"
+              >
+                ⚫ Apagar Todas (0x04)
+              </button>
             </div>
           </div>
         )}

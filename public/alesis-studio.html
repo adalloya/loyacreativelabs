@@ -58,20 +58,17 @@
             <button onclick="updateLessonUI()" class="bg-orange-500 text-slate-950 active:scale-95 text-xs px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap shadow">
                 💡 Ver Luz de Tecla
             </button>
-            <button onclick="setColorPreset(0x90, 17, 16, 'Hex 17/16/1')" class="bg-slate-800 border border-orange-500/40 text-orange-300 text-[11px] px-2.5 py-1.5 rounded-xl font-semibold whitespace-nowrap">
-                1. Hex 17/16/1
+            <button onclick="testOfficialSkooveColor('orange')" class="bg-orange-500 text-slate-950 text-[11px] px-2.5 py-1.5 rounded-xl font-bold whitespace-nowrap shadow">
+                🟠 Probar Ámbar (0x17)
             </button>
-            <button onclick="setColorPreset(0x90, 51, 48, 'Hex 51/48/1')" class="bg-slate-800 border border-slate-700 text-slate-200 text-[11px] px-2.5 py-1.5 rounded-xl font-semibold whitespace-nowrap">
-                2. Hex 51/48/1
+            <button onclick="testOfficialSkooveColor('green')" class="bg-emerald-600 text-white text-[11px] px-2.5 py-1.5 rounded-xl font-bold whitespace-nowrap shadow">
+                🟢 Probar Verde (0x09)
             </button>
-            <button onclick="setColorPreset(0x90, 3, 2, 'Bits 3/2/1')" class="bg-slate-800 border border-slate-700 text-slate-200 text-[11px] px-2.5 py-1.5 rounded-xl font-semibold whitespace-nowrap">
-                3. Bits 3/2/1
+            <button onclick="testOfficialSkooveColor('red')" class="bg-red-600 text-white text-[11px] px-2.5 py-1.5 rounded-xl font-bold whitespace-nowrap shadow">
+                🔴 Probar Rojo (0x01)
             </button>
-            <button onclick="setColorPreset(0x92, 1, 1, 'Canales Ch3/Ch2/Ch1')" class="bg-slate-800 border border-slate-700 text-slate-200 text-[11px] px-2.5 py-1.5 rounded-xl font-semibold whitespace-nowrap">
-                4. Canales 3/2/1
-            </button>
-            <button onclick="setColorPreset(0x90, 1, 0, 'Seguro Vel=1')" class="bg-emerald-600 text-white text-[11px] px-2.5 py-1.5 rounded-xl font-semibold whitespace-nowrap">
-                5. Seguro (Vel=1)
+            <button onclick="testOfficialSkooveColor(null)" class="bg-slate-800 border border-slate-700 text-slate-200 text-[11px] px-2.5 py-1.5 rounded-xl font-semibold whitespace-nowrap">
+                ⚫ Apagar Todas (0x04)
             </button>
         </div>
     </header>
@@ -151,62 +148,89 @@
         };
 
         let midiOutputs = [];
+        let sysexEnabled = false;
         let litHardwareNotes = new Map();
         let osmd = null;
         let isForcedHorizontal = false;
         let audioCtx = null;
 
-        let hwColorConfig = {
-            orangeStatus: 0x90,
-            orangeVel: 17,
-            greenStatus: 0x90,
-            greenVel: 16,
-            redStatus: 0x90,
-            redVel: 1
-        };
+        /**
+         * PROTOCOLO OFICIAL ALESIS TEACHER'S CHOICE 61 (Extraído de Skoove APK: AlesisMidiLEDController.kt)
+         * Manufacturer ID: [0x00, 0x00, 0x0E] (Alesis)
+         * Product Model ID: [0x00, 0x4D] (Teacher's Choice 61)
+         * MessageTypeIdentifier: SET_LED = 0x00, RESET_ALL = 0x04
+         * LedColors: OFF = 0x00 (0), RED = 0x01 (1), GREEN = 0x09 (9), AMBER = 0x17 (23)
+         */
+        const ALESIS_TC61_SYSEX_HEADER = [0xF0, 0x00, 0x00, 0x0E, 0x00, 0x4D];
+        const ALESIS_CMD_SET_LED = 0x00;
+        const ALESIS_CMD_RESET_ALL = 0x04;
+        const ALESIS_COLOR_OFF = 0x00;
+        const ALESIS_COLOR_RED = 0x01;
+        const ALESIS_COLOR_GREEN = 0x09;
+        const ALESIS_COLOR_AMBER = 0x17;
+
+        function resetAllHardwareLeds() {
+            if (!midiOutputs.length) return;
+            for (let out of midiOutputs) {
+                try {
+                    if (sysexEnabled) {
+                        out.send([...ALESIS_TC61_SYSEX_HEADER, ALESIS_CMD_RESET_ALL, 0xF7]);
+                    } else {
+                        Array.from(litHardwareNotes.keys()).forEach(n => {
+                            out.send([0x80, n, 0]);
+                            out.send([0x90, n, 0]);
+                        });
+                    }
+                } catch {}
+            }
+            litHardwareNotes.clear();
+        }
 
         function sendHardwareMidi(noteNumber, color) {
             if (!midiOutputs.length) return;
             for (let out of midiOutputs) {
                 try {
-                    if (!color) {
-                        const prevStatus = litHardwareNotes.get(noteNumber) || 0x90;
-                        const ch = prevStatus & 0x0f;
-                        out.send([0x80 | ch, noteNumber, 0]);
-                        out.send([0x90 | ch, noteNumber, 0]);
-                        if (ch !== 0) {
-                            out.send([0x80, noteNumber, 0]);
-                            out.send([0x90, noteNumber, 0]);
-                        }
-                    } else if (color === 'red') {
-                        out.send([hwColorConfig.redStatus, noteNumber, hwColorConfig.redVel]);
-                    } else if (color === 'green') {
-                        if (hwColorConfig.greenVel <= 0) {
+                    if (sysexEnabled) {
+                        const colorByte =
+                            color === 'orange' ? ALESIS_COLOR_AMBER :
+                            color === 'green' ? ALESIS_COLOR_GREEN :
+                            color === 'red' ? ALESIS_COLOR_RED :
+                            ALESIS_COLOR_OFF;
+                        out.send([
+                            ...ALESIS_TC61_SYSEX_HEADER,
+                            ALESIS_CMD_SET_LED,
+                            noteNumber & 0x7F,
+                            colorByte,
+                            0xF7
+                        ]);
+                    } else {
+                        if (!color || color === 'green') {
                             out.send([0x80, noteNumber, 0]);
                             out.send([0x90, noteNumber, 0]);
                         } else {
-                            out.send([hwColorConfig.greenStatus, noteNumber, hwColorConfig.greenVel]);
+                            out.send([0x90, noteNumber, 1]);
                         }
-                    } else {
-                        out.send([hwColorConfig.orangeStatus, noteNumber, hwColorConfig.orangeVel]);
                     }
                 } catch {}
             }
             if (color) {
-                const st = color === 'red' ? hwColorConfig.redStatus : color === 'green' ? hwColorConfig.greenStatus : hwColorConfig.orangeStatus;
-                litHardwareNotes.set(noteNumber, st);
+                litHardwareNotes.set(noteNumber, 1);
             } else {
                 litHardwareNotes.delete(noteNumber);
             }
         }
 
-        function setColorPreset(orangeStatus, orangeVel, greenVel, label) {
-            hwColorConfig.orangeStatus = orangeStatus;
-            hwColorConfig.orangeVel = orangeVel;
-            hwColorConfig.greenStatus = orangeStatus === 0x92 ? 0x91 : 0x90;
-            hwColorConfig.greenVel = greenVel;
-            log(`🎨 Color cambiado a ${label}: [0x${orangeStatus.toString(16).toUpperCase()}, nota, ${orangeVel}]`);
-            updateLessonUI();
+        function testOfficialSkooveColor(color) {
+            const currentStep = activeSequence[currentIndex] || activeSequence[0];
+            const note = currentStep ? currentStep.note : 60;
+            if (!color) {
+                resetAllHardwareLeds();
+                log(`🧹 SysEx RESET_ALL enviado: [F0 00 00 0E 00 4D 04 F7]`);
+                return;
+            }
+            setKeyColor(note, color);
+            const hexCode = color === 'orange' ? '0x17 (23=AMBER)' : color === 'green' ? '0x09 (9=GREEN)' : '0x01 (1=RED)';
+            log(`✨ SysEx Skoove enviado a nota ${note}: [F0 00 00 0E 00 4D 00 ${note.toString(16).toUpperCase()} ${hexCode}]`);
         }
 
         let activeSequence = [
@@ -435,13 +459,12 @@
             document.getElementById('instructionText').innerText = `Toca ${currentStep.name} (Luz Naranja)`;
             document.getElementById('fingerNumberBox').innerText = currentStep.finger || 1;
 
-            // Limpiar clases visuales y apagar solo notas previamente encendidas en hardware
+            // Limpiar clases visuales y apagar todas las luces del hardware con comando oficial RESET_ALL (0x04)
             for (let i = 48; i <= 76; i++) {
                 const keyEl = document.getElementById(`key-${i}`);
                 if (keyEl) keyEl.classList.remove('led-red', 'led-green', 'led-orange');
             }
-            Array.from(litHardwareNotes.keys()).forEach(n => sendHardwareMidi(n, null));
-            litHardwareNotes.clear();
+            resetAllHardwareLeds();
 
             setKeyColor(currentStep.note, 'orange');
         }
@@ -463,7 +486,17 @@
                 return;
             }
             try {
-                const midiAccess = await navigator.requestMIDIAccess({ sysex: false });
+                let midiAccess = null;
+                try {
+                    midiAccess = await navigator.requestMIDIAccess({ sysex: true });
+                    sysexEnabled = true;
+                } catch (sysexErr) {
+                    midiAccess = await navigator.requestMIDIAccess({ sysex: false });
+                    sysexEnabled = false;
+                    if (!silent) {
+                        log(`⚠️ Permiso SysEx bloqueado en Chrome. Habilita "Dispositivos MIDI (control completo)" en el ícono de ajustes junto a la URL para ver colores Naranja (0x17) y Verde (0x09).`);
+                    }
+                }
                 const bindPorts = () => {
                     const allOuts = Array.from(midiAccess.outputs.values());
                     const filteredOuts = allOuts.filter(o => !(o.name || '').toLowerCase().includes('through'));
@@ -477,7 +510,7 @@
                         input.onmidimessage = handleMIDIMessage;
                     }
                     if (midiOutputs.length > 0) {
-                        log(`Teclado MIDI conectado (${midiOutputs.length} salidas activas).`);
+                        log(`✅ Alesis conectado (${midiOutputs.length} salidas, SysEx=${sysexEnabled ? 'ACTIVO 3 COLORES' : 'FALLBACK ROJO'}).`);
                         updateLessonUI();
                     }
                 };
