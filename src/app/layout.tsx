@@ -94,7 +94,6 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         {children}
-        <Script src="/widget.js?v=stable" strategy="lazyOnload" />
       </body>
     </html>
   );

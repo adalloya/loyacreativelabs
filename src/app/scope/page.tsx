@@ -1074,18 +1074,6 @@ export default function LoyaScopePage() {
 
         {/* Right: Apple iOS Circular Utility Buttons */}
         <div className="flex items-center gap-2 pointer-events-auto">
-          {!isNativeApk && (
-            <a
-              href="/loya-scope.apk"
-              download="LoyaScope-USB.apk"
-              className="h-9 px-3 rounded-full bg-[#FFD60A] text-black text-xs font-bold flex items-center gap-1 shadow-lg active:scale-95 transition"
-              title="Descargar APK con soporte USB-C"
-            >
-              <Smartphone size={13} />
-              <span>APK</span>
-            </a>
-          )}
-
           <button
             onClick={() => setFillScreen((f) => !f)}
             className="w-9 h-9 rounded-full bg-black/45 backdrop-blur-xl flex items-center justify-center text-white/90 active:scale-90 transition"
@@ -1244,22 +1232,6 @@ export default function LoyaScopePage() {
               );
             })}
           </div>
-
-          {!isNativeApk && (
-            <div className="pt-2 border-t border-white/10 space-y-2">
-              <p className="text-[11px] text-white/70 leading-snug">
-                Para detectar cámaras USB-C en Android sin restricciones del navegador, instala nuestra app nativa:
-              </p>
-              <a
-                href="/loya-scope.apk"
-                download="LoyaScope-USB.apk"
-                className="w-full py-2.5 px-3 rounded-2xl bg-[#FFD60A] text-black font-bold text-xs flex items-center justify-center gap-1.5"
-              >
-                <Download size={14} />
-                <span>Descargar Loya Scope (.APK)</span>
-              </a>
-            </div>
-          )}
         </div>
       )}
 
@@ -1348,16 +1320,6 @@ export default function LoyaScopePage() {
               >
                 Reintentar
               </button>
-              {!isNativeApk && (
-                <a
-                  href="/loya-scope.apk"
-                  download="LoyaScope-USB.apk"
-                  className="w-full py-3 px-4 rounded-2xl bg-white/10 text-white font-semibold text-xs flex items-center justify-center gap-2"
-                >
-                  <Download size={15} />
-                  <span>Descargar App Android (.APK)</span>
-                </a>
-              )}
             </div>
           </div>
         </div>
