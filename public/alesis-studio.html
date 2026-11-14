@@ -182,23 +182,28 @@
         const ALESIS_COLOR_GREEN = 0x09;
         const ALESIS_COLOR_AMBER = 0x17;
 
+        let sysexQueue = [];
+        let sysexQueueTimer = null;
+        let lastSysexSentAt = 0;
+        let wasMidiConnected = false;
+        let skipAutoSyncOnce = false;
+
         function resetAllHardwareLeds() {
+            if (sysexQueueTimer) {
+                clearTimeout(sysexQueueTimer);
+                sysexQueueTimer = null;
+            }
+            sysexQueue = [];
             ledTimers.forEach(t => clearTimeout(t));
             ledTimers.clear();
             hardwareLedState.clear();
             if (!midiOutputs.length) return;
             for (let out of midiOutputs) {
                 try {
-                    if (sysexEnabled) {
-                        out.send([...ALESIS_TC61_SYSEX_HEADER, ALESIS_CMD_RESET_ALL, 0xF7]);
-                    } else {
-                        Array.from(litHardwareNotes.keys()).forEach(n => {
-                            out.send([0x80, n, 0]);
-                            out.send([0x90, n, 0]);
-                        });
-                    }
+                    out.send([...ALESIS_TC61_SYSEX_HEADER, ALESIS_CMD_RESET_ALL, 0xF7]);
                 } catch {}
             }
+            lastSysexSentAt = Date.now();
             litHardwareNotes.clear();
         }
 
@@ -223,6 +228,7 @@
                     sentSysex = true;
                 } catch {}
             }
+            lastSysexSentAt = Date.now();
             if (!sentSysex) {
                 for (let out of midiOutputs) {
                     try {
@@ -242,18 +248,49 @@
             }
         }
 
+        function flushSysexQueue() {
+            sysexQueueTimer = null;
+            if (!sysexQueue.length) return;
+            const nextItem = sysexQueue.shift();
+            transmitRawLedPacket(nextItem.noteNumber, nextItem.color);
+            if (sysexQueue.length > 0) {
+                sysexQueueTimer = setTimeout(flushSysexQueue, 38);
+            }
+        }
+
         function sendHardwareMidi(noteNumber, color) {
             if (!color) {
                 hardwareLedState.delete(noteNumber);
-                transmitRawLedPacket(noteNumber, null);
+            } else {
+                hardwareLedState.set(noteNumber, color);
+            }
+            if (!midiOutputs.length) return;
+
+            const now = Date.now();
+            const elapsed = now - lastSysexSentAt;
+            if (sysexQueue.length === 0 && !sysexQueueTimer && elapsed >= 38) {
+                transmitRawLedPacket(noteNumber, color);
                 return;
             }
-            hardwareLedState.set(noteNumber, color);
-            transmitRawLedPacket(noteNumber, color);
+            const existingIdx = sysexQueue.findIndex(item => item.noteNumber === noteNumber);
+            if (existingIdx >= 0) {
+                sysexQueue[existingIdx].color = color;
+            } else {
+                sysexQueue.push({ noteNumber, color });
+            }
+            if (!sysexQueueTimer) {
+                sysexQueueTimer = setTimeout(flushSysexQueue, Math.max(12, 38 - elapsed));
+            }
         }
 
         async function testOfficialSkooveColor(color) {
+            if (feedbackTimer) {
+                clearTimeout(feedbackTimer);
+                feedbackTimer = null;
+            }
+            activeFeedback = null;
             if (!midiOutputs.length) {
+                skipAutoSyncOnce = true;
                 await initMIDI(false);
             }
             const currentStep = activeSequence[currentIndex] || activeSequence[0];
@@ -552,15 +589,21 @@
                     midiOutputs = filteredOuts.length > 0 ? filteredOuts : allOuts;
 
                     for (let out of midiOutputs) {
-                        try { if (out.open) out.open(); } catch {}
+                        try { if (out.connection !== 'open' && out.open) out.open(); } catch {}
                     }
                     for (let input of midiAccess.inputs.values()) {
-                        try { if (input.open) input.open(); } catch {}
+                        try { if (input.connection !== 'open' && input.open) input.open(); } catch {}
                         input.onmidimessage = handleMIDIMessage;
                     }
-                    if (midiOutputs.length > 0) {
+                    const isConn = midiOutputs.length > 0;
+                    const wasConn = wasMidiConnected;
+                    wasMidiConnected = isConn;
+                    if (isConn && !wasConn) {
                         log(`✅ Alesis conectado (${midiOutputs.length} salidas, SysEx=${sysexEnabled ? 'ACTIVO 3 COLORES' : 'FALLBACK ROJO'}).`);
-                        updateLessonUI();
+                        if (!skipAutoSyncOnce) {
+                            updateLessonUI();
+                        }
+                        skipAutoSyncOnce = false;
                     }
                 };
                 bindPorts();
@@ -595,18 +638,24 @@
             if (cmd === 9 && velocity > 0) {
                 evaluateUserNote(note);
             } else if (cmd === 8 || (cmd === 9 && velocity === 0)) {
-                if (activeFeedback) {
+                if (activeFeedback && activeFeedback.note === note) {
                     const fb = activeFeedback;
                     setTimeout(() => {
-                        sendHardwareMidi(fb.note, fb.color);
-                    }, 30);
+                        if (activeFeedback && activeFeedback.note === note) {
+                            sendHardwareMidi(fb.note, fb.color);
+                        }
+                    }, 22);
                     return;
                 }
                 if (currentIndex < activeSequence.length) {
                     const targetNote = activeSequence[currentIndex].note;
-                    setTimeout(() => {
-                        sendHardwareMidi(targetNote, 'orange');
-                    }, 30);
+                    if (note === targetNote) {
+                        setTimeout(() => {
+                            if (!activeFeedback) {
+                                sendHardwareMidi(targetNote, 'orange');
+                            }
+                        }, 25);
+                    }
                 }
             }
         }
@@ -636,11 +685,10 @@
                     feedbackTimer = null;
                     setKeyColor(expectedNote, null);
                     updateLessonUI();
-                }, 240);
+                }, 320);
             } else {
                 activeFeedback = { note: playedNote, color: 'red' };
                 setKeyColor(playedNote, 'red');
-                setKeyColor(expectedNote, 'orange');
                 feedbackTimer = setTimeout(() => {
                     activeFeedback = null;
                     feedbackTimer = null;
@@ -648,7 +696,7 @@
                         setKeyColor(playedNote, null);
                     }
                     setKeyColor(expectedNote, 'orange');
-                }, 380);
+                }, 420);
             }
         }
 
