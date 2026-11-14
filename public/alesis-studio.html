@@ -13,11 +13,11 @@
     <style>
         * { -webkit-tap-highlight-color: transparent; }
         .touch-scroll { -webkit-overflow-scrolling: touch; }
-        .key-white { background: #ffffff; color: #0f172a; border: 2px solid #cbd5e1; }
-        .key-black { background: #0f172a; color: #f8fafc; border: 2px solid #334155; z-index: 20; }
-        .led-red { background-color: #ef4444 !important; color: white !important; border-color: #fca5a5 !important; box-shadow: 0 0 22px #ef4444, inset 0 0 10px rgba(255,255,255,0.5) !important; }
-        .led-green { background-color: #22c55e !important; color: white !important; border-color: #86efac !important; box-shadow: 0 0 22px #22c55e, inset 0 0 10px rgba(255,255,255,0.5) !important; }
-        .led-orange { background-color: #f97316 !important; color: white !important; border-color: #fed7aa !important; box-shadow: 0 0 26px #f97316, 0 0 12px #fb923c, inset 0 0 12px rgba(255,255,255,0.6) !important; }
+        .key-white { background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; }
+        .key-black { background: #14161f; color: #f8fafc; border: 1px solid #272a3a; z-index: 20; }
+        .led-red { background-color: #f43f5e !important; color: white !important; border-color: #fda4af !important; box-shadow: 0 0 18px rgba(244,63,94,0.6) !important; }
+        .led-green { background-color: #10b981 !important; color: white !important; border-color: #6ee7b7 !important; box-shadow: 0 0 18px rgba(16,185,129,0.6) !important; }
+        .led-orange { background-color: #f59e0b !important; color: white !important; border-color: #fde68a !important; box-shadow: 0 0 20px rgba(245,158,11,0.65) !important; }
         .forced-landscape {
             position: fixed !important;
             top: 0 !important;
@@ -27,108 +27,100 @@
             transform: rotate(90deg) !important;
             transform-origin: top left !important;
             z-index: 9999 !important;
-            overflow-y: auto !important;
-            overflow-x: hidden !important;
+            overflow: hidden !important;
         }
     </style>
 </head>
-<body id="appBody" class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans select-none">
+<body id="appBody" class="bg-[#090A0E] text-zinc-100 h-[100dvh] w-full overflow-hidden flex flex-col font-sans select-none">
 
-    <!-- Header Compacto Mobile -->
-    <header class="bg-slate-900 border-b border-slate-800 px-3 py-2 flex flex-col gap-2 shadow-md sticky top-0 z-50">
-        <div class="flex justify-between items-center gap-2">
-            <div>
-                <h1 class="text-sm font-bold text-orange-400">🎹 Alesis Cloud Studio</h1>
-                <p class="text-[10px] text-slate-400">Supabase Sync + USB-C LEDs</p>
-            </div>
-            <div class="flex items-center gap-1.5">
-                <button id="btnRotate" onclick="toggleHorizontalMode()" class="bg-slate-800 border border-slate-700 active:scale-95 text-xs px-2.5 py-2 rounded-xl font-semibold transition shadow">
-                    🔄 Horizontal
-                </button>
-                <button id="btnConnectMIDI" onclick="initMIDI()" class="bg-blue-600 active:scale-95 text-xs px-3 py-2 rounded-xl font-semibold transition shadow-lg">
-                    🔌 Conectar USB
-                </button>
-            </div>
+    <!-- Barra Superior Unificada Estilo Apple Logic Pro -->
+    <header class="h-12 bg-[#0D0F14]/90 backdrop-blur-xl border-b border-white/10 px-3 sm:px-4 flex items-center justify-between gap-2 shrink-0 z-50">
+        <div class="flex items-center gap-2 shrink-0">
+            <span class="text-xs font-semibold tracking-tight text-white">Alesis Studio</span>
+            <button id="btnConnectMIDI" onclick="initMIDI()" class="h-8 px-3 rounded-full bg-white text-black hover:bg-zinc-200 active:scale-95 text-xs font-semibold transition shadow-sm">
+                Conectar USB
+            </button>
         </div>
-        <div class="flex gap-2 overflow-x-auto touch-scroll pb-1">
-            <label class="bg-purple-600 active:scale-95 text-xs px-3 py-1.5 rounded-xl font-medium transition whitespace-nowrap cursor-pointer flex items-center gap-1 shadow">
-                📂 Cargar y Subir a Supabase
+
+        <div class="flex items-center gap-1.5 flex-1 max-w-md min-w-0 justify-center">
+            <select id="cloudSongSelector" onchange="loadSongFromCloud(this.value)" class="h-8 flex-1 min-w-0 bg-white/5 border border-white/10 text-xs text-zinc-100 rounded-full px-3 outline-none focus:border-amber-500 font-medium truncate">
+                <option value="">Seleccionar partitura en la nube...</option>
+            </select>
+            <label class="h-8 px-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 active:scale-95 text-xs font-medium transition whitespace-nowrap cursor-pointer flex items-center text-zinc-200 shrink-0">
+                Importar XML
                 <input type="file" id="scoreFile" accept=".xml, .musicxml" class="hidden" onchange="uploadAndLoadXML(event)">
             </label>
-            <button onclick="updateLessonUI()" class="bg-orange-500 text-slate-950 active:scale-95 text-xs px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap shadow">
-                💡 Ver Luz de Tecla
+        </div>
+
+        <div class="flex items-center gap-1.5 shrink-0">
+            <button onclick="updateLessonUI()" class="h-8 px-2.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 active:scale-95 text-xs font-medium transition">
+                Iluminar
             </button>
-            <button onclick="testOfficialSkooveColor('orange')" class="bg-orange-500 text-slate-950 text-[11px] px-2.5 py-1.5 rounded-xl font-bold whitespace-nowrap shadow">
-                🟠 Probar Ámbar (0x17)
+            <button id="btnRotate" onclick="toggleHorizontalMode()" class="h-8 px-2.5 rounded-full bg-white/5 border border-white/10 active:scale-95 text-xs font-medium text-zinc-300 transition">
+                Horizontal
             </button>
-            <button onclick="testOfficialSkooveColor('green')" class="bg-emerald-600 text-white text-[11px] px-2.5 py-1.5 rounded-xl font-bold whitespace-nowrap shadow">
-                🟢 Probar Verde (0x09)
-            </button>
-            <button onclick="testOfficialSkooveColor('red')" class="bg-red-600 text-white text-[11px] px-2.5 py-1.5 rounded-xl font-bold whitespace-nowrap shadow">
-                🔴 Probar Rojo (0x01)
-            </button>
-            <button onclick="testOfficialSkooveColor(null)" class="bg-slate-800 border border-slate-700 text-slate-200 text-[11px] px-2.5 py-1.5 rounded-xl font-semibold whitespace-nowrap">
-                ⚫ Apagar Todas (0x04)
+            <button onclick="document.getElementById('diagModal').classList.toggle('hidden')" class="h-8 px-2.5 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-zinc-300 transition">
+                LED
             </button>
         </div>
     </header>
 
-    <!-- Contenido Principal -->
-    <main class="flex-1 p-3 max-w-4xl mx-auto w-full flex flex-col gap-3 pb-10">
-        
-        <!-- Selector de Biblioteca en la Nube (Supabase) -->
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3 shadow-lg flex flex-col gap-2">
-            <div class="flex justify-between items-center">
-                <span class="text-[10px] font-bold uppercase tracking-wider text-orange-400">☁️ Biblioteca Cloud (Supabase)</span>
-                <button onclick="fetchCloudSongs()" class="text-[10px] text-blue-400 underline">Actualizar Lista</button>
-            </div>
-            <select id="cloudSongSelector" onchange="loadSongFromCloud(this.value)" class="bg-slate-950 border border-slate-700 text-xs text-slate-200 rounded-xl p-2 outline-none focus:border-orange-500 font-medium">
-                <option value="">Selecciona una partitura guardada en la nube...</option>
-            </select>
-        </div>
-
-        <!-- Estado de Lección + Dedo Guía + Partitura -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div class="bg-slate-900 border border-orange-500/40 rounded-2xl p-3 shadow-lg flex items-center justify-between gap-3 sm:col-span-1">
+    <!-- Escenario Central Sin Scroll Vertical -->
+    <main class="flex-1 min-h-0 p-2 sm:p-3 flex flex-col gap-2 overflow-hidden">
+        <div class="flex-1 min-h-0 grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+            <div class="bg-[#11131A] border border-white/10 rounded-2xl p-3.5 shadow-lg flex sm:flex-col items-center sm:items-stretch justify-between gap-3 sm:col-span-4">
                 <div>
-                    <span class="px-2 py-0.5 rounded bg-orange-500 text-slate-950 text-[9px] font-black uppercase">Tecla a tocar ahora</span>
-                    <div id="songLyric" class="text-lg font-black text-orange-400 mt-1">Do4 - Dedo 1</div>
-                    <div id="instructionText" class="text-[11px] text-slate-300">Toca la tecla iluminada en NARANJA</div>
+                    <span class="px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-semibold uppercase">Nota Guía</span>
+                    <div id="songLyric" class="text-xl font-bold text-white mt-1.5">Do4 · Dedo 1</div>
+                    <div id="instructionText" class="text-xs text-zinc-400">Presiona la tecla iluminada en ámbar</div>
                 </div>
-                <div class="flex flex-col items-center shrink-0">
-                    <span class="text-[9px] font-bold uppercase text-slate-400 mb-1">Dedo Guía</span>
-                    <div id="fingerNumberBox" class="w-12 h-12 rounded-2xl bg-orange-500/20 border-2 border-orange-500 flex items-center justify-center text-2xl font-black text-orange-400 shadow-inner">1</div>
+                <div class="flex items-center justify-between gap-3 shrink-0 sm:pt-2 sm:border-t sm:border-white/5">
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Digitación</span>
+                    <div id="fingerNumberBox" class="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-xl font-bold text-amber-300">1</div>
                 </div>
             </div>
 
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex flex-col shadow-inner sm:col-span-2 justify-center">
-                <div class="text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Partitura Interactiva MusicXML</div>
-                <div id="osmdContainer" class="bg-white rounded-xl p-2 overflow-x-auto touch-scroll h-28 flex items-center justify-center text-slate-800">
-                    <span class="text-xs text-slate-400 font-normal text-center">Selecciona una partitura de Supabase arriba</span>
+            <div class="bg-[#11131A] border border-white/10 rounded-2xl p-2.5 flex flex-col sm:col-span-8 min-h-0 overflow-hidden">
+                <div class="flex justify-between items-center px-1 pb-1.5 shrink-0">
+                    <span class="text-xs font-semibold text-zinc-300">Partitura Interactiva</span>
+                    <button onclick="fetchCloudSongs()" class="text-[11px] text-zinc-400 hover:text-white">Sincronizar</button>
+                </div>
+                <div id="osmdContainer" class="flex-1 min-h-0 bg-[#FAF9F5] rounded-xl p-2 overflow-x-auto touch-scroll flex items-center justify-center text-zinc-800">
+                    <span class="text-xs text-zinc-400 font-normal text-center">Selecciona una partitura arriba</span>
                 </div>
             </div>
         </div>
-
-        <!-- Teclado Táctil / Monitor -->
-        <div class="bg-slate-900 border border-orange-500/30 rounded-2xl p-3 flex flex-col items-center shadow-lg">
-            <div class="w-full flex justify-between items-center mb-2">
-                <span class="text-[10px] font-bold text-orange-400 uppercase tracking-wider">🎹 Teclado Guía Alesis USB-C (En Vivo)</span>
-                <div class="flex gap-3 text-[10px] text-slate-300">
-                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span> Tocar (Naranja)</span>
-                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Bien</span>
-                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> Error</span>
-                </div>
-            </div>
-            <div id="virtualKeyboard" class="relative flex h-32 w-full bg-slate-950 p-2 rounded-xl overflow-x-auto touch-scroll justify-start md:justify-center items-start"></div>
-        </div>
-
-        <!-- Consola -->
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-2.5 flex flex-col">
-            <span class="text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Log de Sistema</span>
-            <div id="logConsole" class="bg-slate-950 p-2 rounded-xl font-mono text-[10px] text-emerald-400 h-16 overflow-y-auto touch-scroll border border-slate-800">[Sistema] Listo. Conectado a Supabase (femjbpqeejfymdkuagti).</div>
-        </div>
-
     </main>
+
+    <!-- Dock Inferior: Teclado Guía -->
+    <section class="bg-[#0B0C11] border-t border-white/10 px-3 pt-1.5 pb-2 shrink-0 flex flex-col gap-1.5">
+        <div class="w-full flex justify-between items-center text-[11px] text-zinc-400">
+            <span class="font-medium text-zinc-300">Teclado Guía Alesis</span>
+            <div class="flex gap-3 text-[10px]">
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-400"></span> Ámbar (Tocar)</span>
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> Verde (Correcta)</span>
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Rojo (Error)</span>
+            </div>
+        </div>
+        <div id="virtualKeyboard" class="relative flex h-28 w-full bg-[#07080C] p-1.5 rounded-xl overflow-x-auto touch-scroll justify-start md:justify-center items-start border border-white/5"></div>
+    </section>
+
+    <!-- Modal Diagnóstico Oculto por Defecto -->
+    <div id="diagModal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="w-full max-w-md bg-[#12141D] border border-white/10 rounded-3xl p-5 flex flex-col gap-3">
+            <div class="flex justify-between items-center">
+                <span class="text-sm font-semibold text-white">Diagnóstico de Iluminación LED</span>
+                <button onclick="document.getElementById('diagModal').classList.add('hidden')" class="text-xs text-zinc-400 hover:text-white">Cerrar ✕</button>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="testOfficialSkooveColor('orange')" class="bg-amber-500 text-black text-xs py-2 rounded-xl font-semibold">Ámbar (0x17)</button>
+                <button onclick="testOfficialSkooveColor('green')" class="bg-emerald-500 text-black text-xs py-2 rounded-xl font-semibold">Verde (0x09)</button>
+                <button onclick="testOfficialSkooveColor('red')" class="bg-rose-500 text-white text-xs py-2 rounded-xl font-semibold">Rojo (0x01)</button>
+                <button onclick="testOfficialSkooveColor(null)" class="bg-white/10 text-zinc-200 text-xs py-2 rounded-xl font-semibold">Apagar (0x04)</button>
+            </div>
+            <div id="logConsole" class="bg-black/60 p-2.5 rounded-xl font-mono text-[10px] text-zinc-300 h-24 overflow-y-auto touch-scroll border border-white/5">[Sistema] Conectado a Supabase.</div>
+        </div>
+    </div>
 
     <script>
         // --- CREDENCIALES DE SUPABASE (LOYA CREATIVE LAB) ---

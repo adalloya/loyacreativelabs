@@ -247,17 +247,18 @@ export default function LeftContextDrawer() {
   if (!isDrawerOpen) return null;
 
   return (
-    <aside className="fixed inset-0 top-14 z-40 bg-[#0E1017] flex flex-col md:relative md:inset-auto md:top-auto md:w-80 lg:w-[340px] md:bg-[#11131A] border-r border-white/[0.08] shrink-0 select-none h-[calc(100dvh-3.5rem)] md:h-full overflow-hidden animate-in fade-in md:animate-none">
-      {/* Barra de cabecera solo visible en móvil para cerrar y volver al lienzo */}
-      <div className="flex md:hidden items-center justify-between px-4 py-2.5 bg-[#141620] border-b border-white/10 shrink-0">
-        <span className="text-xs font-bold text-white font-mono uppercase tracking-wider flex items-center gap-1.5">
-          <Layers size={14} className="text-blue-400" /> Panel de Estudio
+    <aside className="fixed inset-y-0 left-0 top-14 z-40 w-full sm:w-80 bg-[#0D0E12]/95 backdrop-blur-2xl flex flex-col xl:relative xl:inset-auto xl:top-auto xl:w-[330px] xl:bg-[#11131A] border-r border-white/[0.08] shrink-0 select-none h-[calc(100dvh-3.5rem)] xl:h-full overflow-hidden shadow-2xl xl:shadow-none">
+      {/* Barra de cabecera visible en móvil y modo horizontal para cerrar el panel en cualquier momento */}
+      <div className="flex xl:hidden items-center justify-between px-4 py-2.5 bg-[#141620] border-b border-white/[0.08] shrink-0">
+        <span className="text-xs font-semibold text-zinc-200 tracking-tight flex items-center gap-2">
+          <Layers size={14} className="text-zinc-400" /> Biblioteca y Herramientas
         </span>
         <button
+          type="button"
           onClick={toggleDrawer}
-          className="px-3 py-1 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-mono font-semibold transition flex items-center gap-1.5 shadow-sm"
+          className="px-3 py-1 rounded-full bg-white/10 hover:bg-white/15 text-white text-xs font-medium transition flex items-center gap-1.5 cursor-pointer"
         >
-          <span>Ver Lienzo</span> ✕
+          <span>Cerrar</span> ✕
         </button>
       </div>
 
@@ -326,12 +327,14 @@ export default function LeftContextDrawer() {
 
           <button
             onClick={() => {
-              setActiveDrawerTab("alesis");
               setAlesisStudioOpen(true);
+              if (typeof window !== "undefined" && window.innerWidth < 1280) {
+                toggleDrawer();
+              }
             }}
             className={`py-2 rounded-xl text-xs font-semibold flex flex-col items-center gap-1 transition-all cursor-pointer ${
-              activeDrawerTab === "alesis" || alesisStudioOpen
-                ? "bg-orange-500 text-white shadow-[0_0_12px_rgba(249,115,22,0.4)] font-bold"
+              alesisStudioOpen
+                ? "bg-orange-500 text-white font-bold"
                 : "text-orange-400 hover:text-orange-300"
             }`}
           >

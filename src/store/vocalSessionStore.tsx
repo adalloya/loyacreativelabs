@@ -203,9 +203,23 @@ export function VocalSessionProvider({ children }: { children: React.ReactNode }
   const [vocalProfile, setVocalProfile] = useState<UserVocalProfile>(DEFAULT_PROFILE);
   const [isProfilePopoverOpen, setIsProfilePopoverOpen] = useState<boolean>(false);
 
-  // Drawer
+  // Drawer (cerrado por defecto en móvil y pantallas horizontales compactas para no bloquear la navegación)
   const [activeDrawerTab, setActiveDrawerTab] = useState<DrawerTab>("vocalize");
-  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(true);
+  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.innerWidth >= 1280 && window.innerHeight >= 680) {
+      setIsDrawerOpen(true);
+    }
+    const handleViewportChange = () => {
+      if (window.innerHeight < 560 || window.innerWidth < 1024) {
+        setIsDrawerOpen(false);
+      }
+    };
+    window.addEventListener("orientationchange", handleViewportChange);
+    return () => window.removeEventListener("orientationchange", handleViewportChange);
+  }, []);
 
   // Vocalizaciones
   const [activeExercise, setActiveExercise] = useState<VocalExercise | null>(null);

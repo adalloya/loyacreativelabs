@@ -303,7 +303,7 @@ export default function AlesisPianoStudioSection({
     60: "orange",
   });
 
-  const [showCalibrator, setShowCalibrator] = useState<boolean>(true);
+  const [showCalibrator, setShowCalibrator] = useState<boolean>(false);
   const [sysexEnabled, setSysexEnabled] = useState<boolean>(false);
 
   const [midiConnected, setMidiConnected] = useState<boolean>(false);
@@ -1130,6 +1130,27 @@ export default function AlesisPianoStudioSection({
   const currentStep = !isSequenceComplete ? activeSequence[currentIndex] : null;
   const isHorizontalLayout = isNaturalLandscape || forcedLandscape;
 
+  const handleUnifiedPieceSelect = (val: string) => {
+    if (!val) return;
+    if (val.startsWith("lesson:")) {
+      changeLesson(val.replace("lesson:", ""));
+    } else if (val.startsWith("cloud:")) {
+      handleSelectOnlineSong(val.replace("cloud:", ""));
+    }
+  };
+
+  const unifiedSelectValue =
+    practiceMode === "lesson"
+      ? `lesson:${currentLessonIndex}`
+      : selectedRepertoireId
+      ? `cloud:${selectedRepertoireId}`
+      : `lesson:${currentLessonIndex}`;
+
+  const progressPercent =
+    activeSequence.length > 0
+      ? Math.min(100, Math.round((currentIndex / activeSequence.length) * 100))
+      : 0;
+
   const forcedLandscapeStyle: React.CSSProperties | undefined = forcedLandscape
     ? {
         position: "fixed",
@@ -1140,104 +1161,100 @@ export default function AlesisPianoStudioSection({
         transform: "rotate(90deg)",
         transformOrigin: "top left",
         zIndex: 9999,
-        overflowY: "auto",
-        overflowX: "hidden",
+        overflow: "hidden",
       }
     : undefined;
 
   return (
     <div
       style={forcedLandscapeStyle}
-      className={`${
-        isEmbedded && !forcedLandscape ? "h-full w-full overflow-y-auto" : "min-h-screen w-full"
-      } bg-slate-950 text-slate-100 flex flex-col font-sans select-none`}
+      className="h-[100dvh] w-full overflow-hidden bg-[#090A0E] text-zinc-100 flex flex-col font-sans select-none"
     >
-      {/* Header Compacto Mobile-First y Ultra-Slim en Modo Horizontal */}
-      <header
-        className={`bg-slate-900/95 backdrop-blur-md border-b border-slate-800 ${
-          isHorizontalLayout ? "px-3 py-1.5 gap-1.5" : "p-3 gap-2"
-        } flex flex-col shadow-md sticky top-0 z-40`}
-      >
-        <div className="flex justify-between items-center gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-orange-500/15 border border-orange-500/40 flex items-center justify-center text-orange-400 shrink-0 shadow">
-              <Piano size={16} />
+      {/* 1. BARRA SUPERIOR UNIFICADA — ESTILO APPLE LOGIC PRO / SKOOVE */}
+      <header className="h-12 px-3 sm:px-4 bg-[#0D0F14]/90 backdrop-blur-xl border-b border-white/[0.07] flex items-center justify-between gap-2 shrink-0 z-30">
+        {/* Izquierda: Regreso + Identidad + Estado Hardware */}
+        <div className="flex items-center gap-2 min-w-0 shrink-0">
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-8 px-2.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] text-zinc-300 hover:text-white text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"
+              title="Cambiar a Estudio Vocal"
+            >
+              <X size={13} />
+              <span className="hidden sm:inline">Vocal</span>
+            </button>
+          )}
+
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+              <Piano size={15} />
             </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className="text-xs sm:text-base font-bold text-orange-400 truncate">
-                  🎹 Alesis Teacher&apos;s Choice 61 Studio
-                </h1>
-                {midiConnected && (
-                  <span className="px-2 py-0.5 text-[9px] font-mono font-bold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                    USB-C Activo
-                  </span>
-                )}
-              </div>
-              {!isHorizontalLayout && (
-                <p className="text-[10px] text-slate-400 truncate">
-                  {midiConnected
-                    ? `Conectado: ${midiDeviceName} • Luz Guía Activa (Vel 1)`
-                    : "Luz Guía Directa en Teclado Físico (Vel 1) + Partituras Supabase"}
-                </p>
-              )}
+            <div className="hidden md:flex flex-col leading-none">
+              <span className="text-xs font-semibold tracking-tight text-white">
+                Alesis Studio
+              </span>
+              <span className="text-[10px] text-zinc-500 truncate max-w-[140px]">
+                {midiConnected ? midiDeviceName : "Teacher's Choice 61"}
+              </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={toggleHorizontalOrientation}
-              className={`active:scale-95 text-[11px] sm:text-xs px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl font-semibold transition shadow flex items-center gap-1 cursor-pointer border ${
-                isHorizontalLayout
-                  ? "bg-amber-500/20 border-amber-400/50 text-amber-300"
-                  : "bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200"
+          <button
+            id="btnConnectMIDI"
+            type="button"
+            onClick={() => initMIDI(false)}
+            className={`h-8 px-3 rounded-full text-xs font-medium flex items-center gap-1.5 transition cursor-pointer border ${
+              midiConnected
+                ? "bg-emerald-500/15 border-emerald-500/35 text-emerald-300 hover:bg-emerald-500/25"
+                : "bg-white text-black hover:bg-zinc-200 border-transparent font-semibold shadow-sm"
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                midiConnected ? "bg-emerald-400 shadow-[0_0_6px_#34d399]" : "bg-zinc-900"
               }`}
-              title="Rotar aplicación en Horizontal / Vertical"
-            >
-              <Smartphone
-                size={13}
-                className={
-                  isHorizontalLayout
-                    ? "rotate-90 text-amber-400 transition-transform"
-                    : "transition-transform"
-                }
-              />
-              <span>{isHorizontalLayout ? "Vertical" : "🔄 Horizontal"}</span>
-            </button>
-
-            <button
-              id="btnConnectMIDI"
-              type="button"
-              onClick={() => initMIDI(false)}
-              className={`active:scale-95 text-[11px] sm:text-xs px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl font-semibold transition shadow-lg flex items-center gap-1.5 cursor-pointer ${
-                midiConnected
-                  ? "bg-emerald-600 hover:bg-emerald-500 text-white"
-                  : "bg-blue-600 hover:bg-blue-500 text-white"
-              }`}
-            >
-              <Usb size={13} />
-              <span>{midiConnected ? "MIDI OK" : "🔌 Conectar USB"}</span>
-            </button>
-
-            {onClose && (
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-1.5 sm:p-2 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 border border-slate-700 transition cursor-pointer"
-                title="Volver al Estudio Vocal"
-              >
-                <X size={15} />
-              </button>
-            )}
-          </div>
+            />
+            <Usb size={12} />
+            <span>{midiConnected ? "Conectado" : "Conectar USB"}</span>
+          </button>
         </div>
 
-        {/* Barra de acciones secundarias */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
-          <label className="bg-purple-600 hover:bg-purple-500 active:scale-95 text-[11px] px-2.5 py-1.5 rounded-xl font-medium transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 shadow text-white">
-            <Upload size={12} />
-            <span>📂 Cargar y Subir a Supabase</span>
+        {/* Centro: Selector Unificado de Lección / Partitura Cloud + Subir XML */}
+        <div className="flex items-center gap-1.5 min-w-0 flex-1 max-w-md justify-center">
+          <div className="relative flex-1 min-w-0">
+            <select
+              id="unifiedPieceSelector"
+              value={unifiedSelectValue}
+              onChange={(e) => handleUnifiedPieceSelect(e.target.value)}
+              className="w-full h-8 pl-3 pr-7 rounded-full bg-white/[0.06] hover:bg-white/[0.09] border border-white/[0.09] text-xs font-medium text-zinc-100 outline-none focus:border-amber-500/50 truncate cursor-pointer appearance-none"
+            >
+              <optgroup label="Lecciones Paso a Paso" className="bg-[#12141C] text-zinc-200">
+                {BEGINNER_LESSONS.map((lesson, idx) => (
+                  <option key={lesson.title} value={`lesson:${idx}`}>
+                    {lesson.title}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Biblioteca Cloud (Supabase)" className="bg-[#12141C] text-zinc-200">
+                {onlineRepertoire.map((song) => (
+                  <option key={song.id} value={`cloud:${song.id}`}>
+                    {song.title}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+            <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 text-[10px]">
+              ▾
+            </div>
+          </div>
+
+          <label
+            className="h-8 px-2.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] text-zinc-300 hover:text-white text-xs font-medium flex items-center gap-1.5 transition cursor-pointer shrink-0"
+            title="Importar archivo MusicXML a Supabase"
+          >
+            <Upload size={13} />
+            <span className="hidden lg:inline">Importar XML</span>
             <input
               type="file"
               id="scoreFile"
@@ -1249,509 +1266,455 @@ export default function AlesisPianoStudioSection({
 
           <button
             type="button"
-            onClick={() => syncSequenceLeds(activeSequenceRef.current, stepIndexRef.current)}
-            className="bg-orange-500 hover:bg-orange-400 text-slate-950 active:scale-95 text-[11px] px-2.5 py-1.5 rounded-xl font-bold transition whitespace-nowrap shadow flex items-center gap-1 cursor-pointer"
+            onClick={restartCurrentSequence}
+            className="h-8 w-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] text-zinc-300 hover:text-white flex items-center justify-center transition cursor-pointer shrink-0"
+            title="Reiniciar partitura desde el inicio"
           >
-            <Lightbulb size={12} />
-            <span>💡 Prender Tecla Actual en Piano</span>
+            <RotateCcw size={13} />
+          </button>
+        </div>
+
+        {/* Derecha: Utilidades de Hardware y Vista */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => syncSequenceLeds(activeSequenceRef.current, stepIndexRef.current)}
+            className="h-8 px-2.5 rounded-full bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"
+            title="Volver a iluminar la tecla actual en el piano físico"
+          >
+            <Lightbulb size={13} />
+            <span className="hidden md:inline">Iluminar</span>
           </button>
 
           <button
             type="button"
-            onClick={restartCurrentSequence}
-            className="bg-slate-800 hover:bg-slate-700 active:scale-95 text-[11px] px-2.5 py-1.5 rounded-xl font-medium transition whitespace-nowrap shadow flex items-center gap-1 text-slate-200 border border-slate-700 cursor-pointer"
+            onClick={toggleHorizontalOrientation}
+            className={`h-8 px-2.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition cursor-pointer border ${
+              isHorizontalLayout
+                ? "bg-white/15 border-white/25 text-white"
+                : "bg-white/[0.06] hover:bg-white/[0.12] border-white/[0.08] text-zinc-300"
+            }`}
+            title="Alternar vista Horizontal / Vertical"
           >
-            <RotateCcw size={12} />
-            <span>Repetir</span>
+            <Smartphone
+              size={13}
+              className={isHorizontalLayout ? "rotate-90 transition-transform" : "transition-transform"}
+            />
+            <span className="hidden sm:inline">
+              {isHorizontalLayout ? "Vertical" : "Horizontal"}
+            </span>
           </button>
 
           <button
             type="button"
             onClick={() => setShowCalibrator((prev) => !prev)}
-            className="bg-slate-800 hover:bg-slate-700 active:scale-95 text-[11px] px-2.5 py-1.5 rounded-xl font-medium transition whitespace-nowrap shadow flex items-center gap-1 text-orange-300 border border-orange-500/30 cursor-pointer"
-          >
-            <Sliders size={12} />
-            <span>Opciones LED</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={initAudio}
-            className={`active:scale-95 text-[11px] px-2.5 py-1.5 rounded-xl font-medium transition whitespace-nowrap shadow flex items-center gap-1 cursor-pointer ${
-              micActive
-                ? "bg-emerald-500 text-slate-950 font-bold"
-                : "bg-emerald-600 hover:bg-emerald-500 text-white"
+            className={`h-8 w-8 rounded-full flex items-center justify-center transition cursor-pointer border ${
+              showCalibrator
+                ? "bg-amber-500 text-black border-amber-400"
+                : "bg-white/[0.06] hover:bg-white/[0.12] border-white/[0.08] text-zinc-300"
             }`}
+            title="Diagnóstico de luces LED y registro MIDI"
           >
-            <Mic size={12} />
-            <span>{micActive ? "Mic ON" : "Micrófono"}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={syncSupabaseRepertoire}
-            disabled={isSyncingSupabase}
-            className="bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-500/30 text-cyan-300 active:scale-95 text-[11px] px-2.5 py-1.5 rounded-xl font-medium transition whitespace-nowrap flex items-center gap-1 cursor-pointer"
-          >
-            <RefreshCw size={11} className={isSyncingSupabase ? "animate-spin" : ""} />
-            <span>Actualizar Cloud</span>
+            <Sliders size={13} />
           </button>
         </div>
-
-        {midiPermissionDenied && (
-          <div className="bg-rose-950/90 border border-rose-500/60 rounded-xl p-2.5 text-[11px] text-rose-200 flex items-center justify-between gap-2">
-            <span>
-              🔓 <b>Permiso SysEx bloqueado en Chrome:</b> Para que el Alesis Teacher&apos;s Choice 61 prenda en <b>Ámbar (0x17), Verde (0x09) y Rojo (0x01)</b> sin sonar como nota, toca el icono de ajustes/candado a la izquierda de la URL arriba en Chrome → <b>Permisos</b> → <b>Dispositivos MIDI</b> → <b>Permitir / Restablecer permisos</b> y toca <b>🔌 Conectar USB</b>.
-            </span>
-            <button
-              type="button"
-              onClick={() => setMidiPermissionDenied(false)}
-              className="px-2 py-1 rounded bg-rose-800/60 text-white text-[10px] shrink-0"
-            >
-              Cerrar
-            </button>
-          </div>
-        )}
-
-        {/* Panel de Protocolo Oficial Skoove AlesisMidiLEDController.kt */}
-        {showCalibrator && (
-          <div className="bg-slate-950/95 border border-orange-500/40 rounded-xl p-2.5 flex flex-col gap-2 text-[11px]">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-bold text-orange-300">
-                🎹 Protocolo Oficial Skoove (`AlesisMidiLEDController.kt`): SysEx `[F0 00 00 0E 00 4D]`
-              </span>
-              <span
-                className={`px-2 py-0.5 rounded font-mono text-[10px] border ${
-                  sysexEnabled
-                    ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
-                    : "bg-amber-500/15 border-amber-500/40 text-amber-300"
-                }`}
-              >
-                {sysexEnabled
-                  ? "✅ SysEx 3 Colores Activo (Ámbar=23, Verde=9, Rojo=1)"
-                  : "⚠️ Conecta USB y permite MIDI SysEx para activar Ámbar y Verde"}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-              <button
-                type="button"
-                onClick={() => testOfficialSkooveColor("orange", "ÁMBAR (0x17 = 23)")}
-                className="px-2.5 py-1.5 rounded-lg font-bold bg-orange-500 hover:bg-orange-400 text-slate-950 transition cursor-pointer shadow text-[11px]"
-              >
-                🟠 Probar Ámbar (0x17)
-              </button>
-              <button
-                type="button"
-                onClick={() => testOfficialSkooveColor("green", "VERDE (0x09 = 9)")}
-                className="px-2.5 py-1.5 rounded-lg font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition cursor-pointer shadow text-[11px]"
-              >
-                🟢 Probar Verde (0x09)
-              </button>
-              <button
-                type="button"
-                onClick={() => testOfficialSkooveColor("red", "ROJO (0x01 = 1)")}
-                className="px-2.5 py-1.5 rounded-lg font-bold bg-rose-500 hover:bg-rose-400 text-white transition cursor-pointer shadow text-[11px]"
-              >
-                🔴 Probar Rojo (0x01)
-              </button>
-              <button
-                type="button"
-                onClick={() => testOfficialSkooveColor(null, "RESET_ALL (0x04)")}
-                className="px-2.5 py-1.5 rounded-lg font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer text-[11px]"
-              >
-                ⚫ Apagar Todas (0x04)
-              </button>
-            </div>
-          </div>
-        )}
       </header>
 
-      {/* Contenido Principal — Se adapta automáticamente a modo Vertical o Cockpit Horizontal */}
-      <main
-        className={`flex-1 ${
-          isHorizontalLayout
-            ? "p-2 max-w-full flex flex-col gap-2 pb-4"
-            : "p-3 sm:p-5 max-w-4xl mx-auto w-full flex flex-col gap-3.5 pb-12"
-        }`}
-      >
-        {/* 1. Selectores + Estado Activo + Dedo Guía + Partitura OSMD */}
-        <div
-          className={
-            isHorizontalLayout
-              ? "grid grid-cols-12 gap-2 items-stretch"
-              : "flex flex-col gap-3.5"
-          }
-        >
-          <div
-            className={
-              isHorizontalLayout
-                ? "col-span-5 flex flex-col gap-2 justify-between"
-                : "flex flex-col gap-3"
-            }
+      {/* Banner de Permiso MIDI SysEx (solo aparece si Chrome bloqueó el permiso) */}
+      {midiPermissionDenied && (
+        <div className="bg-rose-950/90 border-b border-rose-500/40 px-4 py-2 text-xs text-rose-200 flex items-center justify-between gap-3 shrink-0">
+          <span>
+            Permiso MIDI SysEx pendiente en el navegador: abre el icono de ajustes a la izquierda de la URL → Permisos → Dispositivos MIDI → Permitir y presiona Conectar USB.
+          </span>
+          <button
+            type="button"
+            onClick={() => setMidiPermissionDenied(false)}
+            className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white text-[11px] shrink-0 cursor-pointer"
           >
-            {/* Selectores Cloud + Lecciones */}
-            <div className="grid grid-cols-2 gap-2">
-              <div
-                className={`bg-slate-900 border rounded-xl p-2.5 shadow flex flex-col gap-1 ${
-                  practiceMode === "repertoire" ? "border-orange-500/60" : "border-slate-800"
-                }`}
-              >
-                <div className="flex justify-between items-center">
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-orange-400 flex items-center gap-1 truncate">
-                    <Cloud size={10} /> ☁️ Cloud Supabase
-                  </span>
-                </div>
-                <select
-                  id="cloudSongSelector"
-                  value={practiceMode === "repertoire" ? selectedRepertoireId : ""}
-                  onChange={(e) => handleSelectOnlineSong(e.target.value)}
-                  className="bg-slate-950 border border-slate-700 text-[11px] text-slate-200 rounded-lg p-1.5 outline-none focus:border-orange-500 font-medium cursor-pointer"
-                >
-                  <option value="">Elegir partitura cloud...</option>
-                  {onlineRepertoire.map((song) => (
-                    <option key={song.id} value={song.id}>
-                      {song.title}
-                    </option>
-                  ))}
-                </select>
+            Ocultar
+          </button>
+        </div>
+      )}
+
+      {/* 2. ESCENARIO CENTRAL: GUÍA EN VIVO + PARTITURA INTERACTIVA (SIN SCROLL VERTICAL) */}
+      <main className="flex-1 min-h-0 p-2 sm:p-3 flex flex-col gap-2 overflow-hidden">
+        <div
+          className={`flex-1 min-h-0 flex ${
+            isHorizontalLayout ? "flex-row gap-2.5" : "flex-col gap-2.5"
+          }`}
+        >
+          {/* Tarjeta de Nota Activa y Digitación (HUD limpio estilo Apple Music / Skoove) */}
+          <div
+            className={`${
+              isHorizontalLayout
+                ? "w-56 sm:w-64 shrink-0 flex flex-col justify-between p-3.5"
+                : "w-full shrink-0 flex items-center justify-between px-4 py-3"
+            } bg-[#11131A] border border-white/[0.08] rounded-2xl shadow-lg`}
+          >
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-semibold tracking-wide uppercase">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                  {isSequenceComplete ? "Completado" : "Nota Guía"}
+                </span>
+                <span className="text-[11px] font-mono text-zinc-500">
+                  {Math.min(currentIndex + 1, activeSequence.length)} / {activeSequence.length}
+                </span>
               </div>
 
               <div
-                className={`bg-slate-900 border rounded-xl p-2.5 shadow flex flex-col gap-1 ${
-                  practiceMode === "lesson" ? "border-purple-500/60" : "border-slate-800"
-                }`}
+                id="songLyric"
+                className={`font-bold tracking-tight mt-1.5 truncate ${
+                  isHorizontalLayout ? "text-2xl" : "text-xl sm:text-2xl"
+                } ${isSequenceComplete ? "text-emerald-400" : "text-white"}`}
               >
-                <div className="flex justify-between items-center">
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1 truncate">
-                    <BookOpen size={10} /> 📚 Lecciones
-                  </span>
-                </div>
-                <select
-                  id="lessonSelector"
-                  value={practiceMode === "lesson" ? currentLessonIndex : ""}
-                  onChange={(e) => changeLesson(e.target.value)}
-                  className="bg-slate-950 border border-slate-700 text-[11px] text-slate-200 rounded-lg p-1.5 outline-none focus:border-purple-500 font-medium cursor-pointer"
-                >
-                  {BEGINNER_LESSONS.map((lesson, idx) => (
-                    <option key={lesson.title} value={idx}>
-                      {lesson.title}
-                    </option>
-                  ))}
-                </select>
+                {isSequenceComplete
+                  ? "Pieza completada"
+                  : `${SOLFEGE_LABELS[currentStep?.note || 60]} · ${
+                      NOTE_LABELS[currentStep?.note || 60]
+                    }`}
               </div>
+
+              <p id="instructionText" className="text-xs text-zinc-400 truncate mt-0.5">
+                {isSequenceComplete
+                  ? "Toca cualquier tecla en tu piano para repetir"
+                  : currentStep?.lyric || "Toca la tecla iluminada en ámbar"}
+              </p>
             </div>
 
-            {/* Banner de Nota Objetivo */}
-            <div className="bg-slate-900 border border-orange-500/40 rounded-2xl p-3 shadow-lg flex items-center justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded-md bg-orange-500 text-slate-950 text-[10px] font-black uppercase tracking-wider">
-                    TECLA ILUMINADA EN TU PIANO
+            {/* Indicador de Dedo Guía + Botón Escuchar */}
+            <div
+              className={`flex ${
+                isHorizontalLayout
+                  ? "flex-col gap-2.5 pt-2 border-t border-white/[0.06]"
+                  : "items-center gap-3 shrink-0"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
+                    Digitación
                   </span>
-                  <span className="text-[10px] font-mono text-slate-400 truncate">
-                    Paso {Math.min(currentIndex + 1, activeSequence.length)}/{activeSequence.length}
+                  <span id="handSideText" className="text-xs font-medium text-zinc-300">
+                    {currentStep?.hand || "Mano Derecha"}
                   </span>
                 </div>
-                <div
-                  id="songLyric"
-                  className={`text-lg sm:text-xl font-black mt-1 truncate ${
-                    isSequenceComplete ? "text-emerald-400" : "text-orange-400"
-                  }`}
-                >
-                  {isSequenceComplete
-                    ? "¡Pieza completada! 🎉"
-                    : `${currentStep?.name || "C4 (Do)"} — ${currentStep?.lyric || "Dedo 1"}`}
-                </div>
-                <div id="instructionText" className="text-[11px] text-slate-300 truncate">
-                  {isSequenceComplete
-                    ? "Toca cualquier tecla para reiniciar o elige otra partitura."
-                    : `Presiona la tecla con luz en tu piano (${NOTE_LABELS[currentStep?.note || 60]} / ${
-                        SOLFEGE_LABELS[currentStep?.note || 60]
-                      })`}
-                </div>
-              </div>
-
-              {/* Recuadro de Digitación (Dedo Guía integrado) */}
-              <div className="flex flex-col items-center shrink-0 bg-slate-950/90 border border-slate-800 rounded-xl px-3 py-2">
-                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                  Dedo Guía
-                </span>
                 <div
                   id="fingerNumberBox"
-                  className="w-11 h-11 rounded-xl border-2 flex items-center justify-center text-2xl font-black my-0.5"
-                  style={{
-                    backgroundColor: isSequenceComplete
-                      ? "rgba(34, 197, 94, 0.2)"
-                      : "rgba(249, 115, 22, 0.25)",
-                    borderColor: isSequenceComplete ? "#22c55e" : "#f97316",
-                    color: isSequenceComplete ? "#4ade80" : "#fb923c",
-                  }}
+                  className={`w-11 h-11 rounded-2xl flex items-center justify-center text-xl font-bold border ${
+                    isSequenceComplete
+                      ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
+                      : "bg-amber-500/15 border-amber-500/40 text-amber-300"
+                  }`}
                 >
                   {isSequenceComplete ? "✓" : currentStep?.finger ?? 1}
                 </div>
-                <span id="handSideText" className="text-[9px] font-semibold text-slate-300">
-                  {currentStep?.hand || "Mano Der."}
-                </span>
               </div>
-            </div>
-          </div>
 
-          {/* Partitura Interactiva MusicXML (OSMD) */}
-          <div
-            className={
-              isHorizontalLayout
-                ? "col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-2.5 flex flex-col justify-between shadow-inner"
-                : "bg-slate-900 border border-slate-800 rounded-2xl p-3 flex flex-col justify-between shadow-inner"
-            }
-          >
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                <Sparkles size={11} className="text-purple-400" /> Partitura MusicXML (OSMD)
-              </span>
-              <div className="flex items-center gap-2">
+              {/* Barra de progreso sutil + botón escuchar */}
+              <div className={isHorizontalLayout ? "flex flex-col gap-2" : "hidden sm:flex items-center gap-2"}>
                 {currentStep && (
                   <button
                     type="button"
                     onClick={() => grandPiano.playNote(currentStep.note, 0.9)}
-                    className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-orange-500/15 hover:bg-orange-500/25 text-orange-300 border border-orange-500/30 flex items-center gap-1 transition cursor-pointer"
+                    className="h-8 px-3 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-zinc-200 text-xs font-medium flex items-center justify-center gap-1.5 transition cursor-pointer"
                   >
-                    <Volume2 size={11} /> Escuchar Nota
+                    <Volume2 size={13} className="text-amber-400" />
+                    <span>Escuchar nota</span>
                   </button>
                 )}
-                <span className="text-[10px] font-mono text-purple-300 truncate max-w-[160px]">
+                <div className="w-full h-1 rounded-full bg-white/[0.07] overflow-hidden">
+                  <div
+                    className="h-full bg-amber-400 transition-all duration-300"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Visor de Partitura MusicXML (OSMD) — Ocupa todo el espacio restante */}
+          <div className="flex-1 min-w-0 min-h-0 bg-[#11131A] border border-white/[0.08] rounded-2xl p-2 sm:p-3 flex flex-col shadow-lg overflow-hidden">
+            <div className="flex items-center justify-between px-1 pb-1.5 shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-xs font-semibold text-zinc-200 truncate">
                   {activeTitle}
                 </span>
               </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={syncSupabaseRepertoire}
+                  disabled={isSyncingSupabase}
+                  className="text-[11px] text-zinc-400 hover:text-white flex items-center gap-1 transition cursor-pointer"
+                  title="Sincronizar biblioteca con Supabase"
+                >
+                  <RefreshCw size={11} className={isSyncingSupabase ? "animate-spin" : ""} />
+                  <span className="hidden sm:inline">Sincronizar</span>
+                </button>
+              </div>
             </div>
+
             <div
               id="osmdContainer"
               ref={osmdContainerRef}
-              className={`bg-white rounded-xl p-1.5 overflow-x-auto ${
-                isHorizontalLayout ? "h-24" : "min-h-[115px] max-h-[175px]"
-              } flex items-center justify-center text-slate-800 shadow-inner`}
+              className="flex-1 min-h-0 w-full bg-[#FAF9F5] rounded-xl px-2 py-1 overflow-x-auto overflow-y-hidden flex items-center justify-center text-zinc-800 shadow-inner"
             >
-              <span className="text-xs text-slate-400 font-normal text-center">
-                Cargando visor de partituras OSMD...
+              <span className="text-xs text-zinc-400 font-normal text-center">
+                Cargando partitura interactiva...
               </span>
             </div>
-          </div>
-        </div>
-
-        {/* 2. TECLADO TÁCTIL / MONITOR ALESIS USB-C */}
-        <div className="bg-slate-900 border border-orange-500/30 rounded-2xl p-2.5 sm:p-3.5 flex flex-col items-center shadow-xl">
-          <div className="w-full flex flex-wrap items-center justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider">
-                🎹 Teclado Guía Alesis (C3 a E5)
-              </span>
-              {currentStep && (
-                <span
-                  onClick={() => syncSequenceLeds(activeSequenceRef.current, stepIndexRef.current)}
-                  className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold cursor-pointer animate-pulse"
-                  style={{
-                    backgroundColor: "#f97316",
-                    color: "#090a0f",
-                    boxShadow: "0 0 12px #f97316",
-                  }}
-                >
-                  👉 Tecla encendida en tu piano: {NOTE_LABELS[currentStep.note]} (
-                  {SOLFEGE_LABELS[currentStep.note]}) • Dedo {currentStep.finger}
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-3 text-[10px] text-slate-300 font-medium">
-              <span className="flex items-center gap-1">
-                <span
-                  className="w-2.5 h-2.5 rounded-full inline-block"
-                  style={{ backgroundColor: "#f97316", boxShadow: "0 0 8px #f97316" }}
-                />
-                Tecla a tocar (Luz Activa en Piano)
-              </span>
-              <span className="flex items-center gap-1">
-                <span
-                  className="w-2.5 h-2.5 rounded-full inline-block"
-                  style={{ backgroundColor: "#22c55e", boxShadow: "0 0 8px #22c55e" }}
-                />
-                Correcta (Avanza a la siguiente)
-              </span>
-              <span className="flex items-center gap-1">
-                <span
-                  className="w-2.5 h-2.5 rounded-full inline-block"
-                  style={{ backgroundColor: "#ef4444", boxShadow: "0 0 8px #ef4444" }}
-                />
-                Error
-              </span>
-            </div>
-          </div>
-
-          <div
-            id="virtualKeyboard"
-            ref={virtualKeyboardRef}
-            className={`relative flex ${
-              isHorizontalLayout ? "h-28 sm:h-32" : "h-32 sm:h-36"
-            } w-full bg-slate-950 p-2 rounded-xl overflow-x-auto justify-start md:justify-center items-start border border-slate-800`}
-            style={{ WebkitOverflowScrolling: "touch" }}
-          >
-            {KEY_RANGE.map((midiNote) => {
-              const isBlack = BLACK_KEY_NUMBERS.includes(midiNote);
-              const isExpectedTarget = currentStep?.note === midiNote;
-              const activeColor: LedColor =
-                keyColors[midiNote] || (isExpectedTarget ? "orange" : null);
-
-              const keyInlineStyle: React.CSSProperties = isBlack
-                ? {
-                    marginLeft: "-10px",
-                    marginRight: "-10px",
-                    backgroundColor:
-                      activeColor === "red"
-                        ? "#ef4444"
-                        : activeColor === "green"
-                        ? "#22c55e"
-                        : activeColor === "orange"
-                        ? "#f97316"
-                        : "#0f172a",
-                    color: "#ffffff",
-                    borderColor:
-                      activeColor === "red"
-                        ? "#fca5a5"
-                        : activeColor === "green"
-                        ? "#86efac"
-                        : activeColor === "orange"
-                        ? "#fed7aa"
-                        : "#334155",
-                    boxShadow:
-                      activeColor === "red"
-                        ? "0 0 20px #ef4444, inset 0 0 8px rgba(255,255,255,0.5)"
-                        : activeColor === "green"
-                        ? "0 0 20px #22c55e, inset 0 0 8px rgba(255,255,255,0.5)"
-                        : activeColor === "orange"
-                        ? "0 0 24px #f97316, 0 0 10px #fb923c, inset 0 0 10px rgba(255,255,255,0.6)"
-                        : undefined,
-                  }
-                : {
-                    backgroundColor:
-                      activeColor === "red"
-                        ? "#ef4444"
-                        : activeColor === "green"
-                        ? "#22c55e"
-                        : activeColor === "orange"
-                        ? "#f97316"
-                        : "#ffffff",
-                    color: activeColor ? "#ffffff" : "#0f172a",
-                    borderColor:
-                      activeColor === "red"
-                        ? "#fca5a5"
-                        : activeColor === "green"
-                        ? "#86efac"
-                        : activeColor === "orange"
-                        ? "#ffedd5"
-                        : "#cbd5e1",
-                    boxShadow:
-                      activeColor === "red"
-                        ? "0 0 22px #ef4444, inset 0 0 10px rgba(255,255,255,0.5)"
-                        : activeColor === "green"
-                        ? "0 0 22px #22c55e, inset 0 0 10px rgba(255,255,255,0.5)"
-                        : activeColor === "orange"
-                        ? "0 0 26px #f97316, 0 0 12px #fb923c, inset 0 0 12px rgba(255,255,255,0.55)"
-                        : undefined,
-                  };
-
-              return (
-                <div
-                  key={midiNote}
-                  id={`key-${midiNote}`}
-                  ref={(el) => {
-                    keyElementRefs.current[midiNote] = el;
-                  }}
-                  onClick={() => evaluateUserNote(midiNote)}
-                  onTouchStart={(e) => {
-                    e.stopPropagation();
-                  }}
-                  style={keyInlineStyle}
-                  className={
-                    isBlack
-                      ? `relative z-20 ${
-                          isHorizontalLayout ? "h-16 w-5" : "h-16 sm:h-20 w-5 sm:w-6"
-                        } rounded-b-md cursor-pointer border-2 flex flex-col items-center justify-between py-1 text-[8px] font-mono shrink-0 transition-all select-none active:scale-95`
-                      : `relative z-10 ${
-                          isHorizontalLayout
-                            ? "h-24 sm:h-28 flex-1 min-w-[28px]"
-                            : "h-28 sm:h-32 w-9 sm:w-10 shrink-0"
-                        } rounded-b-lg cursor-pointer border-2 flex flex-col items-center justify-between py-1.5 text-[9px] font-semibold shadow-sm transition-all select-none active:scale-95`
-                  }
-                >
-                  {/* Bombillo LED superior en cada tecla */}
-                  <div className="flex flex-col items-center">
-                    <span
-                      className={`w-2.5 h-2.5 rounded-full transition-all ${
-                        activeColor === "orange" ? "animate-ping" : ""
-                      }`}
-                      style={{
-                        backgroundColor:
-                          activeColor === "orange"
-                            ? "#fff7ed"
-                            : activeColor === "green"
-                            ? "#dcfce7"
-                            : activeColor === "red"
-                            ? "#fee2e2"
-                            : isBlack
-                            ? "#1e293b"
-                            : "#e2e8f0",
-                        boxShadow: activeColor ? "0 0 8px #ffffff" : "none",
-                      }}
-                    />
-                    {activeColor === "orange" && currentStep && (
-                      <span
-                        className="mt-0.5 px-1 py-0.2 rounded text-[8px] font-black leading-tight"
-                        style={{ backgroundColor: "#090a0f", color: "#fb923c" }}
-                      >
-                        D{currentStep.finger}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Nombre de la Nota (Solfeo + Inglés) */}
-                  <div className="flex flex-col items-center leading-tight">
-                    <span className="font-black text-[9px]">{SOLFEGE_LABELS[midiNote]}</span>
-                    <span className="opacity-85 text-[7px] font-mono">{NOTE_LABELS[midiNote]}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 3. Consola de Sistema MIDI & OSMD */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-2.5 flex flex-col shadow-lg">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-              <Terminal size={12} className="text-emerald-400" /> Log de Sistema MIDI / OSMD / Supabase
-            </span>
-            <button
-              type="button"
-              onClick={() =>
-                setLogs([`[${new Date().toLocaleTimeString()}] [Sistema] Consola limpia.`])
-              }
-              className="text-[10px] font-mono text-slate-500 hover:text-slate-300 transition cursor-pointer"
-            >
-              Limpiar
-            </button>
-          </div>
-          <div
-            id="logConsole"
-            ref={logConsoleRef}
-            className={`bg-slate-950 p-2 rounded-xl font-mono text-[10px] text-emerald-400 ${
-              isHorizontalLayout ? "h-14" : "h-20"
-            } overflow-y-auto border border-slate-800 space-y-0.5`}
-          >
-            {logs.map((entry, idx) => (
-              <div key={`${idx}-${entry}`}>{entry}</div>
-            ))}
           </div>
         </div>
       </main>
+
+      {/* 3. DOCK INFERIOR: TECLADO GUÍA INTERACTIVO 61 TECLAS (ESTILO LOGIC PRO) */}
+      <section className="bg-[#0B0C11] border-t border-white/[0.08] px-2 sm:px-4 pt-1.5 pb-2 shrink-0 flex flex-col gap-1.5">
+        <div className="flex items-center justify-between px-1 text-[11px] text-zinc-400">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-zinc-300">Teclado Guía Alesis</span>
+            {currentStep && (
+              <span className="text-zinc-500 font-mono">
+                · {SOLFEGE_LABELS[currentStep.note]} ({NOTE_LABELS[currentStep.note]}) · Dedo{" "}
+                {currentStep.finger}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3 text-[10px] font-medium">
+            <span className="flex items-center gap-1.5 text-zinc-300">
+              <span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_6px_#f59e0b]" />
+              Ámbar (Tocar)
+            </span>
+            <span className="flex items-center gap-1.5 text-zinc-300">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#10b981]" />
+              Verde (Correcta)
+            </span>
+            <span className="flex items-center gap-1.5 text-zinc-300">
+              <span className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_6px_#f43f5e]" />
+              Rojo (Error)
+            </span>
+          </div>
+        </div>
+
+        <div
+          id="virtualKeyboard"
+          ref={virtualKeyboardRef}
+          className={`relative flex ${
+            isHorizontalLayout ? "h-24 sm:h-28" : "h-28 sm:h-32"
+          } w-full bg-[#07080C] p-1.5 rounded-xl overflow-x-auto justify-start md:justify-center items-start border border-white/[0.07]`}
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
+          {KEY_RANGE.map((midiNote) => {
+            const isBlack = BLACK_KEY_NUMBERS.includes(midiNote);
+            const isExpectedTarget = currentStep?.note === midiNote;
+            const activeColor: LedColor =
+              keyColors[midiNote] || (isExpectedTarget ? "orange" : null);
+
+            const keyInlineStyle: React.CSSProperties = isBlack
+              ? {
+                  marginLeft: "-10px",
+                  marginRight: "-10px",
+                  backgroundColor:
+                    activeColor === "red"
+                      ? "#e11d48"
+                      : activeColor === "green"
+                      ? "#10b981"
+                      : activeColor === "orange"
+                      ? "#f59e0b"
+                      : "#14161F",
+                  color: "#ffffff",
+                  borderColor:
+                    activeColor === "red"
+                      ? "#fda4af"
+                      : activeColor === "green"
+                      ? "#6ee7b7"
+                      : activeColor === "orange"
+                      ? "#fde68a"
+                      : "#272A3A",
+                  boxShadow:
+                    activeColor === "red"
+                      ? "0 0 16px rgba(225,29,72,0.65)"
+                      : activeColor === "green"
+                      ? "0 0 16px rgba(16,185,129,0.65)"
+                      : activeColor === "orange"
+                      ? "0 0 18px rgba(245,158,11,0.7)"
+                      : undefined,
+                }
+              : {
+                  backgroundColor:
+                    activeColor === "red"
+                      ? "#f43f5e"
+                      : activeColor === "green"
+                      ? "#10b981"
+                      : activeColor === "orange"
+                      ? "#f59e0b"
+                      : "#F8FAFC",
+                  color: activeColor ? "#ffffff" : "#0F172A",
+                  borderColor:
+                    activeColor === "red"
+                      ? "#fda4af"
+                      : activeColor === "green"
+                      ? "#6ee7b7"
+                      : activeColor === "orange"
+                      ? "#fde68a"
+                      : "#CBD5E1",
+                  boxShadow:
+                    activeColor === "red"
+                      ? "0 0 18px rgba(244,63,94,0.6)"
+                      : activeColor === "green"
+                      ? "0 0 18px rgba(16,185,129,0.6)"
+                      : activeColor === "orange"
+                      ? "0 0 20px rgba(245,158,11,0.65)"
+                      : undefined,
+                };
+
+            return (
+              <div
+                key={midiNote}
+                id={`key-${midiNote}`}
+                ref={(el) => {
+                  keyElementRefs.current[midiNote] = el;
+                }}
+                onClick={() => evaluateUserNote(midiNote)}
+                onTouchStart={(e) => {
+                  e.stopPropagation();
+                }}
+                style={keyInlineStyle}
+                className={
+                  isBlack
+                    ? `relative z-20 ${
+                        isHorizontalLayout ? "h-14 w-5" : "h-16 sm:h-18 w-5 sm:w-6"
+                      } rounded-b-md cursor-pointer border flex flex-col items-center justify-between py-1 text-[8px] font-mono shrink-0 transition-all select-none active:scale-95`
+                    : `relative z-10 ${
+                        isHorizontalLayout
+                          ? "h-20 sm:h-24 flex-1 min-w-[28px]"
+                          : "h-24 sm:h-28 w-9 sm:w-10 shrink-0"
+                      } rounded-b-lg cursor-pointer border flex flex-col items-center justify-between py-1.5 text-[9px] font-semibold shadow-sm transition-all select-none active:scale-95`
+                }
+              >
+                {/* Indicador LED Superior */}
+                <div className="flex flex-col items-center">
+                  <span
+                    className="w-2 h-2 rounded-full transition-all"
+                    style={{
+                      backgroundColor:
+                        activeColor === "orange"
+                          ? "#fffbeb"
+                          : activeColor === "green"
+                          ? "#ecfdf5"
+                          : activeColor === "red"
+                          ? "#fff1f2"
+                          : isBlack
+                          ? "#1E2230"
+                          : "#E2E8F0",
+                      boxShadow: activeColor ? "0 0 6px #ffffff" : "none",
+                    }}
+                  />
+                  {activeColor === "orange" && currentStep && (
+                    <span
+                      className="mt-0.5 px-1 rounded text-[8px] font-bold leading-tight"
+                      style={{ backgroundColor: "rgba(9,10,15,0.85)", color: "#fbbf24" }}
+                    >
+                      D{currentStep.finger}
+                    </span>
+                  )}
+                </div>
+
+                {/* Etiqueta de Nota */}
+                <div className="flex flex-col items-center leading-tight">
+                  <span className="font-bold text-[9px]">{SOLFEGE_LABELS[midiNote]}</span>
+                  <span className="opacity-75 text-[7px] font-mono">{NOTE_LABELS[midiNote]}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* 4. MODAL FLOTANTE DE DIAGNÓSTICO HARDWARE LED & LOGS (OCULTO POR DEFECTO) */}
+      {showCalibrator && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-[#12141D] border border-white/[0.1] rounded-3xl p-5 shadow-2xl flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-white">
+                  Diagnóstico de Iluminación Alesis
+                </h3>
+                <p className="text-xs text-zinc-400">
+                  {sysexEnabled
+                    ? "Control SysEx de 3 colores activo (Ámbar 0x17 · Verde 0x09 · Rojo 0x01)"
+                    : "Conecta el cable USB-C y permite el acceso MIDI para probar las luces"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCalibrator(false)}
+                className="w-8 h-8 rounded-full bg-white/[0.08] hover:bg-white/[0.15] text-zinc-300 hover:text-white flex items-center justify-center transition cursor-pointer"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button
+                type="button"
+                onClick={() => testOfficialSkooveColor("orange", "ÁMBAR (0x17)")}
+                className="py-2 px-3 rounded-xl font-semibold bg-amber-500 hover:bg-amber-400 text-black text-xs transition cursor-pointer"
+              >
+                Ámbar (0x17)
+              </button>
+              <button
+                type="button"
+                onClick={() => testOfficialSkooveColor("green", "VERDE (0x09)")}
+                className="py-2 px-3 rounded-xl font-semibold bg-emerald-500 hover:bg-emerald-400 text-black text-xs transition cursor-pointer"
+              >
+                Verde (0x09)
+              </button>
+              <button
+                type="button"
+                onClick={() => testOfficialSkooveColor("red", "ROJO (0x01)")}
+                className="py-2 px-3 rounded-xl font-semibold bg-rose-500 hover:bg-rose-400 text-white text-xs transition cursor-pointer"
+              >
+                Rojo (0x01)
+              </button>
+              <button
+                type="button"
+                onClick={() => testOfficialSkooveColor(null, "APAGAR (0x04)")}
+                className="py-2 px-3 rounded-xl font-semibold bg-white/[0.08] hover:bg-white/[0.14] text-zinc-200 text-xs border border-white/[0.08] transition cursor-pointer"
+              >
+                Apagar (0x04)
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between text-[11px] text-zinc-400">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Terminal size={12} /> Registro de eventos MIDI
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setLogs([`[${new Date().toLocaleTimeString()}] Registro reiniciado.`])
+                  }
+                  className="text-zinc-500 hover:text-zinc-300 cursor-pointer"
+                >
+                  Limpiar
+                </button>
+              </div>
+              <div
+                id="logConsole"
+                ref={logConsoleRef}
+                className="bg-black/60 p-2.5 rounded-xl font-mono text-[10px] text-zinc-300 h-28 overflow-y-auto border border-white/[0.06] space-y-1"
+              >
+                {logs.map((entry, idx) => (
+                  <div key={`${idx}-${entry}`}>{entry}</div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
