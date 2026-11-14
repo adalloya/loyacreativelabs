@@ -541,23 +541,26 @@ export default function AlesisPianoStudioSection({
     const outputs = midiOutputsRef.current;
     if (!outputs || outputs.length === 0) return;
 
-    if (sysexEnabledRef.current) {
-      const colorByte =
-        color === "orange"
-          ? ALESIS_TC61_COLOR_AMBER
-          : color === "green"
-          ? ALESIS_TC61_COLOR_GREEN
-          : color === "red"
-          ? ALESIS_TC61_COLOR_RED
-          : ALESIS_TC61_COLOR_OFF;
+    const colorByte =
+      color === "orange"
+        ? ALESIS_TC61_COLOR_AMBER
+        : color === "green"
+        ? ALESIS_TC61_COLOR_GREEN
+        : color === "red"
+        ? ALESIS_TC61_COLOR_RED
+        : ALESIS_TC61_COLOR_OFF;
 
-      const sysexPacket = buildAlesisTc61SetLedSysEx(noteNumber, colorByte);
-      for (const out of outputs) {
-        try {
-          out.send(sysexPacket);
-        } catch {}
-      }
+    const sysexPacket = buildAlesisTc61SetLedSysEx(noteNumber, colorByte);
+    let sentSysex = false;
 
+    for (const out of outputs) {
+      try {
+        out.send(sysexPacket);
+        sentSysex = true;
+      } catch {}
+    }
+
+    if (sentSysex || sysexEnabledRef.current) {
       if (color === null) {
         litHardwareNotesRef.current.delete(noteNumber);
       } else {
@@ -587,13 +590,21 @@ export default function AlesisPianoStudioSection({
   }, []);
 
   // Encender en el piano físico y en pantalla la nota objetivo actual
+  // IMPORTANTE: Apagamos las notas previas con SET_LED (0x00) individual en vez de RESET_ALL (0x04),
+  // porque enviar RESET_ALL (0x04) seguido a 0ms de SET_LED hace que el teclado ignore el encendido.
   const syncSequenceLeds = useCallback(
     (sequence: LessonStep[], stepIdx: number) => {
       activeFeedbackRef.current = null;
-      sendHardwareResetAllLeds();
+      const targetNote = stepIdx < sequence.length ? sequence[stepIdx].note : null;
 
-      if (stepIdx < sequence.length) {
-        const targetNote = sequence[stepIdx].note;
+      const previouslyLit = Array.from(litHardwareNotesRef.current);
+      for (const prevNote of previouslyLit) {
+        if (prevNote !== targetNote) {
+          sendHardwareLedMidi(prevNote, null);
+        }
+      }
+
+      if (targetNote !== null) {
         setKeyColors({ [targetNote]: "orange" });
         centerKeyInVirtualKeyboard(targetNote);
         sendHardwareLedMidi(targetNote, "orange");
@@ -601,7 +612,7 @@ export default function AlesisPianoStudioSection({
         setKeyColors({});
       }
     },
-    [centerKeyInVirtualKeyboard, sendHardwareLedMidi, sendHardwareResetAllLeds]
+    [centerKeyInVirtualKeyboard, sendHardwareLedMidi]
   );
 
   useEffect(() => {
@@ -666,7 +677,7 @@ export default function AlesisPianoStudioSection({
         setTimeout(() => {
           stepIndexRef.current = 0;
           setCurrentIndex(0);
-        }, 350);
+        }, 300);
         return;
       }
 
@@ -693,7 +704,7 @@ export default function AlesisPianoStudioSection({
           } catch {}
         }
 
-        // 2. Mantener la luz VERDE (0x09) visible durante 420ms y luego encender la siguiente nota en ÁMBAR (0x17)
+        // 2. Apagar la nota anterior (0x00) y encender la SIGUIENTE nota en ÁMBAR/NARANJA (0x17)
         feedbackTimerRef.current = setTimeout(() => {
           activeFeedbackRef.current = null;
           feedbackTimerRef.current = null;
@@ -705,7 +716,7 @@ export default function AlesisPianoStudioSection({
             centerKeyInVirtualKeyboard(nextNote);
             sendHardwareLedMidi(nextNote, "orange");
           }
-        }, 420);
+        }, 240);
       } else {
         // Si tocó una tecla equivocada:
         // En el piano físico encendemos la tecla equivocada en ROJO (0x01) y mantenemos la correcta en ÁMBAR (0x17)
@@ -738,7 +749,7 @@ export default function AlesisPianoStudioSection({
             sendHardwareLedMidi(playedNote, null);
           }
           sendHardwareLedMidi(expectedNote, "orange");
-        }, 480);
+        }, 380);
       }
     },
     [addLog, centerKeyInVirtualKeyboard, sendHardwareLedMidi]
@@ -765,8 +776,8 @@ export default function AlesisPianoStudioSection({
       try {
         setMidiPermissionDenied(false);
         midiAccess = await navigator.requestMIDIAccess({ sysex: true });
-        sysexEnabledRef.current = Boolean(midiAccess.sysexEnabled);
-        setSysexEnabled(Boolean(midiAccess.sysexEnabled));
+        sysexEnabledRef.current = midiAccess.sysexEnabled !== false;
+        setSysexEnabled(midiAccess.sysexEnabled !== false);
       } catch (err) {
         sysexEnabledRef.current = false;
         setSysexEnabled(false);
@@ -893,23 +904,18 @@ export default function AlesisPianoStudioSection({
     [addLog, sendHardwareLedMidi, syncSequenceLeds]
   );
 
-  // Auto-conectar al abrir la página únicamente si el permiso MIDI + SysEx ya fue concedido previamente
+  // Auto-conectar al abrir la página
   useEffect(() => {
-    if (typeof navigator !== "undefined" && navigator.permissions?.query) {
-      navigator.permissions
-        .query({ name: "midi" as PermissionName, sysex: true } as PermissionDescriptor)
-        .then((status) => {
-          if (status.state === "granted") {
-            initMIDI(true);
-          }
-        })
-        .catch(() => {});
-    }
+    initMIDI(true);
   }, [initMIDI]);
 
   // Probar directamente cualquiera de los 3 colores oficiales de Skoove en la tecla actual
   const testOfficialSkooveColor = useCallback(
-    (color: LedColor, label: string) => {
+    async (color: LedColor, label: string) => {
+      if (midiOutputsRef.current.length === 0) {
+        await initMIDI(false);
+      }
+
       const seq = activeSequenceRef.current;
       const idx = stepIndexRef.current < seq.length ? stepIndexRef.current : 0;
       const target = seq[idx]?.note || 60;
@@ -932,7 +938,7 @@ export default function AlesisPianoStudioSection({
           .toUpperCase()} ${byteVal} F7]`
       );
     },
-    [addLog, centerKeyInVirtualKeyboard, sendHardwareLedMidi, sendHardwareResetAllLeds]
+    [addLog, centerKeyInVirtualKeyboard, initMIDI, sendHardwareLedMidi, sendHardwareResetAllLeds]
   );
 
   const uploadAndLoadXML = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -975,6 +981,9 @@ export default function AlesisPianoStudioSection({
 
   const handleSelectOnlineSong = async (songId: string) => {
     if (!songId) return;
+    if (midiOutputsRef.current.length === 0) {
+      await initMIDI(false);
+    }
     setSelectedRepertoireId(songId);
     setPracticeMode("repertoire");
     stepIndexRef.current = 0;
@@ -1017,9 +1026,12 @@ export default function AlesisPianoStudioSection({
     }
   };
 
-  const changeLesson = (indexStr: string) => {
+  const changeLesson = async (indexStr: string) => {
     const idx = parseInt(indexStr, 10);
     if (isNaN(idx) || idx < 0 || idx >= BEGINNER_LESSONS.length) return;
+    if (midiOutputsRef.current.length === 0) {
+      await initMIDI(false);
+    }
     setPracticeMode("lesson");
     setSelectedRepertoireId("");
     setCurrentLessonIndex(idx);
@@ -1030,7 +1042,10 @@ export default function AlesisPianoStudioSection({
     addLog(`Lección cargada: ${BEGINNER_LESSONS[idx].title}`);
   };
 
-  const restartCurrentSequence = () => {
+  const restartCurrentSequence = async () => {
+    if (midiOutputsRef.current.length === 0) {
+      await initMIDI(false);
+    }
     stepIndexRef.current = 0;
     setCurrentIndex(0);
     syncSequenceLeds(activeSequenceRef.current, 0);
@@ -1194,7 +1209,7 @@ export default function AlesisPianoStudioSection({
         <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
-            onClick={() => syncSequenceLeds(activeSequenceRef.current, stepIndexRef.current)}
+            onClick={() => testOfficialSkooveColor("orange", "ÁMBAR (0x17)")}
             className="h-8 px-2.5 rounded-full bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"
             title="Volver a iluminar la tecla actual en el piano físico"
           >
@@ -1235,6 +1250,44 @@ export default function AlesisPianoStudioSection({
           </button>
         </div>
       </header>
+
+      {/* BARRA DE CONTROL DIRECTO DE COLORES ALESIS (SIEMPRE VISIBLE ARRIBA) */}
+      <div className="px-3 sm:px-4 py-1.5 bg-[#101219] border-b border-white/[0.07] flex flex-wrap items-center justify-between gap-2 shrink-0 z-20">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          <button
+            type="button"
+            onClick={() => testOfficialSkooveColor("orange", "ÁMBAR (0x17 = 23)")}
+            className="h-7 px-3 rounded-full font-semibold bg-amber-500 hover:bg-amber-400 text-black text-[11px] flex items-center gap-1.5 transition cursor-pointer shrink-0 active:scale-95 shadow-sm"
+          >
+            <span>🟠 Probar Ámbar (0x17)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => testOfficialSkooveColor("green", "VERDE (0x09 = 9)")}
+            className="h-7 px-3 rounded-full font-semibold bg-emerald-500 hover:bg-emerald-400 text-black text-[11px] flex items-center gap-1.5 transition cursor-pointer shrink-0 active:scale-95 shadow-sm"
+          >
+            <span>🟢 Probar Verde (0x09)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => testOfficialSkooveColor("red", "ROJO (0x01 = 1)")}
+            className="h-7 px-3 rounded-full font-semibold bg-rose-500 hover:bg-rose-400 text-white text-[11px] flex items-center gap-1.5 transition cursor-pointer shrink-0 active:scale-95 shadow-sm"
+          >
+            <span>🔴 Probar Rojo (0x01)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => testOfficialSkooveColor(null, "RESET_ALL (0x04)")}
+            className="h-7 px-2.5 rounded-full font-medium bg-white/[0.08] hover:bg-white/[0.14] text-zinc-200 border border-white/[0.1] text-[11px] flex items-center gap-1 transition cursor-pointer shrink-0 active:scale-95"
+          >
+            <span>⚫ Apagar Todas (0x04)</span>
+          </button>
+        </div>
+
+        <span className="text-[10px] font-mono text-zinc-400 truncate max-w-full sm:max-w-[45%]">
+          {logs[logs.length - 1]}
+        </span>
+      </div>
 
       {/* Banner de Permiso MIDI SysEx (solo aparece si Chrome bloqueó el permiso) */}
       {midiPermissionDenied && (

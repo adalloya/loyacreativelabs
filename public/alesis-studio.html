@@ -65,6 +65,25 @@
         </div>
     </header>
 
+    <!-- Barra Rápida de Control LED Hardware (Siempre Visible) -->
+    <div class="bg-[#0B0D13] border-b border-white/10 px-3 sm:px-4 py-1.5 flex items-center justify-between gap-2 shrink-0 overflow-x-auto">
+        <div class="flex items-center gap-1.5 shrink-0">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-amber-300 mr-1 hidden sm:inline">Luces Piano:</span>
+            <button onclick="testOfficialSkooveColor('orange')" class="h-7 px-2.5 rounded-full bg-amber-500 hover:bg-amber-400 active:scale-95 text-black text-[11px] font-bold transition shadow-sm whitespace-nowrap">
+                🟠 Probar Ámbar (0x17)
+            </button>
+            <button onclick="testOfficialSkooveColor('green')" class="h-7 px-2.5 rounded-full bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-black text-[11px] font-bold transition shadow-sm whitespace-nowrap">
+                🟢 Probar Verde (0x09)
+            </button>
+            <button onclick="testOfficialSkooveColor('red')" class="h-7 px-2.5 rounded-full bg-rose-500 hover:bg-rose-400 active:scale-95 text-white text-[11px] font-bold transition shadow-sm whitespace-nowrap">
+                🔴 Probar Rojo (0x01)
+            </button>
+            <button onclick="testOfficialSkooveColor(null)" class="h-7 px-2.5 rounded-full bg-white/10 hover:bg-white/15 active:scale-95 text-zinc-200 border border-white/10 text-[11px] font-semibold transition whitespace-nowrap">
+                ⚫ Apagar Todas (0x04)
+            </button>
+        </div>
+    </div>
+
     <!-- Escenario Central Sin Scroll Vertical -->
     <main class="flex-1 min-h-0 p-2 sm:p-3 flex flex-col gap-2 overflow-hidden">
         <div class="flex-1 min-h-0 grid grid-cols-1 sm:grid-cols-12 gap-2.5">
@@ -185,30 +204,36 @@
 
         function transmitRawLedPacket(noteNumber, color) {
             if (!midiOutputs.length) return;
+            const colorByte =
+                color === 'orange' ? ALESIS_COLOR_AMBER :
+                color === 'green' ? ALESIS_COLOR_GREEN :
+                color === 'red' ? ALESIS_COLOR_RED :
+                ALESIS_COLOR_OFF;
+            const sysexPacket = [
+                ...ALESIS_TC61_SYSEX_HEADER,
+                ALESIS_CMD_SET_LED,
+                noteNumber & 0x7F,
+                colorByte,
+                0xF7
+            ];
+            let sentSysex = false;
             for (let out of midiOutputs) {
                 try {
-                    if (sysexEnabled) {
-                        const colorByte =
-                            color === 'orange' ? ALESIS_COLOR_AMBER :
-                            color === 'green' ? ALESIS_COLOR_GREEN :
-                            color === 'red' ? ALESIS_COLOR_RED :
-                            ALESIS_COLOR_OFF;
-                        out.send([
-                            ...ALESIS_TC61_SYSEX_HEADER,
-                            ALESIS_CMD_SET_LED,
-                            noteNumber & 0x7F,
-                            colorByte,
-                            0xF7
-                        ]);
-                    } else {
+                    out.send(sysexPacket);
+                    sentSysex = true;
+                } catch {}
+            }
+            if (!sentSysex) {
+                for (let out of midiOutputs) {
+                    try {
                         if (!color || color === 'green') {
                             out.send([0x80, noteNumber, 0]);
                             out.send([0x90, noteNumber, 0]);
                         } else {
                             out.send([0x90, noteNumber, 1]);
                         }
-                    }
-                } catch {}
+                    } catch {}
+                }
             }
             if (color) {
                 litHardwareNotes.set(noteNumber, 1);
@@ -227,7 +252,10 @@
             transmitRawLedPacket(noteNumber, color);
         }
 
-        function testOfficialSkooveColor(color) {
+        async function testOfficialSkooveColor(color) {
+            if (!midiOutputs.length) {
+                await initMIDI(false);
+            }
             const currentStep = activeSequence[currentIndex] || activeSequence[0];
             const note = currentStep ? currentStep.note : 60;
             if (!color) {
@@ -435,7 +463,10 @@
             }
         }
 
-        function loadSongFromCloud(songId) {
+        async function loadSongFromCloud(songId) {
+            if (!midiOutputs.length) {
+                await initMIDI(false);
+            }
             const selector = document.getElementById('cloudSongSelector');
             const selectedOption = selector.options[selector.selectedIndex];
             if (!selectedOption || !selectedOption.dataset.xml) return;
@@ -459,19 +490,30 @@
                 document.getElementById('songLyric').innerText = "¡Partitura completada! 🎉";
                 document.getElementById('instructionText').innerText = "Toca cualquier tecla para reiniciar.";
                 document.getElementById('fingerNumberBox').innerText = "✓";
+                resetAllHardwareLeds();
                 return;
             }
             const currentStep = activeSequence[currentIndex];
             document.getElementById('songLyric').innerText = currentStep.lyric;
-            document.getElementById('instructionText').innerText = `Toca ${currentStep.name} (Luz Naranja)`;
+            document.getElementById('instructionText').innerText = `Toca ${currentStep.name} (Luz Ámbar)`;
             document.getElementById('fingerNumberBox').innerText = currentStep.finger || 1;
 
-            // Limpiar clases visuales y apagar todas las luces del hardware con comando oficial RESET_ALL (0x04)
+            // Limpiar clases visuales en pantalla
             for (let i = 48; i <= 76; i++) {
                 const keyEl = document.getElementById(`key-${i}`);
                 if (keyEl) keyEl.classList.remove('led-red', 'led-green', 'led-orange');
             }
-            resetAllHardwareLeds();
+
+            // Apagar individualmente cualquier otra nota previa sin enviar RESET_ALL (0x04) para no cancelar el SET_LED siguiente
+            const prevNotes = new Set([
+                ...Array.from(hardwareLedState.keys()),
+                ...Array.from(litHardwareNotes.keys())
+            ]);
+            prevNotes.forEach(prevNote => {
+                if (prevNote !== currentStep.note) {
+                    sendHardwareMidi(prevNote, null);
+                }
+            });
 
             setKeyColor(currentStep.note, 'orange');
         }
@@ -594,7 +636,7 @@
                     feedbackTimer = null;
                     setKeyColor(expectedNote, null);
                     updateLessonUI();
-                }, 420);
+                }, 240);
             } else {
                 activeFeedback = { note: playedNote, color: 'red' };
                 setKeyColor(playedNote, 'red');
@@ -606,7 +648,7 @@
                         setKeyColor(playedNote, null);
                     }
                     setKeyColor(expectedNote, 'orange');
-                }, 480);
+                }, 380);
             }
         }
 
@@ -627,7 +669,8 @@
         }
 
         buildVirtualKeyboard();
-        updateLessonUI(); // Encender y centrar la primera tecla en Naranja inmediatamente al abrir la app
+        updateLessonUI();
+        initMIDI(true);
         fetchCloudSongs();
     </script>
 </body>
