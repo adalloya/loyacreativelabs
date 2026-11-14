@@ -21,13 +21,27 @@ import {
   Image as ImageIcon,
   Pause,
   Play,
-  Maximize2,
   SlidersHorizontal,
   X,
-  AlertCircle,
   Film,
   Aperture,
+  Smartphone,
 } from "lucide-react";
+
+interface LoyaScopeAndroidBridge {
+  isNativeApp: () => boolean;
+  isUsbCameraConnected: () => boolean;
+  getUsbCameraName: () => string;
+  rescanUsbCamera: () => void;
+  saveToGallery: (base64Data: string, filename: string, mimeType: string) => boolean;
+}
+
+declare global {
+  interface Window {
+    LoyaScopeAndroid?: LoyaScopeAndroidBridge;
+    onLoyaNativeUsbUpdate?: (connected: boolean, deviceName: string) => void;
+  }
+}
 
 interface CapturedMedia {
   id: string;
@@ -43,6 +57,12 @@ interface CapturedMedia {
 }
 
 export default function LoyaScopePage() {
+  // Native APK & UVC state
+  const [isNativeApk, setIsNativeApk] = useState<boolean>(false);
+  const [isNativeUvcMode, setIsNativeUvcMode] = useState<boolean>(false);
+  const [nativeUsbConnected, setNativeUsbConnected] = useState<boolean>(false);
+  const [nativeUsbName, setNativeUsbName] = useState<string>("Cámara USB-C (OTG)");
+
   // Camera & Stream state
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
@@ -78,12 +98,14 @@ export default function LoyaScopePage() {
 
   // Refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const uvcCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recordCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const recordAnimFrameRef = useRef<number | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isFrozenRef = useRef<boolean>(false);
 
   // Refs for live values inside requestAnimationFrame during video recording
   const zoomRef = useRef(zoom);
@@ -92,6 +114,7 @@ export default function LoyaScopePage() {
   const mirroredRef = useRef(mirrored);
   const brightnessRef = useRef(brightness);
   const contrastRef = useRef(contrast);
+  const isNativeUvcModeRef = useRef(isNativeUvcMode);
 
   useEffect(() => {
     zoomRef.current = zoom;
@@ -114,6 +137,12 @@ export default function LoyaScopePage() {
   useEffect(() => {
     contrastRef.current = contrast;
   }, [contrast]);
+  useEffect(() => {
+    isNativeUvcModeRef.current = isNativeUvcMode;
+  }, [isNativeUvcMode]);
+  useEffect(() => {
+    isFrozenRef.current = isFrozen;
+  }, [isFrozen]);
 
   // Touch gesture refs (Pinch to zoom + 1-finger pan + double tap)
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
@@ -126,73 +155,128 @@ export default function LoyaScopePage() {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage((prev) => (prev === msg ? null : prev));
-    }, 3200);
+    }, 3400);
   }, []);
 
-  // Helper to detect if a device label looks like a USB / external UVC camera
-  const isExternalUsbCamera = (label: string) => {
-    const l = label.toLowerCase();
-    return (
+  // Helper to detect if a MediaDeviceInfo is an external / USB-C UVC camera
+  const isExternalUsbCamera = useCallback((dev: MediaDeviceInfo, index: number) => {
+    const l = (dev.label || "").toLowerCase();
+    if (
       l.includes("usb") ||
       l.includes("uvc") ||
       l.includes("external") ||
+      l.includes("externa") ||
       l.includes("capture") ||
       l.includes("endoscop") ||
       l.includes("microscop") ||
       l.includes("pc camera") ||
       l.includes("webcam") ||
       l.includes("otg") ||
-      l.includes("hdmi")
-    );
-  };
+      l.includes("hdmi") ||
+      l.includes("facing external")
+    ) {
+      return true;
+    }
 
-  // Stop current camera stream cleanly
+    // Check WebRTC InputDeviceInfo.getCapabilities().facingMode
+    const maybeInputDev = dev as MediaDeviceInfo & {
+      getCapabilities?: () => MediaTrackCapabilities;
+    };
+    if (typeof maybeInputDev.getCapabilities === "function") {
+      try {
+        const caps = maybeInputDev.getCapabilities();
+        if (caps && Array.isArray(caps.facingMode)) {
+          const hasInternal =
+            caps.facingMode.includes("user") || caps.facingMode.includes("environment");
+          if (!hasInternal && caps.facingMode.length === 0 && index >= 2) {
+            return true;
+          }
+        }
+      } catch {
+        // Ignore capability inspection error
+      }
+    }
+
+    return false;
+  }, []);
+
+  // Stop current WebRTC camera stream cleanly
   const stopCurrentStream = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
-    setIsStreaming(false);
   }, []);
 
-  // Start stream for a specific deviceId (or default external/environment camera)
+  // Start WebRTC stream for a specific deviceId (or auto-discover external USB camera)
   const startCamera = useCallback(
-    async (targetDeviceId?: string) => {
+    async (targetDeviceId?: string, forceRescanUsb = false) => {
       setStreamError(null);
+      setIsNativeUvcMode(false);
       stopCurrentStream();
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         setStreamError(
-          "Tu navegador no permite acceso a cámaras USB/WebRTC (asegúrate de usar HTTPS o localhost)."
+          "Tu navegador no permite acceso a cámaras WebRTC. Usa HTTPS o instala la App Android (.APK)."
         );
         return;
       }
 
       try {
-        const videoConstraints: MediaTrackConstraints = targetDeviceId
-          ? {
-              deviceId: { exact: targetDeviceId },
-              width: { ideal: 1920 },
-              height: { ideal: 1080 },
-            }
-          : {
-              facingMode: { ideal: "environment" },
-              width: { ideal: 1920 },
-              height: { ideal: 1080 },
-            };
-
         let stream: MediaStream;
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: videoConstraints,
-            audio: false,
-          });
-        } catch {
-          // Fallback without resolution constraints for strict USB UVC cameras
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: targetDeviceId ? { deviceId: { exact: targetDeviceId } } : true,
-            audio: false,
-          });
+
+        if (targetDeviceId) {
+          // Try opening the specific camera first without rigid 1080p constraints if 720p/VGA is needed
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: {
+                deviceId: { exact: targetDeviceId },
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+              },
+              audio: false,
+            });
+          } catch {
+            // Pure deviceId constraint for 640x480 USB-C endoscopes/microscopes
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: { deviceId: { exact: targetDeviceId } },
+              audio: false,
+            });
+          }
+        } else {
+          // IMPORTANT: Request { video: true } WITHOUT facingMode first so Android/iOS unlocks external USB-C cameras!
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: true,
+              audio: false,
+            });
+          } catch {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: { facingMode: "environment" },
+              audio: false,
+            });
+          }
+        }
+
+        // Now enumerate all video devices with full permissions unlocked
+        const allDevices = await navigator.mediaDevices.enumerateDevices();
+        const videoInputs = allDevices.filter((d) => d.kind === "videoinput");
+        setDevices(videoInputs);
+
+        const videoTrack = stream.getVideoTracks()[0];
+        const settings = videoTrack?.getSettings();
+        const currentId =
+          settings?.deviceId || targetDeviceId || videoInputs[0]?.deviceId || "";
+
+        // If no specific targetDeviceId was requested (or user clicked Rescan USB), check if an external USB camera exists
+        if (!targetDeviceId || forceRescanUsb) {
+          const usbCam = videoInputs.find((d, idx) => isExternalUsbCamera(d, idx));
+          if (usbCam && usbCam.deviceId && usbCam.deviceId !== currentId) {
+            stream.getTracks().forEach((t) => t.stop());
+            showToast(`Cámara USB-C detectada: ${usbCam.label || "USB UVC"}`);
+            await startCamera(usbCam.deviceId, false);
+            return;
+          }
         }
 
         streamRef.current = stream;
@@ -202,56 +286,137 @@ export default function LoyaScopePage() {
           await videoRef.current.play().catch(() => {});
         }
 
-        const videoTrack = stream.getVideoTracks()[0];
-        const settings = videoTrack?.getSettings();
         if (settings?.width && settings?.height) {
           setResolutionLabel(`${settings.width}×${settings.height}`);
         } else {
-          setResolutionLabel("UVC LIVE");
+          setResolutionLabel("LIVE");
         }
 
-        // Refresh device list now that permissions are granted
-        const allDevices = await navigator.mediaDevices.enumerateDevices();
-        const videoInputs = allDevices.filter((d) => d.kind === "videoinput");
-        setDevices(videoInputs);
-
-        const currentId = settings?.deviceId || targetDeviceId || videoInputs[0]?.deviceId || "";
         setSelectedDeviceId(currentId);
-
-        const matchedDevice = videoInputs.find((d) => d.deviceId === currentId);
-        const label = matchedDevice?.label || videoTrack?.label || "Cámara Activa";
+        const matchedIdx = videoInputs.findIndex((d) => d.deviceId === currentId);
+        const matchedDevice = videoInputs[matchedIdx];
+        const label =
+          matchedDevice?.label ||
+          videoTrack?.label ||
+          `Cámara #${matchedIdx >= 0 ? matchedIdx + 1 : 1}`;
         setActiveCameraLabel(label);
-        const usbDetected = isExternalUsbCamera(label);
+
+        const usbDetected = matchedDevice
+          ? isExternalUsbCamera(matchedDevice, matchedIdx)
+          : false;
         setIsUsbDetected(usbDetected);
         setIsStreaming(true);
         setIsFrozen(false);
-
-        // If no specific device was requested and we see a USB camera in the list that isn't selected yet, auto-switch to it!
-        if (!targetDeviceId) {
-          const usbCam = videoInputs.find((d) => isExternalUsbCamera(d.label));
-          if (usbCam && usbCam.deviceId !== currentId) {
-            showToast(`Cámara USB-C detectada: ${usbCam.label}`);
-            startCamera(usbCam.deviceId);
-            return;
-          }
-        }
       } catch (err: unknown) {
         console.error("Error starting camera:", err);
         const message =
-          err instanceof Error ? err.message : "Permiso denegado o cámara no disponible.";
+          err instanceof Error ? err.message : "Permiso denegado o cámara ocupada.";
         setStreamError(
-          `No se pudo abrir la cámara (${message}). Conecta tu cámara USB-C y acepta los permisos del navegador.`
+          `No se pudo abrir la cámara (${message}). Acepta los permisos de cámara o usa la App Android (.APK) para cámaras USB-C.`
         );
       }
     },
-    [stopCurrentStream, showToast]
+    [stopCurrentStream, isExternalUsbCamera, showToast]
   );
 
-  // Initial camera boot + USB hotplug listener + WakeLock
-  useEffect(() => {
-    startCamera();
+  // Activate Native Android APK USB-C UVC Stream Mode
+  const startNativeUsbMode = useCallback(
+    (usbName?: string) => {
+      stopCurrentStream();
+      setStreamError(null);
+      setIsNativeUvcMode(true);
+      setIsUsbDetected(true);
+      setSelectedDeviceId("native-usb-uvc");
+      setActiveCameraLabel(usbName || nativeUsbName || "Cámara USB-C (Driver UVC)");
+      setResolutionLabel("USB-C UVC");
+      setIsStreaming(true);
+      setIsFrozen(false);
+    },
+    [stopCurrentStream, nativeUsbName]
+  );
 
-    // Screen Wake Lock so display stays on while inspecting
+  // Poll `/__uvc_frame.jpg` at ~30 FPS when in Native Android APK USB-C UVC mode
+  useEffect(() => {
+    if (!isNativeUvcMode) return;
+    let active = true;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+
+    const fetchNextFrame = () => {
+      if (!active) return;
+      if (isFrozenRef.current) {
+        setTimeout(fetchNextFrame, 100);
+        return;
+      }
+      img.onload = () => {
+        if (!active) return;
+        const canvas = uvcCanvasRef.current;
+        if (canvas) {
+          const w = img.naturalWidth || 1280;
+          const h = img.naturalHeight || 720;
+          if (canvas.width !== w || canvas.height !== h) {
+            canvas.width = w;
+            canvas.height = h;
+            setResolutionLabel(`${w}×${h} UVC`);
+          }
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, w, h);
+          }
+        }
+        if (active) {
+          requestAnimationFrame(fetchNextFrame);
+        }
+      };
+      img.onerror = () => {
+        if (active) {
+          setTimeout(fetchNextFrame, 120);
+        }
+      };
+      img.src = `/__uvc_frame.jpg?t=${Date.now()}`;
+    };
+
+    fetchNextFrame();
+    return () => {
+      active = false;
+    };
+  }, [isNativeUvcMode]);
+
+  // Initial boot: check Native Android APK bridge + WebRTC + USB hotplug listener
+  useEffect(() => {
+    const hasBridge =
+      typeof window !== "undefined" &&
+      typeof window.LoyaScopeAndroid?.isNativeApp === "function" &&
+      window.LoyaScopeAndroid.isNativeApp();
+
+    if (hasBridge && window.LoyaScopeAndroid) {
+      setIsNativeApk(true);
+
+      window.onLoyaNativeUsbUpdate = (connected: boolean, deviceName: string) => {
+        setNativeUsbConnected(connected);
+        if (deviceName) setNativeUsbName(deviceName);
+        if (connected) {
+          showToast(`USB-C UVC conectado: ${deviceName || "Cámara Externa"}`);
+          startNativeUsbMode(deviceName);
+        } else {
+          showToast("Cámara USB-C desconectada, cambiando a cámara interna");
+          startCamera();
+        }
+      };
+
+      if (window.LoyaScopeAndroid.isUsbCameraConnected()) {
+        const name = window.LoyaScopeAndroid.getUsbCameraName();
+        setNativeUsbConnected(true);
+        setNativeUsbName(name || "Cámara USB-C UVC");
+        startNativeUsbMode(name);
+      } else {
+        startCamera();
+      }
+    } else {
+      startCamera();
+    }
+
+    // Screen Wake Lock
     let wakeLock: { release: () => Promise<void> } | null = null;
     const requestWakeLock = async () => {
       try {
@@ -270,12 +435,10 @@ export default function LoyaScopePage() {
       const videoInputs = all.filter((d) => d.kind === "videoinput");
       setDevices(videoInputs);
 
-      const usbCam = videoInputs.find((d) => isExternalUsbCamera(d.label));
+      const usbCam = videoInputs.find((d, idx) => isExternalUsbCamera(d, idx));
       if (usbCam) {
-        showToast(`USB-C conectado: ${usbCam.label}`);
+        showToast(`USB-C detectado: ${usbCam.label || "Cámara Externa"}`);
         startCamera(usbCam.deviceId);
-      } else if (videoInputs.length > 0) {
-        showToast("Cambio de cámaras detectado");
       }
     };
 
@@ -288,13 +451,15 @@ export default function LoyaScopePage() {
         wakeLock.release().catch(() => {});
       }
     };
-  }, [startCamera, stopCurrentStream, showToast]);
+  }, [startCamera, startNativeUsbMode, stopCurrentStream, isExternalUsbCamera, showToast]);
 
-  // Draw current video frame (with zoom, pan, rotation, mirror, brightness/contrast) onto a target canvas
+  // Draw current video or UVC canvas frame (with zoom, pan, rotation, mirror, brightness/contrast) onto a target canvas
   const renderTransformedFrame = useCallback(
     (
       ctx: CanvasRenderingContext2D,
-      video: HTMLVideoElement,
+      source: HTMLVideoElement | HTMLCanvasElement,
+      sourceW: number,
+      sourceH: number,
       outWidth: number,
       outHeight: number,
       z: number,
@@ -312,49 +477,57 @@ export default function LoyaScopePage() {
         ctx.filter = "none";
       }
 
-      // Move origin to center of canvas
       ctx.translate(outWidth / 2, outHeight / 2);
-
-      // Apply pan (scaled relative to viewport)
       ctx.translate(p.x * (outWidth / 380), p.y * (outHeight / 380));
-
-      // Apply zoom
       ctx.scale(z, z);
 
-      // Apply mirror
       if (mir) {
         ctx.scale(-1, 1);
       }
-
-      // Apply rotation
       if (rot !== 0) {
         ctx.rotate((rot * Math.PI) / 180);
       }
 
-      const vw = video.videoWidth || 1280;
-      const vh = video.videoHeight || 720;
-
-      ctx.drawImage(video, -vw / 2, -vh / 2, vw, vh);
+      ctx.drawImage(source, -sourceW / 2, -sourceH / 2, sourceW, sourceH);
       ctx.restore();
     },
     []
   );
 
-  // Save/Share helper for iOS & Android Camera Roll ("Guardar en Carrete")
+  // Convert Blob to Base64 data URL (for saving via Native Android APK bridge)
+  const blobToBase64 = (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(String(reader.result || ""));
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+  // Save/Share helper for Android & iOS Camera Roll ("Guardar en Carrete")
   const saveMediaToCameraRoll = useCallback(
     async (item: CapturedMedia, silentIfDownload = false) => {
       const mimeType =
-        item.type === "photo"
-          ? "image/jpeg"
-          : item.blob.type || "video/mp4";
+        item.type === "photo" ? "image/jpeg" : item.blob.type || "video/mp4";
 
+      // 1. If running inside our Native Loya Scope Android APK, save directly into DCIM/LoyaScope via MediaStore!
+      if (window.LoyaScopeAndroid?.saveToGallery) {
+        try {
+          const b64 = await blobToBase64(item.blob);
+          const ok = window.LoyaScopeAndroid.saveToGallery(b64, item.filename, mimeType);
+          if (ok) {
+            showToast("Guardado directamente en tu Carrete (DCIM/LoyaScope)");
+            return;
+          }
+        } catch (e) {
+          console.error("Native gallery save error:", e);
+        }
+      }
+
+      // 2. Mobile Browser Web Share API (opens native iOS/Android sheet with "Save Image" / "Save Video")
       const file = new File([item.blob], item.filename, {
         type: mimeType,
         lastModified: Date.now(),
       });
-
-      // On mobile (iOS Safari / Android Chrome), navigator.share with files opens the native OS sheet
-      // which includes "Save Image" / "Save Video" ("Guardar imagen" / "Guardar video") directly into the Camera Roll!
       const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
       if (
@@ -374,14 +547,13 @@ export default function LoyaScopePage() {
           );
           return;
         } catch (err: unknown) {
-          // If user cancelled the share sheet, don't force download unless requested
           if (err instanceof Error && err.name === "AbortError") {
             return;
           }
         }
       }
 
-      // Fallback / Desktop direct download
+      // 3. Fallback / Desktop direct download
       const a = document.createElement("a");
       a.href = item.url;
       a.download = item.filename;
@@ -399,19 +571,28 @@ export default function LoyaScopePage() {
     [showToast]
   );
 
-  // Take a high-resolution photo (preserving current zoom, pan, rotation, mirror, filters)
+  // Take a high-resolution photo (works for both Native USB-C UVC and WebRTC)
   const takePhoto = useCallback(async () => {
-    const video = videoRef.current;
-    if (!video || !isStreaming) return;
+    if (!isStreaming) return;
+
+    const sourceEl = isNativeUvcMode ? uvcCanvasRef.current : videoRef.current;
+    if (!sourceEl) return;
 
     setShutterFlash(true);
     setTimeout(() => setShutterFlash(false), 160);
 
-    const vw = video.videoWidth || 1920;
-    const vh = video.videoHeight || 1080;
+    const srcW =
+      sourceEl instanceof HTMLVideoElement
+        ? sourceEl.videoWidth || 1920
+        : sourceEl.width || 1280;
+    const srcH =
+      sourceEl instanceof HTMLVideoElement
+        ? sourceEl.videoHeight || 1080
+        : sourceEl.height || 720;
+
     const isRotated90 = rotation % 180 !== 0;
-    const outW = isRotated90 ? vh : vw;
-    const outH = isRotated90 ? vw : vh;
+    const outW = isRotated90 ? srcH : srcW;
+    const outH = isRotated90 ? srcW : srcH;
 
     const canvas = document.createElement("canvas");
     canvas.width = outW;
@@ -422,7 +603,9 @@ export default function LoyaScopePage() {
 
     renderTransformedFrame(
       ctx,
-      video,
+      sourceEl,
+      srcW,
+      srcH,
       outW,
       outH,
       zoom,
@@ -434,13 +617,10 @@ export default function LoyaScopePage() {
     );
 
     canvas.toBlob(
-      (blob) => {
+      async (blob) => {
         if (!blob) return;
         const now = new Date();
-        const stamp = now
-          .toISOString()
-          .replace(/[:.]/g, "-")
-          .slice(0, 19);
+        const stamp = now.toISOString().replace(/[:.]/g, "-").slice(0, 19);
         const filename = `LoyaScope_${stamp}.jpg`;
         const url = URL.createObjectURL(blob);
 
@@ -450,7 +630,11 @@ export default function LoyaScopePage() {
           url,
           blob,
           filename,
-          timestamp: now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+          timestamp: now.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          }),
           width: outW,
           height: outH,
           zoom,
@@ -458,13 +642,22 @@ export default function LoyaScopePage() {
 
         setMediaList((prev) => [item, ...prev]);
         setActivePreview(item);
-        showToast("Foto capturada • Toca 'Guardar en Carrete'");
+
+        // If inside the Native Android APK, auto-save directly to the Camera Roll!
+        if (window.LoyaScopeAndroid?.saveToGallery) {
+          const b64 = await blobToBase64(blob);
+          window.LoyaScopeAndroid.saveToGallery(b64, filename, "image/jpeg");
+          showToast("Foto guardada en el Carrete (DCIM/LoyaScope)");
+        } else {
+          showToast("Foto capturada • Toca 'Guardar en Carrete'");
+        }
       },
       "image/jpeg",
       0.95
     );
   }, [
     isStreaming,
+    isNativeUvcMode,
     rotation,
     zoom,
     pan,
@@ -475,16 +668,24 @@ export default function LoyaScopePage() {
     showToast,
   ]);
 
-  // Start / Stop Video Recording (records the zoomed/transformed canvas so zoom is baked into the video!)
+  // Start / Stop Video Recording (records the zoomed/transformed canvas for both UVC and WebRTC!)
   const startRecording = useCallback(() => {
-    const video = videoRef.current;
-    if (!video || !isStreaming || isRecording) return;
+    if (!isStreaming || isRecording) return;
+    const sourceEl = isNativeUvcMode ? uvcCanvasRef.current : videoRef.current;
+    if (!sourceEl) return;
 
-    const vw = video.videoWidth || 1280;
-    const vh = video.videoHeight || 720;
+    const srcW =
+      sourceEl instanceof HTMLVideoElement
+        ? sourceEl.videoWidth || 1280
+        : sourceEl.width || 1280;
+    const srcH =
+      sourceEl instanceof HTMLVideoElement
+        ? sourceEl.videoHeight || 720
+        : sourceEl.height || 720;
+
     const isRotated90 = rotationRef.current % 180 !== 0;
-    const outW = isRotated90 ? vh : vw;
-    const outH = isRotated90 ? vw : vh;
+    const outW = isRotated90 ? srcH : srcW;
+    const outH = isRotated90 ? srcW : srcH;
 
     const canvas = document.createElement("canvas");
     canvas.width = outW;
@@ -493,12 +694,24 @@ export default function LoyaScopePage() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Render loop at 30fps so real-time zoom & pan during recording are captured smoothly
     const renderLoop = () => {
-      if (videoRef.current && recordCanvasRef.current) {
+      const currentSource = isNativeUvcModeRef.current
+        ? uvcCanvasRef.current
+        : videoRef.current;
+      if (currentSource && recordCanvasRef.current) {
+        const w =
+          currentSource instanceof HTMLVideoElement
+            ? currentSource.videoWidth || srcW
+            : currentSource.width || srcW;
+        const h =
+          currentSource instanceof HTMLVideoElement
+            ? currentSource.videoHeight || srcH
+            : currentSource.height || srcH;
         renderTransformedFrame(
           ctx,
-          videoRef.current,
+          currentSource,
+          w,
+          h,
           outW,
           outH,
           zoomRef.current,
@@ -515,7 +728,6 @@ export default function LoyaScopePage() {
 
     const canvasStream = canvas.captureStream(30);
 
-    // Choose best MIME type supported by device (prefer mp4 for iOS Camera Roll compatibility)
     const mimeCandidates = [
       "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
       "video/mp4",
@@ -543,7 +755,7 @@ export default function LoyaScopePage() {
         }
       };
 
-      recorder.onstop = () => {
+      recorder.onstop = async () => {
         if (recordAnimFrameRef.current) {
           cancelAnimationFrame(recordAnimFrameRef.current);
           recordAnimFrameRef.current = null;
@@ -553,10 +765,8 @@ export default function LoyaScopePage() {
         const blob = new Blob(recordedChunksRef.current, { type: finalMime });
         const url = URL.createObjectURL(blob);
         const now = new Date();
-        const stamp = now
-          .toISOString()
-          .replace(/[:.]/g, "-")
-          .slice(0, 19);
+        const stamp = now.toISOString().replace(/[:.]/g, "-").slice(0, 19);
+        const filename = `LoyaScope_${stamp}.${ext}`;
         const durationSec = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
 
         const item: CapturedMedia = {
@@ -564,8 +774,12 @@ export default function LoyaScopePage() {
           type: "video",
           url,
           blob,
-          filename: `LoyaScope_${stamp}.${ext}`,
-          timestamp: now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+          filename,
+          timestamp: now.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          }),
           width: outW,
           height: outH,
           zoom: zoomRef.current,
@@ -574,7 +788,14 @@ export default function LoyaScopePage() {
 
         setMediaList((prev) => [item, ...prev]);
         setActivePreview(item);
-        showToast("Video grabado • Toca 'Guardar en Carrete'");
+
+        if (window.LoyaScopeAndroid?.saveToGallery) {
+          const b64 = await blobToBase64(blob);
+          window.LoyaScopeAndroid.saveToGallery(b64, filename, finalMime);
+          showToast("Video guardado en el Carrete (DCIM/LoyaScope)");
+        } else {
+          showToast("Video grabado • Toca 'Guardar en Carrete'");
+        }
       };
 
       recorder.start(250);
@@ -589,7 +810,7 @@ export default function LoyaScopePage() {
       console.error("Failed to start MediaRecorder:", err);
       showToast("Error al iniciar grabación de video");
     }
-  }, [isStreaming, isRecording, renderTransformedFrame, showToast]);
+  }, [isStreaming, isRecording, isNativeUvcMode, renderTransformedFrame, showToast]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
@@ -604,6 +825,10 @@ export default function LoyaScopePage() {
 
   // Freeze / Unfreeze live video
   const toggleFreeze = () => {
+    if (isNativeUvcMode) {
+      setIsFrozen((f) => !f);
+      return;
+    }
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
@@ -615,10 +840,14 @@ export default function LoyaScopePage() {
     }
   };
 
-  // Cycle to next camera quickly
+  // Cycle between Native USB-C (if connected) and internal cameras
   const cycleCamera = () => {
-    if (devices.length <= 1) {
-      startCamera();
+    if (isNativeApk && nativeUsbConnected && !isNativeUvcMode) {
+      startNativeUsbMode(nativeUsbName);
+      return;
+    }
+    if (devices.length === 0) {
+      startCamera(undefined, true);
       return;
     }
     const idx = devices.findIndex((d) => d.deviceId === selectedDeviceId);
@@ -634,7 +863,6 @@ export default function LoyaScopePage() {
     pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
     if (pointersRef.current.size === 1) {
-      // Check double tap
       const now = Date.now();
       if (now - lastTapRef.current < 280) {
         setZoom((z) => (z > 1 ? 1 : 2.5));
@@ -658,7 +886,10 @@ export default function LoyaScopePage() {
       const pts = Array.from(pointersRef.current.values());
       const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
       const scale = dist / initialPinchDistRef.current;
-      const nextZoom = Math.min(8, Math.max(1, Number((initialZoomRef.current * scale).toFixed(2))));
+      const nextZoom = Math.min(
+        8,
+        Math.max(1, Number((initialZoomRef.current * scale).toFixed(2)))
+      );
       setZoom(nextZoom);
     } else if (pointersRef.current.size === 1 && zoom > 1 && lastPanPointRef.current) {
       const dx = e.clientX - lastPanPointRef.current.x;
@@ -734,18 +965,30 @@ export default function LoyaScopePage() {
                 size={12}
                 className={isUsbDetected ? "text-emerald-400" : "text-zinc-400"}
               />
-              <span className="truncate max-w-[160px] sm:max-w-[260px] font-mono text-[11px]">
+              <span className="truncate max-w-[140px] sm:max-w-[240px] font-mono text-[11px]">
                 {activeCameraLabel}
               </span>
               <span className="text-[10px] text-emerald-400 underline ml-1">
-                Cambiar ({devices.length || 1})
+                Cámaras ({devices.length + (nativeUsbConnected ? 1 : 0) || 1})
               </span>
             </button>
           </div>
         </div>
 
-        {/* Right Quick Optical Tools */}
+        {/* Right Quick Optical Tools + APK Download Button */}
         <div className="flex items-center gap-1.5 sm:gap-2">
+          {!isNativeApk && (
+            <a
+              href="/loya-scope.apk"
+              download="LoyaScope-USB.apk"
+              className="px-2.5 py-1.5 rounded-xl bg-emerald-400/15 hover:bg-emerald-400/25 border border-emerald-400/40 text-emerald-300 text-[11px] font-mono font-bold flex items-center gap-1 transition-all"
+              title="Descargar APK Android con Driver USB-C Nativo"
+            >
+              <Smartphone size={13} />
+              <span className="hidden xs:inline">APK USB-C</span>
+            </a>
+          )}
+
           {isRecording && (
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/20 border border-red-500/50 text-red-300 font-mono text-xs animate-pulse">
               <span className="w-2 h-2 rounded-full bg-red-500" />
@@ -813,59 +1056,108 @@ export default function LoyaScopePage() {
 
       {/* Camera Selector Dropdown Modal */}
       {showDeviceMenu && (
-        <div className="absolute top-16 left-3 sm:left-5 z-50 w-80 rounded-2xl bg-[#0D1015]/95 backdrop-blur-2xl border border-white/15 p-3 shadow-2xl">
-          <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/10">
-            <span className="text-xs font-mono uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-              <Usb size={14} className="text-emerald-400" /> Dispositivos de Video
+        <div className="absolute top-16 left-3 sm:left-5 z-50 w-84 max-w-[calc(100vw-24px)] rounded-2xl bg-[#0D1015]/95 backdrop-blur-2xl border border-white/15 p-3.5 shadow-2xl space-y-2.5">
+          <div className="flex items-center justify-between pb-2 border-b border-white/10">
+            <span className="text-xs font-mono uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
+              <Usb size={14} className="text-emerald-400" /> Selector de Cámaras
             </span>
             <button
               onClick={() => {
-                startCamera(selectedDeviceId || undefined);
+                if (isNativeApk && window.LoyaScopeAndroid) {
+                  window.LoyaScopeAndroid.rescanUsbCamera();
+                } else {
+                  startCamera(undefined, true);
+                }
                 setShowDeviceMenu(false);
               }}
               className="text-[11px] font-mono text-emerald-400 hover:underline flex items-center gap-1"
             >
-              <RefreshCw size={11} /> Escanear USB
+              <RefreshCw size={11} /> Escanear USB-C
             </button>
           </div>
-          <div className="space-y-1.5 max-h-60 overflow-y-auto">
-            {devices.length === 0 ? (
-              <p className="text-xs text-zinc-400 py-2 font-mono">
-                No se detectaron cámaras enumeradas aún.
-              </p>
-            ) : (
-              devices.map((dev, idx) => {
-                const isSelected = dev.deviceId === selectedDeviceId;
-                const isUsb = isExternalUsbCamera(dev.label);
-                return (
-                  <button
-                    key={dev.deviceId || idx}
-                    onClick={() => {
-                      startCamera(dev.deviceId);
-                      setShowDeviceMenu(false);
-                    }}
-                    className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-mono flex items-center justify-between transition-all ${
-                      isSelected
-                        ? "bg-emerald-500/20 border border-emerald-400/40 text-white"
-                        : "bg-white/[0.03] hover:bg-white/[0.08] border border-transparent text-zinc-300"
-                    }`}
-                  >
-                    <div className="truncate pr-2">
-                      <div className="font-semibold truncate">
-                        {dev.label || `Cámara #${idx + 1}`}
-                      </div>
-                      {isUsb && (
-                        <span className="text-[10px] text-emerald-400">
-                          ● USB / Externa UVC
-                        </span>
-                      )}
-                    </div>
-                    {isSelected && <Check size={14} className="text-emerald-400 shrink-0" />}
-                  </button>
-                );
-              })
+
+          <div className="space-y-1.5 max-h-64 overflow-y-auto">
+            {/* Native USB-C UVC Option when inside Loya Scope APK */}
+            {isNativeApk && (
+              <button
+                onClick={() => {
+                  if (nativeUsbConnected) {
+                    startNativeUsbMode(nativeUsbName);
+                  } else {
+                    window.LoyaScopeAndroid?.rescanUsbCamera();
+                  }
+                  setShowDeviceMenu(false);
+                }}
+                className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-mono flex items-center justify-between transition-all ${
+                  isNativeUvcMode
+                    ? "bg-emerald-500/20 border border-emerald-400/40 text-white"
+                    : "bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/25 text-emerald-200"
+                }`}
+              >
+                <div className="truncate pr-2">
+                  <div className="font-bold flex items-center gap-1.5">
+                    <Usb size={13} className="text-emerald-400" />
+                    <span>{nativeUsbConnected ? nativeUsbName : "Conectar Cámara USB-C (OTG)"}</span>
+                  </div>
+                  <span className="text-[10px] text-emerald-400">
+                    {nativeUsbConnected
+                      ? "● Driver UVC Nativo Activo"
+                      : "Toca para escanear puerto USB-C"}
+                  </span>
+                </div>
+                {isNativeUvcMode && <Check size={14} className="text-emerald-400 shrink-0" />}
+              </button>
             )}
+
+            {/* WebRTC Video Input Devices */}
+            {devices.map((dev, idx) => {
+              const isSelected = !isNativeUvcMode && dev.deviceId === selectedDeviceId;
+              const isUsb = isExternalUsbCamera(dev, idx);
+              return (
+                <button
+                  key={dev.deviceId || idx}
+                  onClick={() => {
+                    startCamera(dev.deviceId);
+                    setShowDeviceMenu(false);
+                  }}
+                  className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-mono flex items-center justify-between transition-all ${
+                    isSelected
+                      ? "bg-emerald-500/20 border border-emerald-400/40 text-white"
+                      : "bg-white/[0.03] hover:bg-white/[0.08] border border-transparent text-zinc-300"
+                  }`}
+                >
+                  <div className="truncate pr-2">
+                    <div className="font-semibold truncate">
+                      {dev.label || `Cámara #${idx + 1}`}
+                    </div>
+                    {isUsb && (
+                      <span className="text-[10px] text-emerald-400">
+                        ● Externa / USB UVC
+                      </span>
+                    )}
+                  </div>
+                  {isSelected && <Check size={14} className="text-emerald-400 shrink-0" />}
+                </button>
+              );
+            })}
           </div>
+
+          {/* Explanation & Official Native APK Download for Android USB-C */}
+          {!isNativeApk && (
+            <div className="pt-2 border-t border-white/10 space-y-2">
+              <p className="text-[11px] font-mono text-zinc-400 leading-relaxed">
+                ¿Tu celular Android no muestra la cámara USB-C en el navegador? Descarga nuestra APK oficial con <strong className="text-emerald-300">Driver USB-C UVC Nativo</strong> y permisos de cámara activados:
+              </p>
+              <a
+                href="/loya-scope.apk"
+                download="LoyaScope-USB.apk"
+                className="w-full py-2.5 px-3 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-zinc-950 font-bold text-xs flex items-center justify-center gap-2 transition-all"
+              >
+                <Download size={14} />
+                <span>Descargar Loya Scope (.APK)</span>
+              </a>
+            </div>
+          )}
         </div>
       )}
 
@@ -925,12 +1217,27 @@ export default function LoyaScopePage() {
         onPointerCancel={handlePointerUp}
         className="relative flex-1 w-full h-full flex items-center justify-center overflow-hidden touch-none bg-[#030406]"
       >
+        {/* Native USB-C UVC Canvas Stream */}
+        <canvas
+          ref={uvcCanvasRef}
+          style={{
+            display: isNativeUvcMode ? "block" : "none",
+            transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom}) ${
+              mirrored ? "scaleX(-1)" : ""
+            } rotate(${rotation}deg)`,
+            filter: `brightness(${brightness}%) contrast(${contrast}%)`,
+          }}
+          className="max-w-full max-h-full w-full h-full object-contain transition-transform duration-75 ease-out pointer-events-none"
+        />
+
+        {/* Standard WebRTC Video Stream */}
         <video
           ref={videoRef}
           playsInline
           muted
           autoPlay
           style={{
+            display: isNativeUvcMode ? "none" : "block",
             transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom}) ${
               mirrored ? "scaleX(-1)" : ""
             } rotate(${rotation}deg)`,
@@ -947,14 +1254,12 @@ export default function LoyaScopePage() {
         {/* Precision Reticle Overlay */}
         {showReticle && isStreaming && (
           <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
-            {/* Corner Brackets */}
             <div className="w-[82%] h-[74%] max-w-3xl max-h-[620px] relative border border-emerald-400/15 rounded-2xl">
               <div className="absolute -top-0.5 -left-0.5 w-6 h-6 border-t-2 border-l-2 border-emerald-400/70 rounded-tl-md" />
               <div className="absolute -top-0.5 -right-0.5 w-6 h-6 border-t-2 border-r-2 border-emerald-400/70 rounded-tr-md" />
               <div className="absolute -bottom-0.5 -left-0.5 w-6 h-6 border-b-2 border-l-2 border-emerald-400/70 rounded-bl-md" />
               <div className="absolute -bottom-0.5 -right-0.5 w-6 h-6 border-b-2 border-r-2 border-emerald-400/70 rounded-br-md" />
             </div>
-            {/* Center Crosshair */}
             <div className="absolute w-14 h-14 rounded-full border border-emerald-400/40 flex items-center justify-center">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400/80" />
               <div className="absolute w-24 h-[1px] bg-emerald-400/25" />
@@ -966,6 +1271,11 @@ export default function LoyaScopePage() {
         {/* Telemetry HUD Badges inside Viewfinder */}
         {isStreaming && (
           <div className="absolute top-3 left-4 z-20 pointer-events-none flex flex-wrap items-center gap-2">
+            {isNativeUvcMode && (
+              <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-400/50 text-emerald-300 font-mono text-xs">
+                ● USB-C UVC DIRECTO
+              </span>
+            )}
             {zoom > 1 && (
               <span className="px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md border border-emerald-400/40 text-emerald-300 font-mono text-xs">
                 ZOOM {zoom.toFixed(1)}x • Arrastra para mover
@@ -992,13 +1302,23 @@ export default function LoyaScopePage() {
               <p className="text-xs sm:text-sm text-zinc-400 font-mono leading-relaxed">
                 {streamError}
               </p>
-              <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+              <div className="flex flex-col gap-2.5 pt-2">
                 <button
-                  onClick={() => startCamera()}
-                  className="flex-1 py-3 px-4 rounded-xl bg-emerald-400 text-zinc-950 font-bold text-xs uppercase tracking-wider hover:bg-emerald-300 transition-all"
+                  onClick={() => startCamera(undefined, true)}
+                  className="w-full py-3 px-4 rounded-xl bg-emerald-400 text-zinc-950 font-bold text-xs uppercase tracking-wider hover:bg-emerald-300 transition-all"
                 >
                   Reintentar Conexión
                 </button>
+                {!isNativeApk && (
+                  <a
+                    href="/loya-scope.apk"
+                    download="LoyaScope-USB.apk"
+                    className="w-full py-3 px-4 rounded-xl bg-white/[0.08] border border-emerald-400/40 text-emerald-300 font-bold text-xs uppercase tracking-wider hover:bg-white/[0.14] transition-all flex items-center justify-center gap-2"
+                  >
+                    <Download size={15} />
+                    <span>Descargar APK con Driver USB-C</span>
+                  </a>
+                )}
               </div>
             </div>
           </div>
@@ -1087,7 +1407,7 @@ export default function LoyaScopePage() {
           </div>
         </div>
 
-        {/* Primary Action Row: Gallery Thumbnail | Main Shutter/Record | Switch Camera / Quick Snapshot */}
+        {/* Primary Action Row: Gallery Thumbnail | Main Shutter/Record | Switch Camera */}
         <div className="max-w-md mx-auto flex items-center justify-between px-4">
           {/* Left: Gallery / Last Capture Button */}
           <button
@@ -1216,7 +1536,6 @@ export default function LoyaScopePage() {
             </div>
           </div>
 
-          {/* Media Display */}
           <div className="flex-1 my-4 flex items-center justify-center overflow-hidden rounded-2xl bg-[#07090D] border border-white/10 p-2">
             {activePreview.type === "photo" ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -1236,7 +1555,6 @@ export default function LoyaScopePage() {
             )}
           </div>
 
-          {/* Action Buttons: Save to Camera Roll + Direct Download + Delete */}
           <div className="max-w-md mx-auto w-full space-y-2.5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <button
@@ -1260,7 +1578,11 @@ export default function LoyaScopePage() {
 
             <div className="flex items-center justify-between pt-1">
               <p className="text-[11px] font-mono text-zinc-400">
-                En iPhone/Android: toca &ldquo;Guardar en Carrete&rdquo; → &ldquo;Guardar {activePreview.type === "photo" ? "imagen" : "video"}&rdquo;.
+                {isNativeApk
+                  ? "Guardado automático en Galería → álbum DCIM/LoyaScope."
+                  : `En iPhone/Android: toca "Guardar en Carrete" → "Guardar ${
+                      activePreview.type === "photo" ? "imagen" : "video"
+                    }".`}
               </p>
               <button
                 onClick={() => deleteMedia(activePreview.id)}

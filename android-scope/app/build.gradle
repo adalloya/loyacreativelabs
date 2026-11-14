@@ -1,0 +1,39 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.loyacreativelab.scope'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.loyacreativelab.scope"
+        minSdk 24
+        // targetSdk 28 ensures full USB-C UVC file descriptor & PendingIntent compatibility on Android 10-14
+        targetSdk 28
+        versionCode 2
+        versionName "1.2.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.debug
+        }
+        debug {
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.core:core:1.12.0'
+    implementation 'androidx.webkit:webkit:1.10.0'
+    implementation 'com.herohan:UVCAndroid:1.0.13'
+}
