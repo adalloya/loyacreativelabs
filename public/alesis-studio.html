@@ -225,12 +225,6 @@
             }
             hardwareLedState.set(noteNumber, color);
             transmitRawLedPacket(noteNumber, color);
-            setTimeout(() => {
-                if (hardwareLedState.get(noteNumber) === color) transmitRawLedPacket(noteNumber, color);
-            }, 25);
-            setTimeout(() => {
-                if (hardwareLedState.get(noteNumber) === color) transmitRawLedPacket(noteNumber, color);
-            }, 75);
         }
 
         function testOfficialSkooveColor(color) {
@@ -550,20 +544,28 @@
             sendHardwareMidi(noteNumber, color);
         }
 
+        let activeFeedback = null;
+        let feedbackTimer = null;
+
         function handleMIDIMessage(event) {
             const [status, note, velocity] = event.data;
             const cmd = status >> 4;
             if (cmd === 9 && velocity > 0) {
                 evaluateUserNote(note);
             } else if (cmd === 8 || (cmd === 9 && velocity === 0)) {
-                const restoreActiveLeds = () => {
-                    hardwareLedState.forEach((activeColor, activeNote) => {
-                        transmitRawLedPacket(activeNote, activeColor);
-                    });
-                };
-                restoreActiveLeds();
-                setTimeout(restoreActiveLeds, 20);
-                setTimeout(restoreActiveLeds, 65);
+                if (activeFeedback) {
+                    const fb = activeFeedback;
+                    setTimeout(() => {
+                        sendHardwareMidi(fb.note, fb.color);
+                    }, 30);
+                    return;
+                }
+                if (currentIndex < activeSequence.length) {
+                    const targetNote = activeSequence[currentIndex].note;
+                    setTimeout(() => {
+                        sendHardwareMidi(targetNote, 'orange');
+                    }, 30);
+                }
             }
         }
 
@@ -576,77 +578,35 @@
             }
             const expectedNote = activeSequence[currentIndex].note;
 
-            if (playedNote === expectedNote) {
-                // Limpiar cualquier luz verde o roja anterior en otra tecla
-                Array.from(hardwareLedState.entries()).forEach(([n, col]) => {
-                    if (n !== expectedNote && (col === 'green' || col === 'red')) {
-                        if (ledTimers.has(n)) {
-                            clearTimeout(ledTimers.get(n));
-                            ledTimers.delete(n);
-                        }
-                        setKeyColor(n, null);
-                    }
-                });
-                if (ledTimers.has(expectedNote)) {
-                    clearTimeout(ledTimers.get(expectedNote));
-                    ledTimers.delete(expectedNote);
-                }
+            if (feedbackTimer) {
+                clearTimeout(feedbackTimer);
+                feedbackTimer = null;
+            }
 
-                // 1. Encender la tecla tocada bien en VERDE (0x09)
+            if (playedNote === expectedNote) {
+                activeFeedback = { note: expectedNote, color: 'green' };
                 setKeyColor(expectedNote, 'green');
                 currentIndex++;
                 if (osmd && osmd.cursor) osmd.cursor.next();
 
-                if (currentIndex < activeSequence.length) {
-                    const nextStep = activeSequence[currentIndex];
-                    document.getElementById('songLyric').innerText = nextStep.lyric;
-                    document.getElementById('instructionText').innerText = `Toca ${nextStep.name} (Luz Naranja)`;
-                    document.getElementById('fingerNumberBox').innerText = nextStep.finger || 1;
-
-                    if (nextStep.note !== expectedNote) {
-                        setKeyColor(nextStep.note, 'orange');
-                        const t = setTimeout(() => {
-                            ledTimers.delete(expectedNote);
-                            if (hardwareLedState.get(expectedNote) === 'green') {
-                                setKeyColor(expectedNote, null);
-                            }
-                        }, 750);
-                        ledTimers.set(expectedNote, t);
-                    } else {
-                        const t = setTimeout(() => {
-                            ledTimers.delete(expectedNote);
-                            setKeyColor(expectedNote, 'orange');
-                        }, 450);
-                        ledTimers.set(expectedNote, t);
-                    }
-                } else {
-                    document.getElementById('songLyric').innerText = "¡Partitura completada! 🎉";
-                    document.getElementById('instructionText').innerText = "Toca cualquier tecla para reiniciar.";
-                    document.getElementById('fingerNumberBox').innerText = "✓";
-                    const t = setTimeout(() => {
-                        ledTimers.delete(expectedNote);
-                        setKeyColor(expectedNote, null);
-                    }, 800);
-                    ledTimers.set(expectedNote, t);
-                }
+                feedbackTimer = setTimeout(() => {
+                    activeFeedback = null;
+                    feedbackTimer = null;
+                    setKeyColor(expectedNote, null);
+                    updateLessonUI();
+                }, 420);
             } else {
-                if (ledTimers.has(playedNote)) {
-                    clearTimeout(ledTimers.get(playedNote));
-                    ledTimers.delete(playedNote);
-                }
+                activeFeedback = { note: playedNote, color: 'red' };
                 setKeyColor(playedNote, 'red');
                 setKeyColor(expectedNote, 'orange');
-                const t = setTimeout(() => {
-                    ledTimers.delete(playedNote);
-                    const curExpected = activeSequence[currentIndex] ? activeSequence[currentIndex].note : null;
-                    if (playedNote !== curExpected && hardwareLedState.get(playedNote) === 'red') {
+                feedbackTimer = setTimeout(() => {
+                    activeFeedback = null;
+                    feedbackTimer = null;
+                    if (playedNote !== expectedNote) {
                         setKeyColor(playedNote, null);
                     }
-                    if (curExpected !== null) {
-                        setKeyColor(curExpected, 'orange');
-                    }
-                }, 900);
-                ledTimers.set(playedNote, t);
+                    setKeyColor(expectedNote, 'orange');
+                }, 480);
             }
         }
 
